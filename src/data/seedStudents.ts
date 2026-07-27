@@ -1,0 +1,43 @@
+import type { StudentFormData } from '../types/student'
+
+export const SEED_STUDENTS: StudentFormData[] = [
+  {
+    name: '김민준',
+    school: '안산고등학교',
+    grade: '고1',
+    studentPhone: '010-1111-2222',
+    parentPhone: '010-3333-4444',
+    subject: '수학',
+    className: '고1 수학 A반',
+    teacher: '김강사',
+    enrollmentDate: '2025-03-01',
+    status: '재원',
+    memo: '',
+  },
+  {
+    name: '이서연',
+    school: '양지중학교',
+    grade: '중2',
+    studentPhone: '010-2222-3333',
+    parentPhone: '010-4444-5555',
+    subject: '영어·수학',
+    className: '중2 종합반',
+    teacher: '이강사',
+    enrollmentDate: '2025-03-05',
+    status: '재원',
+    memo: '',
+  },
+  {
+    name: '박지우',
+    school: '중앙중학교',
+    grade: '중3',
+    studentPhone: '010-3333-4444',
+    parentPhone: '010-5555-6666',
+    subject: '영어',
+    className: '중3 영어반',
+    teacher: '박강사',
+    enrollmentDate: '2024-09-01',
+    status: '휴원',
+    memo: '개인 사정으로 휴원 중',
+  },
+]

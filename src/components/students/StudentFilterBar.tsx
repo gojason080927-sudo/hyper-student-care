@@ -1,0 +1,86 @@
+import type { Student } from '../../types/student'
+import type { StudentListFilters } from '../../types/student'
+import { GRADES, STUDENT_STATUSES, SUBJECTS } from '../../utils/labels'
+import { getUniqueClassNames, getUniqueSchools } from '../../utils/filters'
+
+type StudentFilterBarProps = {
+  students: Student[]
+  filters: StudentListFilters
+  totalCount: number
+  enrolledCount: number
+  onChange: (filters: StudentListFilters) => void
+}
+
+export function StudentFilterBar({
+  students,
+  filters,
+  totalCount,
+  enrolledCount,
+  onChange,
+}: StudentFilterBarProps) {
+  const schools = getUniqueSchools(students)
+  const classNames = getUniqueClassNames(students)
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="xl:col-span-2">
+          <label htmlFor="student-search" className="mb-1.5 block text-sm font-medium text-slate-600">
+            이름 또는 학교 검색
+          </label>
+          <input
+            id="student-search"
+            type="search"
+            placeholder="학생 이름 또는 학교명"
+            value={filters.search}
+            onChange={(e) => onChange({ ...filters, search: e.target.value })}
+            className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500"
+          />
+        </div>
+        <div>
+          <label htmlFor="student-school" className="mb-1.5 block text-sm font-medium text-slate-600">학교</label>
+          <select id="student-school" value={filters.school} onChange={(e) => onChange({ ...filters, school: e.target.value })} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500">
+            <option value="">전체</option>
+            {schools.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="student-grade" className="mb-1.5 block text-sm font-medium text-slate-600">학년</label>
+          <select id="student-grade" value={filters.grade} onChange={(e) => onChange({ ...filters, grade: e.target.value })} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500">
+            <option value="">전체</option>
+            {GRADES.map((g) => <option key={g} value={g}>{g}</option>)}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="student-class" className="mb-1.5 block text-sm font-medium text-slate-600">반/과정</label>
+          <select id="student-class" value={filters.className} onChange={(e) => onChange({ ...filters, className: e.target.value })} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500">
+            <option value="">전체</option>
+            {classNames.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="student-status" className="mb-1.5 block text-sm font-medium text-slate-600">상태</label>
+          <select id="student-status" value={filters.status} onChange={(e) => onChange({ ...filters, status: e.target.value })} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500">
+            <option value="">전체</option>
+            {STUDENT_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+        <div>
+          <label htmlFor="student-subject" className="mb-1.5 block text-sm font-medium text-slate-600">과목</label>
+          <select id="student-subject" value={filters.subject} onChange={(e) => onChange({ ...filters, subject: e.target.value })} className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500">
+            <option value="">전체</option>
+            {SUBJECTS.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+      </div>
+      <div className="mt-4 flex flex-wrap gap-3 border-t border-slate-100 pt-4">
+        <span className="inline-flex items-center rounded-xl bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700">
+          전체 학생 <strong className="ml-1.5 text-base text-navy-900">{totalCount}</strong>명
+        </span>
+        <span className="inline-flex items-center rounded-xl bg-blue-50 px-4 py-2 text-sm font-medium text-blue-800">
+          재원 학생 <strong className="ml-1.5 text-base text-blue-900">{enrolledCount}</strong>명
+        </span>
+      </div>
+    </div>
+  )
+}
