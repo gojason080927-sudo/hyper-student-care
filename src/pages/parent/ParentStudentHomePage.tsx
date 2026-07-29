@@ -6,13 +6,9 @@ export function ParentStudentHomePage() {
   const student = useParentStudent()
 
   return (
-    <div className="parent-page space-y-5 pb-6">
-      <ParentStudentInfoCard student={student} />
-
-      <section aria-label="학습 기록 메뉴">
-        <h2 className="mb-3 text-sm font-semibold text-slate-600">
-          확인할 항목을 선택해 주세요
-        </h2>
+    <div className="parent-page parent-home pb-4">
+      <ParentStudentInfoCard student={student} compact />
+      <section aria-label="학습 기록 메뉴" className="mt-3 sm:mt-4">
         <ParentCategoryGrid />
       </section>
     </div>

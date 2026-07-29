@@ -83,12 +83,6 @@ export function ParentStudentSidebar({ isOpen, onClose }: ParentStudentSidebarPr
                 {parentTodayReportItem.label}
               </NavLink>
             </li>
-          </ul>
-
-          <p className="mb-2 mt-5 px-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
-            학습 기록
-          </p>
-          <ul className="space-y-1">
             {parentCategoryItems.map(({ segment, label, icon: Icon }) => {
               const path = `${basePath}/${segment}`
               const isActive =
