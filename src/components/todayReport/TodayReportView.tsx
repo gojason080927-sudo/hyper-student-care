@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { DailyTestSessionFormSection, validateDailyTestSessions, DailyTestPassRuleBadge } from '../dailytest/DailyTestSessionFormSection'
 import { DailyTestSessionGrid } from '../dailytest/DailyTestSessionGrid'
 import { HomeworkStatusPicker } from '../homework/HomeworkStatusPicker'
+import { HeroProgressBar } from '../ui/HeroProgressBar'
 import { StatusBadge } from '../ui/StatusBadge'
 import { useData } from '../../hooks/useData'
 import type {
@@ -28,9 +29,11 @@ import {
   dailyTestFormToSavePayload,
   dailyTestRecordToForm,
   emptyDailyTestForm,
+  getFinalPassLabel,
   migrateSessionResults,
   type DailyTestFormData,
 } from '../../utils/dailyTest'
+import { calcProgressRate } from '../../utils/calc'
 import { findTodayAssignment, TODAY_ASSIGNMENT_MAX_LENGTH } from '../../utils/todayAssignment'
 import { CLASS_NOTE_MAX_LENGTH, findClassNote } from '../../utils/classNote'
 import { getHomeworkContent, homeworkRecordToSavePayload } from '../../utils/homework'
@@ -55,16 +58,18 @@ function SectionCard({
   titleExtra,
   children,
   compact = false,
+  emphasis = false,
 }: {
   title: string
   titleExtra?: React.ReactNode
   children: React.ReactNode
   compact?: boolean
+  emphasis?: boolean
 }) {
   return (
     <section
       className={`rounded-2xl border border-slate-200 bg-white shadow-sm ${
-        compact ? 'px-4 py-3' : 'p-4 sm:p-5'
+        emphasis ? 'px-4 py-4 sm:px-5 sm:py-5' : compact ? 'px-4 py-3' : 'p-4 sm:p-5'
       }`}
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -103,7 +108,24 @@ function SaveButton({
   )
 }
 
-export function StudentSummaryCard({ student }: { student: Student }) {
+export function StudentSummaryCard({
+  student,
+  compact = false,
+}: {
+  student: Student
+  compact?: boolean
+}) {
+  if (compact) {
+    return (
+      <section className="rounded-xl border border-slate-200 bg-white px-3.5 py-3 shadow-sm sm:rounded-2xl sm:px-4">
+        <h1 className="text-lg font-bold text-navy-900">{student.name}</h1>
+        <p className="mt-0.5 line-clamp-2 break-anywhere text-sm text-slate-600">
+          {[student.school, student.grade, student.teacher].filter(Boolean).join(' · ')}
+        </p>
+      </section>
+    )
+  }
+
   return (
     <section className="rounded-2xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm">
       <p className="text-lg font-bold text-navy-900">{student.name} 학생</p>
@@ -118,6 +140,22 @@ export function StudentSummaryCard({ student }: { student: Student }) {
       </p>
     </section>
   )
+}
+
+function getParentAttendanceHighlight(status: AttendanceStatus, active: boolean): string {
+  if (!active) {
+    return 'border-slate-100 bg-slate-50 text-slate-400'
+  }
+  switch (status) {
+    case '출석':
+      return 'border-emerald-300 bg-emerald-100 text-emerald-800 ring-2 ring-emerald-200'
+    case '지각':
+      return 'border-amber-300 bg-amber-100 text-amber-800 ring-2 ring-amber-200'
+    case '결석':
+      return 'border-rose-300 bg-rose-100 text-rose-800 ring-2 ring-rose-200'
+    case '조퇴':
+      return 'border-blue-300 bg-blue-100 text-blue-800 ring-2 ring-blue-200'
+  }
 }
 
 export function TodayReportView({
@@ -203,51 +241,81 @@ export function TodayReportView({
   )
 
   const canGoNext = compareDateStrings(selectedDate, today) < 0
+  const dateLabel = `${formatKoreanDateLong(selectedDate)}${isToday(selectedDate) ? ' · 오늘' : ''}`
 
   return (
-    <div className="space-y-3 sm:space-y-4">
-      <div className="rounded-2xl border border-slate-200 bg-navy-50 px-4 py-3">
-        <p className="text-center text-sm font-semibold text-navy-900 sm:text-base">
-          {formatKoreanDateLong(selectedDate)}
-          {isToday(selectedDate) ? ' 오늘의 학습 리포트' : ' 학습 리포트'}
-        </p>
-        <div className="mt-2 flex items-center justify-center gap-2">
-          {dateMode === 'navigate' ? (
-            <>
-              <button
-                type="button"
-                aria-label="이전 날짜"
-                onClick={() => setSelectedDate((d) => addDays(d, -1))}
-                className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <span className="min-w-[7rem] text-center text-xs text-slate-500">
-                {isToday(selectedDate) ? '오늘' : selectedDate}
-              </span>
-              <button
-                type="button"
-                aria-label="다음 날짜"
-                disabled={!canGoNext}
-                onClick={() => canGoNext && setSelectedDate((d) => addDays(d, 1))}
-                className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </>
-          ) : (
-            <input
-              type="date"
-              value={selectedDate}
-              max={today}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className={`${inputClass()} max-w-[11rem] text-sm`}
-            />
-          )}
-        </div>
-      </div>
-
-      <StudentSummaryCard student={student} />
+    <div className="space-y-3">
+      {readOnly ? (
+        <>
+          <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+            <button
+              type="button"
+              aria-label="이전 날짜"
+              onClick={() => setSelectedDate((d) => addDays(d, -1))}
+              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="min-w-[8rem] text-center text-sm font-medium text-navy-900">
+              {dateLabel}
+            </span>
+            <button
+              type="button"
+              aria-label="다음 날짜"
+              disabled={!canGoNext}
+              onClick={() => canGoNext && setSelectedDate((d) => addDays(d, 1))}
+              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+          <StudentSummaryCard student={student} compact />
+        </>
+      ) : (
+        <>
+          <div className="rounded-2xl border border-slate-200 bg-navy-50 px-4 py-3">
+            <p className="text-center text-sm font-semibold text-navy-900 sm:text-base">
+              {formatKoreanDateLong(selectedDate)}
+              {isToday(selectedDate) ? ' 오늘의 학습 리포트' : ' 학습 리포트'}
+            </p>
+            <div className="mt-2 flex items-center justify-center gap-2">
+              {dateMode === 'navigate' ? (
+                <>
+                  <button
+                    type="button"
+                    aria-label="이전 날짜"
+                    onClick={() => setSelectedDate((d) => addDays(d, -1))}
+                    className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <span className="min-w-[7rem] text-center text-xs text-slate-500">
+                    {isToday(selectedDate) ? '오늘' : selectedDate}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="다음 날짜"
+                    disabled={!canGoNext}
+                    onClick={() => canGoNext && setSelectedDate((d) => addDays(d, 1))}
+                    className="inline-flex items-center rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </>
+              ) : (
+                <input
+                  type="date"
+                  value={selectedDate}
+                  max={today}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className={`${inputClass()} max-w-[11rem] text-sm`}
+                />
+              )}
+            </div>
+          </div>
+          <StudentSummaryCard student={student} />
+        </>
+      )}
 
       <AttendanceSection
         readOnly={readOnly}
@@ -255,14 +323,6 @@ export function TodayReportView({
         studentId={student.id}
         date={selectedDate}
         onSave={saveAttendanceRecord}
-      />
-
-      <ProgressSection
-        readOnly={readOnly}
-        records={dayProgressList}
-        studentId={student.id}
-        date={selectedDate}
-        onSave={saveProgressRecord}
       />
 
       <HomeworkAssignmentSection
@@ -275,12 +335,12 @@ export function TodayReportView({
         onSaveTodayAssignment={saveTodayAssignmentRecord}
       />
 
-      <ClassNoteSection
+      <ProgressSection
         readOnly={readOnly}
-        record={dayClassNote}
+        records={dayProgressList}
         studentId={student.id}
         date={selectedDate}
-        onSave={saveClassNoteRecord}
+        onSave={saveProgressRecord}
       />
 
       <DailyTestSection
@@ -289,6 +349,14 @@ export function TodayReportView({
         studentId={student.id}
         date={selectedDate}
         onSave={saveDailyTestRecord}
+      />
+
+      <ClassNoteSection
+        readOnly={readOnly}
+        record={dayClassNote}
+        studentId={student.id}
+        date={selectedDate}
+        onSave={saveClassNoteRecord}
       />
     </div>
   )
@@ -328,17 +396,23 @@ function AttendanceSection({
   }
 
   return (
-    <SectionCard title="당일 출결 상황">
+    <SectionCard title="오늘 출결">
       {readOnly ? (
         record ? (
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm text-slate-600">출결 상태:</span>
-              <StatusBadge label={record.status} colorClass={getAttendanceColor(record.status)} />
+          <div className="space-y-2.5">
+            <div className="grid grid-cols-4 gap-2">
+              {ATTENDANCE_STATUSES.map((item) => (
+                <div
+                  key={item}
+                  className={`flex min-h-11 items-center justify-center rounded-lg border px-1 py-2 text-center text-sm font-semibold ${getParentAttendanceHighlight(item, record.status === item)}`}
+                >
+                  {item}
+                </div>
+              ))}
             </div>
             {record.reason && (
               <p className="text-sm text-slate-600">
-                <span className="font-medium">사유:</span> {record.reason}
+                <span className="font-medium text-slate-700">사유:</span> {record.reason}
               </p>
             )}
           </div>
@@ -478,50 +552,47 @@ function ProgressSection({
     }
   }
 
-  const hasReadContent = Boolean(
-    mathProgress.trim() ||
-      englishProgress.trim() ||
-      teacherMemo.trim() ||
-      records.length > 0,
-  )
-
   return (
     <SectionCard title="오늘의 진도">
       {readOnly ? (
-        !hasReadContent ? (
+        records.length === 0 ? (
           <EmptyHint message="오늘 등록된 진도 기록이 없습니다." />
         ) : (
           <div className="space-y-3">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-              <ProgressSubjectColumn icon="📘" subject="수학">
-                <p className="mb-1 text-xs font-semibold text-navy-800">진도 과정</p>
-                {mathProgress.trim() ? (
-                  <p className="whitespace-pre-wrap text-sm leading-snug text-slate-700">
-                    {mathProgress}
-                  </p>
-                ) : (
-                  <p className="text-sm text-slate-400">등록된 진도가 없습니다.</p>
-                )}
-              </ProgressSubjectColumn>
-              <ProgressSubjectColumn icon="📗" subject="영어">
-                <p className="mb-1 text-xs font-semibold text-navy-800">진도 과정</p>
-                {englishProgress.trim() ? (
-                  <p className="whitespace-pre-wrap text-sm leading-snug text-slate-700">
-                    {englishProgress}
-                  </p>
-                ) : (
-                  <p className="text-sm text-slate-400">등록된 진도가 없습니다.</p>
-                )}
-              </ProgressSubjectColumn>
-            </div>
-            {teacherMemo.trim() && (
-              <div className="border-t border-slate-100 pt-3">
-                <p className="mb-1 text-xs font-semibold text-slate-500">강사 메모</p>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-600">
-                  {teacherMemo}
-                </p>
-              </div>
-            )}
+            {(['수학', '영어'] as const).map((subject) => {
+              const record = findProgressBySubject(records, subject)
+              const content = formatTodayProgressContent(record)
+              if (!record && !content.trim()) return null
+              const rate = record
+                ? calcProgressRate(record.currentPage, record.totalPage)
+                : 0
+              return (
+                <div
+                  key={subject}
+                  className="rounded-xl border border-slate-200 bg-slate-50/60 p-3"
+                >
+                  <p className="text-sm font-bold text-navy-900">{subject}</p>
+                  {record?.textbookName?.trim() && (
+                    <p className="mt-1 text-sm text-slate-600">
+                      <span className="font-medium text-slate-700">교재:</span>{' '}
+                      {record.textbookName}
+                    </p>
+                  )}
+                  {content.trim() ? (
+                    <p className="mt-1.5 whitespace-pre-wrap text-sm leading-snug text-slate-700">
+                      <span className="font-medium text-slate-700">현재 진도:</span> {content}
+                    </p>
+                  ) : (
+                    <p className="mt-1.5 text-sm text-slate-400">등록된 진도가 없습니다.</p>
+                  )}
+                  {record && record.totalPage > 0 && (
+                    <div className="mt-2.5">
+                      <HeroProgressBar value={rate} size="default" />
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )
       ) : (
@@ -666,12 +737,12 @@ function HomeworkAssignmentSection({
   )
 
   return (
-    <SectionCard title="과제 수행 결과">
+    <SectionCard title="숙제 수행 결과">
       {readOnly ? (
         !hasReadContent ? (
-          <EmptyHint message="오늘 등록된 과제 기록이 없습니다." />
+          <EmptyHint message="오늘 등록된 숙제 기록이 없습니다." />
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {homeworkRecord?.status && (
               <StatusBadge
                 label={homeworkRecord.status}
@@ -680,7 +751,7 @@ function HomeworkAssignmentSection({
             )}
             {previousAssignment.trim() && (
               <div>
-                <p className="text-xs font-semibold text-navy-700">① 지난 과제</p>
+                <p className="text-xs font-semibold text-navy-700">숙제 내용</p>
                 <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
                   {previousAssignment}
                 </p>
@@ -688,7 +759,7 @@ function HomeworkAssignmentSection({
             )}
             {todayAssignment.trim() && (
               <div>
-                <p className="text-xs font-semibold text-navy-700">② 오늘 해야 할 과제</p>
+                <p className="text-xs font-semibold text-navy-700">오늘 해야 할 과제</p>
                 <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
                   {todayAssignment}
                 </p>
@@ -779,21 +850,19 @@ function ClassNoteSection({
 
   const showParentNote = Boolean(record?.hasClassNote && record.note.trim())
 
+  const sectionTitle = readOnly ? '선생님 코멘트' : '수업 중 특이사항'
+
   return (
-    <SectionCard title="수업 중 특이사항">
+    <SectionCard title={sectionTitle} emphasis={readOnly}>
       {readOnly ? (
         showParentNote ? (
-          <div className="space-y-2">
-            <StatusBadge
-              label="특이사항 있음"
-              colorClass="bg-amber-100 text-amber-800 border-amber-200"
-            />
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
+          <div className="rounded-xl border border-amber-100 bg-amber-50/40 px-3.5 py-3.5 sm:px-4 sm:py-4">
+            <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-slate-800">
               {record!.note}
             </p>
           </div>
         ) : (
-          <p className="text-sm text-slate-500">특이사항 없음</p>
+          <p className="text-sm text-slate-500">등록된 코멘트가 없습니다.</p>
         )
       ) : (
         <div className="space-y-3">
@@ -896,19 +965,37 @@ function DailyTestSection({
 
   return (
     <SectionCard
-      title="일일테스트 결과"
-      titleExtra={<DailyTestPassRuleBadge />}
+      title="일일 테스트"
+      titleExtra={readOnly ? undefined : <DailyTestPassRuleBadge />}
       compact={readOnly}
     >
       {readOnly ? (
         record ? (
-          <div className="space-y-1.5">
-            <DailyTestSessionGrid record={record} dense />
-            {record.memo && (
-              <p className="whitespace-pre-wrap text-xs leading-relaxed text-slate-500">
-                {record.memo}
+          <div className="space-y-3">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-2 py-2.5 text-center">
+                <p className="text-[11px] font-medium text-slate-500">점수</p>
+                <p className="mt-0.5 text-sm font-bold text-navy-900">
+                  {record.score}/{record.totalScore}
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-2 py-2.5 text-center">
+                <p className="text-[11px] font-medium text-slate-500">오답</p>
+                <p className="mt-0.5 text-sm font-bold text-navy-900">{record.incorrectCount}개</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-2 py-2.5 text-center">
+                <p className="text-[11px] font-medium text-slate-500">합격</p>
+                <p className="mt-0.5 text-sm font-bold text-blue-700">
+                  {getFinalPassLabel(migrateSessionResults(record))}
+                </p>
+              </div>
+            </div>
+            {record.testName && (
+              <p className="text-sm text-slate-600">
+                <span className="font-medium text-slate-700">{record.subject}</span> · {record.testName}
               </p>
             )}
+            <DailyTestSessionGrid record={record} dense />
           </div>
         ) : (
           <EmptyHint message="오늘 등록된 일일테스트 결과가 없습니다." />

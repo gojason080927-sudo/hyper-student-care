@@ -1,6 +1,5 @@
 import { ArrowLeft } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ParentPageHeader } from '../../components/parent/ParentStudentComponents'
 import { TodayReportErrorBoundary } from '../../components/todayReport/TodayReportErrorBoundary'
 import { TodayReportView } from '../../components/todayReport/TodayReportView'
 import { useParentStudent } from '../../contexts/ParentStudentContext'
@@ -13,7 +12,7 @@ export function ParentStudentTodayReportPage() {
   const homePath = `/care/${studentAccessKey || student.studentAccessKey}`
 
   return (
-    <div className="parent-page space-y-4 pb-6">
+    <div className="parent-page space-y-3 pb-4">
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
@@ -27,11 +26,6 @@ export function ParentStudentTodayReportPage() {
           홈으로
         </Link>
       </div>
-
-      <ParentPageHeader
-        title="Today Report"
-        description="선택한 날짜의 학습 기록을 확인합니다."
-      />
 
       <TodayReportErrorBoundary homePath={homePath}>
         <TodayReportView student={student} readOnly dateMode="navigate" />
