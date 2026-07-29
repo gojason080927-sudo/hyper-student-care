@@ -48,9 +48,7 @@ export function StudentParentLinkToolbar({ student }: StudentParentLinkToolbarPr
 
   const handleKakaoShare = async (target: Student) => {
     await handleShareStudentCareToKakao(target, {
-      onSuccess: (message) => {
-        if (message) showToast(message)
-      },
+      onSuccess: () => showToast('카카오톡 공유 창을 열었습니다.'),
       onError: (message) => showToast(message),
     })
   }

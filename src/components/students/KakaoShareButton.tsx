@@ -3,7 +3,7 @@ import { shareStudentCareToKakao } from '../../lib/kakao'
 import type { Student } from '../../types/student'
 
 type ShareHandlers = {
-  onSuccess?: (message?: string) => void
+  onSuccess?: () => void
   onError: (message: string) => void
 }
 
@@ -13,7 +13,7 @@ export async function handleShareStudentCareToKakao(
 ): Promise<void> {
   const result = await shareStudentCareToKakao(student)
   if (result.ok) {
-    onSuccess?.(result.message)
+    onSuccess?.()
     return
   }
   const fullMessage = result.hint ? `${result.message} ${result.hint}` : result.message
