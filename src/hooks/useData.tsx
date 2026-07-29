@@ -2,7 +2,9 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react'
@@ -16,35 +18,58 @@ import type {
   MonthlyEvaluationRecord,
   ProgressRecord,
   QuestionRecord,
+  TodayAssignmentRecord,
+  ClassNoteRecord,
 } from '../types/records'
 import type { Student, StudentFormData } from '../types/student'
+import { loadAppData, loadParentCareData as fetchParentCareData, loadTodayReportFromSupabase, shouldDeferInitialLoadForParentRoute, type DataSource } from '../lib/dataLoader'
+import { rpcSubmitParentQuestion } from '../lib/db/parentAccessRpc'
+import { getParentAccessKeyFromPath } from '../lib/supabase'
+import { mergeTodayReportIntoState } from '../lib/db/mergeTodayReport'
+import {
+  deleteAssignmentCompletion,
+  deleteAttendance,
+  deleteDailyTest,
+  deleteHomework,
+  deleteMakeupPlan,
+  deleteMonthlyEvaluation,
+  deleteNotice,
+  deleteProgress,
+  deleteQuestion,
+  deleteStudentById,
+  upsertAssignmentCompletion,
+  upsertAttendance,
+  upsertClassNote,
+  upsertDailyTest,
+  upsertHomework,
+  upsertMakeupPlan,
+  upsertMonthlyEvaluation,
+  upsertNotice,
+  upsertProgress,
+  upsertQuestion,
+  upsertStudent,
+  upsertTodayAssignment,
+} from '../lib/db/repository'
+import { mirrorLocalBackup, toLocalBackupData } from '../storage/localBackup'
 import { createId } from '../utils/id'
 import { normalizeContentPostRecord } from '../utils/contentPost'
 import { normalizeDailyTestRecord } from '../utils/dailyTest'
 import { normalizeHomeworkStatus } from '../utils/homework'
-import { normalizeMonthlyEvaluationRecord, normalizeDifficultyBreakdown } from '../utils/monthlyEvaluation'
 import {
-  createTimestamps,
-  loadAllRecords,
-  saveAssignments,
-  saveAttendance,
-  saveDailyTests,
-  saveHomework,
-  saveMakeupPlans,
-  saveContentPosts,
-  saveMonthlyEvaluations,
-  saveProgress,
-  saveQuestions,
-  touchRecord,
-} from '../utils/recordStorage'
+  normalizeDifficultyBreakdown,
+  normalizeMonthlyEvaluationRecord,
+} from '../utils/monthlyEvaluation'
+import { createTimestamps, touchRecord } from '../utils/recordStorage'
+import { copyTextToClipboard } from '../utils/copyToClipboard'
 import {
   createStudentFromForm,
+  ensureUniqueStudentAccessKey,
+  findStudentByAccessKeyRaw,
   formDataToStudentUpdate,
   getStudentByAccessKey as findStudentByAccessKey,
-  loadStudents,
-  saveStudents,
+  hasStudentAccessKey,
 } from '../utils/studentStorage'
-import { buildStudentCareUrl, generateStudentAccessKey } from '../utils/studentAccessKey'
+import { getStudentCareUrl, tryGetStudentCareUrl } from '../utils/studentCareUrl'
 import {
   calcCompletionRate,
   calcPercentage,
@@ -65,16 +90,26 @@ export type DataContextValue = {
   progressRecords: ProgressRecord[]
   makeupPlans: MakeupPlanRecord[]
   contentPosts: ContentPost[]
+  todayAssignments: TodayAssignmentRecord[]
+  classNotes: ClassNoteRecord[]
   addStudent: (data: StudentFormData) => void
   updateStudent: (id: string, data: StudentFormData) => void
   deleteStudent: (id: string) => void
   getStudentById: (id: string) => Student | undefined
   getStudentByAccessKey: (accessKey: string) => Student | undefined
-  copyStudentCareLink: (studentId: string) => boolean
-  regenerateStudentAccessKey: (studentId: string) => string | null
+  findStudentByAccessKeyAny: (accessKey: string) => Student | undefined
+  copyStudentCareLink: (studentId: string) => Promise<boolean>
+  generateStudentAccessKeyForStudent: (studentId: string) => Promise<string | null>
+  openStudentCareInNewTab: (studentId: string) => boolean
+  regenerateStudentAccessKey: (studentId: string) => Promise<string | null>
+  setStudentAccessKeyActive: (studentId: string, active: boolean) => void
   saveAttendanceRecord: (
     data: Omit<AttendanceRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
   ) => boolean
+  saveAttendanceRecordAsync: (
+    data: Omit<AttendanceRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
+    options?: { silent?: boolean },
+  ) => Promise<{ success: boolean; recordId?: string }>
   deleteAttendanceRecord: (id: string) => void
   saveHomeworkRecord: (
     data: Omit<HomeworkRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
@@ -118,45 +153,118 @@ export type DataContextValue = {
     data: Omit<ContentPost, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
   ) => boolean
   deleteContentPost: (id: string) => void
+  saveTodayAssignmentRecord: (
+    data: Omit<TodayAssignmentRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
+  ) => boolean
+  saveClassNoteRecord: (
+    data: Omit<ClassNoteRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
+  ) => boolean
+  isLoading: boolean
+  isSaving: boolean
+  dataSource: DataSource
+  refreshTodayReport: (studentId: string, date: string) => Promise<void>
+  reloadData: () => Promise<void>
+  loadParentCareData: (accessKey: string) => Promise<void>
   showToast: (text: string) => void
 }
 
 const DataContext = createContext<DataContextValue | null>(null)
 
-const initialData = (() => {
-  const loadedStudents = loadStudents()
-  const records = loadAllRecords(loadedStudents)
-  return { students: loadedStudents, ...records }
-})()
-
 export function DataProvider({ children }: { children: ReactNode }) {
-  const [students, setStudents] = useState<Student[]>(initialData.students)
-  const [attendance, setAttendanceRecords] = useState<AttendanceRecord[]>(
-    initialData.attendance,
-  )
-  const [homework, setHomework] = useState<HomeworkRecord[]>(initialData.homework)
+  const [students, setStudents] = useState<Student[]>([])
+  const [attendance, setAttendanceRecords] = useState<AttendanceRecord[]>([])
+  const [homework, setHomework] = useState<HomeworkRecord[]>([])
   const [assignmentCompletion, setAssignmentCompletion] = useState<
     AssignmentCompletionRecord[]
-  >(initialData.assignmentCompletion)
-  const [dailyTests, setDailyTests] = useState<DailyTestRecord[]>(
-    initialData.dailyTests,
-  )
+  >([])
+  const [dailyTests, setDailyTests] = useState<DailyTestRecord[]>([])
   const [monthlyEvaluations, setMonthlyEvaluations] = useState<
     MonthlyEvaluationRecord[]
-  >(initialData.monthlyEvaluations)
-  const [questions, setQuestions] = useState<QuestionRecord[]>(initialData.questions)
-  const [progressRecords, setProgressRecords] = useState<ProgressRecord[]>(
-    initialData.progress,
-  )
-  const [makeupPlans, setMakeupPlans] = useState<MakeupPlanRecord[]>(
-    initialData.makeupPlans,
-  )
-  const [contentPosts, setContentPosts] = useState<ContentPost[]>(
-    initialData.contentPosts,
-  )
+  >([])
+  const [questions, setQuestions] = useState<QuestionRecord[]>([])
+  const [progressRecords, setProgressRecords] = useState<ProgressRecord[]>([])
+  const [makeupPlans, setMakeupPlans] = useState<MakeupPlanRecord[]>([])
+  const [contentPosts, setContentPosts] = useState<ContentPost[]>([])
+  const [todayAssignments, setTodayAssignments] = useState<TodayAssignmentRecord[]>([])
+  const [classNotes, setClassNotes] = useState<ClassNoteRecord[]>([])
   const [toasts, setToasts] = useState<ToastMessage[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [dataSource, setDataSource] = useState<DataSource>('none')
+  const reloadRef = useRef<(() => Promise<void>) | null>(null)
+  const loadIdRef = useRef(0)
+  const savingRef = useRef(false)
+  const stateRef = useRef({
+    attendance,
+    progress: progressRecords,
+    assignmentCompletion,
+    homework,
+    todayAssignments,
+    classNotes,
+    dailyTests,
+  })
 
-  const studentIds = useMemo(() => new Set(students.map((s) => s.id)), [students])
+  stateRef.current = {
+    attendance,
+    progress: progressRecords,
+    assignmentCompletion,
+    homework,
+    todayAssignments,
+    classNotes,
+    dailyTests,
+  }
+
+  const mirrorCurrentBackup = useCallback(() => {
+    mirrorLocalBackup(
+      toLocalBackupData({
+        students,
+        attendance,
+        homework,
+        assignmentCompletion,
+        dailyTests,
+        monthlyEvaluations,
+        questions,
+        progress: progressRecords,
+        makeupPlans,
+        contentPosts,
+        todayAssignments,
+        classNotes,
+      }),
+    )
+  }, [
+    assignmentCompletion,
+    attendance,
+    classNotes,
+    contentPosts,
+    dailyTests,
+    homework,
+    makeupPlans,
+    monthlyEvaluations,
+    progressRecords,
+    questions,
+    students,
+    todayAssignments,
+  ])
+
+  useEffect(() => {
+    if (isLoading) return
+    mirrorCurrentBackup()
+  }, [
+    isLoading,
+    mirrorCurrentBackup,
+    students,
+    attendance,
+    homework,
+    assignmentCompletion,
+    dailyTests,
+    monthlyEvaluations,
+    questions,
+    progressRecords,
+    makeupPlans,
+    contentPosts,
+    todayAssignments,
+    classNotes,
+  ])
 
   const showToast = useCallback((text: string) => {
     const id = createId()
@@ -164,76 +272,196 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 2500)
   }, [])
 
+  const handlePersistError = useCallback(
+    (message: string) => {
+      showToast(message)
+      void reloadRef.current?.()
+    },
+    [showToast],
+  )
+
+  const applyLoadedData = useCallback((data: Awaited<ReturnType<typeof loadAppData>>['data']) => {
+    setStudents(
+      data.students.map((student) => ({
+        ...student,
+        accessKeyActive: student.accessKeyActive ?? true,
+      })),
+    )
+    setAttendanceRecords(data.attendance)
+    setHomework(data.homework)
+    setAssignmentCompletion(data.assignmentCompletion)
+    setDailyTests(data.dailyTests)
+    setMonthlyEvaluations(data.monthlyEvaluations)
+    setQuestions(data.questions)
+    setProgressRecords(data.progress)
+    setMakeupPlans(data.makeupPlans)
+    setContentPosts(data.contentPosts)
+    setTodayAssignments(data.todayAssignments)
+    setClassNotes(data.classNotes)
+  }, [])
+
+  const load = useCallback(async (options?: { silent?: boolean }) => {
+    const loadId = ++loadIdRef.current
+    if (!options?.silent) setIsLoading(true)
+
+    if (shouldDeferInitialLoadForParentRoute()) {
+      console.log('[ParentAccess] deferring initial DataProvider load until care header is set')
+      if (loadId === loadIdRef.current && !options?.silent) {
+        setIsLoading(false)
+      }
+      return
+    }
+
+    try {
+      const result = await loadAppData()
+      if (loadId !== loadIdRef.current) return
+      applyLoadedData(result.data)
+      setDataSource(result.source)
+      if (result.source === 'localStorage') {
+        showToast('Supabase 연결 실패 — localStorage 백업 데이터를 표시합니다.')
+      }
+    } catch {
+      if (loadId !== loadIdRef.current) return
+      showToast('데이터를 불러오지 못했습니다.')
+      setDataSource('none')
+    } finally {
+      if (loadId === loadIdRef.current && !options?.silent) {
+        setIsLoading(false)
+      }
+    }
+  }, [applyLoadedData, showToast])
+
+  useEffect(() => {
+    reloadRef.current = () => load({ silent: true })
+    void load()
+  }, [load])
+
+  const reloadData = useCallback(async () => {
+    await load({ silent: true })
+  }, [load])
+
+  const loadParentCareData = useCallback(
+    async (accessKey: string) => {
+      try {
+        const result = await fetchParentCareData(accessKey)
+        applyLoadedData(result.data)
+        setDataSource(result.source)
+      } catch (error) {
+        console.error('[ParentAccess] loadParentCareData failed:', error)
+        throw error
+      }
+    },
+    [applyLoadedData],
+  )
+
+  const refreshTodayReport = useCallback(async (studentId: string, date: string) => {
+    const report = await loadTodayReportFromSupabase(studentId, date)
+    if (!report) return
+
+    const merged = mergeTodayReportIntoState(stateRef.current, report)
+    setAttendanceRecords(merged.attendance)
+    setProgressRecords(merged.progress)
+    setAssignmentCompletion(merged.assignmentCompletion)
+    setHomework(merged.homework)
+    setTodayAssignments(merged.todayAssignments)
+    setClassNotes(merged.classNotes)
+    setDailyTests(merged.dailyTests)
+  }, [])
+
+  /** Supabase 저장 성공 후 최신 데이터 재조회 (다중 강사 동시 접속 대응) */
+  type ReloadScope =
+    | { type: 'full' }
+    | { type: 'todayReport'; studentId: string; date: string }
+    | { type: 'parentCare'; accessKey: string }
+
+  const persistWithReload = useCallback(
+    async (
+      persist: () => Promise<void>,
+      errorMessage: string,
+      reload: ReloadScope = { type: 'full' },
+    ) => {
+      if (savingRef.current) return
+      savingRef.current = true
+      setIsSaving(true)
+      try {
+        await persist()
+        if (reload.type === 'todayReport') {
+          await refreshTodayReport(reload.studentId, reload.date)
+        } else if (reload.type === 'parentCare') {
+          await fetchParentCareData(reload.accessKey).then((result) => {
+            applyLoadedData(result.data)
+            setDataSource(result.source)
+          })
+        } else {
+          await load({ silent: true })
+        }
+      } catch {
+        handlePersistError(errorMessage)
+      } finally {
+        savingRef.current = false
+        setIsSaving(false)
+      }
+    },
+    [applyLoadedData, handlePersistError, load, refreshTodayReport],
+  )
+
+  const studentIds = useMemo(() => new Set(students.map((s) => s.id)), [students])
+
   const validateStudent = useCallback(
     (studentId: string) => studentIds.has(studentId),
     [studentIds],
   )
 
-  const persistStudents = useCallback((next: Student[]) => {
-    setStudents(next)
-    saveStudents(next)
-  }, [])
-
   const addStudent = useCallback(
     (data: StudentFormData) => {
-      persistStudents([...students, createStudentFromForm(data)])
+      const base = createStudentFromForm(data)
+      const student = {
+        ...base,
+        studentAccessKey: ensureUniqueStudentAccessKey(students, base.id),
+      }
+      setStudents((prev) => [...prev, student])
+      void persistWithReload(() => upsertStudent(student), '학생 등록에 실패했습니다.')
       showToast('학생이 등록되었습니다.')
     },
-    [persistStudents, showToast, students],
+    [handlePersistError, showToast, students],
   )
 
   const updateStudent = useCallback(
     (id: string, data: StudentFormData) => {
-      persistStudents(
-        students.map((s) => (s.id === id ? formDataToStudentUpdate(s, data) : s)),
+      let updated: Student | undefined
+      setStudents((prev) =>
+        prev.map((student) => {
+          if (student.id !== id) return student
+          updated = formDataToStudentUpdate(student, data)
+          return updated
+        }),
       )
+      if (updated) {
+        const saved = updated
+        void persistWithReload(() => upsertStudent(saved), '학생 정보 수정에 실패했습니다.')
+      }
       showToast('학생 정보가 수정되었습니다.')
     },
-    [persistStudents, showToast, students],
+    [handlePersistError, showToast],
   )
 
   const deleteStudent = useCallback(
     (id: string) => {
-      persistStudents(students.filter((s) => s.id !== id))
-      const nextAttendance = attendance.filter((a) => a.studentId !== id)
-      const nextHomework = homework.filter((h) => h.studentId !== id)
-      const nextAssignments = assignmentCompletion.filter((a) => a.studentId !== id)
-      const nextTests = dailyTests.filter((d) => d.studentId !== id)
-      const nextMonthly = monthlyEvaluations.filter((m) => m.studentId !== id)
-      const nextQuestions = questions.filter((q) => q.studentId !== id)
-      const nextProgress = progressRecords.filter((p) => p.studentId !== id)
-      const nextMakeupPlans = makeupPlans.filter((p) => p.studentId !== id)
-      setAttendanceRecords(nextAttendance)
-      saveAttendance(nextAttendance)
-      setHomework(nextHomework)
-      saveHomework(nextHomework)
-      setAssignmentCompletion(nextAssignments)
-      saveAssignments(nextAssignments)
-      setDailyTests(nextTests)
-      saveDailyTests(nextTests)
-      setMonthlyEvaluations(nextMonthly)
-      saveMonthlyEvaluations(nextMonthly)
-      setQuestions(nextQuestions)
-      saveQuestions(nextQuestions)
-      setProgressRecords(nextProgress)
-      saveProgress(nextProgress)
-      setMakeupPlans(nextMakeupPlans)
-      saveMakeupPlans(nextMakeupPlans)
+      setStudents((prev) => prev.filter((s) => s.id !== id))
+      setAttendanceRecords((prev) => prev.filter((a) => a.studentId !== id))
+      setHomework((prev) => prev.filter((h) => h.studentId !== id))
+      setAssignmentCompletion((prev) => prev.filter((a) => a.studentId !== id))
+      setDailyTests((prev) => prev.filter((d) => d.studentId !== id))
+      setMonthlyEvaluations((prev) => prev.filter((m) => m.studentId !== id))
+      setQuestions((prev) => prev.filter((q) => q.studentId !== id))
+      setProgressRecords((prev) => prev.filter((p) => p.studentId !== id))
+      setMakeupPlans((prev) => prev.filter((p) => p.studentId !== id))
+      setTodayAssignments((prev) => prev.filter((p) => p.studentId !== id))
+      setClassNotes((prev) => prev.filter((p) => p.studentId !== id))
+      void persistWithReload(() => deleteStudentById(id), '학생 삭제에 실패했습니다.')
       showToast('학생이 삭제되었습니다.')
     },
-    [
-      assignmentCompletion,
-      attendance,
-      dailyTests,
-      homework,
-      monthlyEvaluations,
-      persistStudents,
-      progressRecords,
-      makeupPlans,
-      questions,
-      showToast,
-      students,
-    ],
+    [handlePersistError, showToast],
   )
 
   const getStudentById = useCallback(
@@ -246,41 +474,213 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [students],
   )
 
+  const findStudentByAccessKeyAny = useCallback(
+    (accessKey: string) => findStudentByAccessKeyRaw(students, accessKey),
+    [students],
+  )
+
   const copyStudentCareLink = useCallback(
+    async (studentId: string) => {
+      const student = students.find((s) => s.id === studentId)
+      if (!student) return false
+      if (!hasStudentAccessKey(student.studentAccessKey)) {
+        showToast('접근 키가 없습니다. 먼저 링크를 생성해 주세요.')
+        return false
+      }
+      const url = getStudentCareUrl(student.studentAccessKey)
+      const result = await copyTextToClipboard(url)
+      if (result.ok) {
+        showToast('학부모 전용 링크가 복사되었습니다.')
+        return true
+      }
+      showToast(result.error)
+      return false
+    },
+    [showToast, students],
+  )
+
+  const openStudentCareInNewTab = useCallback(
     (studentId: string) => {
       const student = students.find((s) => s.id === studentId)
       if (!student) return false
-      const url = buildStudentCareUrl(student.studentAccessKey)
-      void navigator.clipboard.writeText(url).then(() => {
-        showToast(`${student.name} 학생의 HYPER CARE 링크가 복사되었습니다.`)
-      })
+      const url = tryGetStudentCareUrl(student.studentAccessKey)
+      if (!url) {
+        showToast('접근 키가 없습니다. 먼저 링크를 생성해 주세요.')
+        return false
+      }
+      window.open(url, '_blank', 'noopener,noreferrer')
       return true
     },
     [showToast, students],
   )
 
+  const generateStudentAccessKeyForStudent = useCallback(
+    async (studentId: string) => {
+      const student = students.find((s) => s.id === studentId)
+      if (!student) return null
+      if (hasStudentAccessKey(student.studentAccessKey)) {
+        showToast('이미 접근 키가 있습니다.')
+        return student.studentAccessKey
+      }
+
+      const nextKey = ensureUniqueStudentAccessKey(students, studentId)
+      let updated: Student | undefined
+
+      setStudents((prev) =>
+        prev.map((s) => {
+          if (s.id !== studentId) return s
+          updated = {
+            ...s,
+            studentAccessKey: nextKey,
+            accessKeyActive: true,
+            updatedAt: new Date().toISOString(),
+          }
+          return updated
+        }),
+      )
+
+      if (!updated) return null
+
+      const saved = updated
+      try {
+        await upsertStudent(saved)
+        await load({ silent: true })
+        showToast(`${student.name} 학생의 학부모 링크가 생성되었습니다.`)
+        return nextKey
+      } catch {
+        handlePersistError('링크 생성에 실패했습니다.')
+        return null
+      }
+    },
+    [handlePersistError, load, showToast, students],
+  )
+
   const regenerateStudentAccessKey = useCallback(
-    (studentId: string) => {
+    async (studentId: string) => {
       const student = students.find((s) => s.id === studentId)
       if (!student) return null
 
-      const used = new Set(students.filter((s) => s.id !== studentId).map((s) => s.studentAccessKey))
-      let nextKey = generateStudentAccessKey()
-      while (used.has(nextKey)) {
-        nextKey = generateStudentAccessKey()
+      const nextKey = ensureUniqueStudentAccessKey(students, studentId)
+      let updated: Student | undefined
+
+      setStudents((prev) =>
+        prev.map((s) => {
+          if (s.id !== studentId) return s
+          updated = {
+            ...s,
+            studentAccessKey: nextKey,
+            accessKeyActive: true,
+            updatedAt: new Date().toISOString(),
+          }
+          return updated
+        }),
+      )
+
+      if (!updated) return null
+
+      const saved = updated
+      try {
+        await upsertStudent(saved)
+        await load({ silent: true })
+        const url = getStudentCareUrl(nextKey)
+        const copied = await copyTextToClipboard(url)
+        showToast(
+          copied.ok
+            ? '링크가 재발급되었습니다. 새 링크가 클립보드에 복사되었습니다.'
+            : '링크가 재발급되었습니다. 새 링크 복사에 실패했습니다. 학생 상세에서 다시 복사해 주세요.',
+        )
+        return nextKey
+      } catch {
+        handlePersistError('개인 링크 재발급에 실패했습니다.')
+        return null
+      }
+    },
+    [handlePersistError, load, showToast, students],
+  )
+
+  const setStudentAccessKeyActive = useCallback(
+    (studentId: string, active: boolean) => {
+      const student = students.find((s) => s.id === studentId)
+      if (!student) return
+
+      let updated: Student | undefined
+      setStudents((prev) =>
+        prev.map((s) => {
+          if (s.id !== studentId) return s
+          updated = {
+            ...s,
+            accessKeyActive: active,
+            updatedAt: new Date().toISOString(),
+          }
+          return updated
+        }),
+      )
+
+      if (updated) {
+        const saved = updated
+        void persistWithReload(
+          () => upsertStudent(saved),
+          active ? '링크 활성화에 실패했습니다.' : '링크 비활성화에 실패했습니다.',
+        )
       }
 
-      const next = students.map((s) =>
-        s.id === studentId
-          ? { ...s, studentAccessKey: nextKey, updatedAt: new Date().toISOString() }
-          : s,
+      showToast(
+        active
+          ? `${student.name} 학생의 개인 링크가 활성화되었습니다.`
+          : `${student.name} 학생의 개인 링크가 비활성화되었습니다.`,
       )
-      setStudents(next)
-      saveStudents(next)
-      showToast(`${student.name} 학생의 개인 링크가 재발급되었습니다.`)
-      return nextKey
     },
-    [showToast, students],
+    [handlePersistError, showToast, students],
+  )
+
+  const saveAttendanceRecordAsync = useCallback(
+    async (
+      data: Omit<AttendanceRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
+      options?: { silent?: boolean },
+    ): Promise<{ success: boolean; recordId?: string }> => {
+      if (!validateStudent(data.studentId)) {
+        if (!options?.silent) showToast('존재하지 않는 학생입니다.')
+        return { success: false }
+      }
+
+      const ts = createTimestamps()
+      const snapshot = data.id ? attendance.find((r) => r.id === data.id) : undefined
+      let record: AttendanceRecord
+
+      if (data.id) {
+        const existing = attendance.find((r) => r.id === data.id)
+        record = touchRecord({
+          ...(existing ?? { id: data.id, ...ts }),
+          ...data,
+          id: data.id,
+        })
+        setAttendanceRecords((prev) =>
+          prev.map((r) => (r.id === data.id ? record : r)),
+        )
+      } else {
+        record = { ...data, id: createId(), ...ts }
+        setAttendanceRecords((prev) => [...prev, record])
+      }
+
+      try {
+        await upsertAttendance(record)
+        await refreshTodayReport(record.studentId, record.date)
+        if (!options?.silent) showToast('출결 기록이 저장되었습니다.')
+        return { success: true, recordId: record.id }
+      } catch {
+        handlePersistError('출결 기록 저장에 실패했습니다.')
+        if (data.id && snapshot) {
+          setAttendanceRecords((prev) =>
+            prev.map((r) => (r.id === data.id ? snapshot : r)),
+          )
+        } else {
+          setAttendanceRecords((prev) => prev.filter((r) => r.id !== record.id))
+        }
+        await load({ silent: true })
+        return { success: false }
+      }
+    },
+    [attendance, handlePersistError, load, refreshTodayReport, showToast, validateStudent],
   )
 
   const saveAttendanceRecord = useCallback(
@@ -291,37 +691,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
         showToast('존재하지 않는 학생입니다.')
         return false
       }
-      const ts = createTimestamps()
-      if (data.id) {
-        const next = attendance.map((r) =>
-          r.id === data.id
-            ? touchRecord({ ...r, ...data, id: data.id })
-            : r,
-        )
-        setAttendanceRecords(next)
-        saveAttendance(next)
-      } else {
-        const next = [
-          ...attendance,
-          { ...data, id: createId(), ...ts },
-        ]
-        setAttendanceRecords(next)
-        saveAttendance(next)
-      }
-      showToast('출결 기록이 저장되었습니다.')
+      void saveAttendanceRecordAsync(data)
       return true
     },
-    [attendance, showToast, validateStudent],
+    [saveAttendanceRecordAsync, showToast, validateStudent],
   )
 
   const deleteAttendanceRecord = useCallback(
     (id: string) => {
-      const next = attendance.filter((r) => r.id !== id)
-      setAttendanceRecords(next)
-      saveAttendance(next)
+      setAttendanceRecords((prev) => prev.filter((r) => r.id !== id))
+      void persistWithReload(() => deleteAttendance(id), '출결 기록 삭제에 실패했습니다.')
       showToast('출결 기록이 삭제되었습니다.')
     },
-    [attendance, showToast],
+    [handlePersistError, showToast],
   )
 
   const saveHomeworkRecord = useCallback(
@@ -337,32 +719,38 @@ export function DataProvider({ children }: { children: ReactNode }) {
         status: normalizeHomeworkStatus(data.status),
       }
       const ts = createTimestamps()
+      let record: HomeworkRecord
       if (data.id) {
-        const next = homework.map((r) =>
-          r.id === data.id ? touchRecord({ ...r, ...normalizedData, id: data.id }) : r,
-        )
-        setHomework(next)
-        saveHomework(next)
+        const existing = homework.find((r) => r.id === data.id)
+        record = touchRecord({
+          ...(existing ?? { id: data.id, ...ts }),
+          ...normalizedData,
+          id: data.id,
+        })
+        setHomework((prev) => prev.map((r) => (r.id === data.id ? record : r)))
         showToast('숙제 기록이 수정되었습니다.')
       } else {
-        const next = [...homework, { ...normalizedData, id: createId(), ...ts }]
-        setHomework(next)
-        saveHomework(next)
+        record = { ...normalizedData, id: createId(), ...ts }
+        setHomework((prev) => [...prev, record])
         showToast('숙제 기록이 저장되었습니다.')
       }
+      void persistWithReload(
+        () => upsertHomework(record),
+        '숙제 기록 저장에 실패했습니다.',
+        { type: 'todayReport', studentId: record.studentId, date: record.date },
+      )
       return true
     },
-    [homework, showToast, validateStudent],
+    [handlePersistError, homework, showToast, validateStudent],
   )
 
   const deleteHomeworkRecord = useCallback(
     (id: string) => {
-      const next = homework.filter((r) => r.id !== id)
-      setHomework(next)
-      saveHomework(next)
+      setHomework((prev) => prev.filter((r) => r.id !== id))
+      void persistWithReload(() => deleteHomework(id), '숙제 기록 삭제에 실패했습니다.')
       showToast('숙제 기록이 삭제되었습니다.')
     },
-    [homework, showToast],
+    [handlePersistError, showToast],
   )
 
   const saveAssignmentRecord = useCallback(
@@ -376,38 +764,45 @@ export function DataProvider({ children }: { children: ReactNode }) {
         showToast('존재하지 않는 학생입니다.')
         return false
       }
-      const completionRate = calcCompletionRate(
-        data.completedCount,
-        data.totalCount,
-      )
+      const completionRate = calcCompletionRate(data.completedCount, data.totalCount)
       const status = getAssignmentStatusFromRate(completionRate)
       const ts = createTimestamps()
       const full = { ...data, completionRate, status }
+      let record: AssignmentCompletionRecord
       if (data.id) {
-        const next = assignmentCompletion.map((r) =>
-          r.id === data.id ? touchRecord({ ...r, ...full, id: data.id }) : r,
+        const existing = assignmentCompletion.find((r) => r.id === data.id)
+        record = touchRecord({
+          ...(existing ?? { id: data.id, ...ts }),
+          ...full,
+          id: data.id,
+        })
+        setAssignmentCompletion((prev) =>
+          prev.map((r) => (r.id === data.id ? record : r)),
         )
-        setAssignmentCompletion(next)
-        saveAssignments(next)
       } else {
-        const next = [...assignmentCompletion, { ...full, id: createId(), ...ts }]
-        setAssignmentCompletion(next)
-        saveAssignments(next)
+        record = { ...full, id: createId(), ...ts }
+        setAssignmentCompletion((prev) => [...prev, record])
       }
+      void persistWithReload(
+        () => upsertAssignmentCompletion(record),
+        '과제완성 기록 저장에 실패했습니다.',
+      )
       showToast('과제완성 기록이 저장되었습니다.')
       return true
     },
-    [assignmentCompletion, showToast, validateStudent],
+    [assignmentCompletion, handlePersistError, showToast, validateStudent],
   )
 
   const deleteAssignmentRecord = useCallback(
     (id: string) => {
-      const next = assignmentCompletion.filter((r) => r.id !== id)
-      setAssignmentCompletion(next)
-      saveAssignments(next)
+      setAssignmentCompletion((prev) => prev.filter((r) => r.id !== id))
+      void persistWithReload(
+        () => deleteAssignmentCompletion(id),
+        '과제완성 기록 삭제에 실패했습니다.',
+      )
       showToast('과제완성 기록이 삭제되었습니다.')
     },
-    [assignmentCompletion, showToast],
+    [handlePersistError, showToast],
   )
 
   const saveDailyTestRecord = useCallback(
@@ -437,32 +832,30 @@ export function DataProvider({ children }: { children: ReactNode }) {
         createdAt: existing?.createdAt ?? ts.createdAt,
         updatedAt: ts.updatedAt,
       }
-      const normalized = normalizeDailyTestRecord(draft)
+      const record = touchRecord(normalizeDailyTestRecord(draft))
       if (data.id) {
-        const next = dailyTests.map((r) =>
-          r.id === data.id ? touchRecord({ ...normalized, id: data.id }) : r,
-        )
-        setDailyTests(next)
-        saveDailyTests(next)
+        setDailyTests((prev) => prev.map((r) => (r.id === data.id ? record : r)))
       } else {
-        const next = [...dailyTests, { ...normalized, id: draft.id, ...ts }]
-        setDailyTests(next)
-        saveDailyTests(next)
+        setDailyTests((prev) => [...prev, record])
       }
+      void persistWithReload(
+        () => upsertDailyTest(record),
+        '일일테스트 기록 저장에 실패했습니다.',
+        { type: 'todayReport', studentId: record.studentId, date: record.date },
+      )
       showToast('일일테스트 기록이 저장되었습니다.')
       return true
     },
-    [dailyTests, showToast, validateStudent],
+    [dailyTests, handlePersistError, showToast, validateStudent],
   )
 
   const deleteDailyTestRecord = useCallback(
     (id: string) => {
-      const next = dailyTests.filter((r) => r.id !== id)
-      setDailyTests(next)
-      saveDailyTests(next)
+      setDailyTests((prev) => prev.filter((r) => r.id !== id))
+      void persistWithReload(() => deleteDailyTest(id), '일일테스트 기록 삭제에 실패했습니다.')
       showToast('일일테스트 기록이 삭제되었습니다.')
     },
-    [dailyTests, showToast],
+    [handlePersistError, showToast],
   )
 
   const saveMonthlyEvaluationRecord = useCallback(
@@ -477,7 +870,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
         return false
       }
       const ts = createTimestamps()
-      const existing = data.id ? monthlyEvaluations.find((r) => r.id === data.id) : undefined
+      const existing = data.id
+        ? monthlyEvaluations.find((r) => r.id === data.id)
+        : undefined
       const draft: MonthlyEvaluationRecord = {
         id: data.id ?? createId(),
         studentId: data.studentId,
@@ -497,32 +892,34 @@ export function DataProvider({ children }: { children: ReactNode }) {
         createdAt: existing?.createdAt ?? ts.createdAt,
         updatedAt: ts.updatedAt,
       }
-      const normalized = normalizeMonthlyEvaluationRecord(draft)
+      const record = touchRecord(normalizeMonthlyEvaluationRecord(draft))
       if (data.id) {
-        const next = monthlyEvaluations.map((r) =>
-          r.id === data.id ? touchRecord({ ...normalized, id: data.id }) : r,
+        setMonthlyEvaluations((prev) =>
+          prev.map((r) => (r.id === data.id ? record : r)),
         )
-        setMonthlyEvaluations(next)
-        saveMonthlyEvaluations(next)
       } else {
-        const next = [...monthlyEvaluations, { ...normalized, id: draft.id, ...ts }]
-        setMonthlyEvaluations(next)
-        saveMonthlyEvaluations(next)
+        setMonthlyEvaluations((prev) => [...prev, record])
       }
+      void persistWithReload(
+        () => upsertMonthlyEvaluation(record),
+        '월말평가 저장에 실패했습니다.',
+      )
       showToast('월말평가가 저장되었습니다.')
       return true
     },
-    [monthlyEvaluations, showToast, validateStudent],
+    [handlePersistError, monthlyEvaluations, showToast, validateStudent],
   )
 
   const deleteMonthlyEvaluationRecord = useCallback(
     (id: string) => {
-      const next = monthlyEvaluations.filter((r) => r.id !== id)
-      setMonthlyEvaluations(next)
-      saveMonthlyEvaluations(next)
+      setMonthlyEvaluations((prev) => prev.filter((r) => r.id !== id))
+      void persistWithReload(
+        () => deleteMonthlyEvaluation(id),
+        '월말평가 삭제에 실패했습니다.',
+      )
       showToast('월말평가가 삭제되었습니다.')
     },
-    [monthlyEvaluations, showToast],
+    [handlePersistError, showToast],
   )
 
   const saveQuestionRecord = useCallback(
@@ -533,6 +930,29 @@ export function DataProvider({ children }: { children: ReactNode }) {
         showToast('존재하지 않는 학생입니다.')
         return false
       }
+
+      const parentAccessKey = getParentAccessKeyFromPath()
+      if (parentAccessKey && !data.id) {
+        void persistWithReload(
+          () =>
+            rpcSubmitParentQuestion(parentAccessKey, {
+              date: data.date,
+              category: data.category,
+              title: data.title.trim(),
+              content: data.content.trim(),
+              questionImages: data.questionImages ?? [],
+            }).then((record) => {
+              if (!record) {
+                throw new Error('질문 저장에 실패했습니다.')
+              }
+            }),
+          '질문 저장에 실패했습니다.',
+          { type: 'parentCare', accessKey: parentAccessKey },
+        )
+        showToast('질문이 저장되었습니다.')
+        return true
+      }
+
       const ts = createTimestamps()
       const status = data.answer.trim() ? '답변완료' : data.status
       const full = {
@@ -541,31 +961,33 @@ export function DataProvider({ children }: { children: ReactNode }) {
         questionImages: data.questionImages ?? [],
         answerImages: data.answerImages ?? [],
       }
+      let record: QuestionRecord
       if (data.id) {
-        const next = questions.map((r) =>
-          r.id === data.id ? touchRecord({ ...r, ...full, id: data.id }) : r,
-        )
-        setQuestions(next)
-        saveQuestions(next)
+        const existing = questions.find((r) => r.id === data.id)
+        record = touchRecord({
+          ...(existing ?? { id: data.id, ...ts }),
+          ...full,
+          id: data.id,
+        })
+        setQuestions((prev) => prev.map((r) => (r.id === data.id ? record : r)))
       } else {
-        const next = [...questions, { ...full, id: createId(), ...ts }]
-        setQuestions(next)
-        saveQuestions(next)
+        record = { ...full, id: createId(), ...ts }
+        setQuestions((prev) => [...prev, record])
       }
+      void persistWithReload(() => upsertQuestion(record), '질문 저장에 실패했습니다.')
       showToast('질문이 저장되었습니다.')
       return true
     },
-    [questions, showToast, validateStudent],
+    [persistWithReload, questions, showToast, validateStudent],
   )
 
   const deleteQuestionRecord = useCallback(
     (id: string) => {
-      const next = questions.filter((r) => r.id !== id)
-      setQuestions(next)
-      saveQuestions(next)
+      setQuestions((prev) => prev.filter((r) => r.id !== id))
+      void persistWithReload(() => deleteQuestion(id), '질문 삭제에 실패했습니다.')
       showToast('질문이 삭제되었습니다.')
     },
-    [questions, showToast],
+    [handlePersistError, showToast],
   )
 
   const saveProgressRecord = useCallback(
@@ -581,31 +1003,39 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const progressRate = calcProgressRate(data.currentPage, data.totalPage)
       const ts = createTimestamps()
       const full = { ...data, progressRate }
+      let record: ProgressRecord
       if (data.id) {
-        const next = progressRecords.map((r) =>
-          r.id === data.id ? touchRecord({ ...r, ...full, id: data.id }) : r,
-        )
-        setProgressRecords(next)
-        saveProgress(next)
+        const existing = progressRecords.find((r) => r.id === data.id)
+        record = touchRecord({
+          ...(existing ?? { id: data.id, ...ts }),
+          ...full,
+          id: data.id,
+        })
+        setProgressRecords((prev) => prev.map((r) => (r.id === data.id ? record : r)))
       } else {
-        const next = [...progressRecords, { ...full, id: createId(), ...ts }]
-        setProgressRecords(next)
-        saveProgress(next)
+        record = { ...full, id: createId(), ...ts }
+        setProgressRecords((prev) => [...prev, record])
       }
+      void persistWithReload(
+        () => upsertProgress(record),
+        '진도 기록 저장에 실패했습니다.',
+        record.lastStudyDate
+          ? { type: 'todayReport', studentId: record.studentId, date: record.lastStudyDate }
+          : { type: 'full' },
+      )
       showToast('진도 기록이 저장되었습니다.')
       return true
     },
-    [progressRecords, showToast, validateStudent],
+    [handlePersistError, progressRecords, showToast, validateStudent],
   )
 
   const deleteProgressRecord = useCallback(
     (id: string) => {
-      const next = progressRecords.filter((r) => r.id !== id)
-      setProgressRecords(next)
-      saveProgress(next)
+      setProgressRecords((prev) => prev.filter((r) => r.id !== id))
+      void persistWithReload(() => deleteProgress(id), '진도 기록 삭제에 실패했습니다.')
       showToast('진도 기록이 삭제되었습니다.')
     },
-    [progressRecords, showToast],
+    [handlePersistError, showToast],
   )
 
   const saveMakeupPlanRecord = useCallback(
@@ -617,32 +1047,34 @@ export function DataProvider({ children }: { children: ReactNode }) {
         return false
       }
       const ts = createTimestamps()
+      let record: MakeupPlanRecord
       if (data.id) {
-        const next = makeupPlans.map((r) =>
-          r.id === data.id ? touchRecord({ ...r, ...data, id: data.id }) : r,
-        )
-        setMakeupPlans(next)
-        saveMakeupPlans(next)
+        const existing = makeupPlans.find((r) => r.id === data.id)
+        record = touchRecord({
+          ...(existing ?? { id: data.id, ...ts }),
+          ...data,
+          id: data.id,
+        })
+        setMakeupPlans((prev) => prev.map((r) => (r.id === data.id ? record : r)))
         showToast('보강계획이 수정되었습니다.')
       } else {
-        const next = [...makeupPlans, { ...data, id: createId(), ...ts }]
-        setMakeupPlans(next)
-        saveMakeupPlans(next)
+        record = { ...data, id: createId(), ...ts }
+        setMakeupPlans((prev) => [...prev, record])
         showToast('보강계획이 저장되었습니다.')
       }
+      void persistWithReload(() => upsertMakeupPlan(record), '보강계획 저장에 실패했습니다.')
       return true
     },
-    [makeupPlans, showToast, validateStudent],
+    [handlePersistError, makeupPlans, showToast, validateStudent],
   )
 
   const deleteMakeupPlanRecord = useCallback(
     (id: string) => {
-      const next = makeupPlans.filter((r) => r.id !== id)
-      setMakeupPlans(next)
-      saveMakeupPlans(next)
+      setMakeupPlans((prev) => prev.filter((r) => r.id !== id))
+      void persistWithReload(() => deleteMakeupPlan(id), '보강계획 삭제에 실패했습니다.')
       showToast('보강계획이 삭제되었습니다.')
     },
-    [makeupPlans, showToast],
+    [handlePersistError, showToast],
   )
 
   const saveContentPost = useCallback(
@@ -666,33 +1098,113 @@ export function DataProvider({ children }: { children: ReactNode }) {
         createdAt: existing?.createdAt ?? ts.createdAt,
         updatedAt: ts.updatedAt,
       }
-      const normalized = normalizeContentPostRecord(draft)
+      const record = touchRecord(normalizeContentPostRecord(draft))
       if (data.id) {
-        const next = contentPosts.map((r) =>
-          r.id === data.id ? touchRecord({ ...normalized, id: data.id }) : r,
-        )
-        setContentPosts(next)
-        saveContentPosts(next)
+        setContentPosts((prev) => prev.map((r) => (r.id === data.id ? record : r)))
         showToast('게시글이 수정되었습니다.')
       } else {
-        const next = [...contentPosts, { ...normalized, id: draft.id, ...ts }]
-        setContentPosts(next)
-        saveContentPosts(next)
+        setContentPosts((prev) => [...prev, record])
         showToast('게시글이 저장되었습니다.')
       }
+      void persistWithReload(() => upsertNotice(record), '게시글 저장에 실패했습니다.')
       return true
     },
-    [contentPosts, showToast],
+    [contentPosts, handlePersistError, showToast],
   )
 
   const deleteContentPost = useCallback(
     (id: string) => {
-      const next = contentPosts.filter((r) => r.id !== id)
-      setContentPosts(next)
-      saveContentPosts(next)
+      setContentPosts((prev) => prev.filter((r) => r.id !== id))
+      void persistWithReload(() => deleteNotice(id), '게시글 삭제에 실패했습니다.')
       showToast('게시글이 삭제되었습니다.')
     },
-    [contentPosts, showToast],
+    [handlePersistError, showToast],
+  )
+
+  const saveTodayAssignmentRecord = useCallback(
+    (
+      data: Omit<TodayAssignmentRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
+    ) => {
+      if (!validateStudent(data.studentId)) {
+        showToast('존재하지 않는 학생입니다.')
+        return false
+      }
+      const ts = createTimestamps()
+      const existing = data.id
+        ? todayAssignments.find((record) => record.id === data.id)
+        : todayAssignments.find(
+            (record) => record.studentId === data.studentId && record.date === data.date,
+          )
+      const id = data.id ?? existing?.id ?? createId()
+      const record: TodayAssignmentRecord = {
+        id,
+        studentId: data.studentId,
+        date: data.date,
+        assignment1: data.assignment1.trim(),
+        assignment2: data.assignment2.trim(),
+        createdAt: existing?.createdAt ?? ts.createdAt,
+        updatedAt: ts.updatedAt,
+      }
+      setTodayAssignments((prev) => {
+        const withoutDuplicate = prev.filter(
+          (item) =>
+            !(item.studentId === data.studentId && item.date === data.date) &&
+            item.id !== id,
+        )
+        return [...withoutDuplicate, record]
+      })
+      void persistWithReload(
+        () => upsertTodayAssignment(record),
+        '오늘의 과제 저장에 실패했습니다.',
+        { type: 'todayReport', studentId: record.studentId, date: record.date },
+      )
+      showToast('오늘의 과제가 저장되었습니다.')
+      return true
+    },
+    [handlePersistError, showToast, todayAssignments, validateStudent],
+  )
+
+  const saveClassNoteRecord = useCallback(
+    (
+      data: Omit<ClassNoteRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
+    ) => {
+      if (!validateStudent(data.studentId)) {
+        showToast('존재하지 않는 학생입니다.')
+        return false
+      }
+      const ts = createTimestamps()
+      const existing = data.id
+        ? classNotes.find((record) => record.id === data.id)
+        : classNotes.find(
+            (record) => record.studentId === data.studentId && record.date === data.date,
+          )
+      const id = data.id ?? existing?.id ?? createId()
+      const record: ClassNoteRecord = {
+        id,
+        studentId: data.studentId,
+        date: data.date,
+        hasClassNote: data.hasClassNote,
+        note: data.note.slice(0, 500),
+        createdAt: existing?.createdAt ?? ts.createdAt,
+        updatedAt: ts.updatedAt,
+      }
+      setClassNotes((prev) => {
+        const withoutDuplicate = prev.filter(
+          (item) =>
+            !(item.studentId === data.studentId && item.date === data.date) &&
+            item.id !== id,
+        )
+        return [...withoutDuplicate, record]
+      })
+      void persistWithReload(
+        () => upsertClassNote(record),
+        '수업 중 특이사항 저장에 실패했습니다.',
+        { type: 'todayReport', studentId: record.studentId, date: record.date },
+      )
+      showToast('수업 중 특이사항이 저장되었습니다.')
+      return true
+    },
+    [classNotes, handlePersistError, showToast, validateStudent],
   )
 
   const value = useMemo<DataContextValue>(
@@ -707,14 +1219,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
       progressRecords,
       makeupPlans,
       contentPosts,
+      todayAssignments,
+      classNotes,
       addStudent,
       updateStudent,
       deleteStudent,
       getStudentById,
       getStudentByAccessKey,
+      findStudentByAccessKeyAny,
       copyStudentCareLink,
+      generateStudentAccessKeyForStudent,
+      openStudentCareInNewTab,
       regenerateStudentAccessKey,
+      setStudentAccessKeyActive,
       saveAttendanceRecord,
+      saveAttendanceRecordAsync,
       deleteAttendanceRecord,
       saveHomeworkRecord,
       deleteHomeworkRecord,
@@ -732,14 +1251,25 @@ export function DataProvider({ children }: { children: ReactNode }) {
       deleteMakeupPlanRecord,
       saveContentPost,
       deleteContentPost,
+      saveTodayAssignmentRecord,
+      saveClassNoteRecord,
+      isLoading,
+      isSaving,
+      dataSource,
+      refreshTodayReport,
+      reloadData,
+      loadParentCareData,
       showToast,
     }),
     [
       addStudent,
       assignmentCompletion,
       attendance,
+      classNotes,
       contentPosts,
+      copyStudentCareLink,
       dailyTests,
+      dataSource,
       deleteAssignmentRecord,
       deleteAttendanceRecord,
       deleteContentPost,
@@ -750,17 +1280,27 @@ export function DataProvider({ children }: { children: ReactNode }) {
       deleteProgressRecord,
       deleteQuestionRecord,
       deleteStudent,
+      findStudentByAccessKeyAny,
+      generateStudentAccessKeyForStudent,
       getStudentByAccessKey,
       getStudentById,
-      copyStudentCareLink,
-      regenerateStudentAccessKey,
       homework,
+      isLoading,
+      isSaving,
       makeupPlans,
       monthlyEvaluations,
+      openStudentCareInNewTab,
       progressRecords,
       questions,
+      regenerateStudentAccessKey,
+      reloadData,
+      loadParentCareData,
+      refreshTodayReport,
+      setStudentAccessKeyActive,
       saveAssignmentRecord,
       saveAttendanceRecord,
+      saveAttendanceRecordAsync,
+      saveClassNoteRecord,
       saveContentPost,
       saveDailyTestRecord,
       saveHomeworkRecord,
@@ -768,8 +1308,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       saveMonthlyEvaluationRecord,
       saveProgressRecord,
       saveQuestionRecord,
+      saveTodayAssignmentRecord,
       showToast,
       students,
+      todayAssignments,
       updateStudent,
     ],
   )

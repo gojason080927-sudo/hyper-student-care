@@ -25,7 +25,7 @@ export function ContentPostListCard({
   onDelete,
 }: ContentPostListCardProps) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
@@ -42,7 +42,7 @@ export function ContentPostListCard({
           </div>
           <Link
             to={detailPath}
-            className="block text-base font-bold text-navy-900 hover:text-blue-700 hover:underline"
+            className="block break-anywhere text-base font-bold text-navy-900 hover:text-blue-700 hover:underline"
           >
             {post.title}
           </Link>

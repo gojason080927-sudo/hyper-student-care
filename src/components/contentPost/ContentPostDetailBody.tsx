@@ -40,7 +40,7 @@ export function ContentPostDetailBody({
             />
           )}
         </div>
-        <h1 className="text-2xl font-bold leading-snug text-navy-900 sm:text-3xl">{post.title}</h1>
+        <h1 className="break-anywhere text-xl font-bold leading-snug text-navy-900 sm:text-2xl">{post.title}</h1>
         <p className="text-sm text-slate-600">
           {post.authorName} · {formatKoreanDate(post.publishedAt)}
         </p>
@@ -58,7 +58,7 @@ export function ContentPostDetailBody({
         )}
       </header>
 
-      <div className="whitespace-pre-wrap break-words text-base leading-relaxed text-slate-800">
+      <div className="whitespace-pre-wrap break-words break-anywhere text-[15px] leading-relaxed text-slate-800 sm:text-base">
         {post.content}
       </div>
 

@@ -20,6 +20,8 @@ export type {
   ProgressRecord,
   ContentPost,
   ContentPostCategory,
+  TodayAssignmentRecord,
+  ClassNoteRecord,
 } from './records'
 
 export type {

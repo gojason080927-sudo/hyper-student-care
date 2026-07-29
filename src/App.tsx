@@ -26,14 +26,16 @@ import { ParentStudentMakeupPlanPage } from './pages/parent/ParentStudentMakeupP
 import { ParentStudentMonthlyEvaluationPage } from './pages/parent/ParentStudentMonthlyEvaluationPage'
 import { ParentStudentProgressPage } from './pages/parent/ParentStudentProgressPage'
 import { ParentStudentQuestionsPage } from './pages/parent/ParentStudentQuestionsPage'
+import { ParentStudentTodayReportPage } from './pages/parent/ParentStudentTodayReportPage'
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* TODO: 외부 배포 전 /teacher/* 경로에 실제 인증을 추가할 것. */}
-        <Route path="care/:studentAccessKey" element={<ParentStudentLayout />}>
+        {/* 학부모·학생: 로그인 없이 student_access_key 링크로 접근 */}
+        <Route path="/care/:studentAccessKey" element={<ParentStudentLayout />}>
           <Route index element={<ParentStudentHomePage />} />
+          <Route path="today-report" element={<ParentStudentTodayReportPage />} />
           <Route path="attendance" element={<ParentStudentAttendancePage />} />
           <Route path="progress" element={<ParentStudentProgressPage />} />
           <Route path="homework" element={<ParentStudentHomeworkPage />} />
@@ -63,7 +65,10 @@ function App() {
           <Route path="teacher/monthly-evaluation" element={<MonthlyEvaluationPage />} />
           <Route path="makeup-plans" element={<MakeupPlanPage />} />
           <Route path="teacher/learning-notices" element={<TeacherLearningNoticesPage />} />
-          <Route path="teacher/learning-notices/:postId" element={<TeacherLearningNoticeDetailPage />} />
+          <Route
+            path="teacher/learning-notices/:postId"
+            element={<TeacherLearningNoticeDetailPage />}
+          />
           <Route path="questions" element={<QuestionsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

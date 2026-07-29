@@ -1,7 +1,9 @@
 import type { DailyTestRecord, TestSessionResult, TestSessionStatus } from '../types/records'
 import { calcPercentage } from './calc'
 
-export const DAILY_TEST_PASS_RATE = 80
+export const DAILY_TEST_PASS_RATE = 85
+export const DAILY_TEST_FULL_SCORE = 100
+export const DAILY_TEST_PASS_SCORE = 85
 
 export const TEST_SESSION_NUMBERS = [1, 2, 3, 4] as const
 
@@ -106,11 +108,11 @@ export function getFinalPassLabel(sessionResults: TestSessionResult[]): string {
 
 export function getStatusMismatchWarning(session: TestSessionResult): string | null {
   if (session.status === '미응시') return null
-  const pct = getSessionPercentage(session)
-  if (pct === null) return null
-  const autoStatus = getStatusFromPercentage(pct)
+  const scoreOnFullScale = getSessionScoreOnFullScale(session)
+  if (scoreOnFullScale === '') return null
+  const autoStatus = scoreOnFullScale >= DAILY_TEST_PASS_SCORE ? '합격' : '불합격'
   if (session.status !== autoStatus) {
-    return `${session.session}차시: ${pct}% 기준 ${autoStatus}이지만 ${session.status}으로 선택되어 있습니다.`
+    return `${session.session}차시: ${scoreOnFullScale}점 기준 ${autoStatus}이지만 ${session.status}으로 선택되어 있습니다.`
   }
   return null
 }
@@ -174,6 +176,25 @@ export function updateSessionInForm(
   patch: Partial<TestSessionResult>,
 ): TestSessionResult[] {
   return sessions.map((item) => (item.session === session ? { ...item, ...patch, session } : item))
+}
+
+export function getSessionScoreOnFullScale(session: TestSessionResult): number | '' {
+  if (session.status === '미응시' || session.score === undefined) return ''
+  const total = session.totalScore ?? DAILY_TEST_FULL_SCORE
+  if (total === DAILY_TEST_FULL_SCORE) return session.score
+  return Math.round(calcPercentage(session.score, total))
+}
+
+export function updateSessionScoreOnly(
+  session: TestSessionResult,
+  score: number,
+): TestSessionResult {
+  return {
+    ...session,
+    score,
+    totalScore: DAILY_TEST_FULL_SCORE,
+    incorrectCount: 0,
+  }
 }
 
 export function applyScoreToSession(

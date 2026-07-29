@@ -7,12 +7,15 @@ type QuestionImageGalleryProps = {
   title: string
   images: QuestionImageAttachment[]
   compact?: boolean
+  /** 학부모 화면: 이미지를 화면 너비에 맞게 표시 */
+  fullWidth?: boolean
 }
 
 export function QuestionImageGallery({
   title,
   images,
   compact = false,
+  fullWidth = false,
 }: QuestionImageGalleryProps) {
   const [previewImage, setPreviewImage] = useState<QuestionImageAttachment | null>(null)
 
@@ -29,18 +32,26 @@ export function QuestionImageGallery({
         {compact ? `📷 ${title} ${images.length}장` : title}
       </p>
 
-      <div className="flex flex-wrap gap-2">
+      <div className={fullWidth ? 'space-y-3' : 'flex flex-wrap gap-2'}>
         {visibleImages.map((image) => (
           <button
             key={image.id}
             type="button"
             onClick={() => setPreviewImage(image)}
-            className="overflow-hidden rounded-lg border border-slate-200"
+            className={
+              fullWidth
+                ? 'block w-full overflow-hidden rounded-lg border border-slate-200'
+                : 'overflow-hidden rounded-lg border border-slate-200'
+            }
           >
             <img
               src={image.dataUrl}
               alt={image.name}
-              className="h-[72px] w-[72px] object-cover sm:h-[80px] sm:w-[80px]"
+              className={
+                fullWidth
+                  ? 'max-h-[480px] w-full object-contain'
+                  : 'h-[72px] w-[72px] object-cover sm:h-[80px] sm:w-[80px]'
+              }
             />
           </button>
         ))}

@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { DifficultyBreakdownBadges } from './DifficultyBreakdownBadges'
 import { MonthlyEvaluationChart } from '../ui/MonthlyEvaluationChart'
+import {
+  ParentEmptyState,
+  ParentPageHeader,
+  ParentRecordCard,
+} from '../parent/ParentStudentComponents'
 import type { MonthlyEvaluationRecord } from '../../types/records'
 import type { Student } from '../../types/student'
 import { formatKoreanDate } from '../../utils/date'
@@ -16,11 +21,10 @@ export type ParentMonthlyEvaluationViewProps = {
   latest: MonthlyEvaluationRecord | null
 }
 
-/** 학부모·학생용 월말평가 읽기 전용 화면 (수정·삭제 콜백 없음) */
+/** 학부모·학생용 월말평가 읽기 전용 화면 */
 export function ParentMonthlyEvaluationView({
   student,
   studentRecords,
-  latest,
 }: ParentMonthlyEvaluationViewProps) {
   const availableYears = useMemo(
     () => getAvailableChartYears(studentRecords),
@@ -35,66 +39,79 @@ export function ParentMonthlyEvaluationView({
     }
   }, [availableYears, selectedYear])
 
+  const yearRecords = useMemo(
+    () =>
+      studentRecords
+        .filter((r) => r.year === selectedYear)
+        .sort((a, b) => a.month - b.month),
+    [selectedYear, studentRecords],
+  )
+
   return (
-    <div className="space-y-6">
-      <header className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <h1 className="text-xl font-bold text-navy-900 sm:text-2xl">
-          {student.name} 학생 월말평가
-        </h1>
-        <p className="mt-1 text-sm text-slate-600">
-          {student.school} · {student.grade}
-        </p>
-
-        {latest ? (
-          <div className="mt-5 space-y-4 border-t border-slate-100 pt-5">
-            <p className="text-sm text-slate-600">
-              {formatKoreanDate(latest.evaluationDate)} · {latest.subject}
-            </p>
-            <p className={`text-2xl font-bold ${getScoreColor(latest.percentage)}`}>
-              {latest.score}/{latest.totalScore}점 ({latest.percentage}%)
-            </p>
-            <DifficultyBreakdownBadges breakdown={latest.difficultyBreakdown} />
-            {latest.teacherComment && (
-              <div className="space-y-1">
-                <p className="text-sm font-semibold text-slate-700">시험 총평</p>
-                <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
-                  {latest.teacherComment}
-                </p>
-              </div>
-            )}
-          </div>
-        ) : (
-          <p className="mt-5 border-t border-slate-100 pt-5 text-sm text-slate-500">
-            아직 등록된 월말평가가 없습니다.
-          </p>
-        )}
-      </header>
-
-      {studentRecords.length > 0 && (
-        <div className="flex flex-wrap items-center gap-3">
-          <label htmlFor="chart-year" className="text-sm font-medium text-slate-700">
-            연도
-          </label>
-          <select
-            id="chart-year"
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(Number(e.target.value))}
-            className={`${inputClass()} w-auto min-w-[120px]`}
-          >
-            {availableYears.map((year) => (
-              <option key={year} value={year}>
-                {year}년
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      <MonthlyEvaluationChart
-        records={studentRecords}
-        variant="fixedMonths"
-        selectedYear={selectedYear}
+    <div className="parent-page space-y-5 pb-6">
+      <ParentPageHeader
+        title="월말 평가"
+        description={`${student.name} 학생의 월별 평가 결과를 확인합니다.`}
       />
+
+      {studentRecords.length === 0 ? (
+        <ParentEmptyState message="아직 등록된 월말평가가 없습니다." />
+      ) : (
+        <>
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
+            <label htmlFor="chart-year" className="text-sm font-medium text-slate-700">
+              연도
+            </label>
+            <select
+              id="chart-year"
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(Number(e.target.value))}
+              className={`${inputClass()} w-auto min-w-[120px]`}
+            >
+              {availableYears.map((year) => (
+                <option key={year} value={year}>
+                  {year}년
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <MonthlyEvaluationChart
+            records={studentRecords}
+            variant="fixedMonths"
+            selectedYear={selectedYear}
+            title="월별 성적 추이"
+            subtitle="1월부터 12월까지의 평가 결과입니다."
+            mobileFit
+          />
+
+          {yearRecords.length > 0 && (
+            <section className="space-y-3" aria-label="월별 평가 상세">
+              <h3 className="text-sm font-semibold text-slate-700">{selectedYear}년 월별 기록</h3>
+              {yearRecords.map((record) => (
+                <ParentRecordCard
+                  key={record.id}
+                  title={record.subject}
+                  date={`${record.month}월 · ${formatKoreanDate(record.evaluationDate)}`}
+                >
+                  <p className={`text-lg font-bold ${getScoreColor(record.percentage)}`}>
+                    {record.score}/{record.totalScore}점 ({record.percentage}%)
+                  </p>
+                  <DifficultyBreakdownBadges breakdown={record.difficultyBreakdown} />
+                  {record.teacherComment && (
+                    <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2.5">
+                      <p className="text-xs font-medium text-slate-500">교사 총평</p>
+                      <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
+                        {record.teacherComment}
+                      </p>
+                    </div>
+                  )}
+                </ParentRecordCard>
+              ))}
+            </section>
+          )}
+        </>
+      )}
     </div>
   )
 }

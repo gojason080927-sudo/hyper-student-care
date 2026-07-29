@@ -1,3 +1,4 @@
+/** localStorage 백업 키 (Supabase fallback / mirror 전용) */
 export const STORAGE_KEYS = {
   students: 'hyper_students',
   attendance: 'hyper_attendance_records',
@@ -9,9 +10,10 @@ export const STORAGE_KEYS = {
   progress: 'hyper_progress_records',
   makeupPlans: 'hyper_makeup_plan_records',
   contentPosts: 'hyper_learning_notice_posts',
+  todayAssignments: 'hyper_today_assignments',
+  classNotes: 'hyper_class_notes',
 } as const
 
-/** 이전 버전 localStorage key (자동 마이그레이션용) */
 export const LEGACY_STORAGE_KEYS = {
   attendance: 'hyper_attendance',
   homework: 'hyper_homework',

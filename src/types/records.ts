@@ -175,3 +175,23 @@ export type ProgressRecord = {
   createdAt: string
   updatedAt: string
 }
+
+export type TodayAssignmentRecord = {
+  id: string
+  studentId: string
+  date: string
+  assignment1: string
+  assignment2: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type ClassNoteRecord = {
+  id: string
+  studentId: string
+  date: string
+  hasClassNote: boolean
+  note: string
+  createdAt: string
+  updatedAt: string
+}

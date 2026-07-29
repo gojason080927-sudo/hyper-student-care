@@ -20,6 +20,8 @@ export type Student = {
   id: string
   name: string
   studentAccessKey: string
+  /** false이면 /care 링크 접근 차단 (기본 true) */
+  accessKeyActive: boolean
   school: string
   grade: Grade
   studentPhone: string

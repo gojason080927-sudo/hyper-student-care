@@ -9,6 +9,7 @@ type QuestionRecordCardProps = {
   studentName?: string
   showStudentName?: boolean
   compactImages?: boolean
+  fullWidthImages?: boolean
   actions?: React.ReactNode
 }
 
@@ -17,13 +18,14 @@ export function QuestionRecordCard({
   studentName,
   showStudentName = false,
   compactImages = true,
+  fullWidthImages = false,
   actions,
 }: QuestionRecordCardProps) {
   const questionImages = record.questionImages ?? []
   const answerImages = record.answerImages ?? []
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
@@ -37,21 +39,31 @@ export function QuestionRecordCard({
           </div>
 
           <p className="text-sm text-slate-500">{formatKoreanDate(record.date)}</p>
-          <p className="font-medium text-navy-800">{record.title}</p>
-          <p className="whitespace-pre-wrap text-sm text-slate-600">{record.content}</p>
+          <p className="break-anywhere font-medium text-navy-800">{record.title}</p>
+          <p className="whitespace-pre-wrap break-anywhere text-sm text-slate-600">{record.content}</p>
 
           {questionImages.length > 0 && (
-            <QuestionImageGallery title="질문 사진" images={questionImages} compact={compactImages} />
+            <QuestionImageGallery
+              title="질문 사진"
+              images={questionImages}
+              compact={compactImages}
+              fullWidth={fullWidthImages}
+            />
           )}
 
           {record.answer && (
-            <p className="rounded-lg bg-blue-50 px-3 py-2 whitespace-pre-wrap text-sm text-blue-900">
+            <p className="rounded-lg bg-blue-50 px-3 py-2 whitespace-pre-wrap break-anywhere text-sm text-blue-900">
               답변: {record.answer}
             </p>
           )}
 
           {answerImages.length > 0 && (
-            <QuestionImageGallery title="답변 사진" images={answerImages} compact={compactImages} />
+            <QuestionImageGallery
+              title="답변 사진"
+              images={answerImages}
+              compact={compactImages}
+              fullWidth={fullWidthImages}
+            />
           )}
         </div>
         {actions}

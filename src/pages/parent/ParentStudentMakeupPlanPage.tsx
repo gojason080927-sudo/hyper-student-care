@@ -1,6 +1,9 @@
-import { EmptyState } from '../../components/ui/EmptyState'
-import { PageHeader } from '../../components/ui/PageHeader'
 import { StatusBadge } from '../../components/ui/StatusBadge'
+import {
+  ParentEmptyState,
+  ParentPageHeader,
+  ParentRecordCard,
+} from '../../components/parent/ParentStudentComponents'
 import { useParentStudentRecords } from '../../hooks/useParentStudentRecords'
 import { formatKoreanDate } from '../../utils/date'
 import {
@@ -13,28 +16,54 @@ export function ParentStudentMakeupPlanPage() {
   const { makeupPlans } = useParentStudentRecords()
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="보강계획" description="보강 예정일과 진행 방식을 확인합니다." />
+    <div className="parent-page space-y-5 pb-6">
+      <ParentPageHeader title="보강계획" description="보강 예정일과 진행 방식을 확인합니다." />
 
       {makeupPlans.length === 0 ? (
-        <EmptyState title="보강계획이 없습니다." />
+        <ParentEmptyState />
       ) : (
-        <div className="space-y-3">
+        <div className="parent-record-list space-y-3">
           {makeupPlans.map((record) => (
-            <div key={record.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="font-semibold text-navy-900">
-                  {formatKoreanDate(record.scheduledDate)} {record.scheduledTime}
-                </p>
-                <StatusBadge label={record.status} colorClass={getMakeupPlanStatusColor(record.status)} />
-                <StatusBadge label={record.subject} colorClass={getMakeupSubjectColor()} />
-                {record.method && (
-                  <StatusBadge label={record.method} colorClass={getMakeupMethodColor(record.method)} />
+            <ParentRecordCard
+              key={record.id}
+              date={`${formatKoreanDate(record.scheduledDate)} ${record.scheduledTime}`}
+              title={record.subject}
+              status={
+                <>
+                  <StatusBadge
+                    label={record.status}
+                    colorClass={getMakeupPlanStatusColor(record.status)}
+                  />
+                  {record.method && (
+                    <StatusBadge
+                      label={record.method}
+                      colorClass={getMakeupMethodColor(record.method)}
+                    />
+                  )}
+                </>
+              }
+            >
+              <dl className="space-y-2">
+                <div>
+                  <dt className="text-xs font-medium text-slate-500">과목</dt>
+                  <dd className="mt-0.5">
+                    <StatusBadge label={record.subject} colorClass={getMakeupSubjectColor()} />
+                  </dd>
+                </div>
+                {record.reason && (
+                  <div>
+                    <dt className="text-xs font-medium text-slate-500">사유</dt>
+                    <dd className="mt-0.5 break-anywhere text-slate-700">{record.reason}</dd>
+                  </div>
                 )}
-              </div>
-              {record.reason && <p className="mt-2 text-sm text-slate-600">{record.reason}</p>}
-              {record.memo && <p className="mt-1 text-sm text-slate-500">{record.memo}</p>}
-            </div>
+              </dl>
+              {record.memo && (
+                <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2.5 text-sm text-slate-600">
+                  <span className="mb-1 block text-xs font-medium text-slate-500">메모</span>
+                  {record.memo}
+                </p>
+              )}
+            </ParentRecordCard>
           ))}
         </div>
       )}

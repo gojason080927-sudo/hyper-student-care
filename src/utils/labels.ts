@@ -67,6 +67,33 @@ export function getAttendanceColor(status: AttendanceStatus): string {
   }
 }
 
+/** 출결관리 화면 — 선택된 출결 버튼 강조 스타일 */
+export function getAttendanceButtonSelectedClass(status: AttendanceStatus): string {
+  switch (status) {
+    case '출석':
+      return 'border-emerald-600 bg-emerald-600 text-white shadow-[0_4px_14px_rgba(16,185,129,0.38)] ring-2 ring-emerald-400/50'
+    case '지각':
+      return 'border-amber-500 bg-amber-500 text-white shadow-[0_4px_14px_rgba(245,158,11,0.38)] ring-2 ring-amber-400/50'
+    case '결석':
+      return 'border-rose-600 bg-rose-600 text-white shadow-[0_4px_14px_rgba(225,29,72,0.35)] ring-2 ring-rose-400/50'
+    case '조퇴':
+      return 'border-blue-600 bg-blue-600 text-white shadow-[0_4px_14px_rgba(37,99,235,0.38)] ring-2 ring-blue-400/50'
+  }
+}
+
+const attendanceButtonBaseClass =
+  'min-h-14 shrink-0 whitespace-nowrap rounded-xl border px-4 py-3 text-base font-semibold transition-all duration-200 ease hover-capable:hover:-translate-y-0.5 hover-capable:hover:shadow-sm sm:min-w-[4.25rem] sm:px-5'
+
+export function getAttendanceButtonClass(
+  status: AttendanceStatus,
+  selected: boolean,
+): string {
+  if (selected) {
+    return `${attendanceButtonBaseClass} ${getAttendanceButtonSelectedClass(status)}`
+  }
+  return `${attendanceButtonBaseClass} border-slate-200 bg-slate-50 text-slate-600 hover-capable:hover:border-slate-300 hover-capable:hover:bg-slate-100`
+}
+
 export function getHomeworkColor(status: HomeworkStatus | string): string {
   switch (normalizeHomeworkStatus(status)) {
     case '완료':
@@ -165,11 +192,11 @@ export function getQuestionStatusColor(status: QuestionStatus): string {
 export function getStudentStatusColor(status: string): string {
   switch (status) {
     case '재원':
-      return 'bg-blue-100 text-blue-800 border-blue-200'
+      return 'bg-emerald-100 text-emerald-800 border-emerald-200'
     case '휴원':
       return 'bg-amber-100 text-amber-800 border-amber-200'
     case '퇴원':
-      return 'bg-slate-100 text-slate-600 border-slate-200'
+      return 'bg-rose-100 text-rose-800 border-rose-200'
     default:
       return 'bg-slate-100 text-slate-600 border-slate-200'
   }
@@ -190,7 +217,7 @@ export const inputClass = (error?: string) =>
   }`
 
 export const btnPrimary =
-  'rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700'
+  'min-h-11 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60'
 
 export const btnSecondary =
-  'rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50'
+  'min-h-11 rounded-xl border border-slate-200 px-5 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50'

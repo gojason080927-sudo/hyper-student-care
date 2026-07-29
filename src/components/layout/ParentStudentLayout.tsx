@@ -1,8 +1,12 @@
 import { Menu } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Outlet, useParams } from 'react-router-dom'
+import { resolveStudentByAccessKey } from '../../lib/dataLoader'
+import { normalizeRouteAccessKey } from '../../lib/supabase'
 import { ParentStudentProvider } from '../../contexts/ParentStudentContext'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 import { useData } from '../../hooks/useData'
+import type { Student } from '../../types/student'
 import { ParentStudentSidebar } from '../parent/ParentStudentSidebar'
 
 function InvalidStudentAccessPage() {
@@ -18,49 +22,161 @@ function InvalidStudentAccessPage() {
   )
 }
 
-/**
- * TODO: 외부 정식 배포 전 서버 데이터베이스와 접근 권한 검증을 적용할 것.
- * 클라이언트 localStorage만으로는 완전한 개인정보 보호가 불가능하다.
- */
-export function ParentStudentLayout() {
-  const { studentAccessKey = '' } = useParams()
-  const { getStudentByAccessKey } = useData()
+function InactiveStudentAccessPage() {
+  return (
+    <div className="flex min-h-svh items-center justify-center bg-slate-50 px-4">
+      <div className="max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+        <h1 className="text-xl font-bold text-navy-900">
+          현재 사용할 수 없는 학생 링크입니다. 학원에 문의해 주세요.
+        </h1>
+      </div>
+    </div>
+  )
+}
+
+function isStudentLinkActive(student: Student): boolean {
+  return student.accessKeyActive !== false
+}
+
+type ParentStudentLayoutInnerProps = {
+  studentAccessKey: string
+}
+
+function ParentStudentLayoutInner({ studentAccessKey }: ParentStudentLayoutInnerProps) {
+  const { students, findStudentByAccessKeyAny, isLoading, loadParentCareData } = useData()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [resolvedStudent, setResolvedStudent] = useState<Student | null | undefined>(
+    undefined,
+  )
+  const [recordsLoaded, setRecordsLoaded] = useState(false)
+  const loadedAccessKeyRef = useRef<string | null>(null)
+  const resolveIdRef = useRef(0)
 
-  const student = getStudentByAccessKey(studentAccessKey)
+  const normalizedAccessKey = useMemo(
+    () => normalizeRouteAccessKey(studentAccessKey),
+    [studentAccessKey],
+  )
 
-  if (!student) {
+  useBodyScrollLock(sidebarOpen)
+
+  useEffect(() => {
+    if (isLoading || !normalizedAccessKey) return
+
+    const resolveId = ++resolveIdRef.current
+    setRecordsLoaded(false)
+
+    const local = findStudentByAccessKeyAny(normalizedAccessKey)
+    if (local) {
+      console.log('[ParentAccess] step 2: student found in local cache', local.id)
+      setResolvedStudent(local)
+      return
+    }
+
+    void resolveStudentByAccessKey(normalizedAccessKey, students).then((student) => {
+      if (resolveIdRef.current !== resolveId) return
+      setResolvedStudent(student)
+    })
+  }, [findStudentByAccessKeyAny, isLoading, normalizedAccessKey, students])
+
+  useEffect(() => {
+    if (!resolvedStudent || !isStudentLinkActive(resolvedStudent)) {
+      return
+    }
+
+    const key = resolvedStudent.studentAccessKey.trim()
+    if (loadedAccessKeyRef.current === key) {
+      return
+    }
+
+    loadedAccessKeyRef.current = key
+    setRecordsLoaded(false)
+
+    void loadParentCareData(key)
+      .then(() => {
+        console.log('[ParentAccess] step 3: student records loaded successfully')
+        setRecordsLoaded(true)
+      })
+      .catch((error) => {
+        console.error('[ParentAccess] step 3: student records load failed', error)
+        loadedAccessKeyRef.current = null
+        setRecordsLoaded(false)
+      })
+  }, [loadParentCareData, resolvedStudent])
+
+  if (isLoading || resolvedStudent === undefined) {
+    return (
+      <div
+        className="flex min-h-svh items-center justify-center bg-slate-50"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <p className="text-sm text-slate-500">학생 정보를 불러오는 중…</p>
+      </div>
+    )
+  }
+
+  if (!resolvedStudent) {
     return <InvalidStudentAccessPage />
   }
 
+  if (!isStudentLinkActive(resolvedStudent)) {
+    return <InactiveStudentAccessPage />
+  }
+
+  if (!recordsLoaded) {
+    return (
+      <div
+        className="flex min-h-svh items-center justify-center bg-slate-50"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <p className="text-sm text-slate-500">학습 기록을 불러오는 중…</p>
+      </div>
+    )
+  }
+
+  const student = resolvedStudent
+
   return (
     <ParentStudentProvider student={student}>
-      <div className="flex min-h-svh bg-slate-50">
+      <div className="flex min-h-svh overflow-x-hidden bg-slate-50">
         <ParentStudentSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 border-b border-slate-200 bg-white px-4 py-4 shadow-sm sm:px-6">
-            <div className="mx-auto flex max-w-6xl items-center gap-3">
+          <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 px-3 py-3 backdrop-blur-sm sm:px-4">
+            <div className="mx-auto flex max-w-3xl items-center gap-3 lg:max-w-4xl">
               <button
                 type="button"
                 aria-label="메뉴 열기"
-                className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 lg:hidden"
+                className="min-h-11 min-w-11 shrink-0 rounded-lg p-2 text-slate-600 hover:bg-slate-100 lg:hidden"
                 onClick={() => setSidebarOpen(true)}
               >
                 <Menu className="h-5 w-5" />
               </button>
-              <div>
-                <p className="text-base font-bold text-navy-900">{student.name}</p>
-                <p className="text-xs text-slate-500">Hyper Student Care</p>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-navy-600">
+                  Hyper Student Care
+                </p>
+                <p className="truncate text-sm font-bold text-navy-900">{student.name}</p>
               </div>
             </div>
           </header>
-          <main className="flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-10 lg:py-10">
-            <div className="mx-auto max-w-6xl">
-              <Outlet />
+          <main className="parent-main flex-1 px-3 py-4 sm:px-5 sm:py-6 lg:px-8 lg:py-8">
+            <div className="mx-auto max-w-3xl lg:max-w-4xl">
+              <Outlet key={student.id} />
             </div>
           </main>
         </div>
       </div>
     </ParentStudentProvider>
+  )
+}
+
+export function ParentStudentLayout() {
+  const { studentAccessKey = '' } = useParams()
+  const normalizedKey = normalizeRouteAccessKey(studentAccessKey)
+  return (
+    <ParentStudentLayoutInner key={normalizedKey} studentAccessKey={normalizedKey} />
   )
 }

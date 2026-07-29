@@ -3,7 +3,8 @@ import type { Student } from '../types/student'
 
 /**
  * TODO: 외부 정식 배포 전 서버 데이터베이스와 접근 권한 검증을 적용할 것.
- * 클라이언트 localStorage만으로는 완전한 개인정보 보호가 불가능하다.
+ * TODO: 외부 정식 배포 전 Supabase Auth 및 RLS 기반 접근 권한 검증을 적용할 것.
+ * anon key만으로는 완전한 개인정보 보호가 불가능하다.
  */
 const ParentStudentContext = createContext<Student | null>(null)
 

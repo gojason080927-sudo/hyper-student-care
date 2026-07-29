@@ -6,9 +6,11 @@ import {
   type QuestionFormState,
 } from '../../components/question/QuestionFormFields'
 import { QuestionRecordCard } from '../../components/question/QuestionRecordCard'
-import { EmptyState } from '../../components/ui/EmptyState'
+import {
+  ParentEmptyState,
+  ParentPageHeader,
+} from '../../components/parent/ParentStudentComponents'
 import { Modal } from '../../components/ui/Modal'
-import { PageHeader } from '../../components/ui/PageHeader'
 import { useParentStudent } from '../../contexts/ParentStudentContext'
 import { useParentStudentRecords } from '../../hooks/useParentStudentRecords'
 import { useData } from '../../hooks/useData'
@@ -62,12 +64,16 @@ export function ParentStudentQuestionsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
+    <div className="parent-page space-y-5 pb-6">
+      <ParentPageHeader
         title="질문하기"
         description="학습 관련 질문을 등록하고 답변을 확인합니다."
         action={
-          <button type="button" onClick={openAdd} className={`${btnPrimary} inline-flex items-center gap-2`}>
+          <button
+            type="button"
+            onClick={openAdd}
+            className={`${btnPrimary} inline-flex min-h-11 items-center gap-2`}
+          >
             <Plus className="h-4 w-4" />
             질문 등록
           </button>
@@ -75,11 +81,16 @@ export function ParentStudentQuestionsPage() {
       />
 
       {questions.length === 0 ? (
-        <EmptyState title="등록된 질문이 없습니다." />
+        <ParentEmptyState message="등록된 질문이 없습니다." />
       ) : (
-        <div className="space-y-3">
+        <div className="parent-record-list space-y-3">
           {questions.map((record) => (
-            <QuestionRecordCard key={record.id} record={record} compactImages={false} />
+            <QuestionRecordCard
+              key={record.id}
+              record={record}
+              compactImages={false}
+              fullWidthImages
+            />
           ))}
         </div>
       )}
@@ -99,11 +110,11 @@ export function ParentStudentQuestionsPage() {
             allowAnswerEdit={false}
             allowAnswerImages={false}
           />
-          <div className="flex justify-end gap-3">
-            <button type="button" onClick={() => setModalOpen(false)} className={btnSecondary}>
+          <div className="flex justify-end gap-3 pb-[env(safe-area-inset-bottom)]">
+            <button type="button" onClick={() => setModalOpen(false)} className={`${btnSecondary} min-h-11`}>
               취소
             </button>
-            <button type="submit" className={btnPrimary}>
+            <button type="submit" className={`${btnPrimary} min-h-11`}>
               등록
             </button>
           </div>

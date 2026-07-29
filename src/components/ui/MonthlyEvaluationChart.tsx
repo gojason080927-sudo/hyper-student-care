@@ -25,6 +25,8 @@ type MonthlyEvaluationChartProps = {
   /** 학생 개인 화면: 선택 연도 1~12월 고정 축 */
   variant?: 'default' | 'fixedMonths'
   selectedYear?: number
+  /** 모바일에서 차트가 화면 너비에 맞게 표시 */
+  mobileFit?: boolean
 }
 
 type TimelineChartPoint = {
@@ -108,6 +110,7 @@ export function MonthlyEvaluationChart({
   subtitle = '최근 월말평가 점수 변화를 확인할 수 있습니다.',
   variant = 'default',
   selectedYear,
+  mobileFit = false,
 }: MonthlyEvaluationChartProps) {
   const fixedChartData = useMemo(() => {
     if (variant !== 'fixedMonths' || selectedYear === undefined) return []
@@ -152,27 +155,35 @@ export function MonthlyEvaluationChart({
         <h2 className="text-base font-semibold text-navy-900">{title}</h2>
         {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
       </div>
-      <div className="overflow-x-auto">
-        <div className="min-w-[640px] h-[360px] w-full sm:h-[420px]">
+      <div className={mobileFit ? 'w-full' : 'overflow-x-auto'}>
+        <div
+          className={`w-full ${
+            mobileFit ? 'h-[260px] sm:h-[360px]' : 'min-w-[640px] h-[360px] sm:h-[420px]'
+          }`}
+        >
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={chartData as FixedMonthChartPoint[]}
-              margin={{ top: 8, right: 16, left: 20, bottom: 24 }}
+              margin={
+                mobileFit
+                  ? { top: 8, right: 8, left: 0, bottom: 8 }
+                  : { top: 8, right: 16, left: 20, bottom: 24 }
+              }
             >
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis
                 dataKey={variant === 'fixedMonths' ? 'monthLabel' : 'label'}
                 interval={variant === 'fixedMonths' ? 0 : undefined}
-                tickMargin={10}
-                tick={{ fontSize: 11 }}
+                tickMargin={mobileFit ? 6 : 10}
+                tick={{ fontSize: mobileFit ? 10 : 11 }}
               />
               <YAxis
                 domain={[0, 100]}
                 ticks={Y_AXIS_PERCENT_TICKS}
                 tickFormatter={(value) => `${value}%`}
                 allowDecimals={false}
-                tick={{ fontSize: 10 }}
-                width={44}
+                tick={{ fontSize: mobileFit ? 9 : 10 }}
+                width={mobileFit ? 36 : 44}
               />
               <Tooltip
                 content={

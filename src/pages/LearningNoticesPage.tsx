@@ -1,7 +1,10 @@
 import { useMemo, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { ContentPostListCard } from '../components/contentPost/ContentPostListCard'
-import { EmptyState } from '../components/ui/EmptyState'
-import { PageHeader } from '../components/ui/PageHeader'
+import {
+  ParentEmptyState,
+  ParentPageHeader,
+} from '../components/parent/ParentStudentComponents'
 import { usePublishedContentPosts } from '../hooks/usePublishedContentPosts'
 import type { ContentPostCategory } from '../types/records'
 import { CONTENT_POST_CATEGORIES } from '../utils/contentPost'
@@ -9,8 +12,18 @@ import { inputClass } from '../utils/labels'
 
 type CategoryFilter = '전체' | ContentPostCategory
 
+function useLearningNoticePaths() {
+  const { studentAccessKey } = useParams()
+  if (studentAccessKey) {
+    const base = `/care/${studentAccessKey}/learning-notices`
+    return { listPath: base, detailPathPrefix: base }
+  }
+  return { listPath: '/learning-notices', detailPathPrefix: '/learning-notices' }
+}
+
 export function LearningNoticesPage() {
   const publishedPosts = usePublishedContentPosts()
+  const { detailPathPrefix } = useLearningNoticePaths()
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('전체')
   const [titleSearch, setTitleSearch] = useState('')
 
@@ -25,13 +38,13 @@ export function LearningNoticesPage() {
   }, [categoryFilter, publishedPosts, titleSearch])
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="학습정보 & 공지사항"
+    <div className="parent-page space-y-5 pb-6">
+      <ParentPageHeader
+        title="학습정보 및 공지사항"
         description="유용한 학습정보와 학원 공지사항을 확인합니다."
       />
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-600">구분</label>
@@ -61,14 +74,14 @@ export function LearningNoticesPage() {
       </div>
 
       {filtered.length === 0 ? (
-        <EmptyState title="등록된 게시글이 없습니다." />
+        <ParentEmptyState message="등록된 게시글이 없습니다." />
       ) : (
-        <div className="space-y-3">
+        <div className="parent-record-list space-y-3">
           {filtered.map((post) => (
             <ContentPostListCard
               key={post.id}
               post={post}
-              detailPath={`/learning-notices/${post.id}`}
+              detailPath={`${detailPathPrefix}/${post.id}`}
             />
           ))}
         </div>
