@@ -1,6 +1,14 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { Student, StudentFormData, SubjectOption } from '../../types/student'
-import { GRADES, STUDENT_STATUSES, SUBJECTS } from '../../utils/labels'
+import { STUDENT_STATUSES, SUBJECTS } from '../../utils/labels'
+import {
+  getClassSelectOptions,
+  getGradeSelectOptions,
+  isActiveGrade,
+  mapLegacyClassName,
+  syncSubjectFromClassName,
+} from '../../utils/studentGradeClass'
+import { useData } from '../../hooks/useData'
 import { Modal } from '../ui/Modal'
 
 type StudentFormModalProps = {
@@ -25,16 +33,18 @@ const emptyForm: StudentFormData = {
 }
 
 function studentToForm(student: Student): StudentFormData {
-  const subject =
-    (student.subjects[0] as SubjectOption | undefined) ?? '수학'
+  const subject = (student.subjects[0] as SubjectOption | undefined) ?? '수학'
+  const grade = student.grade
+  const className = mapLegacyClassName(student.className, grade, subject)
+
   return {
     name: student.name,
     school: student.school,
-    grade: student.grade,
+    grade,
     studentPhone: student.studentPhone,
     parentPhone: student.parentPhone,
     subject,
-    className: student.className,
+    className,
     teacher: student.teacher,
     enrollmentDate: student.enrollmentDate,
     status: student.status,
@@ -65,6 +75,7 @@ function StudentFormModalContent({
   onClose,
   onSubmit,
 }: Omit<StudentFormModalProps, 'open'>) {
+  const { isSaving } = useData()
   const [form, setForm] = useState<StudentFormData>(() =>
     student
       ? studentToForm(student)
@@ -74,12 +85,22 @@ function StudentFormModalContent({
     Partial<Record<keyof StudentFormData, string>>
   >({})
 
+  const gradeOptions = useMemo(
+    () => getGradeSelectOptions(form.grade),
+    [form.grade],
+  )
+  const classOptions = useMemo(
+    () => getClassSelectOptions(form.grade, form.className),
+    [form.className, form.grade],
+  )
+
   const validate = () => {
     const next: Partial<Record<keyof StudentFormData, string>> = {}
     if (!form.name.trim()) next.name = '학생 이름을 입력해 주세요.'
     if (!form.school.trim()) next.school = '학교를 입력해 주세요.'
     if (!form.grade) next.grade = '학년을 선택해 주세요.'
     if (!form.subject) next.subject = '수강 과목을 선택해 주세요.'
+    if (!form.className.trim()) next.className = '반/과정을 선택해 주세요.'
     setErrors(next)
     return Object.keys(next).length === 0
   }
@@ -89,6 +110,23 @@ function StudentFormModalContent({
     if (!validate()) return
     onSubmit(form)
     onClose()
+  }
+
+  const handleGradeChange = (grade: StudentFormData['grade']) => {
+    setForm((prev) => ({
+      ...prev,
+      grade,
+      className: '',
+    }))
+  }
+
+  const handleClassChange = (className: string) => {
+    const syncedSubject = syncSubjectFromClassName(className)
+    setForm((prev) => ({
+      ...prev,
+      className,
+      ...(syncedSubject ? { subject: syncedSubject } : {}),
+    }))
   }
 
   return (
@@ -105,7 +143,7 @@ function StudentFormModalContent({
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
               placeholder="학생 이름"
-              className={inputClass(errors.name)}
+              className={`${inputClass(errors.name)} min-h-11 text-base sm:text-sm`}
             />
           </Field>
           <Field label="학교" required error={errors.school}>
@@ -120,15 +158,41 @@ function StudentFormModalContent({
             <select
               value={form.grade}
               onChange={(e) =>
-                setForm({ ...form, grade: e.target.value as StudentFormData['grade'] })
+                handleGradeChange(e.target.value as StudentFormData['grade'])
               }
               className={inputClass(errors.grade)}
             >
-              {GRADES.map((grade) => (
+              {!isActiveGrade(form.grade) && form.grade ? (
+                <option value={form.grade}>{form.grade} (기존)</option>
+              ) : null}
+              {gradeOptions.filter((grade) => isActiveGrade(grade)).map((grade) => (
                 <option key={grade} value={grade}>
                   {grade}
                 </option>
               ))}
+            </select>
+          </Field>
+          <Field label="반/과정" required error={errors.className}>
+            <select
+              value={form.className}
+              onChange={(e) => handleClassChange(e.target.value)}
+              disabled={!isActiveGrade(form.grade)}
+              className={inputClass(errors.className)}
+            >
+              <option value="">
+                {isActiveGrade(form.grade) ? '반/과정 선택' : '활성 학년을 선택해 주세요'}
+              </option>
+              {classOptions.map((option) => {
+                const isLegacy =
+                  form.className === option &&
+                  !getClassSelectOptions(form.grade).includes(option)
+                return (
+                  <option key={option} value={option}>
+                    {option}
+                    {isLegacy ? ' (기존)' : ''}
+                  </option>
+                )
+              })}
             </select>
           </Field>
           <Field label="수강 과목" required error={errors.subject}>
@@ -166,14 +230,6 @@ function StudentFormModalContent({
                 setForm({ ...form, parentPhone: e.target.value })
               }
               placeholder="010-0000-0000"
-              className={inputClass()}
-            />
-          </Field>
-          <Field label="반 이름">
-            <input
-              value={form.className}
-              onChange={(e) => setForm({ ...form, className: e.target.value })}
-              placeholder="예: 고1 수학 A반"
               className={inputClass()}
             />
           </Field>
@@ -233,9 +289,10 @@ function StudentFormModalContent({
           </button>
           <button
             type="submit"
-            className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
+            disabled={isSaving}
+            className="min-h-11 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {student ? '수정 완료' : '학생 등록'}
+            {isSaving ? '저장 중...' : student ? '수정 완료' : '학생 등록'}
           </button>
         </div>
       </form>

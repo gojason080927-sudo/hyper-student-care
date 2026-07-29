@@ -36,10 +36,6 @@ export const QUESTION_CATEGORIES = [
 export const QUESTION_STATUSES: QuestionStatus[] = ['답변대기', '답변완료']
 
 export const GRADES = [
-  '초1',
-  '초2',
-  '초3',
-  '초4',
   '초5',
   '초6',
   '중1',

@@ -15,8 +15,12 @@ import {
   saveClassBulkStudentDraft,
 } from '../utils/classBulkSave'
 import { formatKoreanDate, getTodayString } from '../utils/date'
-import { getUniqueClassNames } from '../utils/filters'
-import { inputClass } from '../utils/labels'
+import { GRADES, inputClass } from '../utils/labels'
+import {
+  getClassOptionsForGrade,
+  isActiveGrade,
+  parseGradeFromClassName,
+} from '../utils/studentGradeClass'
 import {
   buildClassBulkStudentDraft,
   findStudentDayRecords,
@@ -63,6 +67,7 @@ export function TeacherClassBulkInputPage() {
   } = useData()
 
   const [date, setDate] = useState(getTodayString())
+  const [grade, setGrade] = useState('')
   const [className, setClassName] = useState('')
   const [common, setCommon] = useState<ClassBulkCommonDraft>(EMPTY_COMMON)
   const [drafts, setDrafts] = useState<Record<string, ClassBulkStudentDraft>>({})
@@ -79,14 +84,23 @@ export function TeacherClassBulkInputPage() {
     [students],
   )
 
-  const classNames = useMemo(() => getUniqueClassNames(activeStudents), [activeStudents])
+  const classOptions = useMemo(() => {
+    if (!grade) return []
+    const standard = getClassOptionsForGrade(grade)
+    if (className && !standard.includes(className)) {
+      return [...standard, className]
+    }
+    return standard
+  }, [className, grade])
 
   const classStudents = useMemo(() => {
-    if (!className) return []
+    if (!grade || !className) return []
     return activeStudents
-      .filter((student) => student.className === className)
+      .filter(
+        (student) => student.grade === grade && student.className === className,
+      )
       .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
-  }, [activeStudents, className])
+  }, [activeStudents, className, grade])
 
   const lookupContext = useMemo<TodayReportLookupContext>(
     () => ({
@@ -149,16 +163,27 @@ export function TeacherClassBulkInputPage() {
   }, [pendingDraftRefreshId, date, lookupContext])
 
   useEffect(() => {
-    if (className && !classNames.includes(className)) {
-      setClassName('')
-    }
-  }, [className, classNames])
+    if (!initialClassFromUrl && !focusStudentId) return
 
-  useEffect(() => {
-    if (!initialClassFromUrl || classNames.length === 0) return
-    if (!classNames.includes(initialClassFromUrl)) return
-    setClassName((current) => current || initialClassFromUrl)
-  }, [classNames, initialClassFromUrl])
+    if (initialClassFromUrl) {
+      const parsedGrade = parseGradeFromClassName(initialClassFromUrl)
+      if (parsedGrade) {
+        setGrade((current) => current || parsedGrade)
+        setClassName((current) => current || initialClassFromUrl)
+        return
+      }
+    }
+
+    const student = activeStudents.find((item) => item.id === focusStudentId)
+    if (!student) return
+
+    if (isActiveGrade(student.grade)) {
+      setGrade((current) => current || student.grade)
+    }
+    if (student.className.trim()) {
+      setClassName((current) => current || student.className.trim())
+    }
+  }, [activeStudents, focusStudentId, initialClassFromUrl])
 
   useEffect(() => {
     if (!focusStudentId || classStudents.length === 0) return
@@ -334,7 +359,7 @@ export function TeacherClassBulkInputPage() {
       />
 
       <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
             <label htmlFor="bulk-date" className="mb-1 block text-xs font-semibold text-slate-700">
               날짜
@@ -348,6 +373,27 @@ export function TeacherClassBulkInputPage() {
             />
           </div>
           <div>
+            <label htmlFor="bulk-grade" className="mb-1 block text-xs font-semibold text-slate-700">
+              학년
+            </label>
+            <select
+              id="bulk-grade"
+              value={grade}
+              onChange={(e) => {
+                setGrade(e.target.value)
+                setClassName('')
+              }}
+              className={`${inputClass()} py-2 text-sm`}
+            >
+              <option value="">학년 선택</option>
+              {GRADES.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
             <label htmlFor="bulk-class" className="mb-1 block text-xs font-semibold text-slate-700">
               반/과정
             </label>
@@ -355,10 +401,11 @@ export function TeacherClassBulkInputPage() {
               id="bulk-class"
               value={className}
               onChange={(e) => setClassName(e.target.value)}
-              className={`${inputClass()} py-2 text-sm`}
+              disabled={!grade}
+              className={`${inputClass()} py-2 text-sm disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-400`}
             >
-              <option value="">반을 선택하세요</option>
-              {classNames.map((name) => (
+              <option value="">{grade ? '반/과정 선택' : '학년을 먼저 선택'}</option>
+              {classOptions.map((name) => (
                 <option key={name} value={name}>
                   {name}
                 </option>
@@ -368,9 +415,9 @@ export function TeacherClassBulkInputPage() {
         </div>
       </section>
 
-      {!className ? (
+      {!grade || !className ? (
         <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-          먼저 반을 선택해주세요.
+          {!grade ? '먼저 학년을 선택해주세요.' : '반/과정을 선택해주세요.'}
         </p>
       ) : classStudents.length === 0 ? (
         <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
@@ -428,7 +475,7 @@ export function TeacherClassBulkInputPage() {
         </p>
       )}
 
-      {className && classStudents.length > 0 && (
+      {grade && className && classStudents.length > 0 && (
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] md:static md:border-0 md:bg-transparent md:p-0 md:shadow-none">
           <button
             type="button"
