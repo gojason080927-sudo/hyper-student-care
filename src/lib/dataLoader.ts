@@ -72,16 +72,31 @@ export async function loadAppData(): Promise<{ data: AppData; source: DataSource
 
 export async function resolveStudentByAccessKey(
   accessKey: string,
-  localStudents: AppData['students'],
+  localStudents: AppData['students'] = [],
 ): Promise<AppData['students'][number] | null> {
   const normalizedKey = normalizeRouteAccessKey(accessKey)
   console.log('[ParentAccess] resolveStudentByAccessKey step 2', {
     keyPreview: normalizedKey ? `${normalizedKey.slice(0, 4)}…` : '(empty)',
+    supabaseConfigured: isSupabaseConfigured(),
   })
 
   if (!normalizedKey) {
     console.error('[ParentAccess] accessKey is empty after normalize')
     return null
+  }
+
+  if (isSupabaseConfigured()) {
+    try {
+      const student = await rpcGetParentStudentByAccessKey(normalizedKey)
+      if (student) {
+        return student
+      }
+      console.error('[ParentAccess] resolveStudentByAccessKey: RPC returned null')
+      return null
+    } catch (error) {
+      console.error('[ParentAccess] resolveStudentByAccessKey failed:', error)
+      return null
+    }
   }
 
   const local = localStudents.find(
@@ -92,21 +107,8 @@ export async function resolveStudentByAccessKey(
     return local
   }
 
-  if (!isSupabaseConfigured()) {
-    console.error('[ParentAccess] Supabase not configured')
-    return null
-  }
-
-  try {
-    const student = await rpcGetParentStudentByAccessKey(normalizedKey)
-    if (!student) {
-      console.error('[ParentAccess] resolveStudentByAccessKey: RPC returned null')
-    }
-    return student
-  } catch (error) {
-    console.error('[ParentAccess] resolveStudentByAccessKey failed:', error)
-    return null
-  }
+  console.error('[ParentAccess] Supabase not configured and no local student match')
+  return null
 }
 
 export async function loadParentCareData(

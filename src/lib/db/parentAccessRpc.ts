@@ -37,6 +37,24 @@ function mapOptionalRow<T, R>(row: unknown, map: (value: T) => R): R | null {
   return map(row as T)
 }
 
+function parseRpcJson(value: unknown): Record<string, unknown> | null {
+  if (value == null) return null
+  if (typeof value === 'string') {
+    try {
+      const parsed: unknown = JSON.parse(value)
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+        ? (parsed as Record<string, unknown>)
+        : null
+    } catch {
+      return null
+    }
+  }
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    return value as Record<string, unknown>
+  }
+  return null
+}
+
 export async function rpcGetParentStudentByAccessKey(
   accessKey: string,
 ): Promise<Student | null> {
@@ -50,16 +68,24 @@ export async function rpcGetParentStudentByAccessKey(
   })
 
   if (error) {
-    console.error('[ParentAccess] rpc get_parent_student_by_access_key error:', error)
+    console.error('[ParentAccess] rpc get_parent_student_by_access_key error:', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+    })
     return null
   }
 
-  if (!data) {
-    console.warn('[ParentAccess] rpc get_parent_student_by_access_key: no row')
+  const row = parseRpcJson(data)
+  if (!row) {
+    console.warn('[ParentAccess] rpc get_parent_student_by_access_key: no row', {
+      dataType: typeof data,
+    })
     return null
   }
 
-  const student = studentFromRow(data as StudentRow)
+  const student = studentFromRow(row as StudentRow)
   console.log('[ParentAccess] rpc get_parent_student_by_access_key success', {
     studentId: student.id,
     accessKeyActive: student.accessKeyActive,
@@ -80,12 +106,13 @@ export async function rpcGetParentCareBundle(accessKey: string): Promise<LocalBa
     throw error
   }
 
-  if (!data || typeof data !== 'object') {
-    console.error('[ParentAccess] rpc get_parent_care_bundle: null (invalid or inactive key)')
+  const bundle = parseRpcJson(data)
+  if (!bundle) {
+    console.error('[ParentAccess] rpc get_parent_care_bundle: null (invalid or inactive key)', {
+      dataType: typeof data,
+    })
     return null
   }
-
-  const bundle = data as Record<string, unknown>
   const studentRow = bundle.student
   if (!studentRow || typeof studentRow !== 'object') {
     return null
