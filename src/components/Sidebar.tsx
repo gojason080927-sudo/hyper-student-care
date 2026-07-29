@@ -6,11 +6,13 @@ import {
   CalendarCheck,
   CalendarClock,
   ClipboardCheck,
+  ClipboardList,
   FileCheck,
   LayoutDashboard,
   MessageCircleQuestion,
   Newspaper,
   Users,
+  UsersRound,
   X,
 } from 'lucide-react'
 import { BrandMark } from './brand/BrandMark'
@@ -28,6 +30,8 @@ const navItems: NavItem[] = [
   { path: '/progress', label: '진도 과정', icon: Book },
   { path: '/homework', label: '숙제관리', icon: BookOpen },
   { path: '/daily-tests', label: '일일테스트', icon: FileCheck },
+  { path: '/teacher/today-report', label: 'Today Report', icon: ClipboardList },
+  { path: '/teacher/class-bulk-input', label: '반별 통합 입력', icon: UsersRound },
   { path: '/teacher/monthly-evaluation', label: '월말평가', icon: CalendarCheck },
   { path: '/makeup-plans', label: '보강계획', icon: CalendarClock },
   { path: '/teacher/learning-notices', label: '학습정보 & 공지사항', icon: Newspaper },
@@ -70,8 +74,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-4 py-5">
-          <ul className="space-y-1">
+        <nav className="flex-1 overflow-y-auto px-4 py-6">
+          <ul className="space-y-2">
             {navItems.map(({ path, label, icon: Icon }) => {
               const isActive =
                 path === '/'
@@ -82,20 +86,21 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   <NavLink
                     to={path}
                     onClick={onClose}
-                    className={`group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-[15px] font-medium transition ${
+                    className={`group flex w-full items-center gap-3.5 rounded-xl px-3.5 py-3.5 text-[15px] font-medium leading-none transition ${
                       isActive
-                        ? 'bg-navy-900 text-white'
+                        ? 'bg-navy-900 text-white shadow-sm ring-1 ring-navy-700/30'
                         : 'text-slate-600 hover:bg-slate-50 hover:text-navy-900'
                     }`}
                   >
                     <Icon
-                      className={`h-[18px] w-[18px] shrink-0 ${
+                      className={`h-5 w-5 shrink-0 ${
                         isActive
-                          ? 'text-white/90'
-                          : 'text-slate-400 group-hover:text-slate-600'
+                          ? 'text-white'
+                          : 'text-slate-400 group-hover:text-navy-600'
                       }`}
+                      aria-hidden
                     />
-                    {label}
+                    <span className="truncate">{label}</span>
                   </NavLink>
                 </li>
               )
