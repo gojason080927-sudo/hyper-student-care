@@ -13,10 +13,14 @@ import { TEXTBOOK_SLOT_NUMBERS, TEXTBOOK_SUBJECTS } from '../../types/records'
 import { calcProgressRate } from '../../utils/calc'
 import { inputClass } from '../../utils/labels'
 import {
+  buildProgressNameDrafts,
   buildProgressTextbookDisplays,
   buildProgressTextbookDisplaysForEdit,
+  findTextbookSlot,
   groupProgressBySubject,
 } from '../../utils/textbookSlots'
+
+const PROGRESS_CATEGORY = 'progress' as const
 
 type ProgressSlotDraft = {
   currentProgress: string
@@ -63,6 +67,9 @@ export function TextbookSlotProgressSection({
     [date, progressRecords, slots, studentId],
   )
 
+  const [nameDrafts, setNameDrafts] = useState<Record<string, string>>(() =>
+    buildProgressNameDrafts(studentId, slots),
+  )
   const [drafts, setDrafts] = useState<Record<string, ProgressSlotDraft>>(() =>
     Object.fromEntries(
       initialDisplays.map((item) => [
@@ -79,6 +86,10 @@ export function TextbookSlotProgressSection({
     수학: initialDisplays.find((item) => item.subject === '수학')?.teacherMemo ?? '',
     영어: initialDisplays.find((item) => item.subject === '영어')?.teacherMemo ?? '',
   }))
+
+  useEffect(() => {
+    setNameDrafts(buildProgressNameDrafts(studentId, slots))
+  }, [slots, studentId])
 
   useEffect(() => {
     setDrafts(
@@ -98,6 +109,33 @@ export function TextbookSlotProgressSection({
       영어: initialDisplays.find((item) => item.subject === '영어')?.teacherMemo ?? '',
     })
   }, [initialDisplays])
+
+  const saveTextbookName = (
+    subject: TextbookSubject,
+    slotNumber: TextbookSlotNumber,
+    name: string,
+  ) => {
+    const trimmed = name.trim()
+    const key = `${subject}-${slotNumber}`
+    setNameDrafts((prev) => ({ ...prev, [key]: trimmed }))
+    if (!trimmed) return
+
+    const existing = findTextbookSlot(
+      slots,
+      studentId,
+      PROGRESS_CATEGORY,
+      subject,
+      slotNumber,
+    )
+    onSaveSlot({
+      id: existing?.id,
+      studentId,
+      category: PROGRESS_CATEGORY,
+      subject,
+      slotNumber,
+      textbookName: trimmed,
+    })
+  }
 
   if (readOnly) {
     const displays = buildProgressTextbookDisplays(studentId, date, slots, progressRecords)
@@ -166,16 +204,24 @@ export function TextbookSlotProgressSection({
         (item) => item.subject === subject && item.slotNumber === slotNumber,
       )
       if (!display) continue
+
       const key = `${subject}-${slotNumber}`
       const draft = drafts[key]
+      const textbookName = (nameDrafts[key] ?? '').trim()
       const currentPage = Number(draft.currentPage) || 0
       const totalPage = Number(draft.totalPage) || 0
+
+      if (textbookName) {
+        saveTextbookName(subject, slotNumber, textbookName)
+      }
+
       const hasContent =
-        display.textbookName.trim() ||
+        textbookName ||
         draft.currentProgress.trim() ||
         currentPage > 0 ||
         totalPage > 0 ||
         memo
+
       if (!hasContent) continue
 
       onSave({
@@ -183,7 +229,7 @@ export function TextbookSlotProgressSection({
         studentId,
         subject,
         slotNumber,
-        textbookName: display.textbookName,
+        textbookName,
         currentProgress: draft.currentProgress.trim(),
         currentPage,
         totalPage: totalPage || 1,
@@ -191,26 +237,6 @@ export function TextbookSlotProgressSection({
         teacherMemo: memo,
       })
     }
-  }
-
-  const saveTextbookName = (
-    subject: TextbookSubject,
-    slotNumber: TextbookSlotNumber,
-    name: string,
-  ) => {
-    const existing = slots.find(
-      (slot) =>
-        slot.studentId === studentId &&
-        slot.subject === subject &&
-        slot.slotNumber === slotNumber,
-    )
-    onSaveSlot({
-      id: existing?.id,
-      studentId,
-      subject,
-      slotNumber,
-      textbookName: name,
-    })
   }
 
   return (
@@ -236,7 +262,7 @@ export function TextbookSlotProgressSection({
                     </p>
                     <EditableTextbookName
                       compact
-                      value={item.textbookName}
+                      value={nameDrafts[key] ?? ''}
                       onSave={(name) => saveTextbookName(item.subject, item.slotNumber, name)}
                     />
                     <div className="space-y-1.5">

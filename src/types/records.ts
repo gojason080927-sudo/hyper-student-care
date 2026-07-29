@@ -185,9 +185,12 @@ export const TEXTBOOK_SUBJECTS: TextbookSubject[] = ['수학', '영어']
 
 export const TEXTBOOK_SLOT_NUMBERS: TextbookSlotNumber[] = [1, 2, 3]
 
+export type TextbookCategory = 'homework' | 'progress'
+
 export type StudentTextbookSlot = {
   id: string
   studentId: string
+  category: TextbookCategory
   subject: TextbookSubject
   slotNumber: TextbookSlotNumber
   textbookName: string

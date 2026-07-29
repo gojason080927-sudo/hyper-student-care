@@ -467,7 +467,7 @@ export async function upsertStudentTextbookSlot(
   const { error } = await getSupabase()
     .from('student_textbook_slots')
     .upsert(studentTextbookSlotToRow(record), {
-      onConflict: 'student_id,subject,slot_number',
+      onConflict: 'student_id,category,subject,slot_number',
     })
   throwIfError(error, 'student_textbook_slots', 'student_textbook_slots 저장 실패')
 }

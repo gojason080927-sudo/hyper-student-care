@@ -843,6 +843,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         : findTextbookSlot(
             studentTextbookSlots,
             data.studentId,
+            data.category,
             data.subject,
             data.slotNumber,
           )
@@ -850,6 +851,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const record: StudentTextbookSlot = {
         id,
         studentId: data.studentId,
+        category: data.category,
         subject: data.subject,
         slotNumber: data.slotNumber,
         textbookName: data.textbookName.trim(),
@@ -859,8 +861,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setStudentTextbookSlots((prev) => {
         const withoutDuplicate = prev.filter(
           (item) =>
-            slotKey(item.studentId, item.subject, item.slotNumber) !==
-              slotKey(record.studentId, record.subject, record.slotNumber) &&
+            slotKey(item.studentId, item.category, item.subject, item.slotNumber) !==
+              slotKey(record.studentId, record.category, record.subject, record.slotNumber) &&
             item.id !== id,
         )
         return [...withoutDuplicate, record]

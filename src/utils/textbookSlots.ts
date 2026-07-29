@@ -3,6 +3,7 @@ import type {
   HomeworkTextbookEntry,
   ProgressRecord,
   StudentTextbookSlot,
+  TextbookCategory,
   TextbookSlotNumber,
   TextbookSubject,
   TodayAssignmentRecord,
@@ -42,10 +43,11 @@ export function normalizeSlotNumber(value: unknown): TextbookSlotNumber {
 
 export function slotKey(
   studentId: string,
+  category: TextbookCategory,
   subject: string,
   slotNumber: number,
 ): string {
-  return `${studentId}:${subject}:${normalizeSlotNumber(slotNumber)}`
+  return `${studentId}:${category}:${subject}:${normalizeSlotNumber(slotNumber)}`
 }
 
 export function entryKey(
@@ -60,12 +62,14 @@ export function entryKey(
 export function findTextbookSlot(
   slots: StudentTextbookSlot[],
   studentId: string,
+  category: TextbookCategory,
   subject: TextbookSubject,
   slotNumber: TextbookSlotNumber,
 ): StudentTextbookSlot | undefined {
   return slots.find(
     (slot) =>
       slot.studentId === studentId &&
+      slot.category === category &&
       slot.subject === subject &&
       slot.slotNumber === slotNumber,
   )
@@ -74,10 +78,21 @@ export function findTextbookSlot(
 export function getTextbookName(
   slots: StudentTextbookSlot[],
   studentId: string,
+  category: TextbookCategory,
   subject: TextbookSubject,
   slotNumber: TextbookSlotNumber,
 ): string {
-  return findTextbookSlot(slots, studentId, subject, slotNumber)?.textbookName.trim() ?? ''
+  return (
+    findTextbookSlot(slots, studentId, category, subject, slotNumber)?.textbookName.trim() ??
+    ''
+  )
+}
+
+export function filterTextbookSlotsByCategory(
+  slots: StudentTextbookSlot[],
+  category: TextbookCategory,
+): StudentTextbookSlot[] {
+  return slots.filter((slot) => slot.category === category)
 }
 
 export function findHomeworkTextbookEntry(
@@ -128,6 +143,38 @@ export function hasProgressSlotContent(item: ProgressTextbookDisplay): boolean {
   )
 }
 
+function buildHomeworkSlotDisplays(
+  studentId: string,
+  date: string,
+  slots: StudentTextbookSlot[],
+  entries: HomeworkTextbookEntry[],
+): HomeworkTextbookDisplay[] {
+  const prevDate = getPreviousSeoulDateString(date)
+  const homeworkSlots = filterTextbookSlotsByCategory(slots, 'homework')
+
+  return TEXTBOOK_SUBJECTS.flatMap((subject) =>
+    TEXTBOOK_SLOT_NUMBERS.map((slotNumber) => {
+      const entry = findHomeworkTextbookEntry(entries, studentId, date, subject, slotNumber)
+      const prevEntry = findHomeworkTextbookEntry(
+        entries,
+        studentId,
+        prevDate,
+        subject,
+        slotNumber,
+      )
+      return {
+        subject,
+        slotNumber,
+        textbookName: getTextbookName(homeworkSlots, studentId, 'homework', subject, slotNumber),
+        previousAssignment: resolvePreviousAssignment(entry, prevEntry),
+        todayAssignment: resolveTodayAssignment(entry),
+        status: entry?.status ?? '',
+        entryId: entry?.id,
+      }
+    }),
+  )
+}
+
 export function buildHomeworkTextbookDisplays(
   studentId: string,
   date: string,
@@ -139,14 +186,17 @@ export function buildHomeworkTextbookDisplays(
   const hasNewEntries = entries.some(
     (entry) => entry.studentId === studentId && entry.date === date,
   )
+  const hasNamedSlots = filterTextbookSlotsByCategory(slots, 'homework').some(
+    (slot) => slot.studentId === studentId && slot.textbookName.trim(),
+  )
 
-  if (!hasNewEntries && (legacyHomework || legacyAssignment)) {
+  if (!hasNewEntries && !hasNamedSlots && (legacyHomework || legacyAssignment)) {
     const previous = legacyHomework ? getHomeworkContent(legacyHomework).trim() : ''
     const today = legacyAssignment
-      ? (legacyAssignment.assignment2.trim() || legacyAssignment.assignment1.trim())
+      ? legacyAssignment.assignment2.trim() || legacyAssignment.assignment1.trim()
       : ''
     const legacyName =
-      getTextbookName(slots, studentId, '수학', 1) ||
+      getTextbookName(slots, studentId, 'homework', '수학', 1) ||
       legacyHomework?.title?.trim() ||
       ''
 
@@ -166,35 +216,7 @@ export function buildHomeworkTextbookDisplays(
     return []
   }
 
-  const prevDate = getPreviousSeoulDateString(date)
-  const result: HomeworkTextbookDisplay[] = []
-
-  for (const subject of TEXTBOOK_SUBJECTS) {
-    for (const slotNumber of TEXTBOOK_SLOT_NUMBERS) {
-      const entry = findHomeworkTextbookEntry(entries, studentId, date, subject, slotNumber)
-      const prevEntry = findHomeworkTextbookEntry(
-        entries,
-        studentId,
-        prevDate,
-        subject,
-        slotNumber,
-      )
-      const display: HomeworkTextbookDisplay = {
-        subject,
-        slotNumber,
-        textbookName: getTextbookName(slots, studentId, subject, slotNumber),
-        previousAssignment: resolvePreviousAssignment(entry, prevEntry),
-        todayAssignment: resolveTodayAssignment(entry),
-        status: entry?.status ?? '',
-        entryId: entry?.id,
-      }
-      if (hasHomeworkSlotContent(display)) {
-        result.push(display)
-      }
-    }
-  }
-
-  return result
+  return buildHomeworkSlotDisplays(studentId, date, slots, entries).filter(hasHomeworkSlotContent)
 }
 
 export function buildHomeworkTextbookDisplaysForEdit(
@@ -203,32 +225,51 @@ export function buildHomeworkTextbookDisplaysForEdit(
   slots: StudentTextbookSlot[],
   entries: HomeworkTextbookEntry[],
 ): HomeworkTextbookDisplay[] {
-  const prevDate = getPreviousSeoulDateString(date)
-  const result: HomeworkTextbookDisplay[] = []
+  return buildHomeworkSlotDisplays(studentId, date, slots, entries)
+}
 
-  for (const subject of TEXTBOOK_SUBJECTS) {
+function buildProgressSlotDisplays(
+  studentId: string,
+  date: string,
+  slots: StudentTextbookSlot[],
+  progressRecords: ProgressRecord[],
+): ProgressTextbookDisplay[] {
+  const dayRecords = progressRecords.filter(
+    (record) => record.studentId === studentId && record.lastStudyDate === date,
+  )
+  const progressSlots = filterTextbookSlotsByCategory(slots, 'progress')
+
+  return TEXTBOOK_SUBJECTS.flatMap((subject) => {
+    let subjectMemo = ''
     for (const slotNumber of TEXTBOOK_SLOT_NUMBERS) {
-      const entry = findHomeworkTextbookEntry(entries, studentId, date, subject, slotNumber)
-      const prevEntry = findHomeworkTextbookEntry(
-        entries,
-        studentId,
-        prevDate,
-        subject,
-        slotNumber,
+      const record = dayRecords.find(
+        (item) =>
+          item.subject === subject && normalizeSlotNumber(item.slotNumber ?? 1) === slotNumber,
       )
-      result.push({
+      if (!subjectMemo && record?.teacherMemo.trim()) {
+        subjectMemo = record.teacherMemo.trim()
+      }
+    }
+
+    return TEXTBOOK_SLOT_NUMBERS.map((slotNumber) => {
+      const record = dayRecords.find(
+        (item) =>
+          item.subject === subject && normalizeSlotNumber(item.slotNumber ?? 1) === slotNumber,
+      )
+      const slotName = getTextbookName(progressSlots, studentId, 'progress', subject, slotNumber)
+      return {
         subject,
         slotNumber,
-        textbookName: getTextbookName(slots, studentId, subject, slotNumber),
-        previousAssignment: resolvePreviousAssignment(entry, prevEntry),
-        todayAssignment: resolveTodayAssignment(entry),
-        status: entry?.status ?? '',
-        entryId: entry?.id,
-      })
-    }
-  }
-
-  return result
+        textbookName: slotName || record?.textbookName.trim() || '',
+        currentProgress: record?.currentProgress.trim() ?? '',
+        currentPage: record?.currentPage ?? 0,
+        totalPage: record?.totalPage ?? 0,
+        progressRate: record?.progressRate ?? 0,
+        teacherMemo: subjectMemo,
+        recordId: record?.id,
+      }
+    })
+  })
 }
 
 export function buildProgressTextbookDisplays(
@@ -240,19 +281,17 @@ export function buildProgressTextbookDisplays(
   const dayRecords = progressRecords.filter(
     (record) => record.studentId === studentId && record.lastStudyDate === date,
   )
-
   const hasSlottedRecords = dayRecords.some((record) => (record.slotNumber ?? 1) > 1)
+  const progressSlots = filterTextbookSlotsByCategory(slots, 'progress')
 
-  if (!hasSlottedRecords && dayRecords.length > 0) {
+  if (!hasSlottedRecords && dayRecords.length > 0 && progressSlots.length === 0) {
     return dayRecords
       .map((record) => {
         const slotNumber = normalizeSlotNumber(record.slotNumber ?? 1)
         const display: ProgressTextbookDisplay = {
           subject: record.subject as TextbookSubject,
           slotNumber,
-          textbookName:
-            getTextbookName(slots, studentId, record.subject as TextbookSubject, slotNumber) ||
-            record.textbookName.trim(),
+          textbookName: record.textbookName.trim(),
           currentProgress: record.currentProgress.trim(),
           currentPage: record.currentPage,
           totalPage: record.totalPage,
@@ -265,32 +304,9 @@ export function buildProgressTextbookDisplays(
       .filter(Boolean) as ProgressTextbookDisplay[]
   }
 
-  const result: ProgressTextbookDisplay[] = []
-
-  for (const subject of TEXTBOOK_SUBJECTS) {
-    for (const slotNumber of TEXTBOOK_SLOT_NUMBERS) {
-      const record = dayRecords.find(
-        (item) =>
-          item.subject === subject && normalizeSlotNumber(item.slotNumber ?? 1) === slotNumber,
-      )
-      const display: ProgressTextbookDisplay = {
-        subject,
-        slotNumber,
-        textbookName: getTextbookName(slots, studentId, subject, slotNumber),
-        currentProgress: record?.currentProgress.trim() ?? '',
-        currentPage: record?.currentPage ?? 0,
-        totalPage: record?.totalPage ?? 0,
-        progressRate: record?.progressRate ?? 0,
-        teacherMemo: record?.teacherMemo.trim() ?? '',
-        recordId: record?.id,
-      }
-      if (hasProgressSlotContent(display)) {
-        result.push(display)
-      }
-    }
-  }
-
-  return result
+  return buildProgressSlotDisplays(studentId, date, slots, progressRecords).filter(
+    hasProgressSlotContent,
+  )
 }
 
 export function buildProgressTextbookDisplaysForEdit(
@@ -299,36 +315,37 @@ export function buildProgressTextbookDisplaysForEdit(
   slots: StudentTextbookSlot[],
   progressRecords: ProgressRecord[],
 ): ProgressTextbookDisplay[] {
-  const dayRecords = progressRecords.filter(
-    (record) => record.studentId === studentId && record.lastStudyDate === date,
+  return buildProgressSlotDisplays(studentId, date, slots, progressRecords)
+}
+
+export function buildHomeworkNameDrafts(
+  studentId: string,
+  slots: StudentTextbookSlot[],
+): Record<string, string> {
+  const homeworkSlots = filterTextbookSlotsByCategory(slots, 'homework')
+  return Object.fromEntries(
+    TEXTBOOK_SUBJECTS.flatMap((subject) =>
+      TEXTBOOK_SLOT_NUMBERS.map((slotNumber) => [
+        `${subject}-${slotNumber}`,
+        getTextbookName(homeworkSlots, studentId, 'homework', subject, slotNumber),
+      ]),
+    ),
   )
-  const result: ProgressTextbookDisplay[] = []
+}
 
-  for (const subject of TEXTBOOK_SUBJECTS) {
-    let subjectMemo = ''
-    for (const slotNumber of TEXTBOOK_SLOT_NUMBERS) {
-      const record = dayRecords.find(
-        (item) =>
-          item.subject === subject && normalizeSlotNumber(item.slotNumber ?? 1) === slotNumber,
-      )
-      if (!subjectMemo && record?.teacherMemo.trim()) {
-        subjectMemo = record.teacherMemo.trim()
-      }
-      result.push({
-        subject,
-        slotNumber,
-        textbookName: getTextbookName(slots, studentId, subject, slotNumber),
-        currentProgress: record?.currentProgress.trim() ?? '',
-        currentPage: record?.currentPage ?? 0,
-        totalPage: record?.totalPage ?? 0,
-        progressRate: record?.progressRate ?? 0,
-        teacherMemo: subjectMemo,
-        recordId: record?.id,
-      })
-    }
-  }
-
-  return result
+export function buildProgressNameDrafts(
+  studentId: string,
+  slots: StudentTextbookSlot[],
+): Record<string, string> {
+  const progressSlots = filterTextbookSlotsByCategory(slots, 'progress')
+  return Object.fromEntries(
+    TEXTBOOK_SUBJECTS.flatMap((subject) =>
+      TEXTBOOK_SLOT_NUMBERS.map((slotNumber) => [
+        `${subject}-${slotNumber}`,
+        getTextbookName(progressSlots, studentId, 'progress', subject, slotNumber),
+      ]),
+    ),
+  )
 }
 
 export function groupHomeworkBySubject(

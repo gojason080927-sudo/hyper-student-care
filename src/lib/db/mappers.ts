@@ -169,6 +169,7 @@ export type ProgressRow = {
 export type StudentTextbookSlotRow = {
   id: string
   student_id: string
+  category?: string
   subject: string
   slot_number: number
   textbook_name: string
@@ -563,6 +564,7 @@ export function studentTextbookSlotToRow(record: StudentTextbookSlot): StudentTe
   return {
     id: record.id,
     student_id: record.studentId,
+    category: record.category,
     subject: record.subject,
     slot_number: record.slotNumber,
     textbook_name: record.textbookName,
@@ -572,9 +574,11 @@ export function studentTextbookSlotToRow(record: StudentTextbookSlot): StudentTe
 }
 
 export function studentTextbookSlotFromRow(row: StudentTextbookSlotRow): StudentTextbookSlot {
+  const category = row.category === 'progress' ? 'progress' : 'homework'
   return {
     id: row.id,
     studentId: row.student_id,
+    category,
     subject: row.subject as StudentTextbookSlot['subject'],
     slotNumber: row.slot_number as StudentTextbookSlot['slotNumber'],
     textbookName: row.textbook_name,

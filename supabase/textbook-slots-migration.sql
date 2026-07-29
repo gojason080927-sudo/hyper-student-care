@@ -8,13 +8,17 @@
 CREATE TABLE IF NOT EXISTS public.student_textbook_slots (
   id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id    UUID        NOT NULL REFERENCES public.students (id) ON DELETE CASCADE,
+  category      TEXT        NOT NULL DEFAULT 'homework',
   subject       TEXT        NOT NULL,
   slot_number   INTEGER     NOT NULL CHECK (slot_number BETWEEN 1 AND 3),
   textbook_name TEXT        NOT NULL DEFAULT '',
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
-  CONSTRAINT student_textbook_slots_unique UNIQUE (student_id, subject, slot_number)
+  CONSTRAINT student_textbook_slots_category_check CHECK (
+    category IN ('homework', 'progress')
+  ),
+  CONSTRAINT student_textbook_slots_unique UNIQUE (student_id, category, subject, slot_number)
 );
 
 CREATE INDEX IF NOT EXISTS idx_student_textbook_slots_student_id
@@ -65,17 +69,18 @@ ALTER TABLE public.progress
 -- 4. 기존 데이터 마이그레이션 (삭제 없음, 슬롯 1로 매핑)
 -- ---------------------------------------------------------------------------
 
--- 4a. 기존 progress 교재명 → student_textbook_slots 슬롯 1
-INSERT INTO public.student_textbook_slots (student_id, subject, slot_number, textbook_name)
+-- 4a. 기존 progress 교재명 → student_textbook_slots 슬롯 1 (homework)
+INSERT INTO public.student_textbook_slots (student_id, category, subject, slot_number, textbook_name)
 SELECT DISTINCT ON (p.student_id, p.subject)
   p.student_id,
+  'homework',
   p.subject,
   1,
   trim(p.textbook_name)
 FROM public.progress p
 WHERE trim(coalesce(p.textbook_name, '')) <> ''
 ORDER BY p.student_id, p.subject, p.updated_at DESC
-ON CONFLICT (student_id, subject, slot_number) DO UPDATE
+ON CONFLICT (student_id, category, subject, slot_number) DO UPDATE
   SET textbook_name = EXCLUDED.textbook_name
   WHERE trim(public.student_textbook_slots.textbook_name) = '';
 

@@ -16,11 +16,15 @@ import { TEXTBOOK_SLOT_NUMBERS, TEXTBOOK_SUBJECTS } from '../../types/records'
 import { getHomeworkColor, inputClass } from '../../utils/labels'
 import { TODAY_ASSIGNMENT_MAX_LENGTH } from '../../utils/todayAssignment'
 import {
+  buildHomeworkNameDrafts,
   buildHomeworkTextbookDisplays,
   buildHomeworkTextbookDisplaysForEdit,
+  findTextbookSlot,
   groupHomeworkBySubject,
 } from '../../utils/textbookSlots'
 import { StatusBadge } from '../ui/StatusBadge'
+
+const HOMEWORK_CATEGORY = 'homework' as const
 
 type SlotDraft = {
   previousAssignment: string
@@ -80,6 +84,9 @@ export function TextbookSlotHomeworkSection({
     [date, entries, slots, studentId],
   )
 
+  const [nameDrafts, setNameDrafts] = useState<Record<string, string>>(() =>
+    buildHomeworkNameDrafts(studentId, slots),
+  )
   const [drafts, setDrafts] = useState<Record<string, SlotDraft>>(() =>
     Object.fromEntries(
       initialDisplays.map((item) => [
@@ -92,6 +99,10 @@ export function TextbookSlotHomeworkSection({
       ]),
     ),
   )
+
+  useEffect(() => {
+    setNameDrafts(buildHomeworkNameDrafts(studentId, slots))
+  }, [slots, studentId])
 
   useEffect(() => {
     setDrafts(
@@ -107,6 +118,33 @@ export function TextbookSlotHomeworkSection({
       ),
     )
   }, [initialDisplays])
+
+  const saveTextbookName = (
+    subject: TextbookSubject,
+    slotNumber: TextbookSlotNumber,
+    name: string,
+  ) => {
+    const trimmed = name.trim()
+    const key = `${subject}-${slotNumber}`
+    setNameDrafts((prev) => ({ ...prev, [key]: trimmed }))
+    if (!trimmed) return
+
+    const existing = findTextbookSlot(
+      slots,
+      studentId,
+      HOMEWORK_CATEGORY,
+      subject,
+      slotNumber,
+    )
+    onSaveSlot({
+      id: existing?.id,
+      studentId,
+      category: HOMEWORK_CATEGORY,
+      subject,
+      slotNumber,
+      textbookName: trimmed,
+    })
+  }
 
   if (readOnly) {
     const displays = buildHomeworkTextbookDisplays(
@@ -189,14 +227,21 @@ export function TextbookSlotHomeworkSection({
         (item) => item.subject === subject && item.slotNumber === slotNumber,
       )
       if (!display) continue
+
       const key = `${subject}-${slotNumber}`
       const draft = drafts[key]
-      const hasContent =
-        display.textbookName.trim() ||
+      const textbookName = (nameDrafts[key] ?? '').trim()
+
+      if (textbookName) {
+        saveTextbookName(subject, slotNumber, textbookName)
+      }
+
+      const hasAssignmentContent =
         draft.previousAssignment.trim() ||
         draft.todayAssignment.trim() ||
         draft.status
-      if (!hasContent || !draft.status) continue
+
+      if (!hasAssignmentContent || !draft.status) continue
 
       onSaveEntry({
         id: display.entryId,
@@ -209,26 +254,6 @@ export function TextbookSlotHomeworkSection({
         status: draft.status,
       })
     }
-  }
-
-  const saveTextbookName = (
-    subject: TextbookSubject,
-    slotNumber: TextbookSlotNumber,
-    name: string,
-  ) => {
-    const existing = slots.find(
-      (slot) =>
-        slot.studentId === studentId &&
-        slot.subject === subject &&
-        slot.slotNumber === slotNumber,
-    )
-    onSaveSlot({
-      id: existing?.id,
-      studentId,
-      subject,
-      slotNumber,
-      textbookName: name,
-    })
   }
 
   return (
@@ -251,7 +276,7 @@ export function TextbookSlotHomeworkSection({
                     </p>
                     <EditableTextbookName
                       compact
-                      value={item.textbookName}
+                      value={nameDrafts[key] ?? ''}
                       onSave={(name) => saveTextbookName(item.subject, item.slotNumber, name)}
                     />
                     <HomeworkStatusPicker
