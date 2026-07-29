@@ -29,6 +29,7 @@ type HomeworkStatusButtonsProps = {
   onChange: (status: HomeworkStatus) => void
   label?: string
   error?: string
+  compact?: boolean
 }
 
 export function HomeworkStatusButtons({
@@ -36,15 +37,22 @@ export function HomeworkStatusButtons({
   onChange,
   label,
   error,
+  compact = false,
 }: HomeworkStatusButtonsProps) {
   const current = normalizeHomeworkStatus(value)
 
   return (
     <div>
       {label && (
-        <p className="mb-2 text-sm font-medium text-slate-700">{label}</p>
+        <p className={`font-medium text-slate-700 ${compact ? 'mb-1 text-xs' : 'mb-2 text-sm'}`}>
+          {label}
+        </p>
       )}
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3" role="group" aria-label={label ?? '수행 상태'}>
+      <div
+        className={`flex flex-wrap gap-1.5 ${compact ? '' : 'grid grid-cols-1 gap-2 sm:grid-cols-3'}`}
+        role="group"
+        aria-label={label ?? '수행 상태'}
+      >
         {HOMEWORK_STATUSES.map((status) => {
           const selected = current === status
           const styles = homeworkStatusStyles[status]
@@ -54,21 +62,23 @@ export function HomeworkStatusButtons({
               type="button"
               aria-pressed={selected}
               onClick={() => onChange(status)}
-              className={`flex min-h-[44px] cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition ${
-                selected ? styles.selected : styles.unselected
-              }`}
+              className={`flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border font-medium transition ${
+                compact
+                  ? 'min-h-9 flex-1 px-2.5 py-1.5 text-sm sm:flex-none sm:min-w-[5.5rem]'
+                  : 'min-h-[44px] gap-2 rounded-xl px-3 py-2.5 text-sm'
+              } ${selected ? styles.selected : styles.unselected}`}
             >
               {selected ? (
-                <Check className="h-4 w-4 shrink-0" aria-hidden />
+                <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
               ) : (
-                <span className="h-4 w-4 shrink-0" aria-hidden />
+                <span className="h-3.5 w-3.5 shrink-0" aria-hidden />
               )}
               {status}
             </button>
           )
         })}
       </div>
-      {error && <p className="mt-1.5 text-sm text-rose-500">{error}</p>}
+      {error && <p className={`text-rose-500 ${compact ? 'mt-1 text-xs' : 'mt-1.5 text-sm'}`}>{error}</p>}
     </div>
   )
 }

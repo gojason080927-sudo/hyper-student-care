@@ -79,6 +79,16 @@ type TodayReportViewProps = {
   errorFallbackHomePath?: string
   hideHeader?: boolean
   classNoteExtraActions?: ReactNode
+  /** 강사용 Today Report 반별 통합입력 화면에서만 true */
+  compactTeacherInput?: boolean
+}
+
+function compactInputClass(error?: string) {
+  return `${inputClass(error)} min-h-9 py-1.5 text-sm`
+}
+
+function compactTextareaClass(error?: string) {
+  return `${inputClass(error)} min-h-[2.75rem] resize-y py-1.5 text-sm leading-snug`
 }
 
 function SectionCard({
@@ -87,24 +97,40 @@ function SectionCard({
   children,
   compact = false,
   emphasis = false,
+  teacherCompact = false,
 }: {
   title: string
   titleExtra?: React.ReactNode
   children: React.ReactNode
   compact?: boolean
   emphasis?: boolean
+  teacherCompact?: boolean
 }) {
+  const padding = teacherCompact
+    ? 'px-3 py-2'
+    : emphasis
+      ? 'px-4 py-4 sm:px-5 sm:py-5'
+      : compact
+        ? 'px-4 py-3'
+        : 'p-4 sm:p-5'
+
   return (
     <section
-      className={`rounded-2xl border border-slate-200 bg-white shadow-sm ${
-        emphasis ? 'px-4 py-4 sm:px-5 sm:py-5' : compact ? 'px-4 py-3' : 'p-4 sm:p-5'
+      className={`rounded-2xl border border-slate-200 bg-white shadow-sm ${padding} ${
+        teacherCompact ? 'rounded-xl' : ''
       }`}
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className={`text-base font-bold text-navy-900 ${compact ? 'mb-0' : ''}`}>{title}</h2>
+      <div className="flex flex-wrap items-center justify-between gap-1.5">
+        <h2
+          className={`font-bold text-navy-900 ${
+            teacherCompact ? 'text-sm' : compact ? 'text-base mb-0' : 'text-base'
+          }`}
+        >
+          {title}
+        </h2>
         {titleExtra}
       </div>
-      <div className={compact ? 'mt-2' : 'mt-3'}>{children}</div>
+      <div className={teacherCompact ? 'mt-1.5' : compact ? 'mt-2' : 'mt-3'}>{children}</div>
     </section>
   )
 }
@@ -117,10 +143,12 @@ function SaveButton({
   onClick,
   label,
   disabled = false,
+  compact = false,
 }: {
   onClick: () => void
   label: string
   disabled?: boolean
+  compact?: boolean
 }) {
   const { isSaving } = useData()
   return (
@@ -128,9 +156,13 @@ function SaveButton({
       type="button"
       onClick={onClick}
       disabled={disabled || isSaving}
-      className={`${btnPrimary} min-h-11`}
+      className={
+        compact
+          ? `${btnPrimary} min-h-9 px-3 py-1.5 text-sm`
+          : `${btnPrimary} min-h-11`
+      }
     >
-      <Save className="mr-1.5 inline h-4 w-4" />
+      <Save className={`mr-1 inline shrink-0 ${compact ? 'h-3.5 w-3.5' : 'h-4 w-4'}`} />
       {isSaving ? '저장 중...' : label}
     </button>
   )
@@ -196,6 +228,7 @@ export function TodayReportView({
   errorFallbackHomePath,
   hideHeader = false,
   classNoteExtraActions,
+  compactTeacherInput = false,
 }: TodayReportViewProps) {
   const today = getTodayString()
   const [selectedDate, setSelectedDate] = useState(initialDate ?? today)
@@ -275,9 +308,10 @@ export function TodayReportView({
 
   const canGoNext = compareDateStrings(selectedDate, today) < 0
   const dateLabel = `${formatKoreanDateLong(selectedDate)}${isToday(selectedDate) ? ' · 오늘' : ''}`
+  const tc = compactTeacherInput && !readOnly
 
   return (
-    <div className="space-y-3">
+    <div className={tc ? 'space-y-1.5' : 'space-y-3'}>
       {!hideHeader &&
         (readOnly ? (
         <>
@@ -355,7 +389,7 @@ export function TodayReportView({
         homePath={errorFallbackHomePath ?? '/'}
         resetKey={selectedDate}
       >
-        <div className="space-y-3">
+        <div className={tc ? 'space-y-1.5' : 'space-y-3'}>
           <AttendanceSection
             key={`attendance-${selectedDate}`}
             readOnly={readOnly}
@@ -363,6 +397,7 @@ export function TodayReportView({
             studentId={student.id}
             date={selectedDate}
             onSave={saveAttendanceRecord}
+            teacherCompact={tc}
           />
 
           <HomeworkAssignmentSection
@@ -374,6 +409,7 @@ export function TodayReportView({
             date={selectedDate}
             onSaveHomework={saveHomeworkRecord}
             onSaveTodayAssignment={saveTodayAssignmentRecord}
+            teacherCompact={tc}
           />
 
           <ProgressSection
@@ -383,6 +419,7 @@ export function TodayReportView({
             studentId={student.id}
             date={selectedDate}
             onSave={saveProgressRecord}
+            teacherCompact={tc}
           />
 
           <DailyTestSection
@@ -392,6 +429,7 @@ export function TodayReportView({
             studentId={student.id}
             date={selectedDate}
             onSave={saveDailyTestRecord}
+            teacherCompact={tc}
           />
 
           <ClassNoteSection
@@ -402,6 +440,7 @@ export function TodayReportView({
             date={selectedDate}
             onSave={saveClassNoteRecord}
             extraActions={classNoteExtraActions}
+            teacherCompact={tc}
           />
         </div>
       </TodayReportErrorBoundary>
@@ -415,12 +454,14 @@ function AttendanceSection({
   studentId,
   date,
   onSave,
+  teacherCompact = false,
 }: {
   readOnly: boolean
   record?: AttendanceRecord
   studentId: string
   date: string
   onSave: ReturnType<typeof useData>['saveAttendanceRecord']
+  teacherCompact?: boolean
 }) {
   const [status, setStatus] = useState<AttendanceStatus | ''>(record?.status ?? '')
   const [reason, setReason] = useState(record?.reason ?? '')
@@ -443,7 +484,7 @@ function AttendanceSection({
   }
 
   return (
-    <SectionCard title="오늘 출결">
+    <SectionCard title="오늘 출결" teacherCompact={teacherCompact}>
       {readOnly ? (
         <ParentReadOnlyBody
           hasData={Boolean(record?.status)}
@@ -469,6 +510,34 @@ function AttendanceSection({
             </div>
           )}
         </ParentReadOnlyBody>
+      ) : teacherCompact ? (
+        <div className="space-y-2">
+          <div className="flex flex-nowrap gap-1.5">
+            {ATTENDANCE_STATUSES.map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setStatus(item)}
+                className={`min-h-9 flex-1 rounded-lg border px-2 py-1 text-sm font-medium ${
+                  status === item
+                    ? getAttendanceColor(item)
+                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <input
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="사유 (선택)"
+              className={`${compactInputClass()} min-w-0 flex-1`}
+            />
+            <SaveButton onClick={handleSave} disabled={!status} label="출결 저장" compact />
+          </div>
+        </div>
       ) : (
         <div className="space-y-3">
           <div className="flex flex-wrap gap-2">
@@ -522,15 +591,23 @@ function ProgressSubjectColumn({
   icon,
   subject,
   children,
+  teacherCompact = false,
 }: {
   icon: string
   subject: string
   children: React.ReactNode
+  teacherCompact?: boolean
 }) {
   return (
-    <div className="flex h-full min-h-0 flex-col rounded-xl border border-slate-200 bg-slate-50/60 p-3 sm:p-3.5">
+    <div
+      className={`flex h-full min-h-0 flex-col rounded-xl border border-slate-200 bg-slate-50/60 ${
+        teacherCompact ? 'p-2' : 'p-3 sm:p-3.5'
+      }`}
+    >
       <ProgressSubjectLabel icon={icon} subject={subject} />
-      <div className="mt-2 flex min-h-0 flex-1 flex-col">{children}</div>
+      <div className={`flex min-h-0 flex-1 flex-col ${teacherCompact ? 'mt-1' : 'mt-2'}`}>
+        {children}
+      </div>
     </div>
   )
 }
@@ -543,12 +620,14 @@ function ProgressSection({
   studentId,
   date,
   onSave,
+  teacherCompact = false,
 }: {
   readOnly: boolean
   records: ProgressRecord[]
   studentId: string
   date: string
   onSave: ReturnType<typeof useData>['saveProgressRecord']
+  teacherCompact?: boolean
 }) {
   const mathRecord = findProgressBySubject(records, '수학')
   const englishRecord = findProgressBySubject(records, '영어')
@@ -599,7 +678,7 @@ function ProgressSection({
   }
 
   return (
-    <SectionCard title="오늘의 진도">
+    <SectionCard title="오늘의 진도" teacherCompact={teacherCompact}>
       {readOnly ? (
         <ParentReadOnlyBody
           hasData={records.length > 0}
@@ -641,12 +720,18 @@ function ProgressSection({
           )}
         </ParentReadOnlyBody>
       ) : (
-        <div className="space-y-3">
-          <div className="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 sm:gap-4">
-            <ProgressSubjectColumn icon="📘" subject="수학">
+        <div className={teacherCompact ? 'space-y-2' : 'space-y-3'}>
+          <div
+            className={`grid grid-cols-1 items-stretch sm:grid-cols-2 ${
+              teacherCompact ? 'gap-2' : 'gap-3 sm:gap-4'
+            }`}
+          >
+            <ProgressSubjectColumn icon="📘" subject="수학" teacherCompact={teacherCompact}>
               <label
                 htmlFor="today-progress-math"
-                className="mb-1 block text-xs font-semibold text-navy-800"
+                className={`block font-semibold text-navy-800 ${
+                  teacherCompact ? 'mb-0.5 text-[11px]' : 'mb-1 text-xs'
+                }`}
               >
                 진도 과정
               </label>
@@ -654,15 +739,21 @@ function ProgressSection({
                 id="today-progress-math"
                 value={mathProgress}
                 onChange={(e) => setMathProgress(e.target.value)}
-                rows={2}
+                rows={teacherCompact ? 2 : 2}
                 placeholder="예) 쎈수학 중2-2 35~42쪽"
-                className={`${progressTextareaClass} flex-1`}
+                className={
+                  teacherCompact
+                    ? `${compactTextareaClass()} flex-1`
+                    : `${progressTextareaClass} flex-1`
+                }
               />
             </ProgressSubjectColumn>
-            <ProgressSubjectColumn icon="📗" subject="영어">
+            <ProgressSubjectColumn icon="📗" subject="영어" teacherCompact={teacherCompact}>
               <label
                 htmlFor="today-progress-english"
-                className="mb-1 block text-xs font-semibold text-navy-800"
+                className={`block font-semibold text-navy-800 ${
+                  teacherCompact ? 'mb-0.5 text-[11px]' : 'mb-1 text-xs'
+                }`}
               >
                 진도 과정
               </label>
@@ -670,17 +761,23 @@ function ProgressSection({
                 id="today-progress-english"
                 value={englishProgress}
                 onChange={(e) => setEnglishProgress(e.target.value)}
-                rows={2}
+                rows={teacherCompact ? 2 : 2}
                 placeholder="예) 능률 영어 Lesson 5 본문"
-                className={`${progressTextareaClass} flex-1`}
+                className={
+                  teacherCompact
+                    ? `${compactTextareaClass()} flex-1`
+                    : `${progressTextareaClass} flex-1`
+                }
               />
             </ProgressSubjectColumn>
           </div>
 
-          <div className="border-t border-slate-100 pt-3">
+          <div className={teacherCompact ? 'pt-1' : 'border-t border-slate-100 pt-3'}>
             <label
               htmlFor="today-progress-memo"
-              className="mb-1 block text-xs font-semibold text-slate-600"
+              className={`block font-semibold text-slate-600 ${
+                teacherCompact ? 'mb-0.5 text-[11px]' : 'mb-1 text-xs'
+              }`}
             >
               강사 메모 (선택)
             </label>
@@ -689,14 +786,15 @@ function ProgressSection({
               value={teacherMemo}
               onChange={(e) => setTeacherMemo(e.target.value)}
               placeholder="강사 메모 (선택)"
-              rows={2}
-              className={inputClass()}
+              rows={teacherCompact ? 1 : 2}
+              className={teacherCompact ? compactTextareaClass() : inputClass()}
             />
           </div>
           <SaveButton
             onClick={handleSave}
             disabled={!mathProgress.trim() && !englishProgress.trim()}
             label="진도 저장"
+            compact={teacherCompact}
           />
         </div>
       )}
@@ -746,6 +844,7 @@ function HomeworkAssignmentSection({
   date,
   onSaveHomework,
   onSaveTodayAssignment,
+  teacherCompact = false,
 }: {
   readOnly: boolean
   homeworkRecord?: HomeworkRecord
@@ -754,6 +853,7 @@ function HomeworkAssignmentSection({
   date: string
   onSaveHomework: ReturnType<typeof useData>['saveHomeworkRecord']
   onSaveTodayAssignment: ReturnType<typeof useData>['saveTodayAssignmentRecord']
+  teacherCompact?: boolean
 }) {
   const [status, setStatus] = useState<HomeworkStatus | ''>(homeworkRecord?.status ?? '')
   const [previousAssignment, setPreviousAssignment] = useState('')
@@ -801,7 +901,7 @@ function HomeworkAssignmentSection({
   )
 
   return (
-    <SectionCard title="숙제 수행 결과">
+    <SectionCard title="숙제 수행 결과" teacherCompact={teacherCompact}>
       {readOnly ? (
         <ParentReadOnlyBody
           hasData={hasReadContent}
@@ -834,6 +934,35 @@ function HomeworkAssignmentSection({
             </div>
           )}
         </ParentReadOnlyBody>
+      ) : teacherCompact ? (
+        <div className="space-y-2">
+          <HomeworkStatusPicker value={status} onChange={setStatus} compact />
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div>
+              <label className="mb-0.5 block text-xs font-semibold text-navy-800">① 지난 과제</label>
+              <input
+                value={previousAssignment}
+                onChange={(e) => setPreviousAssignment(e.target.value)}
+                placeholder="예: 3단원 연습문제 1~10번"
+                className={compactInputClass()}
+              />
+            </div>
+            <div>
+              <label className="mb-0.5 block text-xs font-semibold text-navy-800">
+                ② 오늘 해야 할 과제
+              </label>
+              <input
+                value={todayAssignment}
+                onChange={(e) =>
+                  setTodayAssignment(e.target.value.slice(0, TODAY_ASSIGNMENT_MAX_LENGTH))
+                }
+                placeholder="예: 4단원 개념 정리"
+                className={compactInputClass()}
+              />
+            </div>
+          </div>
+          <SaveButton onClick={handleSave} disabled={!status} label="과제 저장" compact />
+        </div>
       ) : (
         <div className="space-y-4">
           <HomeworkStatusPicker value={status} onChange={setStatus} />
@@ -883,6 +1012,7 @@ function ClassNoteSection({
   date,
   onSave,
   extraActions,
+  teacherCompact = false,
 }: {
   readOnly: boolean
   record?: ClassNoteRecord
@@ -890,6 +1020,7 @@ function ClassNoteSection({
   date: string
   onSave: ReturnType<typeof useData>['saveClassNoteRecord']
   extraActions?: ReactNode
+  teacherCompact?: boolean
 }) {
   const [hasClassNote, setHasClassNote] = useState(record?.hasClassNote ?? false)
   const [note, setNote] = useState(record?.note ?? '')
@@ -922,7 +1053,7 @@ function ClassNoteSection({
   const sectionTitle = readOnly ? '선생님 코멘트' : '수업 중 특이사항'
 
   return (
-    <SectionCard title={sectionTitle} emphasis={readOnly}>
+    <SectionCard title={sectionTitle} emphasis={readOnly} teacherCompact={teacherCompact}>
       {readOnly ? (
         <ParentReadOnlyBody
           hasData={showParentNote}
@@ -937,12 +1068,14 @@ function ClassNoteSection({
           )}
         </ParentReadOnlyBody>
       ) : (
-        <div className="space-y-3">
-          <div className="flex flex-wrap gap-2">
+        <div className={teacherCompact ? 'space-y-2' : 'space-y-3'}>
+          <div className="flex flex-wrap gap-1.5">
             <button
               type="button"
               onClick={() => setHasClassNote(false)}
-              className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
+              className={`rounded-lg border font-medium ${
+                teacherCompact ? 'min-h-9 px-2.5 py-1 text-sm' : 'px-3 py-1.5 text-sm'
+              } ${
                 !hasClassNote
                   ? 'border-navy-200 bg-navy-50 text-navy-900'
                   : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
@@ -953,7 +1086,9 @@ function ClassNoteSection({
             <button
               type="button"
               onClick={() => setHasClassNote(true)}
-              className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
+              className={`rounded-lg border font-medium ${
+                teacherCompact ? 'min-h-9 px-2.5 py-1 text-sm' : 'px-3 py-1.5 text-sm'
+              } ${
                 hasClassNote
                   ? 'border-amber-200 bg-amber-50 text-amber-900'
                   : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
@@ -964,7 +1099,7 @@ function ClassNoteSection({
           </div>
           {hasClassNote && (
             <div>
-              <label className="mb-1 block text-xs font-semibold text-slate-600">
+              <label className="mb-0.5 block text-xs font-semibold text-slate-600">
                 특이사항 내용
               </label>
               <textarea
@@ -973,11 +1108,11 @@ function ClassNoteSection({
                   setNote(e.target.value.slice(0, CLASS_NOTE_MAX_LENGTH))
                   if (noteError) setNoteError('')
                 }}
-                rows={4}
+                rows={teacherCompact ? 2 : 4}
                 placeholder="수업 중 확인된 특이사항과 사유를 입력해 주세요."
-                className={inputClass(noteError)}
+                className={teacherCompact ? compactTextareaClass(noteError) : inputClass(noteError)}
               />
-              <div className="mt-1 flex items-center justify-between gap-2">
+              <div className="mt-0.5 flex items-center justify-between gap-2">
                 {noteError ? (
                   <p className="text-xs text-rose-500">{noteError}</p>
                 ) : (
@@ -990,7 +1125,7 @@ function ClassNoteSection({
             </div>
           )}
           <div className="flex flex-wrap items-start gap-2">
-            <SaveButton onClick={handleSave} label="특이사항 저장" />
+            <SaveButton onClick={handleSave} label="특이사항 저장" compact={teacherCompact} />
             {extraActions}
           </div>
         </div>
@@ -1018,12 +1153,14 @@ function DailyTestSection({
   studentId,
   date,
   onSave,
+  teacherCompact = false,
 }: {
   readOnly: boolean
   record?: DailyTestRecord
   studentId: string
   date: string
   onSave: ReturnType<typeof useData>['saveDailyTestRecord']
+  teacherCompact?: boolean
 }) {
   const [form, setForm] = useState<DailyTestFormData>(() =>
     record ? dailyTestRecordToForm(record) : { ...emptyDailyTestForm(), studentId, date },
@@ -1056,6 +1193,7 @@ function DailyTestSection({
       title="일일 테스트"
       titleExtra={readOnly ? undefined : <DailyTestPassRuleBadge />}
       compact={readOnly}
+      teacherCompact={teacherCompact}
     >
       {readOnly ? (
         <ParentReadOnlyBody
@@ -1065,14 +1203,14 @@ function DailyTestSection({
           {() => <DailyTestParentSection record={record!} />}
         </ParentReadOnlyBody>
       ) : (
-        <div className="space-y-2">
+        <div className={teacherCompact ? 'space-y-1.5' : 'space-y-2'}>
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">과목</label>
+              <label className="mb-0.5 block text-xs font-medium text-slate-600">과목</label>
               <select
                 value={form.subject}
                 onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                className={inputClass()}
+                className={teacherCompact ? compactInputClass() : inputClass()}
               >
                 {SUBJECTS.map((item) => (
                   <option key={item} value={item}>
@@ -1082,13 +1220,13 @@ function DailyTestSection({
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-600">시험명 *</label>
+              <label className="mb-0.5 block text-xs font-medium text-slate-600">시험명 *</label>
               <input
                 value={form.testName}
                 onChange={(e) => setForm({ ...form, testName: e.target.value })}
-                className={inputClass(errors.testName)}
+                className={teacherCompact ? compactInputClass(errors.testName) : inputClass(errors.testName)}
               />
-              {errors.testName && <p className="mt-1 text-xs text-rose-500">{errors.testName}</p>}
+              {errors.testName && <p className="mt-0.5 text-xs text-rose-500">{errors.testName}</p>}
             </div>
           </div>
           <DailyTestSessionFormSection
@@ -1097,15 +1235,17 @@ function DailyTestSection({
               setForm({ ...form, sessionResults })
             }
             errors={errors}
+            compact={teacherCompact}
+            showHeader={!teacherCompact}
           />
           <textarea
             value={form.memo}
             onChange={(e) => setForm({ ...form, memo: e.target.value })}
             placeholder="메모 (선택)"
-            rows={2}
-            className={inputClass()}
+            rows={teacherCompact ? 1 : 2}
+            className={teacherCompact ? compactTextareaClass() : inputClass()}
           />
-          <SaveButton onClick={handleSave} label="일일테스트 저장" />
+          <SaveButton onClick={handleSave} label="일일테스트 저장" compact={teacherCompact} />
           {record && (
             <p className="text-xs text-slate-400">
               최종 결과: {migrateSessionResults(record).filter((s) => s.status === '합격').length}

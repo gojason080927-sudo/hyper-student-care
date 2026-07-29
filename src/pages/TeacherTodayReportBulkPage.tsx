@@ -213,7 +213,7 @@ export function TeacherTodayReportBulkPage() {
           <p className="text-xs font-medium text-slate-500">
             재원 {classStudents.length}명 · 학생 이름을 클릭하면 입력란이 펼쳐집니다.
           </p>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {classStudents.map((student) => (
               <TodayReportStudentAccordion
                 key={student.id}

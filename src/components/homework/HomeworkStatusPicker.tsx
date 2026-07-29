@@ -5,9 +5,10 @@ type HomeworkStatusPickerProps = {
   value: HomeworkStatus | ''
   onChange: (status: HomeworkStatus) => void
   error?: string
+  compact?: boolean
 }
 
-export function HomeworkStatusPicker({ value, onChange, error }: HomeworkStatusPickerProps) {
+export function HomeworkStatusPicker({ value, onChange, error, compact = false }: HomeworkStatusPickerProps) {
   return (
     <fieldset>
       <HomeworkStatusButtons
@@ -15,6 +16,7 @@ export function HomeworkStatusPicker({ value, onChange, error }: HomeworkStatusP
         onChange={onChange}
         label="수행 상태 *"
         error={error}
+        compact={compact}
       />
     </fieldset>
   )

@@ -75,14 +75,16 @@ export function DailyTestSessionFormSection({
           return (
             <div
               key={session.session}
-              className={`rounded-xl border border-slate-200 bg-slate-50/60 ${compact ? 'p-3' : 'p-4'}`}
+              className={`rounded-xl border border-slate-200 bg-slate-50/60 ${compact ? 'p-2' : 'p-4'}`}
             >
-              <p className={`mb-2 font-bold text-navy-900 ${compact ? 'text-xs' : 'text-sm'}`}>
+              <p className={`font-bold text-navy-900 ${compact ? 'mb-1 text-xs' : 'mb-2 text-sm'}`}>
                 {session.session}차시
               </p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className={`grid grid-cols-3 ${compact ? 'gap-1.5' : 'gap-2'}`}>
                 <div
-                  className={`flex min-h-[44px] items-center gap-1 rounded-xl border bg-white px-2 ${
+                  className={`flex items-center gap-1 rounded-lg border bg-white px-1.5 ${
+                    compact ? 'min-h-9' : 'min-h-[44px]'
+                  } ${
                     session.status === '미응시'
                       ? 'border-slate-200'
                       : 'border-navy-200 ring-1 ring-navy-100'
@@ -103,7 +105,9 @@ export function DailyTestSessionFormSection({
                       const score = Number(raw)
                       setSession(session.session, updateSessionScoreOnly(session, score))
                     }}
-                    className="min-w-0 flex-1 border-0 bg-transparent px-1 py-2 text-center text-sm font-semibold text-navy-900 outline-none placeholder:font-normal placeholder:text-slate-400"
+                    className={`min-w-0 flex-1 border-0 bg-transparent px-1 text-center text-sm font-semibold text-navy-900 outline-none placeholder:font-normal placeholder:text-slate-400 ${
+                      compact ? 'py-1' : 'py-2'
+                    }`}
                     placeholder="점수"
                     aria-label={`${session.session}차시 점수`}
                   />
@@ -118,7 +122,11 @@ export function DailyTestSessionFormSection({
                       type="button"
                       aria-pressed={selected}
                       onClick={() => setStatus(session.session, status)}
-                      className={`flex min-h-[44px] items-center justify-center gap-1.5 rounded-xl border px-2 py-2 text-xs font-semibold sm:text-sm ${
+                      className={`flex items-center justify-center gap-1 rounded-lg border font-semibold ${
+                        compact
+                          ? 'min-h-9 px-1.5 py-1 text-xs'
+                          : 'min-h-[44px] gap-1.5 rounded-xl px-2 py-2 text-xs sm:text-sm'
+                      } ${
                         selected
                           ? getDailyTestSessionColor(status)
                           : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
