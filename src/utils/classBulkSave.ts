@@ -44,6 +44,7 @@ function buildProgressRecord(
       createId(),
     studentId: draft.studentId,
     subject,
+    slotNumber: existing?.slotNumber ?? 1,
     textbookName: existing?.textbookName ?? '',
     currentProgress: content.trim(),
     currentPage: existing?.currentPage ?? 0,

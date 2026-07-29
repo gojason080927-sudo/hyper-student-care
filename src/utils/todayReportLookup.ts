@@ -4,7 +4,9 @@ import type {
   ClassNoteRecord,
   DailyTestRecord,
   HomeworkRecord,
+  HomeworkTextbookEntry,
   ProgressRecord,
+  StudentTextbookSlot,
   TodayAssignmentRecord,
 } from '../types/records'
 import { findClassNote } from './classNote'
@@ -21,16 +23,21 @@ export type StudentDayRecords = {
   attendance?: AttendanceRecord
   homework?: HomeworkRecord
   todayAssignment?: TodayAssignmentRecord
+  homeworkTextbookEntries?: HomeworkTextbookEntry[]
+  studentTextbookSlots?: StudentTextbookSlot[]
   classNote?: ClassNoteRecord
   dailyTest?: DailyTestRecord
   progressMath?: ProgressRecord
   progressEnglish?: ProgressRecord
+  dayProgress?: ProgressRecord[]
 }
 
 export type TodayReportLookupContext = {
   attendance: AttendanceRecord[]
   homework: HomeworkRecord[]
   todayAssignments: TodayAssignmentRecord[]
+  homeworkTextbookEntries?: HomeworkTextbookEntry[]
+  studentTextbookSlots?: StudentTextbookSlot[]
   classNotes: ClassNoteRecord[]
   dailyTests: DailyTestRecord[]
   progressRecords: ProgressRecord[]
@@ -87,12 +94,19 @@ export function findStudentDayRecords(
       (record) => record.studentId === studentId && record.date === date,
     ),
     todayAssignment: findTodayAssignment(ctx.todayAssignments, studentId, date),
+    homeworkTextbookEntries: ctx.homeworkTextbookEntries?.filter(
+      (record) => record.studentId === studentId && record.date === date,
+    ),
+    studentTextbookSlots: ctx.studentTextbookSlots?.filter(
+      (record) => record.studentId === studentId,
+    ),
     classNote: findClassNote(ctx.classNotes, studentId, date),
     dailyTest: ctx.dailyTests.find(
       (record) => record.studentId === studentId && record.date === date,
     ),
     progressMath: findProgressBySubject(dayProgress, '수학'),
     progressEnglish: findProgressBySubject(dayProgress, '영어'),
+    dayProgress,
   }
 }
 

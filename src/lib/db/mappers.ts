@@ -5,10 +5,12 @@ import type {
   ContentPost,
   DailyTestRecord,
   HomeworkRecord,
+  HomeworkTextbookEntry,
   MakeupPlanRecord,
   MonthlyEvaluationRecord,
   ProgressRecord,
   QuestionRecord,
+  StudentTextbookSlot,
   TodayAssignmentRecord,
 } from '../../types/records'
 import type { Student } from '../../types/student'
@@ -152,6 +154,7 @@ export type ProgressRow = {
   id: string
   student_id: string
   subject: string
+  slot_number?: number
   textbook_name: string
   current_progress: string
   current_page: number
@@ -159,6 +162,29 @@ export type ProgressRow = {
   progress_rate: number
   last_study_date: string
   teacher_memo: string
+  created_at: string
+  updated_at: string
+}
+
+export type StudentTextbookSlotRow = {
+  id: string
+  student_id: string
+  subject: string
+  slot_number: number
+  textbook_name: string
+  created_at: string
+  updated_at: string
+}
+
+export type HomeworkTextbookEntryRow = {
+  id: string
+  student_id: string
+  date: string
+  subject: string
+  slot_number: number
+  previous_assignment: string
+  today_assignment: string
+  status: string
   created_at: string
   updated_at: string
 }
@@ -502,6 +528,7 @@ export function progressToRow(record: ProgressRecord): ProgressRow {
     id: record.id,
     student_id: record.studentId,
     subject: record.subject,
+    slot_number: record.slotNumber ?? 1,
     textbook_name: record.textbookName,
     current_progress: record.currentProgress,
     current_page: record.currentPage,
@@ -519,6 +546,7 @@ export function progressFromRow(row: ProgressRow): ProgressRecord {
     id: row.id,
     studentId: row.student_id,
     subject: row.subject,
+    slotNumber: row.slot_number ?? 1,
     textbookName: row.textbook_name,
     currentProgress: row.current_progress,
     currentPage: row.current_page,
@@ -526,6 +554,64 @@ export function progressFromRow(row: ProgressRow): ProgressRecord {
     progressRate: Number(row.progress_rate),
     lastStudyDate: row.last_study_date,
     teacherMemo: row.teacher_memo,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+export function studentTextbookSlotToRow(record: StudentTextbookSlot): StudentTextbookSlotRow {
+  return {
+    id: record.id,
+    student_id: record.studentId,
+    subject: record.subject,
+    slot_number: record.slotNumber,
+    textbook_name: record.textbookName,
+    created_at: record.createdAt,
+    updated_at: record.updatedAt,
+  }
+}
+
+export function studentTextbookSlotFromRow(row: StudentTextbookSlotRow): StudentTextbookSlot {
+  return {
+    id: row.id,
+    studentId: row.student_id,
+    subject: row.subject as StudentTextbookSlot['subject'],
+    slotNumber: row.slot_number as StudentTextbookSlot['slotNumber'],
+    textbookName: row.textbook_name,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+export function homeworkTextbookEntryToRow(
+  record: HomeworkTextbookEntry,
+): HomeworkTextbookEntryRow {
+  return {
+    id: record.id,
+    student_id: record.studentId,
+    date: record.date,
+    subject: record.subject,
+    slot_number: record.slotNumber,
+    previous_assignment: record.previousAssignment,
+    today_assignment: record.todayAssignment,
+    status: record.status,
+    created_at: record.createdAt,
+    updated_at: record.updatedAt,
+  }
+}
+
+export function homeworkTextbookEntryFromRow(
+  row: HomeworkTextbookEntryRow,
+): HomeworkTextbookEntry {
+  return {
+    id: row.id,
+    studentId: row.student_id,
+    date: row.date,
+    subject: row.subject as HomeworkTextbookEntry['subject'],
+    slotNumber: row.slot_number as HomeworkTextbookEntry['slotNumber'],
+    previousAssignment: row.previous_assignment,
+    todayAssignment: row.today_assignment,
+    status: row.status as HomeworkTextbookEntry['status'],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }

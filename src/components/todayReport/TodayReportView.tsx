@@ -5,6 +5,8 @@ import { DailyTestSessionGrid } from '../dailytest/DailyTestSessionGrid'
 import { HomeworkStatusPicker } from '../homework/HomeworkStatusPicker'
 import { HeroProgressBar } from '../ui/HeroProgressBar'
 import { StatusBadge } from '../ui/StatusBadge'
+import { TextbookSlotHomeworkSection } from './TextbookSlotHomeworkSection'
+import { TextbookSlotProgressSection } from './TextbookSlotProgressSection'
 import { TodayReportErrorBoundary } from './TodayReportErrorBoundary'
 import { useData } from '../../hooks/useData'
 import type {
@@ -239,9 +241,13 @@ export function TodayReportView({
     dailyTests: dailyTestsRaw,
     todayAssignments: todayAssignmentsRaw,
     classNotes: classNotesRaw,
+    homeworkTextbookEntries: homeworkTextbookEntriesRaw,
+    studentTextbookSlots: studentTextbookSlotsRaw,
     saveAttendanceRecord,
     saveProgressRecord,
     saveHomeworkRecord,
+    saveHomeworkTextbookEntry,
+    saveStudentTextbookSlot,
     saveDailyTestRecord,
     saveTodayAssignmentRecord,
     saveClassNoteRecord,
@@ -254,6 +260,8 @@ export function TodayReportView({
   const dailyTests = dailyTestsRaw ?? []
   const todayAssignments = todayAssignmentsRaw ?? []
   const classNotes = classNotesRaw ?? []
+  const homeworkTextbookEntries = homeworkTextbookEntriesRaw ?? []
+  const studentTextbookSlots = studentTextbookSlotsRaw ?? []
 
   useEffect(() => {
     if (initialDate) setSelectedDate(initialDate)
@@ -306,9 +314,16 @@ export function TodayReportView({
     [classNotes, selectedDate, student.id],
   )
 
+  const studentSlots = useMemo(
+    () => studentTextbookSlots.filter((slot) => slot.studentId === student.id),
+    [student.id, studentTextbookSlots],
+  )
+
   const canGoNext = compareDateStrings(selectedDate, today) < 0
   const dateLabel = `${formatKoreanDateLong(selectedDate)}${isToday(selectedDate) ? ' · 오늘' : ''}`
   const tc = compactTeacherInput && !readOnly
+  const useTextbookSlotHomework = tc || readOnly
+  const useTextbookSlotProgress = tc || readOnly
 
   return (
     <div className={tc ? 'space-y-1.5' : 'space-y-3'}>
@@ -400,27 +415,55 @@ export function TodayReportView({
             teacherCompact={tc}
           />
 
-          <HomeworkAssignmentSection
-            key={`homework-${selectedDate}`}
-            readOnly={readOnly}
-            homeworkRecord={dayHomework}
-            assignmentRecord={dayAssignment}
-            studentId={student.id}
-            date={selectedDate}
-            onSaveHomework={saveHomeworkRecord}
-            onSaveTodayAssignment={saveTodayAssignmentRecord}
-            teacherCompact={tc}
-          />
+          {useTextbookSlotHomework ? (
+            <TextbookSlotHomeworkSection
+              key={`homework-slots-${selectedDate}`}
+              readOnly={readOnly}
+              studentId={student.id}
+              date={selectedDate}
+              slots={studentSlots}
+              entries={homeworkTextbookEntries}
+              legacyHomework={dayHomework}
+              legacyAssignment={dayAssignment}
+              onSaveEntry={saveHomeworkTextbookEntry}
+              onSaveSlot={saveStudentTextbookSlot}
+            />
+          ) : (
+            <HomeworkAssignmentSection
+              key={`homework-${selectedDate}`}
+              readOnly={readOnly}
+              homeworkRecord={dayHomework}
+              assignmentRecord={dayAssignment}
+              studentId={student.id}
+              date={selectedDate}
+              onSaveHomework={saveHomeworkRecord}
+              onSaveTodayAssignment={saveTodayAssignmentRecord}
+              teacherCompact={tc}
+            />
+          )}
 
-          <ProgressSection
-            key={`progress-${selectedDate}`}
-            readOnly={readOnly}
-            records={dayProgressList}
-            studentId={student.id}
-            date={selectedDate}
-            onSave={saveProgressRecord}
-            teacherCompact={tc}
-          />
+          {useTextbookSlotProgress ? (
+            <TextbookSlotProgressSection
+              key={`progress-slots-${selectedDate}`}
+              readOnly={readOnly}
+              studentId={student.id}
+              date={selectedDate}
+              slots={studentSlots}
+              progressRecords={dayProgressList}
+              onSave={saveProgressRecord}
+              onSaveSlot={saveStudentTextbookSlot}
+            />
+          ) : (
+            <ProgressSection
+              key={`progress-${selectedDate}`}
+              readOnly={readOnly}
+              records={dayProgressList}
+              studentId={student.id}
+              date={selectedDate}
+              onSave={saveProgressRecord}
+              teacherCompact={tc}
+            />
+          )}
 
           <DailyTestSection
             key={`daily-test-${selectedDate}`}
@@ -655,6 +698,7 @@ function ProgressSection({
       id: record?.id,
       studentId,
       subject,
+      slotNumber: record?.slotNumber ?? 1,
       textbookName: record?.textbookName?.trim() ?? '',
       currentProgress: content.trim(),
       currentPage: record?.currentPage ?? 0,

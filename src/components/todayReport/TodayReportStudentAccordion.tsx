@@ -29,7 +29,7 @@ export function TodayReportStudentAccordion({
     () => findStudentDayRecords(student.id, date, lookupContext),
     [date, lookupContext, student.id],
   )
-  const completionStatus = getTodayReportCompletionStatus(records)
+  const completionStatus = getTodayReportCompletionStatus(records, student.id, date)
   const completionLabel = getTodayReportCompletionLabel(completionStatus)
   const completionColor = getTodayReportCompletionColor(completionStatus)
 

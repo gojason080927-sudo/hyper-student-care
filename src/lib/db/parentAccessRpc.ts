@@ -7,23 +7,27 @@ import {
   classNoteFromRow,
   dailyTestFromRow,
   homeworkFromRow,
+  homeworkTextbookEntryFromRow,
   makeupPlanFromRow,
   monthlyEvaluationFromRow,
   noticeFromRow,
   progressFromRow,
   questionFromRow,
   studentFromRow,
+  studentTextbookSlotFromRow,
   todayAssignmentFromRow,
   type AttendanceRow,
   type ClassNoteRow,
   type DailyTestRow,
   type HomeworkRow,
+  type HomeworkTextbookEntryRow,
   type MakeupPlanRow,
   type MonthlyEvaluationRow,
   type NoticeRow,
   type ProgressRow,
   type QuestionRow,
   type StudentRow,
+  type StudentTextbookSlotRow,
   type TodayAssignmentRow,
 } from './mappers'
 
@@ -129,10 +133,18 @@ export async function rpcGetParentCareBundle(accessKey: string): Promise<LocalBa
       bundle.progress,
       progressFromRow,
     ),
+    studentTextbookSlots: mapRows<
+      StudentTextbookSlotRow,
+      ReturnType<typeof studentTextbookSlotFromRow>
+    >(bundle.student_textbook_slots, studentTextbookSlotFromRow),
     homework: mapRows<HomeworkRow, ReturnType<typeof homeworkFromRow>>(
       bundle.homework,
       homeworkFromRow,
     ),
+    homeworkTextbookEntries: mapRows<
+      HomeworkTextbookEntryRow,
+      ReturnType<typeof homeworkTextbookEntryFromRow>
+    >(bundle.homework_textbook_entries, homeworkTextbookEntryFromRow),
     assignmentCompletion: [],
     dailyTests: mapRows<DailyTestRow, ReturnType<typeof dailyTestFromRow>>(
       bundle.daily_tests,
@@ -209,6 +221,14 @@ export async function rpcGetParentTodayReport(
       report.homework,
       homeworkFromRow,
     ),
+    homeworkTextbookEntries: mapRows<
+      HomeworkTextbookEntryRow,
+      ReturnType<typeof homeworkTextbookEntryFromRow>
+    >(report.homework_textbook_entries, homeworkTextbookEntryFromRow),
+    studentTextbookSlots: mapRows<
+      StudentTextbookSlotRow,
+      ReturnType<typeof studentTextbookSlotFromRow>
+    >(report.student_textbook_slots, studentTextbookSlotFromRow),
     todayAssignment: mapOptionalRow<
       TodayAssignmentRow,
       ReturnType<typeof todayAssignmentFromRow>

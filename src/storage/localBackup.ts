@@ -5,10 +5,12 @@ import type {
   ContentPost,
   DailyTestRecord,
   HomeworkRecord,
+  HomeworkTextbookEntry,
   MakeupPlanRecord,
   MonthlyEvaluationRecord,
   ProgressRecord,
   QuestionRecord,
+  StudentTextbookSlot,
   TodayAssignmentRecord,
 } from '../types/records'
 import type { Student } from '../types/student'
@@ -19,11 +21,13 @@ export type LocalBackupData = {
   students: Student[]
   attendance: AttendanceRecord[]
   homework: HomeworkRecord[]
+  homeworkTextbookEntries: HomeworkTextbookEntry[]
   assignmentCompletion: AssignmentCompletionRecord[]
   dailyTests: DailyTestRecord[]
   monthlyEvaluations: MonthlyEvaluationRecord[]
   questions: QuestionRecord[]
   progress: ProgressRecord[]
+  studentTextbookSlots: StudentTextbookSlot[]
   makeupPlans: MakeupPlanRecord[]
   contentPosts: ContentPost[]
   todayAssignments: TodayAssignmentRecord[]
@@ -58,6 +62,9 @@ export function loadLocalBackup(): LocalBackupData {
       LEGACY_STORAGE_KEYS.attendance,
     ),
     homework: loadArray<HomeworkRecord>(STORAGE_KEYS.homework, LEGACY_STORAGE_KEYS.homework),
+    homeworkTextbookEntries: loadArray<HomeworkTextbookEntry>(
+      STORAGE_KEYS.homeworkTextbookEntries,
+    ),
     assignmentCompletion: loadArray<AssignmentCompletionRecord>(
       STORAGE_KEYS.assignmentCompletion,
       LEGACY_STORAGE_KEYS.assignmentCompletion,
@@ -69,6 +76,7 @@ export function loadLocalBackup(): LocalBackupData {
     monthlyEvaluations: loadArray<MonthlyEvaluationRecord>(STORAGE_KEYS.monthlyEvaluations),
     questions: loadArray<QuestionRecord>(STORAGE_KEYS.questions),
     progress: loadArray<ProgressRecord>(STORAGE_KEYS.progress),
+    studentTextbookSlots: loadArray<StudentTextbookSlot>(STORAGE_KEYS.studentTextbookSlots),
     makeupPlans: loadArray<MakeupPlanRecord>(STORAGE_KEYS.makeupPlans),
     contentPosts: loadArray<ContentPost>(STORAGE_KEYS.contentPosts),
     todayAssignments: loadArray<TodayAssignmentRecord>(STORAGE_KEYS.todayAssignments),
@@ -81,11 +89,13 @@ export function mirrorLocalBackup(data: LocalBackupData): void {
   saveToStorage(STORAGE_KEYS.students, data.students)
   saveToStorage(STORAGE_KEYS.attendance, data.attendance)
   saveToStorage(STORAGE_KEYS.homework, data.homework)
+  saveToStorage(STORAGE_KEYS.homeworkTextbookEntries, data.homeworkTextbookEntries)
   saveToStorage(STORAGE_KEYS.assignmentCompletion, data.assignmentCompletion)
   saveToStorage(STORAGE_KEYS.dailyTests, data.dailyTests)
   saveToStorage(STORAGE_KEYS.monthlyEvaluations, data.monthlyEvaluations)
   saveToStorage(STORAGE_KEYS.questions, data.questions)
   saveToStorage(STORAGE_KEYS.progress, data.progress)
+  saveToStorage(STORAGE_KEYS.studentTextbookSlots, data.studentTextbookSlots)
   saveToStorage(STORAGE_KEYS.makeupPlans, data.makeupPlans)
   saveToStorage(STORAGE_KEYS.contentPosts, data.contentPosts)
   saveToStorage(STORAGE_KEYS.todayAssignments, data.todayAssignments)
@@ -99,11 +109,13 @@ export function toLocalBackupData(
     students: data.students,
     attendance: data.attendance,
     homework: data.homework,
+    homeworkTextbookEntries: data.homeworkTextbookEntries ?? [],
     assignmentCompletion: data.assignmentCompletion,
     dailyTests: data.dailyTests,
     monthlyEvaluations: data.monthlyEvaluations,
     questions: data.questions,
     progress: data.progress,
+    studentTextbookSlots: data.studentTextbookSlots ?? [],
     makeupPlans: data.makeupPlans,
     contentPosts: data.contentPosts,
     todayAssignments: data.todayAssignments,

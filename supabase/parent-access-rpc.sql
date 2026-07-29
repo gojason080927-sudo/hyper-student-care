@@ -96,6 +96,18 @@ BEGIN
        FROM public.today_assignments ta WHERE ta.student_id = v_student_id),
       '[]'::jsonb
     ),
+    'homework_textbook_entries',
+    coalesce(
+      (SELECT jsonb_agg(to_jsonb(h) ORDER BY h.date DESC, h.subject, h.slot_number)
+       FROM public.homework_textbook_entries h WHERE h.student_id = v_student_id),
+      '[]'::jsonb
+    ),
+    'student_textbook_slots',
+    coalesce(
+      (SELECT jsonb_agg(to_jsonb(s) ORDER BY s.subject, s.slot_number)
+       FROM public.student_textbook_slots s WHERE s.student_id = v_student_id),
+      '[]'::jsonb
+    ),
     'class_notes',
     coalesce(
       (SELECT jsonb_agg(to_jsonb(cn) ORDER BY cn.date DESC)
@@ -153,6 +165,20 @@ BEGIN
      FROM public.today_assignments ta
      WHERE ta.student_id = v_student_id AND ta.date = p_date
      LIMIT 1),
+    'homework_textbook_entries',
+    coalesce(
+      (SELECT jsonb_agg(to_jsonb(h) ORDER BY h.subject, h.slot_number)
+       FROM public.homework_textbook_entries h
+       WHERE h.student_id = v_student_id AND h.date = p_date),
+      '[]'::jsonb
+    ),
+    'student_textbook_slots',
+    coalesce(
+      (SELECT jsonb_agg(to_jsonb(s) ORDER BY s.subject, s.slot_number)
+       FROM public.student_textbook_slots s
+       WHERE s.student_id = v_student_id),
+      '[]'::jsonb
+    ),
     'class_note',
     (SELECT to_jsonb(cn)
      FROM public.class_notes cn

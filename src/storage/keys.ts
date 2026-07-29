@@ -12,6 +12,8 @@ export const STORAGE_KEYS = {
   contentPosts: 'hyper_learning_notice_posts',
   todayAssignments: 'hyper_today_assignments',
   classNotes: 'hyper_class_notes',
+  studentTextbookSlots: 'hyper_student_textbook_slots',
+  homeworkTextbookEntries: 'hyper_homework_textbook_entries',
 } as const
 
 export const LEGACY_STORAGE_KEYS = {

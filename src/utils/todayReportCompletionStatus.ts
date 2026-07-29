@@ -1,5 +1,6 @@
 import { hasDailyTestDisplayData } from './dailyTest'
 import { getHomeworkContent } from './homework'
+import { buildHomeworkTextbookDisplays, buildProgressTextbookDisplays } from './textbookSlots'
 import type { StudentDayRecords } from './todayReportLookup'
 
 export type TodayReportCompletionStatus = 'empty' | 'partial' | 'complete'
@@ -16,17 +17,52 @@ const STATUS_COLORS: Record<TodayReportCompletionStatus, string> = {
   complete: 'bg-emerald-100 text-emerald-800',
 }
 
-export function getTodayReportCompletionStatus(
-  records: StudentDayRecords,
-): TodayReportCompletionStatus {
-  const hasAttendance = Boolean(records.attendance?.status)
-  const hasHomework = Boolean(
+function hasHomeworkInput(records: StudentDayRecords, studentId: string, date: string): boolean {
+  const slotDisplays = buildHomeworkTextbookDisplays(
+    studentId,
+    date,
+    records.studentTextbookSlots ?? [],
+    records.homeworkTextbookEntries ?? [],
+    records.homework,
+    records.todayAssignment,
+  )
+  if (slotDisplays.length > 0) return true
+
+  return Boolean(
     records.homework?.status ||
       (records.homework && getHomeworkContent(records.homework).trim()) ||
       records.todayAssignment?.assignment1?.trim() ||
       records.todayAssignment?.assignment2?.trim(),
   )
-  const hasProgress = Boolean(records.progressMath || records.progressEnglish)
+}
+
+function hasProgressInput(records: StudentDayRecords, studentId: string, date: string): boolean {
+  const displays = buildProgressTextbookDisplays(
+    studentId,
+    date,
+    records.studentTextbookSlots ?? [],
+    records.dayProgress ?? [],
+  )
+  if (displays.length > 0) return true
+  return Boolean(records.progressMath || records.progressEnglish)
+}
+
+export function getTodayReportCompletionStatus(
+  records: StudentDayRecords,
+  studentId?: string,
+  date?: string,
+): TodayReportCompletionStatus {
+  const resolvedStudentId = studentId ?? records.homework?.studentId ?? records.attendance?.studentId ?? ''
+  const resolvedDate =
+    date ?? records.homework?.date ?? records.attendance?.date ?? records.todayAssignment?.date ?? ''
+
+  const hasAttendance = Boolean(records.attendance?.status)
+  const hasHomework = resolvedStudentId
+    ? hasHomeworkInput(records, resolvedStudentId, resolvedDate)
+    : Boolean(records.homework?.status)
+  const hasProgress = resolvedStudentId
+    ? hasProgressInput(records, resolvedStudentId, resolvedDate)
+    : Boolean(records.progressMath || records.progressEnglish)
   const hasDailyTest = Boolean(
     records.dailyTest && hasDailyTestDisplayData(records.dailyTest),
   )

@@ -165,6 +165,7 @@ export type ProgressRecord = {
   id: string
   studentId: string
   subject: string
+  slotNumber: number
   textbookName: string
   currentProgress: string
   currentPage: number
@@ -172,6 +173,37 @@ export type ProgressRecord = {
   progressRate: number
   lastStudyDate: string
   teacherMemo: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type TextbookSubject = '수학' | '영어'
+
+export type TextbookSlotNumber = 1 | 2 | 3
+
+export const TEXTBOOK_SUBJECTS: TextbookSubject[] = ['수학', '영어']
+
+export const TEXTBOOK_SLOT_NUMBERS: TextbookSlotNumber[] = [1, 2, 3]
+
+export type StudentTextbookSlot = {
+  id: string
+  studentId: string
+  subject: TextbookSubject
+  slotNumber: TextbookSlotNumber
+  textbookName: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type HomeworkTextbookEntry = {
+  id: string
+  studentId: string
+  date: string
+  subject: TextbookSubject
+  slotNumber: TextbookSlotNumber
+  previousAssignment: string
+  todayAssignment: string
+  status: HomeworkStatus | ''
   createdAt: string
   updatedAt: string
 }

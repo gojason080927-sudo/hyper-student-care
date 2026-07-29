@@ -4,10 +4,13 @@ import type {
   ClassNoteRecord,
   DailyTestRecord,
   HomeworkRecord,
+  HomeworkTextbookEntry,
   ProgressRecord,
+  StudentTextbookSlot,
   TodayAssignmentRecord,
 } from '../../types/records'
 import { findProgressRecordIndex } from '../../utils/progressRecord'
+import { slotKey } from '../../utils/textbookSlots'
 import type { TodayReportData } from '../dataLoader'
 
 function upsertById<T extends { id: string }>(prev: T[], incoming: T[]): T[] {
@@ -63,11 +66,31 @@ function upsertProgressByStudentSubject(
   return next
 }
 
+function upsertStudentTextbookSlots(
+  prev: StudentTextbookSlot[],
+  incoming: StudentTextbookSlot[],
+): StudentTextbookSlot[] {
+  if (incoming.length === 0) return prev
+  const next = [...prev]
+  for (const record of incoming) {
+    const index = next.findIndex(
+      (item) =>
+        slotKey(item.studentId, item.subject, item.slotNumber) ===
+        slotKey(record.studentId, record.subject, record.slotNumber),
+    )
+    if (index >= 0) next[index] = record
+    else next.push(record)
+  }
+  return next
+}
+
 export type TodayReportMergeResult = {
   attendance: AttendanceRecord[]
   progress: ProgressRecord[]
   assignmentCompletion: AssignmentCompletionRecord[]
   homework: HomeworkRecord[]
+  homeworkTextbookEntries: HomeworkTextbookEntry[]
+  studentTextbookSlots: StudentTextbookSlot[]
   todayAssignments: TodayAssignmentRecord[]
   classNotes: ClassNoteRecord[]
   dailyTests: DailyTestRecord[]
@@ -98,6 +121,14 @@ export function mergeTodayReportIntoState(
       ],
       assignmentCompletion: upsertById(current.assignmentCompletion, report.assignmentCompletion),
       homework: setOptionalByStudentDate(current.homework, studentId, date, report.homework),
+      homeworkTextbookEntries: [
+        ...removeByStudentDate(current.homeworkTextbookEntries, studentId, date),
+        ...report.homeworkTextbookEntries,
+      ],
+      studentTextbookSlots: upsertStudentTextbookSlots(
+        current.studentTextbookSlots,
+        report.studentTextbookSlots,
+      ),
       todayAssignments: setOptionalByStudentDate(
         current.todayAssignments,
         studentId,
@@ -118,6 +149,14 @@ export function mergeTodayReportIntoState(
     homework: report.homework
       ? upsertByStudentDateLegacy(current.homework, report.homework)
       : current.homework,
+    homeworkTextbookEntries: upsertById(
+      current.homeworkTextbookEntries,
+      report.homeworkTextbookEntries,
+    ),
+    studentTextbookSlots: upsertStudentTextbookSlots(
+      current.studentTextbookSlots,
+      report.studentTextbookSlots,
+    ),
     todayAssignments: report.todayAssignment
       ? upsertByStudentDateLegacy(current.todayAssignments, report.todayAssignment)
       : current.todayAssignments,

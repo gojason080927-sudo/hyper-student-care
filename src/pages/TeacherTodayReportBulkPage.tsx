@@ -22,7 +22,9 @@ export function TeacherTodayReportBulkPage() {
     students,
     attendance,
     homework,
+    homeworkTextbookEntries,
     todayAssignments,
+    studentTextbookSlots,
     classNotes,
     dailyTests,
     progressRecords,
@@ -61,12 +63,14 @@ export function TeacherTodayReportBulkPage() {
     () => ({
       attendance,
       homework,
+      homeworkTextbookEntries,
       todayAssignments,
+      studentTextbookSlots,
       classNotes,
       dailyTests,
       progressRecords,
     }),
-    [attendance, classNotes, dailyTests, homework, progressRecords, todayAssignments],
+    [attendance, classNotes, dailyTests, homework, homeworkTextbookEntries, progressRecords, studentTextbookSlots, todayAssignments],
   )
 
   useEffect(() => {

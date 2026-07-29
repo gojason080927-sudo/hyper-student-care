@@ -14,10 +14,12 @@ import type {
   ContentPost,
   DailyTestRecord,
   HomeworkRecord,
+  HomeworkTextbookEntry,
   MakeupPlanRecord,
   MonthlyEvaluationRecord,
   ProgressRecord,
   QuestionRecord,
+  StudentTextbookSlot,
   TodayAssignmentRecord,
   ClassNoteRecord,
 } from '../types/records'
@@ -27,6 +29,7 @@ import { rpcSubmitParentQuestion } from '../lib/db/parentAccessRpc'
 import { getParentAccessKeyFromPath } from '../lib/supabase'
 import { mergeTodayReportIntoState } from '../lib/db/mergeTodayReport'
 import { findProgressRecordIndex } from '../utils/progressRecord'
+import { findHomeworkTextbookEntry, findTextbookSlot, slotKey } from '../utils/textbookSlots'
 import {
   deleteAssignmentCompletion,
   deleteAttendance,
@@ -43,11 +46,13 @@ import {
   upsertClassNote,
   upsertDailyTest,
   upsertHomework,
+  upsertHomeworkTextbookEntry,
   upsertMakeupPlan,
   upsertMonthlyEvaluation,
   upsertNotice,
   upsertProgress,
   upsertQuestion,
+  upsertStudentTextbookSlot,
   upsertStudent,
   upsertTodayAssignment,
 } from '../lib/db/repository'
@@ -84,11 +89,13 @@ export type DataContextValue = {
   students: Student[]
   attendance: AttendanceRecord[]
   homework: HomeworkRecord[]
+  homeworkTextbookEntries: HomeworkTextbookEntry[]
   assignmentCompletion: AssignmentCompletionRecord[]
   dailyTests: DailyTestRecord[]
   monthlyEvaluations: MonthlyEvaluationRecord[]
   questions: QuestionRecord[]
   progressRecords: ProgressRecord[]
+  studentTextbookSlots: StudentTextbookSlot[]
   makeupPlans: MakeupPlanRecord[]
   contentPosts: ContentPost[]
   todayAssignments: TodayAssignmentRecord[]
@@ -114,6 +121,12 @@ export type DataContextValue = {
   deleteAttendanceRecord: (id: string) => void
   saveHomeworkRecord: (
     data: Omit<HomeworkRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
+  ) => boolean
+  saveHomeworkTextbookEntry: (
+    data: Omit<HomeworkTextbookEntry, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
+  ) => boolean
+  saveStudentTextbookSlot: (
+    data: Omit<StudentTextbookSlot, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
   ) => boolean
   deleteHomeworkRecord: (id: string) => void
   saveAssignmentRecord: (
@@ -175,6 +188,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [students, setStudents] = useState<Student[]>([])
   const [attendance, setAttendanceRecords] = useState<AttendanceRecord[]>([])
   const [homework, setHomework] = useState<HomeworkRecord[]>([])
+  const [homeworkTextbookEntries, setHomeworkTextbookEntries] = useState<
+    HomeworkTextbookEntry[]
+  >([])
   const [assignmentCompletion, setAssignmentCompletion] = useState<
     AssignmentCompletionRecord[]
   >([])
@@ -184,6 +200,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   >([])
   const [questions, setQuestions] = useState<QuestionRecord[]>([])
   const [progressRecords, setProgressRecords] = useState<ProgressRecord[]>([])
+  const [studentTextbookSlots, setStudentTextbookSlots] = useState<StudentTextbookSlot[]>([])
   const [makeupPlans, setMakeupPlans] = useState<MakeupPlanRecord[]>([])
   const [contentPosts, setContentPosts] = useState<ContentPost[]>([])
   const [todayAssignments, setTodayAssignments] = useState<TodayAssignmentRecord[]>([])
@@ -200,6 +217,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     progress: progressRecords,
     assignmentCompletion,
     homework,
+    homeworkTextbookEntries,
+    studentTextbookSlots,
     todayAssignments,
     classNotes,
     dailyTests,
@@ -210,6 +229,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     progress: progressRecords,
     assignmentCompletion,
     homework,
+    homeworkTextbookEntries,
+    studentTextbookSlots,
     todayAssignments,
     classNotes,
     dailyTests,
@@ -221,11 +242,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         students,
         attendance,
         homework,
+        homeworkTextbookEntries,
         assignmentCompletion,
         dailyTests,
         monthlyEvaluations,
         questions,
         progress: progressRecords,
+        studentTextbookSlots,
         makeupPlans,
         contentPosts,
         todayAssignments,
@@ -239,6 +262,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     contentPosts,
     dailyTests,
     homework,
+    homeworkTextbookEntries,
     makeupPlans,
     monthlyEvaluations,
     progressRecords,
@@ -255,8 +279,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     mirrorCurrentBackup,
     students,
     attendance,
-    homework,
-    assignmentCompletion,
+        homework,
+        homeworkTextbookEntries,
+        assignmentCompletion,
     dailyTests,
     monthlyEvaluations,
     questions,
@@ -290,11 +315,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     )
     setAttendanceRecords(data.attendance)
     setHomework(data.homework)
+    setHomeworkTextbookEntries(data.homeworkTextbookEntries ?? [])
     setAssignmentCompletion(data.assignmentCompletion)
     setDailyTests(data.dailyTests)
     setMonthlyEvaluations(data.monthlyEvaluations)
     setQuestions(data.questions)
     setProgressRecords(data.progress)
+    setStudentTextbookSlots(data.studentTextbookSlots ?? [])
     setMakeupPlans(data.makeupPlans)
     setContentPosts(data.contentPosts)
     setTodayAssignments(data.todayAssignments)
@@ -364,6 +391,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setProgressRecords(merged.progress)
     setAssignmentCompletion(merged.assignmentCompletion)
     setHomework(merged.homework)
+    setHomeworkTextbookEntries(merged.homeworkTextbookEntries)
+    setStudentTextbookSlots(merged.studentTextbookSlots)
     setTodayAssignments(merged.todayAssignments)
     setClassNotes(merged.classNotes)
     setDailyTests(merged.dailyTests)
@@ -451,11 +480,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setStudents((prev) => prev.filter((s) => s.id !== id))
       setAttendanceRecords((prev) => prev.filter((a) => a.studentId !== id))
       setHomework((prev) => prev.filter((h) => h.studentId !== id))
+      setHomeworkTextbookEntries((prev) => prev.filter((h) => h.studentId !== id))
       setAssignmentCompletion((prev) => prev.filter((a) => a.studentId !== id))
       setDailyTests((prev) => prev.filter((d) => d.studentId !== id))
       setMonthlyEvaluations((prev) => prev.filter((m) => m.studentId !== id))
       setQuestions((prev) => prev.filter((q) => q.studentId !== id))
       setProgressRecords((prev) => prev.filter((p) => p.studentId !== id))
+      setStudentTextbookSlots((prev) => prev.filter((p) => p.studentId !== id))
       setMakeupPlans((prev) => prev.filter((p) => p.studentId !== id))
       setTodayAssignments((prev) => prev.filter((p) => p.studentId !== id))
       setClassNotes((prev) => prev.filter((p) => p.studentId !== id))
@@ -745,6 +776,106 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [handlePersistError, homework, showToast, validateStudent],
   )
 
+  const saveHomeworkTextbookEntry = useCallback(
+    (
+      data: Omit<HomeworkTextbookEntry, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
+    ) => {
+      if (!validateStudent(data.studentId)) {
+        showToast('존재하지 않는 학생입니다.')
+        return false
+      }
+      const ts = createTimestamps()
+      const existing = data.id
+        ? homeworkTextbookEntries.find((record) => record.id === data.id)
+        : findHomeworkTextbookEntry(
+            homeworkTextbookEntries,
+            data.studentId,
+            data.date,
+            data.subject,
+            data.slotNumber,
+          )
+      const id = data.id ?? existing?.id ?? createId()
+      const record: HomeworkTextbookEntry = {
+        id,
+        studentId: data.studentId,
+        date: data.date,
+        subject: data.subject,
+        slotNumber: data.slotNumber,
+        previousAssignment: data.previousAssignment.trim(),
+        todayAssignment: data.todayAssignment.trim(),
+        status: data.status,
+        createdAt: existing?.createdAt ?? ts.createdAt,
+        updatedAt: ts.updatedAt,
+      }
+      setHomeworkTextbookEntries((prev) => {
+        const withoutDuplicate = prev.filter(
+          (item) =>
+            !(
+              item.studentId === data.studentId &&
+              item.date === data.date &&
+              item.subject === data.subject &&
+              item.slotNumber === data.slotNumber
+            ) && item.id !== id,
+        )
+        return [...withoutDuplicate, record]
+      })
+      void persistWithReload(
+        () => upsertHomeworkTextbookEntry(record),
+        '교재별 숙제 저장에 실패했습니다.',
+        { type: 'todayReport', studentId: record.studentId, date: record.date },
+      )
+      return true
+    },
+    [handlePersistError, homeworkTextbookEntries, showToast, validateStudent],
+  )
+
+  const saveStudentTextbookSlot = useCallback(
+    (
+      data: Omit<StudentTextbookSlot, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
+    ) => {
+      if (!validateStudent(data.studentId)) {
+        showToast('존재하지 않는 학생입니다.')
+        return false
+      }
+      const ts = createTimestamps()
+      const existing = data.id
+        ? studentTextbookSlots.find((record) => record.id === data.id)
+        : findTextbookSlot(
+            studentTextbookSlots,
+            data.studentId,
+            data.subject,
+            data.slotNumber,
+          )
+      const id = data.id ?? existing?.id ?? createId()
+      const record: StudentTextbookSlot = {
+        id,
+        studentId: data.studentId,
+        subject: data.subject,
+        slotNumber: data.slotNumber,
+        textbookName: data.textbookName.trim(),
+        createdAt: existing?.createdAt ?? ts.createdAt,
+        updatedAt: ts.updatedAt,
+      }
+      setStudentTextbookSlots((prev) => {
+        const withoutDuplicate = prev.filter(
+          (item) =>
+            slotKey(item.studentId, item.subject, item.slotNumber) !==
+              slotKey(record.studentId, record.subject, record.slotNumber) &&
+            item.id !== id,
+        )
+        return [...withoutDuplicate, record]
+      })
+      void persistWithReload(
+        () => upsertStudentTextbookSlot(record),
+        '교재명 저장에 실패했습니다.',
+        { type: 'full' },
+      )
+      showToast('교재명이 저장되었습니다.')
+      return true
+    },
+    [handlePersistError, showToast, studentTextbookSlots, validateStudent],
+  )
+
   const deleteHomeworkRecord = useCallback(
     (id: string) => {
       setHomework((prev) => prev.filter((r) => r.id !== id))
@@ -1003,7 +1134,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
       const progressRate = calcProgressRate(data.currentPage, data.totalPage)
       const ts = createTimestamps()
-      const full = { ...data, progressRate }
+      const full = { ...data, slotNumber: data.slotNumber ?? 1, progressRate }
       let record: ProgressRecord
       if (data.id) {
         const existing = progressRecords.find((r) => r.id === data.id)
@@ -1018,6 +1149,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           id: '',
           studentId: data.studentId,
           subject: data.subject,
+          slotNumber: data.slotNumber ?? 1,
         })
         const existing =
           existingIndex >= 0 ? progressRecords[existingIndex] : undefined
@@ -1231,11 +1363,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
       students,
       attendance,
       homework,
+      homeworkTextbookEntries,
       assignmentCompletion,
       dailyTests,
       monthlyEvaluations,
       questions,
       progressRecords,
+      studentTextbookSlots,
       makeupPlans,
       contentPosts,
       todayAssignments,
@@ -1255,6 +1389,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       saveAttendanceRecordAsync,
       deleteAttendanceRecord,
       saveHomeworkRecord,
+      saveHomeworkTextbookEntry,
+      saveStudentTextbookSlot,
       deleteHomeworkRecord,
       saveAssignmentRecord,
       deleteAssignmentRecord,
@@ -1304,12 +1440,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
       getStudentByAccessKey,
       getStudentById,
       homework,
+      homeworkTextbookEntries,
       isLoading,
       isSaving,
       makeupPlans,
       monthlyEvaluations,
       openStudentCareInNewTab,
       progressRecords,
+      studentTextbookSlots,
       questions,
       regenerateStudentAccessKey,
       reloadData,
@@ -1323,6 +1461,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       saveContentPost,
       saveDailyTestRecord,
       saveHomeworkRecord,
+      saveHomeworkTextbookEntry,
+      saveStudentTextbookSlot,
       saveMakeupPlanRecord,
       saveMonthlyEvaluationRecord,
       saveProgressRecord,

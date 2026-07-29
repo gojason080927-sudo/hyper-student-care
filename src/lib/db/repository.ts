@@ -7,10 +7,12 @@ import type {
   ContentPost,
   DailyTestRecord,
   HomeworkRecord,
+  HomeworkTextbookEntry,
   MakeupPlanRecord,
   MonthlyEvaluationRecord,
   ProgressRecord,
   QuestionRecord,
+  StudentTextbookSlot,
   TodayAssignmentRecord,
 } from '../../types/records'
 import type { Student } from '../../types/student'
@@ -24,6 +26,8 @@ import {
   dailyTestFromRow,
   dailyTestToRow,
   homeworkFromRow,
+  homeworkTextbookEntryFromRow,
+  homeworkTextbookEntryToRow,
   homeworkToRow,
   makeupPlanFromRow,
   makeupPlanToRow,
@@ -33,6 +37,8 @@ import {
   noticeToRow,
   progressFromRow,
   progressToRow,
+  studentTextbookSlotFromRow,
+  studentTextbookSlotToRow,
   questionFromRow,
   questionToRow,
   studentFromRow,
@@ -44,10 +50,12 @@ import {
   type ClassNoteRow,
   type DailyTestRow,
   type HomeworkRow,
+  type HomeworkTextbookEntryRow,
   type MakeupPlanRow,
   type MonthlyEvaluationRow,
   type NoticeRow,
   type ProgressRow,
+  type StudentTextbookSlotRow,
   type QuestionRow,
   type StudentRow,
   type TodayAssignmentRow,
@@ -78,6 +86,32 @@ function throwIfError(
 async function selectAll<T>(table: string): Promise<T[]> {
   const { data, error } = await getSupabase().from(table).select('*')
   throwIfError(error, table, `${table} 조회 실패`)
+  return (data ?? []) as T[]
+}
+
+async function selectAllSafe<T>(table: string): Promise<T[]> {
+  const { data, error } = await getSupabase().from(table).select('*')
+  if (error) {
+    if (error.code === '42P01' || /does not exist/i.test(error.message ?? '')) {
+      console.warn(`[Repository] ${table} table missing — returning empty list`)
+      return []
+    }
+    throwIfError(error, table, `${table} 조회 실패`)
+  }
+  return (data ?? []) as T[]
+}
+
+async function selectByStudentIdSafe<T>(table: string, studentId: string): Promise<T[]> {
+  const { data, error } = await getSupabase()
+    .from(table)
+    .select('*')
+    .eq('student_id', studentId)
+  if (error) {
+    if (error.code === '42P01' || /does not exist/i.test(error.message ?? '')) {
+      return []
+    }
+    throwIfError(error, table, `${table} student_id 조회 실패`)
+  }
   return (data ?? []) as T[]
 }
 
@@ -228,11 +262,13 @@ export async function deleteStudentById(id: string): Promise<void> {
 export type AllRecords = {
   attendance: AttendanceRecord[]
   homework: HomeworkRecord[]
+  homeworkTextbookEntries: HomeworkTextbookEntry[]
   assignmentCompletion: AssignmentCompletionRecord[]
   dailyTests: DailyTestRecord[]
   monthlyEvaluations: MonthlyEvaluationRecord[]
   questions: QuestionRecord[]
   progress: ProgressRecord[]
+  studentTextbookSlots: StudentTextbookSlot[]
   makeupPlans: MakeupPlanRecord[]
   contentPosts: ContentPost[]
   todayAssignments: TodayAssignmentRecord[]
@@ -243,11 +279,13 @@ export async function fetchAllRecords(): Promise<AllRecords> {
   const [
     attendanceRows,
     homeworkRows,
+    homeworkTextbookEntryRows,
     assignmentRows,
     dailyTestRows,
     monthlyRows,
     questionRows,
     progressRows,
+    studentTextbookSlotRows,
     makeupRows,
     noticeRows,
     todayAssignmentRows,
@@ -255,11 +293,13 @@ export async function fetchAllRecords(): Promise<AllRecords> {
   ] = await Promise.all([
     selectAll<AttendanceRow>('attendance'),
     selectAll<HomeworkRow>('homework'),
+    selectAllSafe<HomeworkTextbookEntryRow>('homework_textbook_entries'),
     selectAll<AssignmentCompletionRow>('assignment_completions'),
     selectAll<DailyTestRow>('daily_tests'),
     selectAll<MonthlyEvaluationRow>('monthly_evaluations'),
     selectAll<QuestionRow>('questions'),
     selectAll<ProgressRow>('progress'),
+    selectAllSafe<StudentTextbookSlotRow>('student_textbook_slots'),
     selectAll<MakeupPlanRow>('makeup_plans'),
     selectAll<NoticeRow>('notices'),
     selectAll<TodayAssignmentRow>('today_assignments'),
@@ -269,11 +309,13 @@ export async function fetchAllRecords(): Promise<AllRecords> {
   return {
     attendance: attendanceRows.map(attendanceFromRow),
     homework: homeworkRows.map(homeworkFromRow),
+    homeworkTextbookEntries: homeworkTextbookEntryRows.map(homeworkTextbookEntryFromRow),
     assignmentCompletion: assignmentRows.map(assignmentCompletionFromRow),
     dailyTests: dailyTestRows.map(dailyTestFromRow),
     monthlyEvaluations: monthlyRows.map(monthlyEvaluationFromRow),
     questions: questionRows.map(questionFromRow),
     progress: progressRows.map(progressFromRow),
+    studentTextbookSlots: studentTextbookSlotRows.map(studentTextbookSlotFromRow),
     makeupPlans: makeupRows.map(makeupPlanFromRow),
     contentPosts: noticeRows.map(noticeFromRow),
     todayAssignments: todayAssignmentRows.map(todayAssignmentFromRow),
@@ -295,6 +337,8 @@ export type TodayReportData = {
   progress: ProgressRecord[]
   assignmentCompletion: AssignmentCompletionRecord[]
   homework: HomeworkRecord | null
+  homeworkTextbookEntries: HomeworkTextbookEntry[]
+  studentTextbookSlots: StudentTextbookSlot[]
   todayAssignment: TodayAssignmentRecord | null
   classNote: ClassNoteRecord | null
   dailyTest: DailyTestRecord | null
@@ -309,6 +353,8 @@ export async function fetchTodayReportData(
     progressRows,
     assignmentRows,
     homeworkRows,
+    homeworkTextbookEntryRows,
+    studentTextbookSlotRows,
     todayAssignmentRow,
     classNoteRow,
     dailyTestRows,
@@ -329,6 +375,12 @@ export async function fetchTodayReportData(
       date,
     ),
     selectByStudentAndDate<HomeworkRow>('homework', studentId, date),
+    selectByStudentAndDateSafe<HomeworkTextbookEntryRow>(
+      'homework_textbook_entries',
+      studentId,
+      date,
+    ),
+    selectByStudentIdSafe<StudentTextbookSlotRow>('student_textbook_slots', studentId),
     selectOneByStudentAndDate<TodayAssignmentRow>('today_assignments', studentId, date),
     selectOneByStudentAndDate<ClassNoteRow>('class_notes', studentId, date),
     selectByStudentAndDate<DailyTestRow>('daily_tests', studentId, date),
@@ -339,12 +391,33 @@ export async function fetchTodayReportData(
     progress: progressRows.map(progressFromRow),
     assignmentCompletion: assignmentRows.map(assignmentCompletionFromRow),
     homework: homeworkRows[0] ? homeworkFromRow(homeworkRows[0]) : null,
+    homeworkTextbookEntries: homeworkTextbookEntryRows.map(homeworkTextbookEntryFromRow),
+    studentTextbookSlots: studentTextbookSlotRows.map(studentTextbookSlotFromRow),
     todayAssignment: todayAssignmentRow
       ? todayAssignmentFromRow(todayAssignmentRow)
       : null,
     classNote: classNoteRow ? classNoteFromRow(classNoteRow) : null,
     dailyTest: dailyTestRows[0] ? dailyTestFromRow(dailyTestRows[0]) : null,
   }
+}
+
+async function selectByStudentAndDateSafe<T>(
+  table: string,
+  studentId: string,
+  date: string,
+): Promise<T[]> {
+  const { data, error } = await getSupabase()
+    .from(table)
+    .select('*')
+    .eq('student_id', studentId)
+    .eq('date', date)
+  if (error) {
+    if (error.code === '42P01' || /does not exist/i.test(error.message ?? '')) {
+      return []
+    }
+    throwIfError(error, table, `${table} student_id+date 조회 실패`)
+  }
+  return (data ?? []) as T[]
 }
 
 // ---------------------------------------------------------------------------
@@ -375,6 +448,28 @@ export async function fetchHomeworkByStudent(studentId: string): Promise<Homewor
 
 export async function upsertHomework(record: HomeworkRecord): Promise<void> {
   await upsertRow('homework', homeworkToRow(record))
+}
+
+export async function upsertHomeworkTextbookEntry(
+  record: HomeworkTextbookEntry,
+): Promise<void> {
+  const { error } = await getSupabase()
+    .from('homework_textbook_entries')
+    .upsert(homeworkTextbookEntryToRow(record), {
+      onConflict: 'student_id,date,subject,slot_number',
+    })
+  throwIfError(error, 'homework_textbook_entries', 'homework_textbook_entries 저장 실패')
+}
+
+export async function upsertStudentTextbookSlot(
+  record: StudentTextbookSlot,
+): Promise<void> {
+  const { error } = await getSupabase()
+    .from('student_textbook_slots')
+    .upsert(studentTextbookSlotToRow(record), {
+      onConflict: 'student_id,subject,slot_number',
+    })
+  throwIfError(error, 'student_textbook_slots', 'student_textbook_slots 저장 실패')
 }
 
 export async function deleteHomework(id: string): Promise<void> {
