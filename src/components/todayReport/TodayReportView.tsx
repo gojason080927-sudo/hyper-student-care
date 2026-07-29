@@ -29,7 +29,6 @@ import {
   dailyTestFormToSavePayload,
   dailyTestRecordToForm,
   emptyDailyTestForm,
-  getFinalPassLabel,
   migrateSessionResults,
   type DailyTestFormData,
 } from '../../utils/dailyTest'
@@ -37,6 +36,7 @@ import { calcProgressRate } from '../../utils/calc'
 import { findTodayAssignment, TODAY_ASSIGNMENT_MAX_LENGTH } from '../../utils/todayAssignment'
 import { CLASS_NOTE_MAX_LENGTH, findClassNote } from '../../utils/classNote'
 import { getHomeworkContent, homeworkRecordToSavePayload } from '../../utils/homework'
+import { findProgressBySubject } from '../../utils/progressRecord'
 import {
   ATTENDANCE_STATUSES,
   btnPrimary,
@@ -450,10 +450,6 @@ function AttendanceSection({
   )
 }
 
-function findProgressBySubject(records: ProgressRecord[], subject: string) {
-  return records.find((record) => record.subject === subject)
-}
-
 function formatTodayProgressContent(record?: ProgressRecord): string {
   if (!record) return ''
   const progress = record.currentProgress?.trim() ?? ''
@@ -559,20 +555,16 @@ function ProgressSection({
           <EmptyHint message="오늘 등록된 진도 기록이 없습니다." />
         ) : (
           <div className="space-y-3">
-            {(['수학', '영어'] as const).map((subject) => {
-              const record = findProgressBySubject(records, subject)
+            {records.map((record) => {
               const content = formatTodayProgressContent(record)
-              if (!record && !content.trim()) return null
-              const rate = record
-                ? calcProgressRate(record.currentPage, record.totalPage)
-                : 0
+              const rate = calcProgressRate(record.currentPage, record.totalPage)
               return (
                 <div
-                  key={subject}
+                  key={record.id}
                   className="rounded-xl border border-slate-200 bg-slate-50/60 p-3"
                 >
-                  <p className="text-sm font-bold text-navy-900">{subject}</p>
-                  {record?.textbookName?.trim() && (
+                  <p className="text-sm font-bold text-navy-900">{record.subject}</p>
+                  {record.textbookName?.trim() && (
                     <p className="mt-1 text-sm text-slate-600">
                       <span className="font-medium text-slate-700">교재:</span>{' '}
                       {record.textbookName}
@@ -585,7 +577,7 @@ function ProgressSection({
                   ) : (
                     <p className="mt-1.5 text-sm text-slate-400">등록된 진도가 없습니다.</p>
                   )}
-                  {record && record.totalPage > 0 && (
+                  {record.totalPage > 0 && (
                     <div className="mt-2.5">
                       <HeroProgressBar value={rate} size="default" />
                     </div>
@@ -972,30 +964,12 @@ function DailyTestSection({
       {readOnly ? (
         record ? (
           <div className="space-y-3">
-            <div className="grid grid-cols-3 gap-2">
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-2 py-2.5 text-center">
-                <p className="text-[11px] font-medium text-slate-500">점수</p>
-                <p className="mt-0.5 text-sm font-bold text-navy-900">
-                  {record.score}/{record.totalScore}
-                </p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-2 py-2.5 text-center">
-                <p className="text-[11px] font-medium text-slate-500">오답</p>
-                <p className="mt-0.5 text-sm font-bold text-navy-900">{record.incorrectCount}개</p>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-2 py-2.5 text-center">
-                <p className="text-[11px] font-medium text-slate-500">합격</p>
-                <p className="mt-0.5 text-sm font-bold text-blue-700">
-                  {getFinalPassLabel(migrateSessionResults(record))}
-                </p>
-              </div>
-            </div>
             {record.testName && (
               <p className="text-sm text-slate-600">
                 <span className="font-medium text-slate-700">{record.subject}</span> · {record.testName}
               </p>
             )}
-            <DailyTestSessionGrid record={record} dense />
+            <DailyTestSessionGrid record={record} variant="parentReport" readOnly />
           </div>
         ) : (
           <EmptyHint message="오늘 등록된 일일테스트 결과가 없습니다." />

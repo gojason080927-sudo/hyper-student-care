@@ -12,6 +12,8 @@ type DailyTestSessionGridProps = {
   record: DailyTestRecord
   compact?: boolean
   dense?: boolean
+  /** 학부모 Today Report: 차시별 점수 + 합격/불합격 */
+  variant?: 'default' | 'parentReport'
   /** 학부모 화면: 표시만, 클릭·수정 불가 */
   readOnly?: boolean
 }
@@ -26,10 +28,21 @@ export function DailyTestSessionGrid({
   record,
   compact = false,
   dense = false,
+  variant = 'default',
   readOnly = false,
 }: DailyTestSessionGridProps) {
   const sessions = migrateSessionResults(record)
   const [expandedSession, setExpandedSession] = useState<number | null>(null)
+
+  if (variant === 'parentReport') {
+    return (
+      <div className="grid grid-cols-2 gap-2.5">
+        {sessions.map((session) => (
+          <ParentReportSessionCard key={session.session} session={session} />
+        ))}
+      </div>
+    )
+  }
 
   if (dense) {
     return (
@@ -72,6 +85,26 @@ export function DailyTestSessionGrid({
           />
         ))}
       </div>
+    </div>
+  )
+}
+
+function ParentReportSessionCard({ session }: { session: TestSessionResult }) {
+  const scoreOnFullScale = getSessionScoreOnFullScale(session)
+  const isAbsent = session.status === '미응시'
+  const hasScore = !isAbsent && scoreOnFullScale !== ''
+
+  return (
+    <div
+      className={`flex min-h-[5.5rem] flex-col items-center justify-center rounded-xl border px-3 py-3 text-center ${getDailyTestSessionColor(session.status)}`}
+    >
+      <p className="text-xs font-semibold text-slate-600">{session.session}차시</p>
+      {hasScore ? (
+        <p className="mt-1.5 text-lg font-bold leading-none">{scoreOnFullScale}점</p>
+      ) : null}
+      <p className={`font-bold ${hasScore ? 'mt-1 text-sm' : 'mt-2 text-sm'}`}>
+        {session.status}
+      </p>
     </div>
   )
 }
