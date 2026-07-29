@@ -31,5 +31,5 @@ export const parentTodayReportItem = {
   segment: 'today-report',
   label: 'Today Report',
   icon: ClipboardList,
-  description: '오늘 학습 한눈에 보기',
+  description: '오늘의 학습 한눈에 보기',
 } as const

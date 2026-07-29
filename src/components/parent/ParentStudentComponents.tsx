@@ -18,16 +18,14 @@ export function ParentStudentInfoCard({
 
   if (compact) {
     return (
-      <section className="rounded-xl border border-slate-200 bg-white px-3.5 py-3 shadow-sm sm:rounded-2xl sm:px-4 sm:py-3.5">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-navy-600">
+      <section className="rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm sm:rounded-2xl sm:px-3.5 sm:py-3">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-navy-600">
           Hyper Student Care
         </p>
-        <h1 className="mt-1.5 text-lg font-bold text-navy-900">{student.name}</h1>
-        <p className="mt-1 break-anywhere text-sm text-slate-600">
-          {student.school} · {student.grade}
-          {student.teacher ? ` · ${student.teacher}` : ''}
+        <h1 className="mt-1 text-lg font-bold leading-tight text-navy-900">{student.name}</h1>
+        <p className="mt-0.5 line-clamp-2 break-anywhere text-sm leading-snug text-slate-600">
+          {[student.school, student.grade, student.teacher].filter(Boolean).join(' · ')}
         </p>
-        <p className="mt-0.5 text-xs text-slate-500">{displayDate}</p>
       </section>
     )
   }
