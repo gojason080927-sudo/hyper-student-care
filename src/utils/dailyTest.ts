@@ -214,6 +214,11 @@ export function clearSessionResult(session: TestSessionResult): TestSessionResul
   }
 }
 
+export function hasDailyTestDisplayData(record?: DailyTestRecord): boolean {
+  if (!record) return false
+  return migrateSessionResults(record).some((session) => session.status !== '미응시')
+}
+
 export function applyScoreToSession(
   session: TestSessionResult,
   score: number,

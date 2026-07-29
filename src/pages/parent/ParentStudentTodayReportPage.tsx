@@ -1,6 +1,5 @@
 import { ArrowLeft } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { TodayReportErrorBoundary } from '../../components/todayReport/TodayReportErrorBoundary'
 import { TodayReportView } from '../../components/todayReport/TodayReportView'
 import { useParentStudent } from '../../contexts/ParentStudentContext'
 import { btnSecondary } from '../../utils/labels'
@@ -27,9 +26,12 @@ export function ParentStudentTodayReportPage() {
         </Link>
       </div>
 
-      <TodayReportErrorBoundary homePath={homePath}>
-        <TodayReportView student={student} readOnly dateMode="navigate" />
-      </TodayReportErrorBoundary>
+      <TodayReportView
+        student={student}
+        readOnly
+        dateMode="navigate"
+        errorFallbackHomePath={homePath}
+      />
     </div>
   )
 }

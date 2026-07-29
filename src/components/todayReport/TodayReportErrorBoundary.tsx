@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 
 type TodayReportErrorBoundaryProps = {
   homePath: string
+  resetKey?: string
   children: ReactNode
 }
 
@@ -18,6 +19,12 @@ export class TodayReportErrorBoundary extends Component<
 
   static getDerivedStateFromError(): TodayReportErrorBoundaryState {
     return { hasError: true }
+  }
+
+  componentDidUpdate(prevProps: TodayReportErrorBoundaryProps) {
+    if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false })
+    }
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {

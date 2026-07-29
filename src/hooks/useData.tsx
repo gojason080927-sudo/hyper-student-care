@@ -26,6 +26,7 @@ import { loadAppData, loadParentCareData as fetchParentCareData, loadTodayReport
 import { rpcSubmitParentQuestion } from '../lib/db/parentAccessRpc'
 import { getParentAccessKeyFromPath } from '../lib/supabase'
 import { mergeTodayReportIntoState } from '../lib/db/mergeTodayReport'
+import { findProgressRecordIndex } from '../utils/progressRecord'
 import {
   deleteAssignmentCompletion,
   deleteAttendance,
@@ -358,7 +359,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     const report = await loadTodayReportFromSupabase(studentId, date)
     if (!report) return
 
-    const merged = mergeTodayReportIntoState(stateRef.current, report)
+    const merged = mergeTodayReportIntoState(stateRef.current, report, { studentId, date })
     setAttendanceRecords(merged.attendance)
     setProgressRecords(merged.progress)
     setAssignmentCompletion(merged.assignmentCompletion)
@@ -1013,8 +1014,26 @@ export function DataProvider({ children }: { children: ReactNode }) {
         })
         setProgressRecords((prev) => prev.map((r) => (r.id === data.id ? record : r)))
       } else {
-        record = { ...full, id: createId(), ...ts }
-        setProgressRecords((prev) => [...prev, record])
+        const existingIndex = findProgressRecordIndex(progressRecords, {
+          id: '',
+          studentId: data.studentId,
+          subject: data.subject,
+        })
+        const existing =
+          existingIndex >= 0 ? progressRecords[existingIndex] : undefined
+        if (existing) {
+          record = touchRecord({
+            ...existing,
+            ...full,
+            id: existing.id,
+          })
+          setProgressRecords((prev) =>
+            prev.map((r) => (r.id === existing.id ? record : r)),
+          )
+        } else {
+          record = { ...full, id: createId(), ...ts }
+          setProgressRecords((prev) => [...prev, record])
+        }
       }
       void persistWithReload(
         () => upsertProgress(record),

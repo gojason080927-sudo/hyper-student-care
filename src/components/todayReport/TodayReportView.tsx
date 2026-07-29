@@ -1,10 +1,11 @@
 import { ChevronLeft, ChevronRight, Save } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { DailyTestSessionFormSection, validateDailyTestSessions, DailyTestPassRuleBadge } from '../dailytest/DailyTestSessionFormSection'
 import { DailyTestSessionGrid } from '../dailytest/DailyTestSessionGrid'
 import { HomeworkStatusPicker } from '../homework/HomeworkStatusPicker'
 import { HeroProgressBar } from '../ui/HeroProgressBar'
 import { StatusBadge } from '../ui/StatusBadge'
+import { TodayReportErrorBoundary } from './TodayReportErrorBoundary'
 import { useData } from '../../hooks/useData'
 import type {
   AttendanceRecord,
@@ -29,6 +30,7 @@ import {
   dailyTestFormToSavePayload,
   dailyTestRecordToForm,
   emptyDailyTestForm,
+  hasDailyTestDisplayData,
   migrateSessionResults,
   type DailyTestFormData,
 } from '../../utils/dailyTest'
@@ -46,11 +48,35 @@ import {
   SUBJECTS,
 } from '../../utils/labels'
 
+const PARENT_EMPTY_MESSAGES = {
+  attendance: '오늘 등록된 출결 정보가 없습니다.',
+  homework: '오늘 등록된 숙제 정보가 없습니다.',
+  progress: '오늘 등록된 진도 정보가 없습니다.',
+  dailyTest: '오늘 등록된 일일 테스트 결과가 없습니다.',
+  classNote: '등록된 코멘트가 없습니다.',
+} as const
+
+function ParentReadOnlyBody({
+  hasData,
+  emptyMessage,
+  children,
+}: {
+  hasData: boolean
+  emptyMessage: string
+  children: () => ReactNode
+}) {
+  if (!hasData) {
+    return <EmptyHint message={emptyMessage} />
+  }
+  return <>{children()}</>
+}
+
 type TodayReportViewProps = {
   student: Student
   readOnly?: boolean
   initialDate?: string
   dateMode?: 'picker' | 'navigate'
+  errorFallbackHomePath?: string
 }
 
 function SectionCard({
@@ -155,6 +181,8 @@ function getParentAttendanceHighlight(status: AttendanceStatus, active: boolean)
       return 'border-rose-300 bg-rose-100 text-rose-800 ring-2 ring-rose-200'
     case '조퇴':
       return 'border-blue-300 bg-blue-100 text-blue-800 ring-2 ring-blue-200'
+    default:
+      return 'border-slate-100 bg-slate-50 text-slate-400'
   }
 }
 
@@ -163,6 +191,7 @@ export function TodayReportView({
   readOnly = false,
   initialDate,
   dateMode = readOnly ? 'navigate' : 'picker',
+  errorFallbackHomePath,
 }: TodayReportViewProps) {
   const today = getTodayString()
   const [selectedDate, setSelectedDate] = useState(initialDate ?? today)
@@ -317,47 +346,59 @@ export function TodayReportView({
         </>
       )}
 
-      <AttendanceSection
-        readOnly={readOnly}
-        record={dayAttendance}
-        studentId={student.id}
-        date={selectedDate}
-        onSave={saveAttendanceRecord}
-      />
+      <TodayReportErrorBoundary
+        homePath={errorFallbackHomePath ?? '/'}
+        resetKey={selectedDate}
+      >
+        <div className="space-y-3">
+          <AttendanceSection
+            key={`attendance-${selectedDate}`}
+            readOnly={readOnly}
+            record={dayAttendance}
+            studentId={student.id}
+            date={selectedDate}
+            onSave={saveAttendanceRecord}
+          />
 
-      <HomeworkAssignmentSection
-        readOnly={readOnly}
-        homeworkRecord={dayHomework}
-        assignmentRecord={dayAssignment}
-        studentId={student.id}
-        date={selectedDate}
-        onSaveHomework={saveHomeworkRecord}
-        onSaveTodayAssignment={saveTodayAssignmentRecord}
-      />
+          <HomeworkAssignmentSection
+            key={`homework-${selectedDate}`}
+            readOnly={readOnly}
+            homeworkRecord={dayHomework}
+            assignmentRecord={dayAssignment}
+            studentId={student.id}
+            date={selectedDate}
+            onSaveHomework={saveHomeworkRecord}
+            onSaveTodayAssignment={saveTodayAssignmentRecord}
+          />
 
-      <ProgressSection
-        readOnly={readOnly}
-        records={dayProgressList}
-        studentId={student.id}
-        date={selectedDate}
-        onSave={saveProgressRecord}
-      />
+          <ProgressSection
+            key={`progress-${selectedDate}`}
+            readOnly={readOnly}
+            records={dayProgressList}
+            studentId={student.id}
+            date={selectedDate}
+            onSave={saveProgressRecord}
+          />
 
-      <DailyTestSection
-        readOnly={readOnly}
-        record={dayDailyTest}
-        studentId={student.id}
-        date={selectedDate}
-        onSave={saveDailyTestRecord}
-      />
+          <DailyTestSection
+            key={`daily-test-${selectedDate}`}
+            readOnly={readOnly}
+            record={dayDailyTest}
+            studentId={student.id}
+            date={selectedDate}
+            onSave={saveDailyTestRecord}
+          />
 
-      <ClassNoteSection
-        readOnly={readOnly}
-        record={dayClassNote}
-        studentId={student.id}
-        date={selectedDate}
-        onSave={saveClassNoteRecord}
-      />
+          <ClassNoteSection
+            key={`class-note-${selectedDate}`}
+            readOnly={readOnly}
+            record={dayClassNote}
+            studentId={student.id}
+            date={selectedDate}
+            onSave={saveClassNoteRecord}
+          />
+        </div>
+      </TodayReportErrorBoundary>
     </div>
   )
 }
@@ -398,27 +439,30 @@ function AttendanceSection({
   return (
     <SectionCard title="오늘 출결">
       {readOnly ? (
-        record ? (
-          <div className="space-y-2.5">
-            <div className="grid grid-cols-4 gap-2">
-              {ATTENDANCE_STATUSES.map((item) => (
-                <div
-                  key={item}
-                  className={`flex min-h-11 items-center justify-center rounded-lg border px-1 py-2 text-center text-sm font-semibold ${getParentAttendanceHighlight(item, record.status === item)}`}
-                >
-                  {item}
-                </div>
-              ))}
+        <ParentReadOnlyBody
+          hasData={Boolean(record?.status)}
+          emptyMessage={PARENT_EMPTY_MESSAGES.attendance}
+        >
+          {() => (
+            <div className="space-y-2.5">
+              <div className="grid grid-cols-4 gap-2">
+                {ATTENDANCE_STATUSES.map((item) => (
+                  <div
+                    key={item}
+                    className={`flex min-h-11 items-center justify-center rounded-lg border px-1 py-2 text-center text-sm font-semibold ${getParentAttendanceHighlight(item, record!.status === item)}`}
+                  >
+                    {item}
+                  </div>
+                ))}
+              </div>
+              {record!.reason && (
+                <p className="text-sm text-slate-600">
+                  <span className="font-medium text-slate-700">사유:</span> {record!.reason}
+                </p>
+              )}
             </div>
-            {record.reason && (
-              <p className="text-sm text-slate-600">
-                <span className="font-medium text-slate-700">사유:</span> {record.reason}
-              </p>
-            )}
-          </div>
-        ) : (
-          <EmptyHint message="오늘 등록된 출결 기록이 없습니다." />
-        )
+          )}
+        </ParentReadOnlyBody>
       ) : (
         <div className="space-y-3">
           <div className="flex flex-wrap gap-2">
@@ -551,42 +595,45 @@ function ProgressSection({
   return (
     <SectionCard title="오늘의 진도">
       {readOnly ? (
-        records.length === 0 ? (
-          <EmptyHint message="오늘 등록된 진도 기록이 없습니다." />
-        ) : (
-          <div className="space-y-3">
-            {records.map((record) => {
-              const content = formatTodayProgressContent(record)
-              const rate = calcProgressRate(record.currentPage, record.totalPage)
-              return (
-                <div
-                  key={record.id}
-                  className="rounded-xl border border-slate-200 bg-slate-50/60 p-3"
-                >
-                  <p className="text-sm font-bold text-navy-900">{record.subject}</p>
-                  {record.textbookName?.trim() && (
-                    <p className="mt-1 text-sm text-slate-600">
-                      <span className="font-medium text-slate-700">교재:</span>{' '}
-                      {record.textbookName}
-                    </p>
-                  )}
-                  {content.trim() ? (
-                    <p className="mt-1.5 whitespace-pre-wrap text-sm leading-snug text-slate-700">
-                      <span className="font-medium text-slate-700">현재 진도:</span> {content}
-                    </p>
-                  ) : (
-                    <p className="mt-1.5 text-sm text-slate-400">등록된 진도가 없습니다.</p>
-                  )}
-                  {record.totalPage > 0 && (
-                    <div className="mt-2.5">
-                      <HeroProgressBar value={rate} size="default" />
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )
+        <ParentReadOnlyBody
+          hasData={records.length > 0}
+          emptyMessage={PARENT_EMPTY_MESSAGES.progress}
+        >
+          {() => (
+            <div className="space-y-3">
+              {records.map((record) => {
+                const content = formatTodayProgressContent(record)
+                const rate = calcProgressRate(record.currentPage, record.totalPage)
+                return (
+                  <div
+                    key={record.id}
+                    className="rounded-xl border border-slate-200 bg-slate-50/60 p-3"
+                  >
+                    <p className="text-sm font-bold text-navy-900">{record.subject}</p>
+                    {record.textbookName?.trim() && (
+                      <p className="mt-1 text-sm text-slate-600">
+                        <span className="font-medium text-slate-700">교재:</span>{' '}
+                        {record.textbookName}
+                      </p>
+                    )}
+                    {content.trim() ? (
+                      <p className="mt-1.5 whitespace-pre-wrap text-sm leading-snug text-slate-700">
+                        <span className="font-medium text-slate-700">현재 진도:</span> {content}
+                      </p>
+                    ) : (
+                      <p className="mt-1.5 text-sm text-slate-400">등록된 진도가 없습니다.</p>
+                    )}
+                    {record.totalPage > 0 && (
+                      <div className="mt-2.5">
+                        <HeroProgressBar value={rate} size="default" />
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </ParentReadOnlyBody>
       ) : (
         <div className="space-y-3">
           <div className="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 sm:gap-4">
@@ -661,8 +708,8 @@ function resolveHomeworkFields(
     return { previous, today: '' }
   }
 
-  const assignment1 = assignmentRecord.assignment1.trim()
-  const assignment2 = assignmentRecord.assignment2.trim()
+  const assignment1 = (assignmentRecord.assignment1 ?? '').trim()
+  const assignment2 = (assignmentRecord.assignment2 ?? '').trim()
 
   if (previous) {
     return { previous, today: assignment2 || assignment1 }
@@ -673,6 +720,16 @@ function resolveHomeworkFields(
   }
 
   return { previous: '', today: assignment1 || assignment2 }
+}
+
+function hasHomeworkDisplayData(
+  homeworkRecord: HomeworkRecord | undefined,
+  previousAssignment: string,
+  todayAssignment: string,
+): boolean {
+  return Boolean(
+    homeworkRecord?.status || previousAssignment.trim() || todayAssignment.trim(),
+  )
 }
 
 function HomeworkAssignmentSection({
@@ -703,6 +760,13 @@ function HomeworkAssignmentSection({
     setTodayAssignment(fields.today)
   }, [assignmentRecord, homeworkRecord])
 
+  const readOnlyFields = useMemo(
+    () => resolveHomeworkFields(homeworkRecord, assignmentRecord),
+    [homeworkRecord, assignmentRecord],
+  )
+  const displayPrevious = readOnly ? readOnlyFields.previous : previousAssignment
+  const displayToday = readOnly ? readOnlyFields.today : todayAssignment
+
   const handleSave = () => {
     if (!status) return
     onSaveHomework(
@@ -724,41 +788,46 @@ function HomeworkAssignmentSection({
     })
   }
 
-  const hasReadContent = Boolean(
-    previousAssignment.trim() || todayAssignment.trim() || homeworkRecord?.status,
+  const hasReadContent = hasHomeworkDisplayData(
+    homeworkRecord,
+    displayPrevious,
+    displayToday,
   )
 
   return (
     <SectionCard title="숙제 수행 결과">
       {readOnly ? (
-        !hasReadContent ? (
-          <EmptyHint message="오늘 등록된 숙제 기록이 없습니다." />
-        ) : (
-          <div className="space-y-3">
-            {homeworkRecord?.status && (
-              <StatusBadge
-                label={homeworkRecord.status}
-                colorClass={getHomeworkColor(homeworkRecord.status)}
-              />
-            )}
-            {previousAssignment.trim() && (
-              <div>
-                <p className="text-xs font-semibold text-navy-700">숙제 내용</p>
-                <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
-                  {previousAssignment}
-                </p>
-              </div>
-            )}
-            {todayAssignment.trim() && (
-              <div>
-                <p className="text-xs font-semibold text-navy-700">오늘 해야 할 과제</p>
-                <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
-                  {todayAssignment}
-                </p>
-              </div>
-            )}
-          </div>
-        )
+        <ParentReadOnlyBody
+          hasData={hasReadContent}
+          emptyMessage={PARENT_EMPTY_MESSAGES.homework}
+        >
+          {() => (
+            <div className="space-y-3">
+              {homeworkRecord?.status && (
+                <StatusBadge
+                  label={homeworkRecord.status}
+                  colorClass={getHomeworkColor(homeworkRecord.status)}
+                />
+              )}
+              {displayPrevious.trim() && (
+                <div>
+                  <p className="text-xs font-semibold text-navy-700">숙제 내용</p>
+                  <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
+                    {displayPrevious}
+                  </p>
+                </div>
+              )}
+              {displayToday.trim() && (
+                <div>
+                  <p className="text-xs font-semibold text-navy-700">오늘 해야 할 과제</p>
+                  <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
+                    {displayToday}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+        </ParentReadOnlyBody>
       ) : (
         <div className="space-y-4">
           <HomeworkStatusPicker value={status} onChange={setStatus} />
@@ -847,15 +916,18 @@ function ClassNoteSection({
   return (
     <SectionCard title={sectionTitle} emphasis={readOnly}>
       {readOnly ? (
-        showParentNote ? (
-          <div className="rounded-xl border border-amber-100 bg-amber-50/40 px-3.5 py-3.5 sm:px-4 sm:py-4">
-            <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-slate-800">
-              {record!.note}
-            </p>
-          </div>
-        ) : (
-          <p className="text-sm text-slate-500">등록된 코멘트가 없습니다.</p>
-        )
+        <ParentReadOnlyBody
+          hasData={showParentNote}
+          emptyMessage={PARENT_EMPTY_MESSAGES.classNote}
+        >
+          {() => (
+            <div className="rounded-xl border border-amber-100 bg-amber-50/40 px-3.5 py-3.5 sm:px-4 sm:py-4">
+              <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-slate-800">
+                {record!.note}
+              </p>
+            </div>
+          )}
+        </ParentReadOnlyBody>
       ) : (
         <div className="space-y-3">
           <div className="flex flex-wrap gap-2">
@@ -916,6 +988,19 @@ function ClassNoteSection({
   )
 }
 
+function DailyTestParentSection({ record }: { record: DailyTestRecord }) {
+  return (
+    <div className="space-y-3">
+      {record.testName && (
+        <p className="text-sm text-slate-600">
+          <span className="font-medium text-slate-700">{record.subject}</span> · {record.testName}
+        </p>
+      )}
+      <DailyTestSessionGrid record={record} variant="parentReport" readOnly />
+    </div>
+  )
+}
+
 function DailyTestSection({
   readOnly,
   record,
@@ -962,18 +1047,12 @@ function DailyTestSection({
       compact={readOnly}
     >
       {readOnly ? (
-        record ? (
-          <div className="space-y-3">
-            {record.testName && (
-              <p className="text-sm text-slate-600">
-                <span className="font-medium text-slate-700">{record.subject}</span> · {record.testName}
-              </p>
-            )}
-            <DailyTestSessionGrid record={record} variant="parentReport" readOnly />
-          </div>
-        ) : (
-          <EmptyHint message="오늘 등록된 일일테스트 결과가 없습니다." />
-        )
+        <ParentReadOnlyBody
+          hasData={hasDailyTestDisplayData(record)}
+          emptyMessage={PARENT_EMPTY_MESSAGES.dailyTest}
+        >
+          {() => <DailyTestParentSection record={record!} />}
+        </ParentReadOnlyBody>
       ) : (
         <div className="space-y-2">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
