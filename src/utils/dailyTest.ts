@@ -179,7 +179,7 @@ export function updateSessionInForm(
 }
 
 export function getSessionScoreOnFullScale(session: TestSessionResult): number | '' {
-  if (session.status === '미응시' || session.score === undefined) return ''
+  if (session.score === undefined) return ''
   const total = session.totalScore ?? DAILY_TEST_FULL_SCORE
   if (total === DAILY_TEST_FULL_SCORE) return session.score
   return Math.round(calcPercentage(session.score, total))
@@ -193,7 +193,24 @@ export function updateSessionScoreOnly(
     ...session,
     score,
     totalScore: DAILY_TEST_FULL_SCORE,
-    incorrectCount: 0,
+    incorrectCount: session.incorrectCount ?? 0,
+  }
+}
+
+export function updateSessionStatusOnly(
+  session: TestSessionResult,
+  status: Exclude<TestSessionStatus, '미응시'>,
+): TestSessionResult {
+  return {
+    ...session,
+    status,
+  }
+}
+
+export function clearSessionResult(session: TestSessionResult): TestSessionResult {
+  return {
+    session: session.session,
+    status: '미응시',
   }
 }
 

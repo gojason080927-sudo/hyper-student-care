@@ -1,9 +1,11 @@
 import type { TestSessionResult, TestSessionStatus } from '../../types/records'
 import {
+  clearSessionResult,
   DAILY_TEST_FULL_SCORE,
   getSessionScoreOnFullScale,
   updateSessionInForm,
   updateSessionScoreOnly,
+  updateSessionStatusOnly,
 } from '../../utils/dailyTest'
 import { getDailyTestSessionColor } from '../../utils/labels'
 
@@ -20,35 +22,19 @@ export function ClassBulkDailyTestCompact({ sessions, onChange }: ClassBulkDaily
   }
 
   const setStatus = (sessionNum: 1 | 2 | 3 | 4, status: TestSessionStatus) => {
+    const current = sessions.find((s) => s.session === sessionNum)!
     if (status === '미응시') {
-      setSession(sessionNum, {
-        status: '미응시',
-        score: undefined,
-        totalScore: undefined,
-        incorrectCount: undefined,
-      })
+      setSession(sessionNum, clearSessionResult(current))
       return
     }
-    const current = sessions.find((s) => s.session === sessionNum)!
-    const scoreOnFullScale = getSessionScoreOnFullScale(current)
-    setSession(sessionNum, {
-      status,
-      score: scoreOnFullScale === '' ? 0 : scoreOnFullScale,
-      totalScore: DAILY_TEST_FULL_SCORE,
-      incorrectCount: 0,
-    })
+    setSession(sessionNum, updateSessionStatusOnly(current, status))
   }
 
   return (
     <div className="space-y-1.5">
       {sessions.map((session) => {
         const displayScore = getSessionScoreOnFullScale(session)
-        const showScore =
-          session.status !== '미응시'
-            ? displayScore
-            : session.score !== undefined
-              ? session.score
-              : ''
+        const showScore = displayScore !== '' ? displayScore : ''
 
         return (
           <div key={session.session} className="flex items-center gap-1.5">
