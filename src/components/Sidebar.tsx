@@ -12,7 +12,6 @@ import {
   MessageCircleQuestion,
   Newspaper,
   Users,
-  UsersRound,
   X,
 } from 'lucide-react'
 import { BrandMark } from './brand/BrandMark'
@@ -30,8 +29,7 @@ const navItems: NavItem[] = [
   { path: '/progress', label: '진도 과정', icon: Book },
   { path: '/homework', label: '숙제관리', icon: BookOpen },
   { path: '/daily-tests', label: '일일테스트', icon: FileCheck },
-  { path: '/teacher/today-report', label: 'Today Report', icon: ClipboardList },
-  { path: '/teacher/class-bulk-input', label: '반별 통합 입력', icon: UsersRound },
+  { path: '/teacher/today-report-bulk', label: 'Today Report 반별 통합입력', icon: ClipboardList },
   { path: '/teacher/monthly-evaluation', label: '월말평가', icon: CalendarCheck },
   { path: '/makeup-plans', label: '보강계획', icon: CalendarClock },
   { path: '/teacher/learning-notices', label: '학습정보 & 공지사항', icon: Newspaper },

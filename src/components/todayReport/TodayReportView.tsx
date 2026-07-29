@@ -77,6 +77,8 @@ type TodayReportViewProps = {
   initialDate?: string
   dateMode?: 'picker' | 'navigate'
   errorFallbackHomePath?: string
+  hideHeader?: boolean
+  classNoteExtraActions?: ReactNode
 }
 
 function SectionCard({
@@ -192,6 +194,8 @@ export function TodayReportView({
   initialDate,
   dateMode = readOnly ? 'navigate' : 'picker',
   errorFallbackHomePath,
+  hideHeader = false,
+  classNoteExtraActions,
 }: TodayReportViewProps) {
   const today = getTodayString()
   const [selectedDate, setSelectedDate] = useState(initialDate ?? today)
@@ -274,7 +278,8 @@ export function TodayReportView({
 
   return (
     <div className="space-y-3">
-      {readOnly ? (
+      {!hideHeader &&
+        (readOnly ? (
         <>
           <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
             <button
@@ -344,7 +349,7 @@ export function TodayReportView({
           </div>
           <StudentSummaryCard student={student} />
         </>
-      )}
+      ))}
 
       <TodayReportErrorBoundary
         homePath={errorFallbackHomePath ?? '/'}
@@ -396,6 +401,7 @@ export function TodayReportView({
             studentId={student.id}
             date={selectedDate}
             onSave={saveClassNoteRecord}
+            extraActions={classNoteExtraActions}
           />
         </div>
       </TodayReportErrorBoundary>
@@ -876,12 +882,14 @@ function ClassNoteSection({
   studentId,
   date,
   onSave,
+  extraActions,
 }: {
   readOnly: boolean
   record?: ClassNoteRecord
   studentId: string
   date: string
   onSave: ReturnType<typeof useData>['saveClassNoteRecord']
+  extraActions?: ReactNode
 }) {
   const [hasClassNote, setHasClassNote] = useState(record?.hasClassNote ?? false)
   const [note, setNote] = useState(record?.note ?? '')
@@ -981,7 +989,10 @@ function ClassNoteSection({
               </div>
             </div>
           )}
-          <SaveButton onClick={handleSave} label="특이사항 저장" />
+          <div className="flex flex-wrap items-start gap-2">
+            <SaveButton onClick={handleSave} label="특이사항 저장" />
+            {extraActions}
+          </div>
         </div>
       )}
     </SectionCard>

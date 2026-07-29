@@ -10,14 +10,14 @@ import { formatSubjects } from '../utils/filters'
 import { formatKoreanDate } from '../utils/date'
 import { btnPrimary, btnSecondary, getStudentStatusColor } from '../utils/labels'
 
-function buildClassBulkInputPath(student: Student): string {
+function buildTodayReportBulkPath(student: Student): string {
   const params = new URLSearchParams()
   if (student.className.trim()) {
     params.set('class', student.className.trim())
   }
   params.set('student', student.id)
   const query = params.toString()
-  return query ? `/teacher/class-bulk-input?${query}` : '/teacher/class-bulk-input'
+  return query ? `/teacher/today-report-bulk?${query}` : '/teacher/today-report-bulk'
 }
 
 function InfoField({ label, value }: { label: string; value: string }) {
@@ -55,7 +55,7 @@ export function StudentDetailPage() {
     )
   }
 
-  const classBulkPath = buildClassBulkInputPath(student)
+  const todayReportBulkPath = buildTodayReportBulkPath(student)
 
   return (
     <div className="space-y-6">
@@ -94,19 +94,19 @@ export function StudentDetailPage() {
 
       <div className="rounded-2xl border border-amber-100 bg-amber-50/70 px-4 py-3.5 sm:px-5">
         <p className="text-sm leading-relaxed text-amber-950">
-          수업 기록과 학부모 링크는 반별 통합 입력에서 관리합니다.
+          수업 기록과 학부모 링크는 Today Report 반별 통합입력에서 관리합니다.
         </p>
         <div className="mt-3">
           <Link
-            to={classBulkPath}
+            to={todayReportBulkPath}
             className={`${btnPrimary} inline-flex min-h-11 items-center gap-2`}
           >
-            반별 통합 입력으로 이동
+            Today Report 반별 통합입력으로 이동
             <ArrowRight className="h-4 w-4" />
           </Link>
           {!student.className.trim() && (
             <p className="mt-2 text-xs text-amber-800">
-              반/과정이 등록되지 않았습니다. 반별 통합 입력에서 직접 반을 선택해 주세요.
+              반/과정이 등록되지 않았습니다. Today Report 반별 통합입력에서 직접 반을 선택해 주세요.
             </p>
           )}
         </div>

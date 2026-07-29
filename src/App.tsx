@@ -16,10 +16,10 @@ import { LearningNoticeDetailPage } from './pages/LearningNoticeDetailPage'
 import { LearningNoticesPage } from './pages/LearningNoticesPage'
 import { StudentMonthlyEvaluationPage } from './pages/StudentMonthlyEvaluationPage'
 import { StudentsPage } from './pages/StudentsPage'
-import { TeacherClassBulkInputPage } from './pages/TeacherClassBulkInputPage'
+import { RedirectToTodayReportBulk } from './pages/RedirectToTodayReportBulk'
+import { TeacherTodayReportBulkPage } from './pages/TeacherTodayReportBulkPage'
 import { TeacherLearningNoticeDetailPage } from './pages/TeacherLearningNoticeDetailPage'
 import { TeacherLearningNoticesPage } from './pages/TeacherLearningNoticesPage'
-import { TeacherTodayReportPage } from './pages/TeacherTodayReportPage'
 import { ParentStudentAttendancePage } from './pages/parent/ParentStudentAttendancePage'
 import { ParentStudentDailyTestPage } from './pages/parent/ParentStudentDailyTestPage'
 import { ParentStudentHomePage } from './pages/parent/ParentStudentHomePage'
@@ -66,8 +66,9 @@ function App() {
           <Route path="monthly-evaluations" element={<MonthlyEvaluationSelectPage />} />
           <Route path="teacher/monthly-evaluation" element={<MonthlyEvaluationPage />} />
           <Route path="makeup-plans" element={<MakeupPlanPage />} />
-          <Route path="teacher/today-report" element={<TeacherTodayReportPage />} />
-          <Route path="teacher/class-bulk-input" element={<TeacherClassBulkInputPage />} />
+          <Route path="teacher/today-report-bulk" element={<TeacherTodayReportBulkPage />} />
+          <Route path="teacher/today-report" element={<RedirectToTodayReportBulk />} />
+          <Route path="teacher/class-bulk-input" element={<RedirectToTodayReportBulk />} />
           <Route path="teacher/learning-notices" element={<TeacherLearningNoticesPage />} />
           <Route
             path="teacher/learning-notices/:postId"
