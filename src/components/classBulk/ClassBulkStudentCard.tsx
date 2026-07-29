@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { DailyTestPassRuleBadge } from '../dailytest/DailyTestSessionFormSection'
+import { StudentParentLinkToolbar } from '../students/StudentParentLinkToolbar'
 import { ClassBulkDailyTestCompact } from './ClassBulkDailyTestCompact'
 import type { ClassBulkStudentDraft } from '../../types/classBulk'
 import type { Student } from '../../types/student'
@@ -139,6 +140,8 @@ export function ClassBulkStudentCard({
         </div>
         <SyncBadge status={syncStatus} />
       </div>
+
+      <StudentParentLinkToolbar student={student} />
 
       <div className="flex flex-1 flex-col gap-0 text-xs">
         <section>

@@ -1,7 +1,6 @@
 import { ArrowLeft, ArrowRight, Pencil } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { StudentAccessLinkPanel } from '../components/students/StudentAccessLinkPanel'
 import { StudentFormModal } from '../components/students/StudentFormModal'
 import { EmptyState } from '../components/ui/EmptyState'
 import { StatusBadge } from '../components/ui/StatusBadge'
@@ -95,7 +94,7 @@ export function StudentDetailPage() {
 
       <div className="rounded-2xl border border-amber-100 bg-amber-50/70 px-4 py-3.5 sm:px-5">
         <p className="text-sm leading-relaxed text-amber-950">
-          수업 기록은 반별 통합 입력에서 관리합니다.
+          수업 기록과 학부모 링크는 반별 통합 입력에서 관리합니다.
         </p>
         <div className="mt-3">
           <Link
@@ -127,7 +126,6 @@ export function StudentDetailPage() {
           <InfoField label="등록일" value={formatKoreanDate(student.enrollmentDate)} />
           <InfoField label="메모" value={student.memo} />
         </dl>
-        <StudentAccessLinkPanel student={student} />
       </section>
 
       <StudentFormModal

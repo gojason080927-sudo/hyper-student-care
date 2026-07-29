@@ -1,7 +1,6 @@
 import { Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { handleShareStudentCareToKakao } from '../components/students/KakaoShareButton'
 import { StudentFilterBar } from '../components/students/StudentFilterBar'
 import { StudentFormModal } from '../components/students/StudentFormModal'
 import { StudentTable } from '../components/students/StudentTable'
@@ -12,8 +11,7 @@ import type { Student, StudentListFilters } from '../types/student'
 import { filterStudents } from '../utils/filters'
 
 export function StudentsPage() {
-  const { students, addStudent, updateStudent, deleteStudent, copyStudentCareLink, showToast } =
-    useData()
+  const { students, addStudent, updateStudent, deleteStudent } = useData()
   const navigate = useNavigate()
   const [filters, setFilters] = useState<StudentListFilters>({
     search: '',
@@ -55,12 +53,6 @@ export function StudentsPage() {
     }
   }
 
-  const handleKakaoShare = async (student: Student) => {
-    await handleShareStudentCareToKakao(student, {
-      onError: (message) => showToast(message),
-    })
-  }
-
   const hasStudents = students.length > 0
   const hasFilteredResults = filtered.length > 0
 
@@ -70,7 +62,7 @@ export function StudentsPage() {
         <div>
           <h2 className="text-2xl font-bold text-navy-900">학생관리</h2>
           <p className="mt-1 text-sm text-slate-500">
-            학생 정보를 등록하고 검색·수정·관리합니다.
+            학생 기본정보 등록·검색·수정·재원 상태 관리
           </p>
         </div>
         <button
@@ -104,8 +96,6 @@ export function StudentsPage() {
           onView={(student) => navigate(`/students/${student.id}`)}
           onEdit={openEdit}
           onDelete={setDeleteTarget}
-          onCopyLink={(student) => copyStudentCareLink(student.id)}
-          onKakaoShare={handleKakaoShare}
         />
       )}
 
