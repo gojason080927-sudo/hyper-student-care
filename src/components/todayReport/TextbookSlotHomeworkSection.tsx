@@ -13,23 +13,61 @@ import type {
   TodayAssignmentRecord,
 } from '../../types/records'
 import { TEXTBOOK_SLOT_NUMBERS, TEXTBOOK_SUBJECTS } from '../../types/records'
-import { getHomeworkColor, inputClass } from '../../utils/labels'
+import { inputClass } from '../../utils/labels'
 import { TODAY_ASSIGNMENT_MAX_LENGTH } from '../../utils/todayAssignment'
 import {
-  buildHomeworkNameDrafts,
+  buildTextbookNameDrafts,
   buildHomeworkTextbookDisplays,
   buildHomeworkTextbookDisplaysForEdit,
   findTextbookSlot,
   groupHomeworkBySubject,
+  type TextbookDisplayClassContext,
 } from '../../utils/textbookSlots'
-import { StatusBadge } from '../ui/StatusBadge'
-
-const HOMEWORK_CATEGORY = 'homework' as const
+import type { ClassTodayReportSyncContext } from '../../utils/classTodayReportCommon'
+import { classTrackIncludesSubject } from '../../utils/classTodayReportCommon'
+import {
+  ParentHomeworkSlotCard,
+  ParentSubjectSlotList,
+} from './parentTextbookDisplay'
 
 type SlotDraft = {
   previousAssignment: string
   todayAssignment: string
   status: HomeworkStatus | ''
+}
+
+function slotKey(subject: TextbookSubject, slotNumber: TextbookSlotNumber): string {
+  return `${subject}-${slotNumber}`
+}
+
+function displaysToDrafts(
+  displays: ReturnType<typeof buildHomeworkTextbookDisplaysForEdit>,
+): Record<string, SlotDraft> {
+  return Object.fromEntries(
+    displays.map((item) => [
+      slotKey(item.subject, item.slotNumber),
+      {
+        previousAssignment: item.previousAssignment,
+        todayAssignment: item.todayAssignment,
+        status: item.status,
+      },
+    ]),
+  )
+}
+
+function serializeDisplaysSnapshot(
+  displays: ReturnType<typeof buildHomeworkTextbookDisplaysForEdit>,
+): string {
+  return JSON.stringify(
+    displays.map((item) => ({
+      subject: item.subject,
+      slotNumber: item.slotNumber,
+      previousAssignment: item.previousAssignment,
+      todayAssignment: item.todayAssignment,
+      status: item.status,
+      entryId: item.entryId,
+    })),
+  )
 }
 
 function compactInputClass() {
@@ -66,8 +104,13 @@ export function TextbookSlotHomeworkSection({
   entries,
   legacyHomework,
   legacyAssignment,
+  classContext,
+  classSync,
   onSaveEntry,
+  onSaveEntryAsync,
+  onSaveSubjectWithClassSync,
   onSaveSlot,
+  onNotify,
 }: {
   readOnly: boolean
   studentId: string
@@ -76,48 +119,48 @@ export function TextbookSlotHomeworkSection({
   entries: HomeworkTextbookEntry[]
   legacyHomework?: HomeworkRecord
   legacyAssignment?: TodayAssignmentRecord
+  classContext?: TextbookDisplayClassContext
+  classSync?: ClassTodayReportSyncContext
   onSaveEntry: ReturnType<typeof useData>['saveHomeworkTextbookEntry']
+  onSaveEntryAsync?: ReturnType<typeof useData>['saveHomeworkTextbookEntryAsync']
+  onSaveSubjectWithClassSync?: (
+    subject: TextbookSubject,
+    slots: Array<{
+      slotNumber: TextbookSlotNumber
+      previousAssignment: string
+      todayAssignment: string
+      status: HomeworkStatus | ''
+      entryId?: string
+    }>,
+  ) => Promise<boolean>
   onSaveSlot: ReturnType<typeof useData>['saveStudentTextbookSlot']
+  onNotify?: (message: string) => void
 }) {
   const initialDisplays = useMemo(
-    () => buildHomeworkTextbookDisplaysForEdit(studentId, date, slots, entries),
-    [date, entries, slots, studentId],
+    () => buildHomeworkTextbookDisplaysForEdit(studentId, date, slots, entries, classContext),
+    [classContext, date, entries, slots, studentId],
   )
 
   const [nameDrafts, setNameDrafts] = useState<Record<string, string>>(() =>
-    buildHomeworkNameDrafts(studentId, slots),
+    buildTextbookNameDrafts(studentId, slots),
   )
+  const savedDraftsSnapshot = useMemo(
+    () => serializeDisplaysSnapshot(initialDisplays),
+    [initialDisplays],
+  )
+
   const [drafts, setDrafts] = useState<Record<string, SlotDraft>>(() =>
-    Object.fromEntries(
-      initialDisplays.map((item) => [
-        `${item.subject}-${item.slotNumber}`,
-        {
-          previousAssignment: item.previousAssignment,
-          todayAssignment: item.todayAssignment,
-          status: item.status,
-        },
-      ]),
-    ),
+    displaysToDrafts(initialDisplays),
   )
 
   useEffect(() => {
-    setNameDrafts(buildHomeworkNameDrafts(studentId, slots))
+    setNameDrafts(buildTextbookNameDrafts(studentId, slots))
   }, [slots, studentId])
 
+  // 다른 학생 저장으로 entries 배열 참조만 바뀌는 경우 draft를 초기화하지 않음
   useEffect(() => {
-    setDrafts(
-      Object.fromEntries(
-        initialDisplays.map((item) => [
-          `${item.subject}-${item.slotNumber}`,
-          {
-            previousAssignment: item.previousAssignment,
-            todayAssignment: item.todayAssignment,
-            status: item.status,
-          },
-        ]),
-      ),
-    )
-  }, [initialDisplays])
+    setDrafts(displaysToDrafts(initialDisplays))
+  }, [studentId, date, savedDraftsSnapshot])
 
   const saveTextbookName = (
     subject: TextbookSubject,
@@ -129,17 +172,10 @@ export function TextbookSlotHomeworkSection({
     setNameDrafts((prev) => ({ ...prev, [key]: trimmed }))
     if (!trimmed) return
 
-    const existing = findTextbookSlot(
-      slots,
-      studentId,
-      HOMEWORK_CATEGORY,
-      subject,
-      slotNumber,
-    )
+    const existing = findTextbookSlot(slots, studentId, subject, slotNumber)
     onSaveSlot({
       id: existing?.id,
       studentId,
-      category: HOMEWORK_CATEGORY,
       subject,
       slotNumber,
       textbookName: trimmed,
@@ -154,6 +190,7 @@ export function TextbookSlotHomeworkSection({
       entries,
       legacyHomework,
       legacyAssignment,
+      classContext,
     )
 
     if (displays.length === 0) {
@@ -167,39 +204,19 @@ export function TextbookSlotHomeworkSection({
     const grouped = groupHomeworkBySubject(displays)
     return (
       <SectionCard title="숙제 수행 결과">
-        <div className="space-y-3">
+        <div className="space-y-4">
           {TEXTBOOK_SUBJECTS.map((subject) => {
             const items = grouped[subject]
             if (items.length === 0) return null
             return (
-              <div key={subject}>
-                <p className="text-sm font-bold text-navy-900">{subject}</p>
-                <ul className="mt-1.5 space-y-2">
-                  {items.map((item) => (
-                    <li
-                      key={`${subject}-${item.slotNumber}`}
-                      className="rounded-lg border border-slate-200 bg-slate-50/60 px-2.5 py-2 text-sm text-slate-700"
-                    >
-                      <p className="font-semibold text-navy-800">
-                        {item.textbookName || `교재 ${item.slotNumber}`}
-                      </p>
-                      <p className="mt-0.5 text-xs text-slate-600">
-                        지난 과제 {item.previousAssignment.trim() || '-'} / 오늘 과제{' '}
-                        {item.todayAssignment.trim() || '-'}
-                        {item.status ? ` / ${item.status}` : ''}
-                      </p>
-                      {item.status && (
-                        <div className="mt-1">
-                          <StatusBadge
-                            label={item.status}
-                            colorClass={getHomeworkColor(item.status)}
-                          />
-                        </div>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <ParentSubjectSlotList key={subject} subject={subject}>
+                {items.map((item) => (
+                  <ParentHomeworkSlotCard
+                    key={`${subject}-${item.slotNumber}`}
+                    item={item}
+                  />
+                ))}
+              </ParentSubjectSlotList>
             )
           })}
         </div>
@@ -209,27 +226,48 @@ export function TextbookSlotHomeworkSection({
 
   const grouped = groupHomeworkBySubject(initialDisplays)
 
+  const getDraft = (
+    subject: TextbookSubject,
+    slotNumber: TextbookSlotNumber,
+  ): SlotDraft => {
+    const key = slotKey(subject, slotNumber)
+    return (
+      drafts[key] ?? {
+        previousAssignment: '',
+        todayAssignment: '',
+        status: '',
+      }
+    )
+  }
+
   const updateDraft = (
     subject: TextbookSubject,
     slotNumber: TextbookSlotNumber,
     patch: Partial<SlotDraft>,
   ) => {
-    const key = `${subject}-${slotNumber}`
-    setDrafts((prev) => ({
-      ...prev,
-      [key]: { ...prev[key], ...patch },
-    }))
+    const key = slotKey(subject, slotNumber)
+    setDrafts((prev) => {
+      const current = prev[key] ?? {
+        previousAssignment: '',
+        todayAssignment: '',
+        status: '',
+      }
+      return {
+        ...prev,
+        [key]: { ...current, ...patch },
+      }
+    })
   }
 
-  const saveSubject = (subject: TextbookSubject) => {
-    for (const slotNumber of TEXTBOOK_SLOT_NUMBERS) {
+  const saveSubject = async (subject: TextbookSubject) => {
+    const slotsToSave = TEXTBOOK_SLOT_NUMBERS.flatMap((slotNumber) => {
       const display = initialDisplays.find(
         (item) => item.subject === subject && item.slotNumber === slotNumber,
       )
-      if (!display) continue
+      if (!display) return []
 
-      const key = `${subject}-${slotNumber}`
-      const draft = drafts[key]
+      const key = slotKey(subject, slotNumber)
+      const draft = getDraft(subject, slotNumber)
       const textbookName = (nameDrafts[key] ?? '').trim()
 
       if (textbookName) {
@@ -241,18 +279,65 @@ export function TextbookSlotHomeworkSection({
         draft.todayAssignment.trim() ||
         draft.status
 
-      if (!hasAssignmentContent || !draft.status) continue
+      if (!hasAssignmentContent) return []
 
-      onSaveEntry({
-        id: display.entryId,
-        studentId,
-        date,
+      return [
+        {
+          slotNumber,
+          previousAssignment: draft.previousAssignment,
+          todayAssignment: draft.todayAssignment,
+          status: draft.status,
+          entryId: display.entryId,
+        },
+      ]
+    })
+
+    if (slotsToSave.length === 0) {
+      onNotify?.('저장할 과제 내용이 없습니다.')
+      return
+    }
+
+    if (import.meta.env.DEV) {
+      console.log('[HomeworkSave] saveSubject clicked', {
+        functionName: 'saveSubject',
+        selectedStudentId: studentId,
+        reportDate: date,
         subject,
-        slotNumber,
-        previousAssignment: draft.previousAssignment,
-        todayAssignment: draft.todayAssignment,
-        status: draft.status,
+        slotsToSave,
       })
+    }
+
+    const saveEntry = onSaveEntryAsync ?? (async (data) => {
+      onSaveEntry(data)
+      return { success: true }
+    })
+
+    for (let index = 0; index < slotsToSave.length; index += 1) {
+      const slot = slotsToSave[index]
+      const result = await saveEntry(
+        {
+          id: slot.entryId,
+          studentId,
+          date,
+          subject,
+          slotNumber: slot.slotNumber,
+          previousAssignment: slot.previousAssignment,
+          todayAssignment: slot.todayAssignment,
+          status: slot.status,
+        },
+        { silent: index < slotsToSave.length - 1 },
+      )
+      if (!result.success) {
+        return
+      }
+    }
+
+    if (
+      classSync &&
+      onSaveSubjectWithClassSync &&
+      classTrackIncludesSubject(classSync.className, subject)
+    ) {
+      await onSaveSubjectWithClassSync(subject, slotsToSave)
     }
   }
 
@@ -264,8 +349,8 @@ export function TextbookSlotHomeworkSection({
             <p className="mb-1.5 text-xs font-bold text-navy-800">{subject}</p>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
               {grouped[subject].map((item) => {
-                const key = `${item.subject}-${item.slotNumber}`
-                const draft = drafts[key]
+                const key = slotKey(item.subject, item.slotNumber)
+                const draft = getDraft(item.subject, item.slotNumber)
                 return (
                   <div
                     key={key}
@@ -323,7 +408,7 @@ export function TextbookSlotHomeworkSection({
                 )
               })}
             </div>
-            <div className="mt-2">
+            <div className="mt-2 flex justify-end">
               <SaveButton onClick={() => saveSubject(subject)} />
             </div>
           </div>

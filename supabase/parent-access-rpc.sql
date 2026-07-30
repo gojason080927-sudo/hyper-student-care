@@ -114,6 +114,15 @@ BEGIN
        FROM public.class_notes cn WHERE cn.student_id = v_student_id),
       '[]'::jsonb
     ),
+    'class_today_report_common',
+    coalesce(
+      (SELECT jsonb_agg(to_jsonb(c) ORDER BY c.report_date DESC, c.subject, c.slot_number)
+       FROM public.class_today_report_common c
+       INNER JOIN public.students s ON s.id = v_student_id
+       WHERE c.grade = s.grade
+         AND c.class_name = trim(s.class_name)),
+      '[]'::jsonb
+    ),
     'notices',
     coalesce(
       (SELECT jsonb_agg(to_jsonb(n) ORDER BY n.is_pinned DESC, n.published_at DESC NULLS LAST)
@@ -188,7 +197,17 @@ BEGIN
     (SELECT to_jsonb(d)
      FROM public.daily_tests d
      WHERE d.student_id = v_student_id AND d.date = p_date
-     LIMIT 1)
+     LIMIT 1),
+    'class_today_report_common',
+    coalesce(
+      (SELECT jsonb_agg(to_jsonb(c) ORDER BY c.subject, c.slot_number)
+       FROM public.class_today_report_common c
+       INNER JOIN public.students s ON s.id = v_student_id
+       WHERE c.grade = s.grade
+         AND c.class_name = trim(s.class_name)
+         AND c.report_date IN (p_date, (p_date - interval '1 day')::date)),
+      '[]'::jsonb
+    )
   );
 END;
 $$;

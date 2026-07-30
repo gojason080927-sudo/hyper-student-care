@@ -5,6 +5,7 @@ import type { Student } from '../../types/student'
 import {
   attendanceFromRow,
   classNoteFromRow,
+  classTodayReportCommonFromRow,
   dailyTestFromRow,
   homeworkFromRow,
   homeworkTextbookEntryFromRow,
@@ -18,6 +19,7 @@ import {
   todayAssignmentFromRow,
   type AttendanceRow,
   type ClassNoteRow,
+  type ClassTodayReportCommonRow,
   type DailyTestRow,
   type HomeworkRow,
   type HomeworkTextbookEntryRow,
@@ -57,6 +59,49 @@ function parseRpcJson(value: unknown): Record<string, unknown> | null {
     return value as Record<string, unknown>
   }
   return null
+}
+
+async function fetchHomeworkTextbookEntriesFallback(
+  studentId: string,
+  date?: string,
+): Promise<ReturnType<typeof homeworkTextbookEntryFromRow>[] | undefined> {
+  let query = getSupabase()
+    .from('homework_textbook_entries')
+    .select('*')
+    .eq('student_id', studentId)
+  if (date) {
+    query = query.eq('date', date)
+  } else {
+    query = query.order('date', { ascending: false })
+  }
+  const { data, error } = await query
+  if (error) {
+    console.error('[ParentAccess] fallback homework_textbook_entries fetch failed', error)
+    return undefined
+  }
+  return mapRows<HomeworkTextbookEntryRow, ReturnType<typeof homeworkTextbookEntryFromRow>>(
+    data,
+    homeworkTextbookEntryFromRow,
+  )
+}
+
+async function fetchStudentTextbookSlotsFallback(
+  studentId: string,
+): Promise<ReturnType<typeof studentTextbookSlotFromRow>[] | undefined> {
+  const { data, error } = await getSupabase()
+    .from('student_textbook_slots')
+    .select('*')
+    .eq('student_id', studentId)
+    .order('subject')
+    .order('slot_number')
+  if (error) {
+    console.error('[ParentAccess] fallback student_textbook_slots fetch failed', error)
+    return undefined
+  }
+  return mapRows<StudentTextbookSlotRow, ReturnType<typeof studentTextbookSlotFromRow>>(
+    data,
+    studentTextbookSlotFromRow,
+  )
 }
 
 export async function rpcGetParentStudentByAccessKey(
@@ -123,6 +168,26 @@ export async function rpcGetParentCareBundle(accessKey: string): Promise<LocalBa
   }
 
   const student = studentFromRow(studentRow as StudentRow)
+
+  const [homeworkTextbookEntries, studentTextbookSlots] = await Promise.all([
+    bundle.homework_textbook_entries !== undefined
+      ? Promise.resolve(
+          mapRows<HomeworkTextbookEntryRow, ReturnType<typeof homeworkTextbookEntryFromRow>>(
+            bundle.homework_textbook_entries,
+            homeworkTextbookEntryFromRow,
+          ),
+        )
+      : fetchHomeworkTextbookEntriesFallback(student.id).then((rows) => rows ?? []),
+    bundle.student_textbook_slots !== undefined
+      ? Promise.resolve(
+          mapRows<StudentTextbookSlotRow, ReturnType<typeof studentTextbookSlotFromRow>>(
+            bundle.student_textbook_slots,
+            studentTextbookSlotFromRow,
+          ),
+        )
+      : fetchStudentTextbookSlotsFallback(student.id).then((rows) => rows ?? []),
+  ])
+
   const result: LocalBackupData = {
     students: [student],
     attendance: mapRows<AttendanceRow, ReturnType<typeof attendanceFromRow>>(
@@ -133,18 +198,12 @@ export async function rpcGetParentCareBundle(accessKey: string): Promise<LocalBa
       bundle.progress,
       progressFromRow,
     ),
-    studentTextbookSlots: mapRows<
-      StudentTextbookSlotRow,
-      ReturnType<typeof studentTextbookSlotFromRow>
-    >(bundle.student_textbook_slots, studentTextbookSlotFromRow),
+    studentTextbookSlots,
     homework: mapRows<HomeworkRow, ReturnType<typeof homeworkFromRow>>(
       bundle.homework,
       homeworkFromRow,
     ),
-    homeworkTextbookEntries: mapRows<
-      HomeworkTextbookEntryRow,
-      ReturnType<typeof homeworkTextbookEntryFromRow>
-    >(bundle.homework_textbook_entries, homeworkTextbookEntryFromRow),
+    homeworkTextbookEntries,
     assignmentCompletion: [],
     dailyTests: mapRows<DailyTestRow, ReturnType<typeof dailyTestFromRow>>(
       bundle.daily_tests,
@@ -174,11 +233,17 @@ export async function rpcGetParentCareBundle(accessKey: string): Promise<LocalBa
       bundle.class_notes,
       classNoteFromRow,
     ),
+    classTodayReportCommon: mapRows<
+      ClassTodayReportCommonRow,
+      ReturnType<typeof classTodayReportCommonFromRow>
+    >(bundle.class_today_report_common, classTodayReportCommonFromRow),
   }
 
   console.log('[ParentAccess] rpc get_parent_care_bundle success', {
     studentId: student.id,
     attendanceCount: result.attendance.length,
+    homeworkTextbookEntryCount: result.homeworkTextbookEntries.length,
+    studentTextbookSlotCount: result.studentTextbookSlots.length,
     questionsCount: result.questions.length,
   })
   return result
@@ -207,6 +272,32 @@ export async function rpcGetParentTodayReport(
   }
 
   const report = data as Record<string, unknown>
+  const student = await rpcGetParentStudentByAccessKey(normalizedKey)
+  const studentId = student?.id
+
+  const [homeworkTextbookEntries, studentTextbookSlots] = await Promise.all([
+    report.homework_textbook_entries !== undefined
+      ? Promise.resolve(
+          mapRows<HomeworkTextbookEntryRow, ReturnType<typeof homeworkTextbookEntryFromRow>>(
+            report.homework_textbook_entries,
+            homeworkTextbookEntryFromRow,
+          ),
+        )
+      : studentId
+        ? fetchHomeworkTextbookEntriesFallback(studentId, date)
+        : Promise.resolve(undefined),
+    report.student_textbook_slots !== undefined
+      ? Promise.resolve(
+          mapRows<StudentTextbookSlotRow, ReturnType<typeof studentTextbookSlotFromRow>>(
+            report.student_textbook_slots,
+            studentTextbookSlotFromRow,
+          ),
+        )
+      : studentId
+        ? fetchStudentTextbookSlotsFallback(studentId)
+        : Promise.resolve(undefined),
+  ])
+
   return {
     attendance: mapOptionalRow<AttendanceRow, ReturnType<typeof attendanceFromRow>>(
       report.attendance,
@@ -221,14 +312,8 @@ export async function rpcGetParentTodayReport(
       report.homework,
       homeworkFromRow,
     ),
-    homeworkTextbookEntries: mapRows<
-      HomeworkTextbookEntryRow,
-      ReturnType<typeof homeworkTextbookEntryFromRow>
-    >(report.homework_textbook_entries, homeworkTextbookEntryFromRow),
-    studentTextbookSlots: mapRows<
-      StudentTextbookSlotRow,
-      ReturnType<typeof studentTextbookSlotFromRow>
-    >(report.student_textbook_slots, studentTextbookSlotFromRow),
+    homeworkTextbookEntries,
+    studentTextbookSlots,
     todayAssignment: mapOptionalRow<
       TodayAssignmentRow,
       ReturnType<typeof todayAssignmentFromRow>
@@ -241,6 +326,10 @@ export async function rpcGetParentTodayReport(
       report.daily_test,
       dailyTestFromRow,
     ),
+    classTodayReportCommon: mapRows<
+      ClassTodayReportCommonRow,
+      ReturnType<typeof classTodayReportCommonFromRow>
+    >(report.class_today_report_common, classTodayReportCommonFromRow),
   }
 }
 

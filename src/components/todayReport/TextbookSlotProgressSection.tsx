@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Save } from 'lucide-react'
 import { EditableTextbookName } from './EditableTextbookName'
-import { HeroProgressBar } from '../ui/HeroProgressBar'
+import { inputClass } from '../../utils/labels'
+import {
+  ParentProgressSlotCard,
+  ParentSubjectSlotList,
+} from './parentTextbookDisplay'
 import type { useData } from '../../hooks/useData'
 import type {
   ProgressRecord,
@@ -11,21 +15,36 @@ import type {
 } from '../../types/records'
 import { TEXTBOOK_SLOT_NUMBERS, TEXTBOOK_SUBJECTS } from '../../types/records'
 import { calcProgressRate } from '../../utils/calc'
-import { inputClass } from '../../utils/labels'
 import {
-  buildProgressNameDrafts,
+  buildTextbookNameDrafts,
   buildProgressTextbookDisplays,
   buildProgressTextbookDisplaysForEdit,
   findTextbookSlot,
   groupProgressBySubject,
+  type TextbookDisplayClassContext,
 } from '../../utils/textbookSlots'
-
-const PROGRESS_CATEGORY = 'progress' as const
+import type { ClassTodayReportSyncContext } from '../../utils/classTodayReportCommon'
+import {
+  classTrackIncludesSubject,
+  parseProgressPageValue,
+} from '../../utils/classTodayReportCommon'
 
 type ProgressSlotDraft = {
   currentProgress: string
   currentPage: string
   totalPage: string
+}
+
+function emptyProgressDraft(): ProgressSlotDraft {
+  return { currentProgress: '', currentPage: '', totalPage: '' }
+}
+
+function getProgressDraft(
+  drafts: Record<string, ProgressSlotDraft>,
+  subject: TextbookSubject,
+  slotNumber: TextbookSlotNumber,
+): ProgressSlotDraft {
+  return drafts[`${subject}-${slotNumber}`] ?? emptyProgressDraft()
 }
 
 function compactInputClass() {
@@ -51,24 +70,67 @@ export function TextbookSlotProgressSection({
   date,
   slots,
   progressRecords,
+  classContext,
+  classSync,
   onSave,
+  onSaveAsync,
+  onSaveSubjectWithClassSync,
   onSaveSlot,
+  onNotify,
 }: {
   readOnly: boolean
   studentId: string
   date: string
   slots: StudentTextbookSlot[]
   progressRecords: ProgressRecord[]
+  classContext?: TextbookDisplayClassContext
+  classSync?: ClassTodayReportSyncContext
   onSave: ReturnType<typeof useData>['saveProgressRecord']
+  onSaveAsync?: ReturnType<typeof useData>['saveProgressRecordAsync']
+  onSaveSubjectWithClassSync?: (
+    subject: TextbookSubject,
+    teacherMemo: string,
+    slots: Array<{
+      slotNumber: TextbookSlotNumber
+      currentProgress: string
+      currentPage: number
+      totalPage: number
+      recordId?: string
+    }>,
+  ) => Promise<boolean>
   onSaveSlot: ReturnType<typeof useData>['saveStudentTextbookSlot']
+  onNotify?: (message: string) => void
 }) {
   const initialDisplays = useMemo(
-    () => buildProgressTextbookDisplaysForEdit(studentId, date, slots, progressRecords),
-    [date, progressRecords, slots, studentId],
+    () =>
+      buildProgressTextbookDisplaysForEdit(
+        studentId,
+        date,
+        slots,
+        progressRecords,
+        classContext,
+      ),
+    [classContext, date, progressRecords, slots, studentId],
+  )
+
+  const displaysSnapshot = useMemo(
+    () =>
+      JSON.stringify(
+        initialDisplays.map((item) => ({
+          subject: item.subject,
+          slotNumber: item.slotNumber,
+          currentProgress: item.currentProgress,
+          currentPage: item.currentPage,
+          totalPage: item.totalPage,
+          teacherMemo: item.teacherMemo,
+          recordId: item.recordId,
+        })),
+      ),
+    [initialDisplays],
   )
 
   const [nameDrafts, setNameDrafts] = useState<Record<string, string>>(() =>
-    buildProgressNameDrafts(studentId, slots),
+    buildTextbookNameDrafts(studentId, slots),
   )
   const [drafts, setDrafts] = useState<Record<string, ProgressSlotDraft>>(() =>
     Object.fromEntries(
@@ -88,7 +150,7 @@ export function TextbookSlotProgressSection({
   }))
 
   useEffect(() => {
-    setNameDrafts(buildProgressNameDrafts(studentId, slots))
+    setNameDrafts(buildTextbookNameDrafts(studentId, slots))
   }, [slots, studentId])
 
   useEffect(() => {
@@ -108,7 +170,7 @@ export function TextbookSlotProgressSection({
       수학: initialDisplays.find((item) => item.subject === '수학')?.teacherMemo ?? '',
       영어: initialDisplays.find((item) => item.subject === '영어')?.teacherMemo ?? '',
     })
-  }, [initialDisplays])
+  }, [studentId, date, displaysSnapshot])
 
   const saveTextbookName = (
     subject: TextbookSubject,
@@ -120,17 +182,10 @@ export function TextbookSlotProgressSection({
     setNameDrafts((prev) => ({ ...prev, [key]: trimmed }))
     if (!trimmed) return
 
-    const existing = findTextbookSlot(
-      slots,
-      studentId,
-      PROGRESS_CATEGORY,
-      subject,
-      slotNumber,
-    )
+    const existing = findTextbookSlot(slots, studentId, subject, slotNumber)
     onSaveSlot({
       id: existing?.id,
       studentId,
-      category: PROGRESS_CATEGORY,
       subject,
       slotNumber,
       textbookName: trimmed,
@@ -138,7 +193,13 @@ export function TextbookSlotProgressSection({
   }
 
   if (readOnly) {
-    const displays = buildProgressTextbookDisplays(studentId, date, slots, progressRecords)
+    const displays = buildProgressTextbookDisplays(
+      studentId,
+      date,
+      slots,
+      progressRecords,
+      classContext,
+    )
     if (displays.length === 0) {
       return (
         <SectionCard title="오늘의 진도">
@@ -150,35 +211,19 @@ export function TextbookSlotProgressSection({
     const grouped = groupProgressBySubject(displays)
     return (
       <SectionCard title="오늘의 진도">
-        <div className="space-y-3">
+        <div className="space-y-4">
           {TEXTBOOK_SUBJECTS.map((subject) => {
             const items = grouped[subject]
             if (items.length === 0) return null
             return (
-              <div key={subject}>
-                <p className="text-sm font-bold text-navy-900">{subject}</p>
-                <ul className="mt-1.5 space-y-2">
-                  {items.map((item) => (
-                    <li
-                      key={`${subject}-${item.slotNumber}`}
-                      className="rounded-lg border border-slate-200 bg-slate-50/60 px-2.5 py-2"
-                    >
-                      <p className="text-sm font-semibold text-navy-800">
-                        {item.textbookName || `교재 ${item.slotNumber}`}
-                      </p>
-                      <p className="mt-0.5 text-sm text-slate-700">
-                        {item.currentProgress.trim() || '등록된 진도가 없습니다.'}
-                        {item.totalPage > 0 ? `, ${Math.round(item.progressRate)}%` : ''}
-                      </p>
-                      {item.totalPage > 0 && (
-                        <div className="mt-1.5">
-                          <HeroProgressBar value={item.progressRate} size="default" />
-                        </div>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              <ParentSubjectSlotList key={subject} subject={subject}>
+                {items.map((item) => (
+                  <ParentProgressSlotCard
+                    key={`${subject}-${item.slotNumber}`}
+                    item={item}
+                  />
+                ))}
+              </ParentSubjectSlotList>
             )
           })}
         </div>
@@ -194,22 +239,24 @@ export function TextbookSlotProgressSection({
     patch: Partial<ProgressSlotDraft>,
   ) => {
     const key = `${subject}-${slotNumber}`
-    setDrafts((prev) => ({ ...prev, [key]: { ...prev[key], ...patch } }))
+    setDrafts((prev) => ({
+      ...prev,
+      [key]: { ...emptyProgressDraft(), ...prev[key], ...patch },
+    }))
   }
 
-  const saveSubject = (subject: TextbookSubject) => {
+  const saveSubject = async (subject: TextbookSubject) => {
     const memo = teacherMemos[subject].trim()
-    for (const slotNumber of TEXTBOOK_SLOT_NUMBERS) {
+    const slotsToSave = TEXTBOOK_SLOT_NUMBERS.flatMap((slotNumber) => {
       const display = initialDisplays.find(
         (item) => item.subject === subject && item.slotNumber === slotNumber,
       )
-      if (!display) continue
+      if (!display) return []
 
-      const key = `${subject}-${slotNumber}`
-      const draft = drafts[key]
-      const textbookName = (nameDrafts[key] ?? '').trim()
-      const currentPage = Number(draft.currentPage) || 0
-      const totalPage = Number(draft.totalPage) || 0
+      const draft = getProgressDraft(drafts, subject, slotNumber)
+      const textbookName = (nameDrafts[`${subject}-${slotNumber}`] ?? '').trim()
+      const currentPage = parseProgressPageValue(draft.currentPage)
+      const totalPage = parseProgressPageValue(draft.totalPage)
 
       if (textbookName) {
         saveTextbookName(subject, slotNumber, textbookName)
@@ -222,20 +269,79 @@ export function TextbookSlotProgressSection({
         totalPage > 0 ||
         memo
 
-      if (!hasContent) continue
+      if (!hasContent) return []
 
-      onSave({
-        id: display.recordId,
-        studentId,
+      return [
+        {
+          slotNumber,
+          currentProgress: draft.currentProgress.trim(),
+          currentPage,
+          totalPage,
+          recordId: display.recordId,
+        },
+      ]
+    })
+
+    if (import.meta.env.DEV) {
+      console.log('[ProgressSave] saveSubject clicked', {
+        selectedStudentId: studentId,
+        classGrade: classSync?.grade,
+        className: classSync?.className,
         subject,
-        slotNumber,
-        textbookName,
-        currentProgress: draft.currentProgress.trim(),
-        currentPage,
-        totalPage: totalPage || 1,
-        lastStudyDate: date,
-        teacherMemo: memo,
+        reportDate: date,
+        slotsToSave,
+        useClassSync: Boolean(
+          classSync &&
+            onSaveSubjectWithClassSync &&
+            classTrackIncludesSubject(classSync.className, subject),
+        ),
       })
+    }
+
+    if (slotsToSave.length === 0) {
+      if (import.meta.env.DEV) {
+        console.warn('[ProgressSave] nothing to save for subject', subject)
+      }
+      onNotify?.('저장할 진도 내용이 없습니다.')
+      return
+    }
+
+    const saveRecord = onSaveAsync ?? (async (data) => {
+      onSave(data)
+      return { success: true }
+    })
+
+    for (let index = 0; index < slotsToSave.length; index += 1) {
+      const slot = slotsToSave[index]
+      const result = await saveRecord(
+        {
+          id: slot.recordId,
+          studentId,
+          subject,
+          slotNumber: slot.slotNumber,
+          textbookName: '',
+          currentProgress: slot.currentProgress,
+          currentPage: slot.currentPage,
+          totalPage: slot.totalPage > 0 ? slot.totalPage : 1,
+          lastStudyDate: date,
+          teacherMemo: memo,
+        },
+        { silent: index < slotsToSave.length - 1 },
+      )
+      if (!result.success) {
+        return
+      }
+    }
+
+    if (
+      classSync &&
+      onSaveSubjectWithClassSync &&
+      classTrackIncludesSubject(classSync.className, subject)
+    ) {
+      const success = await onSaveSubjectWithClassSync(subject, memo, slotsToSave)
+      if (import.meta.env.DEV) {
+        console.log('[ProgressSave] class sync result', { subject, success })
+      }
     }
   }
 
@@ -248,9 +354,9 @@ export function TextbookSlotProgressSection({
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
               {grouped[subject].map((item) => {
                 const key = `${item.subject}-${item.slotNumber}`
-                const draft = drafts[key]
-                const currentPage = Number(draft.currentPage) || 0
-                const totalPage = Number(draft.totalPage) || 0
+                const draft = getProgressDraft(drafts, item.subject, item.slotNumber)
+                const currentPage = parseProgressPageValue(draft.currentPage)
+                const totalPage = parseProgressPageValue(draft.totalPage)
                 const rate = calcProgressRate(currentPage, totalPage || 1)
                 return (
                   <div
@@ -304,7 +410,7 @@ export function TextbookSlotProgressSection({
                           </label>
                           <input
                             type="number"
-                            min={1}
+                            min={0}
                             value={draft.totalPage}
                             onChange={(e) =>
                               updateDraft(item.subject, item.slotNumber, {
@@ -337,14 +443,16 @@ export function TextbookSlotProgressSection({
                 rows={1}
                 className={compactTextareaClass()}
               />
-              <button
-                type="button"
-                onClick={() => saveSubject(subject)}
-                className="inline-flex min-h-9 items-center rounded-lg bg-navy-800 px-3 py-1.5 text-sm font-semibold text-white hover:bg-navy-900"
-              >
-                <Save className="mr-1 inline h-3.5 w-3.5" />
-                {subject} 진도 저장
-              </button>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => void saveSubject(subject)}
+                  className="inline-flex min-h-9 items-center rounded-lg bg-navy-800 px-3 py-1.5 text-sm font-semibold text-white hover:bg-navy-900"
+                >
+                  <Save className="mr-1 inline h-3.5 w-3.5" />
+                  {subject} 진도 저장
+                </button>
+              </div>
             </div>
           </div>
         ))}

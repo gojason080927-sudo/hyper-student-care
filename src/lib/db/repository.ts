@@ -4,6 +4,7 @@ import type {
   AssignmentCompletionRecord,
   AttendanceRecord,
   ClassNoteRecord,
+  ClassTodayReportCommon,
   ContentPost,
   DailyTestRecord,
   HomeworkRecord,
@@ -23,6 +24,8 @@ import {
   attendanceToRow,
   classNoteFromRow,
   classNoteToRow,
+  classTodayReportCommonFromRow,
+  classTodayReportCommonToRow,
   dailyTestFromRow,
   dailyTestToRow,
   homeworkFromRow,
@@ -48,6 +51,7 @@ import {
   type AssignmentCompletionRow,
   type AttendanceRow,
   type ClassNoteRow,
+  type ClassTodayReportCommonRow,
   type DailyTestRow,
   type HomeworkRow,
   type HomeworkTextbookEntryRow,
@@ -83,6 +87,16 @@ function throwIfError(
   }
 }
 
+function isMissingTableError(error: { message?: string; code?: string }): boolean {
+  const message = error.message ?? ''
+  return (
+    error.code === '42P01' ||
+    error.code === 'PGRST205' ||
+    /does not exist/i.test(message) ||
+    /could not find the table/i.test(message)
+  )
+}
+
 async function selectAll<T>(table: string): Promise<T[]> {
   const { data, error } = await getSupabase().from(table).select('*')
   throwIfError(error, table, `${table} 조회 실패`)
@@ -92,8 +106,10 @@ async function selectAll<T>(table: string): Promise<T[]> {
 async function selectAllSafe<T>(table: string): Promise<T[]> {
   const { data, error } = await getSupabase().from(table).select('*')
   if (error) {
-    if (error.code === '42P01' || /does not exist/i.test(error.message ?? '')) {
-      console.warn(`[Repository] ${table} table missing — returning empty list`)
+    if (isMissingTableError(error)) {
+      console.warn(
+        `[Repository] ${table} table missing — returning empty list. Run supabase/textbook-slots-migration.sql in Supabase SQL Editor.`,
+      )
       return []
     }
     throwIfError(error, table, `${table} 조회 실패`)
@@ -107,7 +123,10 @@ async function selectByStudentIdSafe<T>(table: string, studentId: string): Promi
     .select('*')
     .eq('student_id', studentId)
   if (error) {
-    if (error.code === '42P01' || /does not exist/i.test(error.message ?? '')) {
+    if (isMissingTableError(error)) {
+      console.warn(
+        `[Repository] ${table} table missing — returning empty list. Run supabase/textbook-slots-migration.sql in Supabase SQL Editor.`,
+      )
       return []
     }
     throwIfError(error, table, `${table} student_id 조회 실패`)
@@ -273,6 +292,7 @@ export type AllRecords = {
   contentPosts: ContentPost[]
   todayAssignments: TodayAssignmentRecord[]
   classNotes: ClassNoteRecord[]
+  classTodayReportCommon: ClassTodayReportCommon[]
 }
 
 export async function fetchAllRecords(): Promise<AllRecords> {
@@ -290,6 +310,7 @@ export async function fetchAllRecords(): Promise<AllRecords> {
     noticeRows,
     todayAssignmentRows,
     classNoteRows,
+    classTodayReportCommonRows,
   ] = await Promise.all([
     selectAll<AttendanceRow>('attendance'),
     selectAll<HomeworkRow>('homework'),
@@ -304,6 +325,7 @@ export async function fetchAllRecords(): Promise<AllRecords> {
     selectAll<NoticeRow>('notices'),
     selectAll<TodayAssignmentRow>('today_assignments'),
     selectAll<ClassNoteRow>('class_notes'),
+    selectAllSafe<ClassTodayReportCommonRow>('class_today_report_common'),
   ])
 
   return {
@@ -320,6 +342,7 @@ export async function fetchAllRecords(): Promise<AllRecords> {
     contentPosts: noticeRows.map(noticeFromRow),
     todayAssignments: todayAssignmentRows.map(todayAssignmentFromRow),
     classNotes: classNoteRows.map(classNoteFromRow),
+    classTodayReportCommon: classTodayReportCommonRows.map(classTodayReportCommonFromRow),
   }
 }
 
@@ -337,11 +360,12 @@ export type TodayReportData = {
   progress: ProgressRecord[]
   assignmentCompletion: AssignmentCompletionRecord[]
   homework: HomeworkRecord | null
-  homeworkTextbookEntries: HomeworkTextbookEntry[]
-  studentTextbookSlots: StudentTextbookSlot[]
+  homeworkTextbookEntries?: HomeworkTextbookEntry[]
+  studentTextbookSlots?: StudentTextbookSlot[]
   todayAssignment: TodayAssignmentRecord | null
   classNote: ClassNoteRecord | null
   dailyTest: DailyTestRecord | null
+  classTodayReportCommon?: ClassTodayReportCommon[]
 }
 
 export async function fetchTodayReportData(
@@ -461,15 +485,85 @@ export async function upsertHomeworkTextbookEntry(
   throwIfError(error, 'homework_textbook_entries', 'homework_textbook_entries 저장 실패')
 }
 
+export async function upsertClassTodayReportCommon(
+  record: ClassTodayReportCommon,
+): Promise<void> {
+  const { error } = await getSupabase()
+    .from('class_today_report_common')
+    .upsert(classTodayReportCommonToRow(record), {
+      onConflict: 'grade,class_name,report_date,subject,slot_number',
+    })
+  if (error) {
+    if (isMissingTableError(error)) {
+      throw new RepositoryError(
+        'class_today_report_common 테이블이 없습니다. Supabase SQL Editor에서 supabase/class-today-report-common-migration.sql을 실행해 주세요.',
+        'class_today_report_common',
+        error,
+      )
+    }
+    throwIfError(error, 'class_today_report_common', '반별 공통 Today Report 저장 실패')
+  }
+}
+
+function isUnifiedSlotConflictError(error: { message?: string }): boolean {
+  return /unique or exclusion constraint/i.test(error.message ?? '')
+}
+
 export async function upsertStudentTextbookSlot(
   record: StudentTextbookSlot,
 ): Promise<void> {
-  const { error } = await getSupabase()
-    .from('student_textbook_slots')
-    .upsert(studentTextbookSlotToRow(record), {
-      onConflict: 'student_id,category,subject,slot_number',
+  const row = studentTextbookSlotToRow(record)
+  const supabase = getSupabase()
+
+  const unified = await supabase.from('student_textbook_slots').upsert(row, {
+    onConflict: 'student_id,subject,slot_number',
+  })
+
+  if (!unified.error) {
+    return
+  }
+
+  if (isMissingTableError(unified.error)) {
+    throw new RepositoryError(
+      'student_textbook_slots 테이블이 없습니다. Supabase SQL Editor에서 supabase/textbook-slots-migration.sql을 실행해 주세요.',
+      'student_textbook_slots',
+      unified.error,
+    )
+  }
+
+  if (!isUnifiedSlotConflictError(unified.error)) {
+    console.error('[Repository] student_textbook_slots upsert failed', {
+      row,
+      code: unified.error.code,
+      message: unified.error.message,
     })
-  throwIfError(error, 'student_textbook_slots', 'student_textbook_slots 저장 실패')
+    throwIfError(unified.error, 'student_textbook_slots', 'student_textbook_slots 저장 실패')
+  }
+
+  // category 분리 스키마(구버전): homework 행에 저장하고 progress 중복 행도 동기화
+  const legacyRow = {
+    ...row,
+    category: 'homework',
+  }
+  const legacy = await supabase.from('student_textbook_slots').upsert(legacyRow, {
+    onConflict: 'student_id,category,subject,slot_number',
+  })
+  if (legacy.error) {
+    console.error('[Repository] student_textbook_slots legacy upsert failed', {
+      row: legacyRow,
+      code: legacy.error.code,
+      message: legacy.error.message,
+    })
+    throwIfError(legacy.error, 'student_textbook_slots', 'student_textbook_slots 저장 실패')
+  }
+
+  await supabase
+    .from('student_textbook_slots')
+    .update({ textbook_name: row.textbook_name, updated_at: row.updated_at })
+    .eq('student_id', row.student_id)
+    .eq('subject', row.subject)
+    .eq('slot_number', row.slot_number)
+    .eq('category', 'progress')
 }
 
 export async function deleteHomework(id: string): Promise<void> {

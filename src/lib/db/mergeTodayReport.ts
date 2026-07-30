@@ -75,8 +75,8 @@ function upsertStudentTextbookSlots(
   for (const record of incoming) {
     const index = next.findIndex(
       (item) =>
-        slotKey(item.studentId, item.category, item.subject, item.slotNumber) ===
-        slotKey(record.studentId, record.category, record.subject, record.slotNumber),
+        slotKey(item.studentId, item.subject, item.slotNumber) ===
+        slotKey(record.studentId, record.subject, record.slotNumber),
     )
     if (index >= 0) next[index] = record
     else next.push(record)
@@ -121,14 +121,17 @@ export function mergeTodayReportIntoState(
       ],
       assignmentCompletion: upsertById(current.assignmentCompletion, report.assignmentCompletion),
       homework: setOptionalByStudentDate(current.homework, studentId, date, report.homework),
-      homeworkTextbookEntries: [
-        ...removeByStudentDate(current.homeworkTextbookEntries, studentId, date),
-        ...report.homeworkTextbookEntries,
-      ],
-      studentTextbookSlots: upsertStudentTextbookSlots(
-        current.studentTextbookSlots,
-        report.studentTextbookSlots,
-      ),
+      homeworkTextbookEntries:
+        report.homeworkTextbookEntries !== undefined
+          ? [
+              ...removeByStudentDate(current.homeworkTextbookEntries, studentId, date),
+              ...report.homeworkTextbookEntries,
+            ]
+          : current.homeworkTextbookEntries,
+      studentTextbookSlots:
+        report.studentTextbookSlots !== undefined
+          ? upsertStudentTextbookSlots(current.studentTextbookSlots, report.studentTextbookSlots)
+          : current.studentTextbookSlots,
       todayAssignments: setOptionalByStudentDate(
         current.todayAssignments,
         studentId,
@@ -149,14 +152,14 @@ export function mergeTodayReportIntoState(
     homework: report.homework
       ? upsertByStudentDateLegacy(current.homework, report.homework)
       : current.homework,
-    homeworkTextbookEntries: upsertById(
-      current.homeworkTextbookEntries,
-      report.homeworkTextbookEntries,
-    ),
-    studentTextbookSlots: upsertStudentTextbookSlots(
-      current.studentTextbookSlots,
-      report.studentTextbookSlots,
-    ),
+    homeworkTextbookEntries:
+      report.homeworkTextbookEntries !== undefined
+        ? upsertById(current.homeworkTextbookEntries, report.homeworkTextbookEntries)
+        : current.homeworkTextbookEntries,
+    studentTextbookSlots:
+      report.studentTextbookSlots !== undefined
+        ? upsertStudentTextbookSlots(current.studentTextbookSlots, report.studentTextbookSlots)
+        : current.studentTextbookSlots,
     todayAssignments: report.todayAssignment
       ? upsertByStudentDateLegacy(current.todayAssignments, report.todayAssignment)
       : current.todayAssignments,
@@ -186,4 +189,4 @@ function upsertByStudentDateLegacy<T extends { id: string; studentId: string; da
 ): T[] {
   return upsertByStudentDate(prev, incoming)
 }
-
+
