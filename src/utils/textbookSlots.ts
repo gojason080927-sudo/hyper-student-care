@@ -328,6 +328,19 @@ export function buildHomeworkTextbookDisplaysForEdit(
   return buildHomeworkSlotDisplays(studentId, date, slots, entries, classContext)
 }
 
+/** 학부모 readOnly: 레거시 단일 슬롯 fallback 없이 6슬롯 전체 map */
+export function buildParentHomeworkTextbookDisplays(
+  studentId: string,
+  date: string,
+  slots: StudentTextbookSlot[],
+  entries: HomeworkTextbookEntry[],
+  classContext?: TextbookDisplayClassContext,
+): HomeworkTextbookDisplay[] {
+  return buildHomeworkSlotDisplays(studentId, date, slots, entries, classContext).filter(
+    hasHomeworkSlotContent,
+  )
+}
+
 function buildProgressSlotDisplays(
   studentId: string,
   date: string,

@@ -465,8 +465,6 @@ export function TodayReportView({
               date={selectedDate}
               slots={studentSlots}
               entries={studentHomeworkEntries}
-              legacyHomework={dayHomework}
-              legacyAssignment={dayAssignment}
               classContext={textbookClassContext}
               classSync={classSync}
               onSaveEntry={saveHomeworkTextbookEntry}

@@ -1,5 +1,6 @@
 import type { TodayReportData } from './repository'
 import { getSupabase } from '../supabase'
+import { getPreviousSeoulDateString } from '../../utils/seoulDate'
 import type { LocalBackupData } from '../../storage/localBackup'
 import type { Student } from '../../types/student'
 import {
@@ -104,6 +105,37 @@ async function fetchStudentTextbookSlotsFallback(
   )
 }
 
+async function fetchClassTodayReportCommonFallback(
+  student: Student,
+  dates?: string[],
+): Promise<ReturnType<typeof classTodayReportCommonFromRow>[] | undefined> {
+  const grade = student.grade.trim()
+  const className = student.className.trim()
+  if (!grade || !className) return []
+
+  let query = getSupabase()
+    .from('class_today_report_common')
+    .select('*')
+    .eq('grade', grade)
+    .eq('class_name', className)
+
+  if (dates && dates.length > 0) {
+    query = query.in('report_date', dates)
+  }
+
+  const { data, error } = await query.order('report_date', { ascending: false })
+
+  if (error) {
+    console.error('[ParentAccess] fallback class_today_report_common fetch failed', error)
+    return undefined
+  }
+
+  return mapRows<ClassTodayReportCommonRow, ReturnType<typeof classTodayReportCommonFromRow>>(
+    data,
+    classTodayReportCommonFromRow,
+  )
+}
+
 export async function rpcGetParentStudentByAccessKey(
   accessKey: string,
 ): Promise<Student | null> {
@@ -169,7 +201,8 @@ export async function rpcGetParentCareBundle(accessKey: string): Promise<LocalBa
 
   const student = studentFromRow(studentRow as StudentRow)
 
-  const [homeworkTextbookEntries, studentTextbookSlots] = await Promise.all([
+  const [homeworkTextbookEntries, studentTextbookSlots, classTodayReportCommon] =
+    await Promise.all([
     bundle.homework_textbook_entries !== undefined
       ? Promise.resolve(
           mapRows<HomeworkTextbookEntryRow, ReturnType<typeof homeworkTextbookEntryFromRow>>(
@@ -186,6 +219,14 @@ export async function rpcGetParentCareBundle(accessKey: string): Promise<LocalBa
           ),
         )
       : fetchStudentTextbookSlotsFallback(student.id).then((rows) => rows ?? []),
+    bundle.class_today_report_common !== undefined
+      ? Promise.resolve(
+          mapRows<
+            ClassTodayReportCommonRow,
+            ReturnType<typeof classTodayReportCommonFromRow>
+          >(bundle.class_today_report_common, classTodayReportCommonFromRow),
+        )
+      : fetchClassTodayReportCommonFallback(student).then((rows) => rows ?? []),
   ])
 
   const result: LocalBackupData = {
@@ -233,10 +274,7 @@ export async function rpcGetParentCareBundle(accessKey: string): Promise<LocalBa
       bundle.class_notes,
       classNoteFromRow,
     ),
-    classTodayReportCommon: mapRows<
-      ClassTodayReportCommonRow,
-      ReturnType<typeof classTodayReportCommonFromRow>
-    >(bundle.class_today_report_common, classTodayReportCommonFromRow),
+    classTodayReportCommon,
   }
 
   console.log('[ParentAccess] rpc get_parent_care_bundle success', {
@@ -244,6 +282,7 @@ export async function rpcGetParentCareBundle(accessKey: string): Promise<LocalBa
     attendanceCount: result.attendance.length,
     homeworkTextbookEntryCount: result.homeworkTextbookEntries.length,
     studentTextbookSlotCount: result.studentTextbookSlots.length,
+    classTodayReportCommonCount: result.classTodayReportCommon?.length ?? 0,
     questionsCount: result.questions.length,
   })
   return result
@@ -275,7 +314,10 @@ export async function rpcGetParentTodayReport(
   const student = await rpcGetParentStudentByAccessKey(normalizedKey)
   const studentId = student?.id
 
-  const [homeworkTextbookEntries, studentTextbookSlots] = await Promise.all([
+  const prevDate = getPreviousSeoulDateString(date)
+
+  const [homeworkTextbookEntries, studentTextbookSlots, classTodayReportCommon] =
+    await Promise.all([
     report.homework_textbook_entries !== undefined
       ? Promise.resolve(
           mapRows<HomeworkTextbookEntryRow, ReturnType<typeof homeworkTextbookEntryFromRow>>(
@@ -295,6 +337,16 @@ export async function rpcGetParentTodayReport(
         )
       : studentId
         ? fetchStudentTextbookSlotsFallback(studentId)
+        : Promise.resolve(undefined),
+    report.class_today_report_common !== undefined
+      ? Promise.resolve(
+          mapRows<
+            ClassTodayReportCommonRow,
+            ReturnType<typeof classTodayReportCommonFromRow>
+          >(report.class_today_report_common, classTodayReportCommonFromRow),
+        )
+      : student
+        ? fetchClassTodayReportCommonFallback(student, [date, prevDate])
         : Promise.resolve(undefined),
   ])
 
@@ -326,10 +378,7 @@ export async function rpcGetParentTodayReport(
       report.daily_test,
       dailyTestFromRow,
     ),
-    classTodayReportCommon: mapRows<
-      ClassTodayReportCommonRow,
-      ReturnType<typeof classTodayReportCommonFromRow>
-    >(report.class_today_report_common, classTodayReportCommonFromRow),
+    classTodayReportCommon,
   }
 }
 

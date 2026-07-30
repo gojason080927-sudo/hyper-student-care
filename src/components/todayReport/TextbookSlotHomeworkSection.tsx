@@ -4,25 +4,24 @@ import { HomeworkStatusPicker } from '../homework/HomeworkStatusPicker'
 import { EditableTextbookName } from './EditableTextbookName'
 import type { useData } from '../../hooks/useData'
 import type {
-  HomeworkRecord,
   HomeworkStatus,
   HomeworkTextbookEntry,
   StudentTextbookSlot,
   TextbookSlotNumber,
   TextbookSubject,
-  TodayAssignmentRecord,
 } from '../../types/records'
 import { TEXTBOOK_SLOT_NUMBERS, TEXTBOOK_SUBJECTS } from '../../types/records'
 import { inputClass } from '../../utils/labels'
 import { TODAY_ASSIGNMENT_MAX_LENGTH } from '../../utils/todayAssignment'
 import {
   buildTextbookNameDrafts,
-  buildHomeworkTextbookDisplays,
   buildHomeworkTextbookDisplaysForEdit,
+  buildParentHomeworkTextbookDisplays,
   findTextbookSlot,
   groupHomeworkBySubject,
   type TextbookDisplayClassContext,
 } from '../../utils/textbookSlots'
+import { logParentHomeworkDebug } from '../../utils/parentHomeworkDebug'
 import type { ClassTodayReportSyncContext } from '../../utils/classTodayReportCommon'
 import { classTrackIncludesSubject } from '../../utils/classTodayReportCommon'
 import {
@@ -102,8 +101,6 @@ export function TextbookSlotHomeworkSection({
   date,
   slots,
   entries,
-  legacyHomework,
-  legacyAssignment,
   classContext,
   classSync,
   onSaveEntry,
@@ -117,8 +114,6 @@ export function TextbookSlotHomeworkSection({
   date: string
   slots: StudentTextbookSlot[]
   entries: HomeworkTextbookEntry[]
-  legacyHomework?: HomeworkRecord
-  legacyAssignment?: TodayAssignmentRecord
   classContext?: TextbookDisplayClassContext
   classSync?: ClassTodayReportSyncContext
   onSaveEntry: ReturnType<typeof useData>['saveHomeworkTextbookEntry']
@@ -183,15 +178,15 @@ export function TextbookSlotHomeworkSection({
   }
 
   if (readOnly) {
-    const displays = buildHomeworkTextbookDisplays(
+    const displays = buildParentHomeworkTextbookDisplays(
       studentId,
       date,
       slots,
       entries,
-      legacyHomework,
-      legacyAssignment,
       classContext,
     )
+
+    logParentHomeworkDebug(studentId, date, entries, slots, displays)
 
     if (displays.length === 0) {
       return (
