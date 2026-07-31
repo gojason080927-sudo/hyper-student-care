@@ -52,7 +52,7 @@ export function ParentHomeworkSlotCard({ item }: { item: HomeworkTextbookDisplay
   const title = resolveHomeworkCardTitle(item.slotNumber, item.textbookName)
 
   return (
-    <li className="rounded-xl border border-slate-200 bg-slate-50/70 px-2.5 py-2 sm:px-3">
+    <li className="pm-slot-card px-2.5 py-2 sm:px-3">
       <p className="break-words text-xl font-bold leading-snug text-navy-900 sm:text-2xl">{title}</p>
       <div className="mt-2 space-y-1.5">
         <div className="space-y-0.5">
@@ -87,7 +87,7 @@ export function CompactProgressBar({ value }: { value: number }) {
 
   return (
     <div
-      className="relative h-[22px] w-full max-w-[85%] overflow-hidden rounded-full bg-navy-100/70"
+      className="pm-progress-track"
       role="progressbar"
       aria-valuenow={clamped}
       aria-valuemin={0}
@@ -95,12 +95,12 @@ export function CompactProgressBar({ value }: { value: number }) {
       aria-label={`교재 진행률 ${clamped}%`}
     >
       <div
-        className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-navy-800 to-navy-600 transition-all duration-300"
+        className="pm-progress-fill"
         style={{ width: `${clamped}%`, minWidth: clamped > 0 ? '0.5rem' : undefined }}
       />
       <span
         className={`absolute inset-0 flex items-center justify-center text-sm font-semibold tabular-nums ${
-          labelOnFill ? 'text-white drop-shadow-sm' : 'text-navy-800'
+          labelOnFill ? 'text-[#0E2752] drop-shadow-sm' : 'text-[#163A70]'
         }`}
       >
         {clamped}%
@@ -116,7 +116,7 @@ export function ParentProgressSlotCard({ item }: { item: ProgressTextbookDisplay
   const progressContent = item.progressContent.trim()
 
   return (
-    <li className="rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-3 sm:px-3.5">
+    <li className="pm-slot-card px-3 py-3 sm:px-3.5">
       <p className="break-words text-xl font-bold leading-snug text-navy-900 sm:text-2xl">{title}</p>
       <div className="mt-3 space-y-2.5">
         <ParentLabeledField label="현재 진도" value={formatParentField(progressContent)} />
@@ -145,7 +145,7 @@ export function ParentSubjectSlotList({
 }) {
   return (
     <div>
-      <p className="text-base font-bold text-navy-900">{subject}</p>
+      <p className="pm-subject-title">{subject}</p>
       <ul className="mt-2 space-y-3">{children}</ul>
     </div>
   )

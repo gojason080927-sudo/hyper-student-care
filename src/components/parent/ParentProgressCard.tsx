@@ -27,9 +27,9 @@ export function ParentProgressCard({ record }: ParentProgressCardProps) {
   )
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <article className="pm-card overflow-hidden">
       {hasPages && (
-        <div className="border-b border-slate-100 bg-gradient-to-b from-navy-50 to-white px-5 pb-5 pt-5 sm:px-6 sm:pb-6 sm:pt-6">
+        <div className="border-b border-[rgba(22,58,112,0.06)] bg-gradient-to-b from-[rgba(22,58,112,0.04)] to-white px-5 pb-5 pt-5 sm:px-6 sm:pb-6 sm:pt-6">
           <HeroProgressBar value={record.progressRate} size="hero" />
           <ProgressPageSummary currentPage={record.currentPage} totalPage={record.totalPage} />
         </div>
@@ -37,7 +37,7 @@ export function ParentProgressCard({ record }: ParentProgressCardProps) {
 
       <div className="px-5 py-5 sm:px-6 sm:py-6">
         <div className="space-y-1">
-          <span className="inline-block rounded-full bg-navy-50 px-2.5 py-0.5 text-xs font-semibold text-navy-700">
+          <span className="inline-block rounded-full bg-[rgba(40,199,183,0.12)] px-2.5 py-0.5 text-xs font-semibold text-[#163A70]">
             {record.subject}
           </span>
           <h3 className="break-anywhere text-xl font-extrabold leading-snug tracking-tight text-navy-900 sm:text-2xl">
@@ -85,7 +85,7 @@ export function ParentProgressCard({ record }: ParentProgressCardProps) {
         )}
 
         {record.teacherMemo && (
-          <p className="mt-5 break-anywhere rounded-xl bg-navy-50 px-4 py-3.5 text-[15px] leading-relaxed text-slate-700">
+          <p className="mt-5 break-anywhere rounded-xl bg-[rgba(22,58,112,0.04)] px-4 py-3.5 text-[15px] leading-relaxed text-[#1E293B]">
             {record.teacherMemo}
           </p>
         )}

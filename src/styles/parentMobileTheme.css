@@ -480,3 +480,61 @@
 .parent-mobile-app .parent-record-list {
   gap: 0.875rem;
 }
+
+/* Today Report date navigation & student summary */
+.parent-mobile-app .flex.items-center.justify-center.gap-2.rounded-xl.border.border-slate-200.bg-slate-50 {
+  border-color: rgba(22, 58, 112, 0.06);
+  background: var(--hp-card);
+  box-shadow: var(--hp-shadow-soft);
+  border-radius: var(--hp-radius-input);
+}
+
+.parent-mobile-app .rounded-xl.border.border-slate-200.bg-white.px-3\.5,
+.parent-mobile-app .rounded-2xl.border.border-slate-200.bg-white.px-4 {
+  border-radius: var(--hp-radius-card);
+  border-color: rgba(22, 58, 112, 0.08);
+  background: linear-gradient(180deg, rgba(22, 58, 112, 0.05) 0%, var(--hp-card) 70%);
+  box-shadow: var(--hp-shadow-soft);
+}
+
+.parent-mobile-app .rounded-xl.border.border-slate-200.bg-white.px-3\.5 h1,
+.parent-mobile-app .rounded-2xl.border.border-slate-200.bg-white.px-4 .text-lg {
+  color: var(--hp-navy);
+}
+
+/* Section cards inside Today Report */
+.parent-mobile-app .rounded-xl.border.border-slate-200.bg-white.p-2\.5,
+.parent-mobile-app .rounded-xl.border.border-slate-200.bg-white.p-3 {
+  border-radius: var(--hp-radius-card);
+  border-color: rgba(22, 58, 112, 0.06);
+  box-shadow: var(--hp-shadow-soft);
+}
+
+.parent-mobile-app .rounded-xl.border.border-slate-200.bg-white.p-2\.5 h3,
+.parent-mobile-app .rounded-xl.border.border-slate-200.bg-white.p-3 h3 {
+  color: var(--hp-navy);
+}
+
+/* Filter panels */
+.parent-mobile-app .rounded-xl.border.border-slate-200.bg-white.p-4 {
+  border-radius: var(--hp-radius-card);
+  border-color: rgba(22, 58, 112, 0.06);
+  background: var(--hp-card);
+  box-shadow: var(--hp-shadow-soft);
+}
+
+/* Daily test pass cards */
+.parent-mobile-app .grid.grid-cols-2.gap-2\.5 > div.rounded-xl.border {
+  border-radius: var(--hp-radius-input);
+  box-shadow: var(--hp-shadow-soft);
+}
+
+.parent-mobile-app .grid.grid-cols-2.gap-2\.5 > div[class*='border-emerald'] {
+  border-color: rgba(40, 199, 183, 0.45) !important;
+  background: rgba(40, 199, 183, 0.12) !important;
+}
+
+.parent-mobile-app .grid.grid-cols-2.gap-2\.5 > div[class*='border-rose'] {
+  border-color: rgba(239, 68, 68, 0.25) !important;
+  background: rgba(239, 68, 68, 0.06) !important;
+}

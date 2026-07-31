@@ -8,13 +8,14 @@ import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 import { useData } from '../../hooks/useData'
 import type { Student } from '../../types/student'
 import { ParentStudentSidebar } from '../parent/ParentStudentSidebar'
+import '../../styles/parentMobileTheme.css'
 
 function InvalidStudentAccessPage() {
   return (
-    <div className="flex min-h-svh items-center justify-center bg-slate-50 px-4">
-      <div className="max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-        <h1 className="text-xl font-bold text-navy-900">유효하지 않거나 만료된 학생 링크입니다.</h1>
-        <p className="mt-3 text-sm leading-relaxed text-slate-600">
+    <div className="parent-mobile-app flex min-h-svh items-center justify-center px-4">
+      <div className="pm-error-card p-8 text-center">
+        <h1 className="text-xl font-bold text-[#163A70]">유효하지 않거나 만료된 학생 링크입니다.</h1>
+        <p className="mt-3 text-sm leading-relaxed text-[#6B7280]">
           학원에 정확한 링크를 요청해 주세요.
         </p>
       </div>
@@ -24,9 +25,9 @@ function InvalidStudentAccessPage() {
 
 function InactiveStudentAccessPage() {
   return (
-    <div className="flex min-h-svh items-center justify-center bg-slate-50 px-4">
-      <div className="max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-        <h1 className="text-xl font-bold text-navy-900">
+    <div className="parent-mobile-app flex min-h-svh items-center justify-center px-4">
+      <div className="pm-error-card p-8 text-center">
+        <h1 className="text-xl font-bold text-[#163A70]">
           현재 사용할 수 없는 학생 링크입니다. 학원에 문의해 주세요.
         </h1>
       </div>
@@ -36,10 +37,10 @@ function InactiveStudentAccessPage() {
 
 function SupabaseConfigErrorPage() {
   return (
-    <div className="flex min-h-svh items-center justify-center bg-slate-50 px-4">
-      <div className="max-w-md rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
-        <h1 className="text-xl font-bold text-navy-900">서비스 연결 설정이 필요합니다.</h1>
-        <p className="mt-3 text-sm leading-relaxed text-slate-600">
+    <div className="parent-mobile-app flex min-h-svh items-center justify-center px-4">
+      <div className="pm-error-card p-8 text-center">
+        <h1 className="text-xl font-bold text-[#163A70]">서비스 연결 설정이 필요합니다.</h1>
+        <p className="mt-3 text-sm leading-relaxed text-[#6B7280]">
           Supabase 환경변수(VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY)를 배포 환경에 설정한 뒤
           다시 시도해 주세요.
         </p>
@@ -140,12 +141,12 @@ function ParentStudentLayoutInner({ studentAccessKey }: ParentStudentLayoutInner
   if (isLoading || resolvedStudent === undefined) {
     return (
       <div
-        className="flex min-h-svh items-center justify-center bg-slate-50"
+        className="parent-mobile-app flex min-h-svh items-center justify-center"
         role="status"
         aria-live="polite"
         aria-busy="true"
       >
-        <p className="text-sm text-slate-500">학생 정보를 불러오는 중…</p>
+        <p className="text-sm text-[#6B7280]">학생 정보를 불러오는 중…</p>
       </div>
     )
   }
@@ -165,12 +166,12 @@ function ParentStudentLayoutInner({ studentAccessKey }: ParentStudentLayoutInner
   if (!recordsLoaded) {
     return (
       <div
-        className="flex min-h-svh items-center justify-center bg-slate-50"
+        className="parent-mobile-app flex min-h-svh items-center justify-center"
         role="status"
         aria-live="polite"
         aria-busy="true"
       >
-        <p className="text-sm text-slate-500">학습 기록을 불러오는 중…</p>
+        <p className="text-sm text-[#6B7280]">학습 기록을 불러오는 중…</p>
       </div>
     )
   }
@@ -179,24 +180,22 @@ function ParentStudentLayoutInner({ studentAccessKey }: ParentStudentLayoutInner
 
   return (
     <ParentStudentProvider student={student}>
-      <div className="flex min-h-svh overflow-x-hidden bg-slate-50">
+      <div className="parent-mobile-app flex min-h-svh overflow-x-hidden">
         <ParentStudentSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 px-3 py-3 backdrop-blur-sm sm:px-4">
+          <header className="pm-app-header sticky top-0 z-30 px-3 py-3 sm:px-4">
             <div className="mx-auto flex max-w-3xl items-center gap-3 lg:max-w-4xl">
               <button
                 type="button"
                 aria-label="메뉴 열기"
-                className="min-h-11 min-w-11 shrink-0 rounded-lg p-2 text-slate-600 hover:bg-slate-100 lg:hidden"
+                className="pm-menu-btn shrink-0 lg:hidden"
                 onClick={() => setSidebarOpen(true)}
               >
-                <Menu className="h-5 w-5" />
+                <Menu className="h-5 w-5" strokeWidth={2} />
               </button>
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-navy-600">
-                  Hyper Student Care
-                </p>
-                <p className="truncate text-sm font-bold text-navy-900">{student.name}</p>
+                <p className="pm-app-header-kicker">Hyper Student Care</p>
+                <p className="pm-app-header-name truncate">{student.name}</p>
               </div>
             </div>
           </header>

@@ -14,17 +14,11 @@ export function ParentStudentSidebar({ isOpen, onClose }: ParentStudentSidebarPr
   const location = useLocation()
   const basePath = `/care/${student.studentAccessKey}`
 
-  const navLinkClass = (isActive: boolean) =>
-    `group flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] font-medium transition ${
-      isActive
-        ? 'bg-navy-900 text-white'
-        : 'text-slate-600 hover:bg-slate-50 hover:text-navy-900'
-    }`
+  const linkClass = (isActive: boolean) =>
+    `pm-nav-link ${isActive ? 'pm-nav-link--active' : ''}`
 
   const iconClass = (isActive: boolean) =>
-    `h-[18px] w-[18px] shrink-0 ${
-      isActive ? 'text-white/90' : 'text-slate-400 group-hover:text-slate-600'
-    }`
+    `h-[18px] w-[18px] shrink-0 ${isActive ? '' : 'text-[#6B7280]'}`
 
   return (
     <>
@@ -32,30 +26,30 @@ export function ParentStudentSidebar({ isOpen, onClose }: ParentStudentSidebarPr
         <button
           type="button"
           aria-label="메뉴 닫기"
-          className="fixed inset-0 z-40 bg-slate-900/20 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-[rgba(22,58,112,0.2)] backdrop-blur-sm lg:hidden"
           onClick={onClose}
         />
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-[min(100%,280px)] flex-col border-r border-slate-200 bg-white shadow-xl transition-transform duration-300 lg:static lg:w-64 lg:translate-x-0 lg:shadow-none ${
+        className={`pm-sidebar fixed inset-y-0 left-0 z-50 flex w-[min(100%,280px)] flex-col shadow-xl transition-transform duration-300 lg:static lg:w-64 lg:translate-x-0 lg:shadow-none ${
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
-        <div className="border-b border-slate-100 px-4 py-5 sm:px-5">
+        <div className="border-b border-[rgba(22,58,112,0.06)] px-4 py-5 sm:px-5">
           <div className="flex items-start justify-between gap-2">
             <BrandMark />
             <button
               type="button"
               aria-label="사이드바 닫기"
-              className="min-h-11 min-w-11 rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-700 lg:hidden"
+              className="pm-menu-btn lg:hidden"
               onClick={onClose}
             >
-              <X className="h-5 w-5" />
+              <X className="h-5 w-5" strokeWidth={2} />
             </button>
           </div>
-          <p className="mt-4 text-sm font-semibold text-navy-900">{student.name}</p>
-          <p className="mt-0.5 break-anywhere text-xs text-slate-500">
+          <p className="mt-4 text-sm font-semibold text-[#163A70]">{student.name}</p>
+          <p className="mt-0.5 break-anywhere text-xs text-[#6B7280]">
             {student.school} · {student.grade}
           </p>
         </div>
@@ -67,9 +61,13 @@ export function ParentStudentSidebar({ isOpen, onClose }: ParentStudentSidebarPr
                 to={basePath}
                 end
                 onClick={onClose}
-                className={({ isActive }) => navLinkClass(isActive)}
+                className={({ isActive }) => linkClass(isActive)}
               >
-                <Home className={iconClass(location.pathname === basePath)} aria-hidden />
+                <Home
+                  className={iconClass(location.pathname === basePath)}
+                  strokeWidth={2}
+                  aria-hidden
+                />
                 홈
               </NavLink>
             </li>
@@ -77,9 +75,13 @@ export function ParentStudentSidebar({ isOpen, onClose }: ParentStudentSidebarPr
               <NavLink
                 to={`${basePath}/${parentTodayReportItem.segment}`}
                 onClick={onClose}
-                className={({ isActive }) => navLinkClass(isActive)}
+                className={({ isActive }) => linkClass(isActive)}
               >
-                <ClipboardList className={iconClass(location.pathname.includes('today-report'))} aria-hidden />
+                <ClipboardList
+                  className={iconClass(location.pathname.includes('today-report'))}
+                  strokeWidth={2}
+                  aria-hidden
+                />
                 {parentTodayReportItem.label}
               </NavLink>
             </li>
@@ -92,9 +94,9 @@ export function ParentStudentSidebar({ isOpen, onClose }: ParentStudentSidebarPr
                   <NavLink
                     to={path}
                     onClick={onClose}
-                    className={({ isActive: linkActive }) => navLinkClass(linkActive || isActive)}
+                    className={({ isActive: linkActive }) => linkClass(linkActive || isActive)}
                   >
-                    <Icon className={iconClass(isActive)} aria-hidden />
+                    <Icon className={iconClass(isActive)} strokeWidth={2} aria-hidden />
                     <span className="whitespace-pre-line leading-snug">{label}</span>
                   </NavLink>
                 </li>

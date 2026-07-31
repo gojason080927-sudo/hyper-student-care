@@ -44,7 +44,7 @@ export function LearningNoticesPage() {
         description="유용한 학습정보와 학원 공지사항을 확인합니다."
       />
 
-      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm pm-card">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-600">구분</label>

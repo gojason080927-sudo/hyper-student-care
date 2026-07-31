@@ -8,7 +8,7 @@ type ParentStudentInfoCardProps = {
   compact?: boolean
 }
 
-/** 학부모 홈 상단 학생 정보 — 간결한 흰색 카드 */
+/** 학부모 홈 상단 학생 정보 — 프리미엄 헤더 카드 */
 export function ParentStudentInfoCard({
   student,
   dateLabel,
@@ -18,45 +18,48 @@ export function ParentStudentInfoCard({
 
   if (compact) {
     return (
-      <section className="rounded-xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm sm:rounded-2xl sm:px-5 sm:py-4">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-navy-600">
-          Hyper Student Care
-        </p>
-        <h1 className="mt-1.5 text-xl font-bold leading-tight text-navy-900 sm:text-2xl">
+      <section className="pm-student-header px-4 py-3.5 sm:px-5 sm:py-4">
+        <p className="pm-student-header-kicker">Hyper Student Care</p>
+        <h1 className="mt-1.5 text-xl font-bold leading-tight text-[#163A70] sm:text-2xl">
           {student.name}
         </h1>
-        <p className="mt-1 line-clamp-2 break-anywhere text-[15px] leading-snug text-slate-600 sm:text-base">
-          {[student.school, student.grade, student.teacher].filter(Boolean).join(' · ')}
+        <p className="mt-1 line-clamp-2 break-anywhere text-[15px] leading-snug text-[#6B7280] sm:text-base">
+          {[student.school, student.grade, student.className, student.teacher]
+            .filter(Boolean)
+            .join(' · ')}
         </p>
+        <p className="mt-1 text-sm font-medium text-[#163A70]">{displayDate}</p>
       </section>
     )
   }
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-sm sm:rounded-2xl sm:px-5 sm:py-5">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-navy-600">
-        Hyper Student Care
-      </p>
-      <p className="mt-0.5 text-xs text-slate-500">하이퍼 학생 관리 시스템</p>
+    <section className="pm-student-header px-4 py-4 sm:px-5 sm:py-5">
+      <p className="pm-student-header-kicker">Hyper Student Care</p>
+      <p className="mt-0.5 text-xs text-[#6B7280]">하이퍼 학생 관리 시스템</p>
 
-      <h1 className={`mt-3 font-bold text-navy-900 ${compact ? 'text-lg' : 'text-xl'}`}>
-        {student.name}
-      </h1>
+      <h1 className="mt-3 text-xl font-bold text-[#163A70]">{student.name}</h1>
 
-      <dl className={`mt-3 space-y-2 text-sm ${compact ? 'text-slate-600' : ''}`}>
+      <dl className="mt-3 space-y-2 text-sm">
         <div className="flex flex-wrap gap-x-2 gap-y-1">
-          <dt className="text-slate-500">학교 · 학년</dt>
-          <dd className="break-anywhere font-medium text-slate-800">
+          <dt className="text-[#6B7280]">학교 · 학년</dt>
+          <dd className="break-anywhere font-medium text-[#1E293B]">
             {student.school} · {student.grade}
           </dd>
         </div>
+        {student.className && (
+          <div className="flex flex-wrap gap-x-2 gap-y-1">
+            <dt className="text-[#6B7280]">수강반</dt>
+            <dd className="break-anywhere font-medium text-[#1E293B]">{student.className}</dd>
+          </div>
+        )}
         <div className="flex flex-wrap gap-x-2 gap-y-1">
-          <dt className="text-slate-500">담당 강사</dt>
-          <dd className="font-medium text-slate-800">{student.teacher || '-'}</dd>
+          <dt className="text-[#6B7280]">담당 강사</dt>
+          <dd className="font-medium text-[#1E293B]">{student.teacher || '-'}</dd>
         </div>
         <div className="flex flex-wrap gap-x-2 gap-y-1">
-          <dt className="text-slate-500">날짜</dt>
-          <dd className="font-medium text-slate-800">{displayDate}</dd>
+          <dt className="text-[#6B7280]">날짜</dt>
+          <dd className="font-medium text-[#1E293B]">{displayDate}</dd>
         </div>
       </dl>
     </section>
@@ -80,24 +83,22 @@ export function ParentRecordCard({
   footer,
 }: ParentRecordCardProps) {
   return (
-    <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+    <article className="pm-card p-4 sm:p-5">
       {(title || date || status) && (
         <header className="mb-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div className="min-w-0 space-y-1">
-            {date && (
-              <p className="text-sm font-semibold text-navy-900">{date}</p>
-            )}
+            {date && <p className="text-sm font-semibold text-[#163A70]">{date}</p>}
             {title && (
-              <h3 className="break-anywhere text-base font-semibold text-navy-900">{title}</h3>
+              <h3 className="break-anywhere text-base font-semibold text-[#163A70]">{title}</h3>
             )}
           </div>
           {status && <div className="flex flex-wrap gap-2">{status}</div>}
         </header>
       )}
-      <div className="space-y-2 text-[15px] leading-relaxed text-slate-700 sm:text-sm">
+      <div className="space-y-2 text-[15px] leading-relaxed text-[#1E293B] sm:text-sm">
         {children}
       </div>
-      {footer && <footer className="mt-3 border-t border-slate-100 pt-3">{footer}</footer>}
+      {footer && <footer className="mt-3 border-t border-[rgba(22,58,112,0.06)] pt-3">{footer}</footer>}
     </article>
   )
 }
@@ -105,8 +106,8 @@ export function ParentRecordCard({
 /** 학부모 빈 상태 */
 export function ParentEmptyState({ message = '등록된 내용이 없습니다.' }: { message?: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-12 text-center">
-      <p className="text-sm text-slate-500">{message}</p>
+    <div className="pm-empty-state">
+      <p className="text-sm">{message}</p>
     </div>
   )
 }
@@ -117,15 +118,13 @@ type ParentPageHeaderProps = {
   action?: ReactNode
 }
 
-/** 학부모 카테고리 페이지 헤더 — 모바일 가독성 우선 */
+/** 학부모 카테고리 페이지 헤더 */
 export function ParentPageHeader({ title, description, action }: ParentPageHeaderProps) {
   return (
     <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0">
-        <h2 className="text-lg font-bold text-navy-900 sm:text-xl">{title}</h2>
-        {description && (
-          <p className="mt-1 text-sm leading-relaxed text-slate-600">{description}</p>
-        )}
+        <h2 className="pm-page-title">{title}</h2>
+        {description && <p className="pm-page-desc mt-1">{description}</p>}
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </header>
