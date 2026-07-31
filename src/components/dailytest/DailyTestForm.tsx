@@ -5,6 +5,7 @@ import {
 } from './DailyTestSessionFormSection'
 import type { Student } from '../../types/student'
 import type { DailyTestFormData } from '../../utils/dailyTest'
+import { normalizeSessionResultsForForm } from '../../utils/dailyTest'
 import { SUBJECTS, btnPrimary, btnSecondary, inputClass } from '../../utils/labels'
 import { requireDate, requireNonEmpty } from '../../utils/validation'
 
@@ -76,7 +77,9 @@ export function DailyTestForm({
       </div>
       <DailyTestSessionFormSection
         sessions={form.sessionResults}
-        onChange={(sessionResults) => onChange({ ...form, sessionResults })}
+        onChange={(sessionResults) =>
+          onChange({ ...form, sessionResults: normalizeSessionResultsForForm(sessionResults) })
+        }
         errors={errors}
       />
       <div>

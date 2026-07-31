@@ -12,15 +12,29 @@ const INCOMPLETE_STATUSES = new Set([
   '미 완료',
   '미제출',
   'incomplete',
+  'not_completed',
   'notCompleted',
+  'not completed',
 ])
+
+export type HomeworkStatusCategory = 'complete' | 'partial' | 'incomplete' | 'none'
+
+/** DB/UI 저장값을 집계용 카테고리로 분류 (빈 값·완료는 집계 제외) */
+export function classifyHomeworkStatus(status: unknown): HomeworkStatusCategory {
+  const s = String(status ?? '').trim()
+  if (!s) return 'none'
+  if (s === '완료') return 'complete'
+  if (PARTIAL_STATUSES.has(s)) return 'partial'
+  if (INCOMPLETE_STATUSES.has(s)) return 'incomplete'
+  return 'none'
+}
 
 /** legacy status → current status */
 export function normalizeHomeworkStatus(status: unknown): HomeworkStatus {
-  const s = String(status ?? '').trim()
-  if (s === '완료') return '완료'
-  if (PARTIAL_STATUSES.has(s)) return '부분 완료'
-  if (INCOMPLETE_STATUSES.has(s)) return '미완료'
+  const category = classifyHomeworkStatus(status)
+  if (category === 'complete') return '완료'
+  if (category === 'partial') return '부분 완료'
+  if (category === 'incomplete') return '미완료'
   return '미완료'
 }
 

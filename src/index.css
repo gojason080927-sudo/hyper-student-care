@@ -1,5 +1,7 @@
 @import 'tailwindcss';
 
+@custom-variant hover-capable (@media (hover: hover) and (pointer: fine));
+
 @theme {
   --color-navy-950: #071525;
   --color-navy-900: #0c2340;
@@ -27,4 +29,102 @@ body {
 
 #root {
   min-height: 100svh;
+  overflow-x: hidden;
+}
+
+html {
+  overflow-x: hidden;
+}
+
+/* 모바일 입력 시 자동 확대 방지 (최소 16px) */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* 긴 URL·텍스트 줄바꿈 */
+.break-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* 표 가로 스크롤 (모바일) */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 학생관리 테이블 — 한 줄 표시 + 말줄임 */
+.student-table-cell {
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.student-table-action-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.homework-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .homework-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* 학부모 화면 — 모바일 UX */
+.parent-page {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+}
+
+.parent-home .parent-home-menu {
+  max-width: 100%;
+}
+
+@media (max-width: 390px) {
+  .parent-home .parent-home-menu {
+    gap: 0.75rem;
+  }
+}
+
+.parent-main {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 0px));
+}
+
+.parent-record-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* 공지 본문 이미지가 화면을 넘지 않게 */
+.parent-page img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* 강사용 모바일 PWA */
+.teacher-mobile-app {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+.teacher-mobile-app input,
+.teacher-mobile-app select,
+.teacher-mobile-app textarea {
+  font-size: 16px;
+}
+
+.teacher-mobile-app [type='number'] {
+  input-mode: numeric;
 }

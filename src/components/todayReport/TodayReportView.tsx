@@ -1,8 +1,17 @@
 import { ChevronLeft, ChevronRight, Save } from 'lucide-react'
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { DailyTestSessionFormSection, validateDailyTestSessions, DailyTestPassRuleBadge } from '../dailytest/DailyTestSessionFormSection'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import {
+  DailyTestSessionFormSection,
+  validateDailyTestSessions,
+  DailyTestPassRuleBadge,
+} from '../dailytest/DailyTestSessionFormSection'
+import {
+  TeacherMobileDailyTestSessionForm,
+  type TeacherMobileDailyTestSessionFormRef,
+} from '../teacherMobile/TeacherMobileDailyTestSessionForm'
 import { DailyTestSessionGrid } from '../dailytest/DailyTestSessionGrid'
 import { HomeworkStatusPicker } from '../homework/HomeworkStatusPicker'
+import { KoreanTextInput, KoreanTextarea } from '../ui/KoreanTextField'
 import { HeroProgressBar } from '../ui/HeroProgressBar'
 import { StatusBadge } from '../ui/StatusBadge'
 import { TextbookSlotHomeworkSection } from './TextbookSlotHomeworkSection'
@@ -24,6 +33,7 @@ import type {
 import type { Student } from '../../types/student'
 import type { ClassTodayReportSyncContext } from '../../utils/classTodayReportCommon'
 import type { TextbookDisplayClassContext } from '../../utils/textbookSlots'
+import { TEACHER_MOBILE_VISIBLE_SLOTS } from '../../utils/teacherMobileTextbookSlots'
 import {
   addDays,
   compareDateStrings,
@@ -40,6 +50,10 @@ import {
   normalizeSessionResultsForForm,
   type DailyTestFormData,
 } from '../../utils/dailyTest'
+import {
+  mobileDailyTestFormToSavePayload,
+  sessionsToMobileDailyTestRounds,
+} from '../../utils/teacherMobileDailyTest'
 import { calcProgressRate } from '../../utils/calc'
 import { findTodayAssignment, TODAY_ASSIGNMENT_MAX_LENGTH } from '../../utils/todayAssignment'
 import { CLASS_NOTE_MAX_LENGTH, findClassNote } from '../../utils/classNote'
@@ -77,6 +91,8 @@ function ParentReadOnlyBody({
   return <>{children()}</>
 }
 
+type MobileReportSection = 'attendance' | 'homework' | 'progress' | 'dailyTest' | 'classNote'
+
 type TodayReportViewProps = {
   student: Student
   readOnly?: boolean
@@ -89,6 +105,8 @@ type TodayReportViewProps = {
   compactTeacherInput?: boolean
   /** 반별 공통 진도·과제 연동 (반별 통합입력) */
   classSync?: ClassTodayReportSyncContext
+  /** 강사용 모바일 PWA: 단일 섹션만 렌더 (아코디언 내부) */
+  mobileSection?: MobileReportSection
 }
 
 function compactInputClass(error?: string) {
@@ -106,6 +124,7 @@ function SectionCard({
   compact = false,
   emphasis = false,
   teacherCompact = false,
+  hideTitle = false,
 }: {
   title: string
   titleExtra?: React.ReactNode
@@ -113,6 +132,7 @@ function SectionCard({
   compact?: boolean
   emphasis?: boolean
   teacherCompact?: boolean
+  hideTitle?: boolean
 }) {
   const padding = teacherCompact
     ? 'px-3 py-2'
@@ -129,16 +149,20 @@ function SectionCard({
       }`}
     >
       <div className="flex flex-wrap items-center justify-between gap-1.5">
-        <h2
-          className={`font-bold text-navy-900 ${
-            teacherCompact ? 'text-sm' : compact ? 'text-base mb-0' : 'text-base'
-          }`}
-        >
-          {title}
-        </h2>
+        {!hideTitle && (
+          <h2
+            className={`font-bold text-navy-900 ${
+              teacherCompact ? 'text-sm' : compact ? 'text-base mb-0' : 'text-base'
+            }`}
+          >
+            {title}
+          </h2>
+        )}
         {titleExtra}
       </div>
-      <div className={teacherCompact ? 'mt-1.5' : compact ? 'mt-2' : 'mt-3'}>{children}</div>
+      <div className={hideTitle ? '' : teacherCompact ? 'mt-1.5' : compact ? 'mt-2' : 'mt-3'}>
+        {children}
+      </div>
     </section>
   )
 }
@@ -238,6 +262,7 @@ export function TodayReportView({
   classNoteExtraActions,
   compactTeacherInput = false,
   classSync,
+  mobileSection,
 }: TodayReportViewProps) {
   const today = readOnly ? getSeoulDateString() : getTodayString()
   const [selectedDate, setSelectedDate] = useState(initialDate ?? today)
@@ -366,10 +391,15 @@ export function TodayReportView({
   const tc = compactTeacherInput && !readOnly
   const useTextbookSlotHomework = tc || readOnly
   const useTextbookSlotProgress = tc || readOnly
+  const embeddedMobile = Boolean(mobileSection)
+  const visibleSlots = embeddedMobile ? TEACHER_MOBILE_VISIBLE_SLOTS : undefined
+  const showSection = (section: MobileReportSection) =>
+    !mobileSection || mobileSection === section
+  const sectionHideTitle = embeddedMobile
 
   return (
-    <div className={tc ? 'space-y-1.5' : 'space-y-3'}>
-      {!hideHeader &&
+    <div className={embeddedMobile ? '' : tc ? 'space-y-1.5' : 'space-y-3'}>
+      {!hideHeader && !embeddedMobile &&
         (readOnly ? (
         <>
           <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
@@ -447,6 +477,7 @@ export function TodayReportView({
         resetKey={selectedDate}
       >
         <div className={tc ? 'space-y-1.5' : 'space-y-3'}>
+          {showSection('attendance') && (
           <AttendanceSection
             key={`attendance-${selectedDate}`}
             readOnly={readOnly}
@@ -455,9 +486,11 @@ export function TodayReportView({
             date={selectedDate}
             onSave={saveAttendanceRecord}
             teacherCompact={tc}
+            hideTitle={sectionHideTitle}
           />
+          )}
 
-          {useTextbookSlotHomework ? (
+          {showSection('homework') && (useTextbookSlotHomework ? (
             <TextbookSlotHomeworkSection
               key={`homework-slots-${selectedDate}`}
               readOnly={readOnly}
@@ -483,6 +516,9 @@ export function TodayReportView({
               }
               onSaveSlot={saveStudentTextbookSlot}
               onNotify={showToast}
+              hideTitle={sectionHideTitle}
+              visibleSlots={visibleSlots}
+              useMobileStatusPicker={embeddedMobile}
             />
           ) : (
             <HomeworkAssignmentSection
@@ -496,9 +532,9 @@ export function TodayReportView({
               onSaveTodayAssignment={saveTodayAssignmentRecord}
               teacherCompact={tc}
             />
-          )}
+          ))}
 
-          {useTextbookSlotProgress ? (
+          {showSection('progress') && (useTextbookSlotProgress ? (
             <TextbookSlotProgressSection
               key={`progress-slots-${selectedDate}`}
               readOnly={readOnly}
@@ -525,6 +561,8 @@ export function TodayReportView({
               }
               onSaveSlot={saveStudentTextbookSlot}
               onNotify={showToast}
+              hideTitle={sectionHideTitle}
+              visibleSlots={visibleSlots}
             />
           ) : (
             <ProgressSection
@@ -536,8 +574,9 @@ export function TodayReportView({
               onSave={saveProgressRecord}
               teacherCompact={tc}
             />
-          )}
+          ))}
 
+          {showSection('dailyTest') && (
           <DailyTestSection
             key={`daily-test-${selectedDate}`}
             readOnly={readOnly}
@@ -546,8 +585,12 @@ export function TodayReportView({
             date={selectedDate}
             onSave={saveDailyTestRecord}
             teacherCompact={tc}
+            hideTitle={sectionHideTitle}
+            useMobileDailyTestInput={mobileSection === 'dailyTest'}
           />
+          )}
 
+          {showSection('classNote') && (
           <ClassNoteSection
             key={`class-note-${selectedDate}`}
             readOnly={readOnly}
@@ -557,7 +600,9 @@ export function TodayReportView({
             onSave={saveClassNoteRecord}
             extraActions={classNoteExtraActions}
             teacherCompact={tc}
+            hideTitle={sectionHideTitle}
           />
+          )}
         </div>
       </TodayReportErrorBoundary>
     </div>
@@ -571,6 +616,7 @@ function AttendanceSection({
   date,
   onSave,
   teacherCompact = false,
+  hideTitle = false,
 }: {
   readOnly: boolean
   record?: AttendanceRecord
@@ -578,6 +624,7 @@ function AttendanceSection({
   date: string
   onSave: ReturnType<typeof useData>['saveAttendanceRecord']
   teacherCompact?: boolean
+  hideTitle?: boolean
 }) {
   const [status, setStatus] = useState<AttendanceStatus | ''>(record?.status ?? '')
   const [reason, setReason] = useState(record?.reason ?? '')
@@ -600,7 +647,7 @@ function AttendanceSection({
   }
 
   return (
-    <SectionCard title="오늘 출결" teacherCompact={teacherCompact}>
+    <SectionCard title="오늘 출결" teacherCompact={teacherCompact} hideTitle={hideTitle}>
       {readOnly ? (
         <ParentReadOnlyBody
           hasData={Boolean(record?.status)}
@@ -862,6 +909,7 @@ function ProgressSection({
                 onChange={(e) => setMathProgress(e.target.value)}
                 rows={teacherCompact ? 2 : 2}
                 placeholder="예) 쎈수학 중2-2 35~42쪽"
+                lang="ko"
                 className={
                   teacherCompact
                     ? `${compactTextareaClass()} flex-1`
@@ -871,19 +919,19 @@ function ProgressSection({
             </ProgressSubjectColumn>
             <ProgressSubjectColumn icon="📗" subject="영어" teacherCompact={teacherCompact}>
               <label
-                htmlFor="today-progress-english"
+                htmlFor="today-progress-subject-en"
                 className={`block font-semibold text-navy-800 ${
                   teacherCompact ? 'mb-0.5 text-[11px]' : 'mb-1 text-xs'
                 }`}
               >
                 진도 과정
               </label>
-              <textarea
-                id="today-progress-english"
+              <KoreanTextarea
+                id="today-progress-subject-en"
                 value={englishProgress}
                 onChange={(e) => setEnglishProgress(e.target.value)}
                 rows={teacherCompact ? 2 : 2}
-                placeholder="예) 능률 영어 Lesson 5 본문"
+                placeholder="예) 워드마스터 하이스트 3강"
                 className={
                   teacherCompact
                     ? `${compactTextareaClass()} flex-1`
@@ -908,6 +956,7 @@ function ProgressSection({
               onChange={(e) => setTeacherMemo(e.target.value)}
               placeholder="강사 메모 (선택)"
               rows={teacherCompact ? 1 : 2}
+              lang="ko"
               className={teacherCompact ? compactTextareaClass() : inputClass()}
             />
           </div>
@@ -1140,6 +1189,7 @@ function ClassNoteSection({
   onSave,
   extraActions,
   teacherCompact = false,
+  hideTitle = false,
 }: {
   readOnly: boolean
   record?: ClassNoteRecord
@@ -1148,6 +1198,7 @@ function ClassNoteSection({
   onSave: ReturnType<typeof useData>['saveClassNoteRecord']
   extraActions?: ReactNode
   teacherCompact?: boolean
+  hideTitle?: boolean
 }) {
   const [hasClassNote, setHasClassNote] = useState(record?.hasClassNote ?? false)
   const [note, setNote] = useState(record?.note ?? '')
@@ -1181,7 +1232,8 @@ function ClassNoteSection({
   const sectionTitle = '수업 중 특이사항'
 
   return (
-    <SectionCard title={sectionTitle} emphasis={readOnly} teacherCompact={teacherCompact}>
+    <div className="min-w-0 max-w-full">
+      <SectionCard title={sectionTitle} emphasis={readOnly} teacherCompact={teacherCompact} hideTitle={hideTitle}>
       {readOnly ? (
         <ParentReadOnlyBody
           hasData={showParentNote || showNoSpecialNote}
@@ -1191,8 +1243,8 @@ function ClassNoteSection({
             showNoSpecialNote ? (
               <p className="text-sm font-medium text-slate-600">특이사항 없음</p>
             ) : (
-              <div className="rounded-xl border border-amber-100 bg-amber-50/40 px-3.5 py-3.5 sm:px-4 sm:py-4">
-                <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-slate-800">
+              <div className="min-w-0 max-w-full overflow-hidden rounded-xl border border-amber-100 bg-amber-50/40 px-3.5 py-3.5 sm:px-4 sm:py-4">
+                <p className="max-w-full whitespace-pre-wrap break-anywhere text-[15px] leading-relaxed text-slate-800">
                   {record!.note}
                 </p>
               </div>
@@ -1262,7 +1314,8 @@ function ClassNoteSection({
           </div>
         </div>
       )}
-    </SectionCard>
+      </SectionCard>
+    </div>
   )
 }
 
@@ -1286,6 +1339,8 @@ function DailyTestSection({
   date,
   onSave,
   teacherCompact = false,
+  hideTitle = false,
+  useMobileDailyTestInput = false,
 }: {
   readOnly: boolean
   record?: DailyTestRecord
@@ -1293,6 +1348,8 @@ function DailyTestSection({
   date: string
   onSave: ReturnType<typeof useData>['saveDailyTestRecord']
   teacherCompact?: boolean
+  hideTitle?: boolean
+  useMobileDailyTestInput?: boolean
 }) {
   const [form, setForm] = useState<DailyTestFormData>(() => {
     if (record) {
@@ -1302,6 +1359,7 @@ function DailyTestSection({
     return { ...emptyDailyTestForm(), studentId, date }
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const mobileDailyTestRef = useRef<TeacherMobileDailyTestSessionFormRef>(null)
 
   useEffect(() => {
     if (record) {
@@ -1319,21 +1377,40 @@ function DailyTestSection({
   }, [date, record, studentId])
 
   const handleSave = () => {
-    const sessionErrors = validateDailyTestSessions(form.sessionResults)
+    const committedSessions = useMobileDailyTestInput
+      ? (mobileDailyTestRef.current?.commitToSessionResults() ?? form.sessionResults)
+      : form.sessionResults
+    const sessionErrors = validateDailyTestSessions(committedSessions)
     const nextErrors: Record<string, string> = { ...sessionErrors }
     if (!form.testName.trim()) nextErrors.testName = '시험명을 입력해 주세요.'
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
-    const payload = dailyTestFormToSavePayload({
-      ...form,
-      id: record?.id,
-      studentId,
-      date,
-    })
+
+    const payload = useMobileDailyTestInput
+      ? mobileDailyTestFormToSavePayload(
+          {
+            ...form,
+            id: record?.id,
+            studentId,
+            date,
+          },
+          mobileDailyTestRef.current?.getRounds() ??
+            sessionsToMobileDailyTestRounds(form.sessionResults),
+        )
+      : dailyTestFormToSavePayload({
+          ...form,
+          id: record?.id,
+          studentId,
+          date,
+          sessionResults: committedSessions,
+        })
+
     onSave(payload)
     setForm((prev) => ({
       ...prev,
-      sessionResults: normalizeSessionResultsForForm(payload.sessionResults),
+      sessionResults: useMobileDailyTestInput
+        ? payload.sessionResults
+        : normalizeSessionResultsForForm(payload.sessionResults),
     }))
   }
 
@@ -1343,6 +1420,7 @@ function DailyTestSection({
       titleExtra={readOnly ? undefined : <DailyTestPassRuleBadge />}
       compact={readOnly}
       teacherCompact={teacherCompact}
+      hideTitle={hideTitle}
     >
       {readOnly ? (
         <ParentReadOnlyBody
@@ -1370,7 +1448,7 @@ function DailyTestSection({
             </div>
             <div>
               <label className="mb-0.5 block text-xs font-medium text-slate-600">시험명 *</label>
-              <input
+              <KoreanTextInput
                 value={form.testName}
                 onChange={(e) => setForm({ ...form, testName: e.target.value })}
                 className={teacherCompact ? compactInputClass(errors.testName) : inputClass(errors.testName)}
@@ -1378,18 +1456,26 @@ function DailyTestSection({
               {errors.testName && <p className="mt-0.5 text-xs text-rose-500">{errors.testName}</p>}
             </div>
           </div>
-          <DailyTestSessionFormSection
-            sessions={form.sessionResults}
-            onChange={(sessionResults: TestSessionResult[]) =>
-              setForm((prev) => ({
-                ...prev,
-                sessionResults: normalizeSessionResultsForForm(sessionResults),
-              }))
-            }
-            errors={errors}
-            compact={teacherCompact}
-            showHeader={!teacherCompact}
-          />
+          {useMobileDailyTestInput ? (
+            <TeacherMobileDailyTestSessionForm
+              ref={mobileDailyTestRef}
+              sessions={form.sessionResults}
+              errors={errors}
+            />
+          ) : (
+            <DailyTestSessionFormSection
+              sessions={form.sessionResults}
+              onChange={(sessionResults: TestSessionResult[]) =>
+                setForm((prev) => ({
+                  ...prev,
+                  sessionResults: normalizeSessionResultsForForm(sessionResults),
+                }))
+              }
+              errors={errors}
+              compact={teacherCompact}
+              showHeader={!teacherCompact}
+            />
+          )}
           <textarea
             value={form.memo}
             onChange={(e) => setForm({ ...form, memo: e.target.value })}

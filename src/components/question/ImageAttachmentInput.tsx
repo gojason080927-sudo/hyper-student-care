@@ -18,6 +18,8 @@ type ImageAttachmentInputProps = {
   onChange: (images: QuestionImageAttachment[]) => void
   onError?: (message: string) => void
   disabled?: boolean
+  /** 모바일: 카메라/갤러리 분리 버튼 (capture로 갤러리 차단 방지) */
+  mobilePickers?: boolean
 }
 
 export function ImageAttachmentInput({
@@ -27,8 +29,11 @@ export function ImageAttachmentInput({
   onChange,
   onError,
   disabled = false,
+  mobilePickers = false,
 }: ImageAttachmentInputProps) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
   const [processing, setProcessing] = useState(false)
   const [previewImage, setPreviewImage] = useState<QuestionImageAttachment | null>(null)
 
@@ -60,23 +65,66 @@ export function ImageAttachmentInput({
 
       {!disabled && images.length < QUESTION_IMAGE_MAX_COUNT && (
         <>
-          <input
-            ref={inputRef}
-            type="file"
-            accept={QUESTION_IMAGE_ACCEPT}
-            multiple
-            className="hidden"
-            onChange={handleSelect}
-          />
-          <button
-            type="button"
-            disabled={processing}
-            onClick={() => inputRef.current?.click()}
-            className={`${btnSecondary} inline-flex items-center gap-2`}
-          >
-            <ImagePlus className="h-4 w-4" />
-            {processing ? '처리 중…' : buttonLabel}
-          </button>
+          {mobilePickers ? (
+            <>
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept={QUESTION_IMAGE_ACCEPT}
+                capture="environment"
+                className="hidden"
+                onChange={handleSelect}
+              />
+              <input
+                ref={galleryInputRef}
+                type="file"
+                accept={QUESTION_IMAGE_ACCEPT}
+                multiple
+                className="hidden"
+                onChange={handleSelect}
+              />
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={processing}
+                  onClick={() => cameraInputRef.current?.click()}
+                  className={`${btnSecondary} inline-flex min-h-11 flex-1 items-center justify-center gap-2`}
+                >
+                  <ImagePlus className="h-4 w-4" />
+                  {processing ? '처리 중…' : '카메라'}
+                </button>
+                <button
+                  type="button"
+                  disabled={processing}
+                  onClick={() => galleryInputRef.current?.click()}
+                  className={`${btnSecondary} inline-flex min-h-11 flex-1 items-center justify-center gap-2`}
+                >
+                  <ImagePlus className="h-4 w-4" />
+                  {processing ? '처리 중…' : '갤러리'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <input
+                ref={inputRef}
+                type="file"
+                accept={QUESTION_IMAGE_ACCEPT}
+                multiple
+                className="hidden"
+                onChange={handleSelect}
+              />
+              <button
+                type="button"
+                disabled={processing}
+                onClick={() => inputRef.current?.click()}
+                className={`${btnSecondary} inline-flex items-center gap-2`}
+              >
+                <ImagePlus className="h-4 w-4" />
+                {processing ? '처리 중…' : buttonLabel}
+              </button>
+            </>
+          )}
         </>
       )}
 

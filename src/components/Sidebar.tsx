@@ -1,13 +1,9 @@
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
-  Book,
-  BookOpen,
   CalendarCheck,
   CalendarClock,
-  ClipboardCheck,
   ClipboardList,
-  FileCheck,
   LayoutDashboard,
   MessageCircleQuestion,
   Newspaper,
@@ -21,22 +17,35 @@ type NavItem = {
   label: string
   icon: LucideIcon
   multilineLabel?: [string, string]
+  /** 사이드바 클릭 시 항상 기본 화면으로 이동·상태 초기화 */
+  resetOnNavigate?: boolean
+}
+
+export const MONTHLY_EVALUATION_SELECT_PATH = '/monthly-evaluations'
+
+function isMonthlyEvaluationMenuActive(pathname: string): boolean {
+  return (
+    pathname === MONTHLY_EVALUATION_SELECT_PATH ||
+    /^\/students\/[^/]+\/monthly-evaluation\/?$/.test(pathname)
+  )
 }
 
 const navItems: NavItem[] = [
   { path: '/', label: '대시보드', icon: LayoutDashboard },
   { path: '/students', label: '학생관리', icon: Users },
-  { path: '/attendance', label: '출결관리', icon: ClipboardCheck },
-  { path: '/progress', label: '진도 과정', icon: Book },
-  { path: '/homework', label: '숙제관리', icon: BookOpen },
-  { path: '/daily-tests', label: '일일테스트', icon: FileCheck },
   {
     path: '/teacher/today-report-bulk',
     label: 'Today Report 반별 통합입력',
     multilineLabel: ['Today Report', '반별 통합 입력'],
     icon: ClipboardList,
   },
-  { path: '/teacher/monthly-evaluation', label: '월말평가', icon: CalendarCheck },
+  {
+    path: MONTHLY_EVALUATION_SELECT_PATH,
+    label: '월말평가',
+    multilineLabel: ['학습진행 상황', '월말평가 결과'],
+    icon: CalendarCheck,
+    resetOnNavigate: true,
+  },
   { path: '/makeup-plans', label: '보강계획', icon: CalendarClock },
   { path: '/teacher/learning-notices', label: '학습정보 & 공지사항', icon: Newspaper },
   { path: '/questions', label: '질문하기', icon: MessageCircleQuestion },
@@ -49,6 +58,22 @@ type SidebarProps = {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const location = useLocation()
+  const navigate = useNavigate()
+
+  const handleNavClick = (
+    item: NavItem,
+    event: React.MouseEvent<HTMLAnchorElement>,
+  ) => {
+    onClose()
+    if (!item.resetOnNavigate) return
+
+    event.preventDefault()
+    const isSamePath = location.pathname === item.path
+    navigate(item.path, {
+      replace: isSamePath,
+      state: { resetAt: Date.now() },
+    })
+  }
 
   return (
     <>
@@ -80,16 +105,18 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         <nav className="flex-1 overflow-y-auto px-4 py-6">
           <ul className="space-y-2">
-            {navItems.map(({ path, label, icon: Icon, multilineLabel }) => {
-              const isActive =
-                path === '/'
+            {navItems.map((item) => {
+              const { path, label, icon: Icon, multilineLabel } = item
+              const isActive = item.resetOnNavigate
+                ? isMonthlyEvaluationMenuActive(location.pathname)
+                : path === '/'
                   ? location.pathname === '/'
                   : location.pathname.startsWith(path)
               return (
                 <li key={path}>
                   <NavLink
                     to={path}
-                    onClick={onClose}
+                    onClick={(event) => handleNavClick(item, event)}
                     className={`group flex w-full items-center gap-3.5 rounded-xl px-3.5 text-[15px] font-medium transition ${
                       multilineLabel ? 'py-3' : 'py-3.5 leading-none'
                     } ${

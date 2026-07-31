@@ -16,7 +16,7 @@ export type ParentCategoryItem = {
 
 /** 학부모 홈·사이드바 공통 카테고리 (Today Report는 별도) */
 export const parentCategoryItems: ParentCategoryItem[] = [
-  { segment: 'monthly-evaluation', label: '월말 평가', icon: CalendarCheck, description: '월별 평가 결과' },
+  { segment: 'monthly-evaluation', label: '학습진행 상황\n월말평가 결과', icon: CalendarCheck, description: '월간 학습 진행·월말평가' },
   { segment: 'makeup-plans', label: '보강계획', icon: CalendarClock, description: '보강 일정 확인' },
   {
     segment: 'learning-notices',

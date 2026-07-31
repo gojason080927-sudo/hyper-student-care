@@ -2,6 +2,7 @@ import type {
   AssignmentCompletionRecord,
   AttendanceRecord,
   ClassNoteRecord,
+  ClassTodayReportCommon,
   ContentPost,
   DailyTestRecord,
   HomeworkRecord,
@@ -14,6 +15,7 @@ import type {
   TodayAssignmentRecord,
 } from '../../types/records'
 import type { Student } from '../../types/student'
+import { normalizeHomeworkStatus } from '../../utils/homework'
 
 export type StudentRow = {
   id: string
@@ -210,6 +212,22 @@ export type ClassNoteRow = {
   updated_at: string
 }
 
+export type ClassTodayReportCommonRow = {
+  id: string
+  grade: string
+  class_name: string
+  report_date: string
+  subject: string
+  slot_number: number
+  current_progress: string
+  current_page: number
+  total_page: number
+  previous_assignment: string
+  today_assignment: string
+  created_at: string
+  updated_at: string
+}
+
 export function studentToRow(student: Student): StudentRow {
   return {
     id: student.id,
@@ -299,7 +317,7 @@ export function homeworkFromRow(row: HomeworkRow): HomeworkRecord {
     date: row.date,
     title: row.title,
     description: row.description,
-    status: row.status as HomeworkRecord['status'],
+    status: normalizeHomeworkStatus(row.status),
     teacherMemo: row.teacher_memo,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -564,7 +582,6 @@ export function studentTextbookSlotToRow(record: StudentTextbookSlot): StudentTe
   return {
     id: record.id,
     student_id: record.studentId,
-    category: record.category,
     subject: record.subject,
     slot_number: record.slotNumber,
     textbook_name: record.textbookName,
@@ -574,11 +591,9 @@ export function studentTextbookSlotToRow(record: StudentTextbookSlot): StudentTe
 }
 
 export function studentTextbookSlotFromRow(row: StudentTextbookSlotRow): StudentTextbookSlot {
-  const category = row.category === 'progress' ? 'progress' : 'homework'
   return {
     id: row.id,
     studentId: row.student_id,
-    category,
     subject: row.subject as StudentTextbookSlot['subject'],
     slotNumber: row.slot_number as StudentTextbookSlot['slotNumber'],
     textbookName: row.textbook_name,
@@ -598,7 +613,7 @@ export function homeworkTextbookEntryToRow(
     slot_number: record.slotNumber,
     previous_assignment: record.previousAssignment,
     today_assignment: record.todayAssignment,
-    status: record.status,
+    status: record.status ? normalizeHomeworkStatus(record.status) : '',
     created_at: record.createdAt,
     updated_at: record.updatedAt,
   }
@@ -615,7 +630,7 @@ export function homeworkTextbookEntryFromRow(
     slotNumber: row.slot_number as HomeworkTextbookEntry['slotNumber'],
     previousAssignment: row.previous_assignment,
     todayAssignment: row.today_assignment,
-    status: row.status as HomeworkTextbookEntry['status'],
+    status: row.status ? normalizeHomeworkStatus(row.status) : '',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -666,6 +681,46 @@ export function classNoteFromRow(row: ClassNoteRow): ClassNoteRecord {
     date: row.date,
     hasClassNote: row.has_class_note,
     note: row.note,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+export function classTodayReportCommonToRow(
+  record: ClassTodayReportCommon,
+): ClassTodayReportCommonRow {
+  return {
+    id: record.id,
+    grade: record.grade,
+    class_name: record.className,
+    report_date: record.reportDate,
+    subject: record.subject,
+    slot_number: record.slotNumber,
+    current_progress: record.currentProgress,
+    current_page: record.currentPage,
+    total_page: record.totalPage,
+    previous_assignment: record.previousAssignment,
+    today_assignment: record.todayAssignment,
+    created_at: record.createdAt,
+    updated_at: record.updatedAt,
+  }
+}
+
+export function classTodayReportCommonFromRow(
+  row: ClassTodayReportCommonRow,
+): ClassTodayReportCommon {
+  return {
+    id: row.id,
+    grade: row.grade,
+    className: row.class_name,
+    reportDate: row.report_date,
+    subject: row.subject as ClassTodayReportCommon['subject'],
+    slotNumber: row.slot_number as ClassTodayReportCommon['slotNumber'],
+    currentProgress: row.current_progress,
+    currentPage: row.current_page ?? 0,
+    totalPage: row.total_page ?? 0,
+    previousAssignment: row.previous_assignment,
+    todayAssignment: row.today_assignment,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }

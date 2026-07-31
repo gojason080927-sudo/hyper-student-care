@@ -95,7 +95,7 @@ export function ParentStudentSidebar({ isOpen, onClose }: ParentStudentSidebarPr
                     className={({ isActive: linkActive }) => navLinkClass(linkActive || isActive)}
                   >
                     <Icon className={iconClass(isActive)} aria-hidden />
-                    {label}
+                    <span className="whitespace-pre-line leading-snug">{label}</span>
                   </NavLink>
                 </li>
               )

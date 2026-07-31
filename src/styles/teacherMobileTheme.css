@@ -1,0 +1,621 @@
+/* Hyper Teacher Mobile PWA — Apple + Navy + Mint Premium (UI only) */
+
+.teacher-mobile-app {
+  --tm-bg: #f6f8fb;
+  --tm-card: #ffffff;
+  --tm-navy: #163a70;
+  --tm-navy-dark: #0e2752;
+  --tm-mint: #28c7b7;
+  --tm-mint-light: #55e3d5;
+  --tm-text: #1e293b;
+  --tm-text-muted: #6b7280;
+  --tm-success: #16a34a;
+  --tm-warning: #f59e0b;
+  --tm-danger: #ef4444;
+  --tm-radius-card: 20px;
+  --tm-radius-featured: 24px;
+  --tm-radius-input: 16px;
+  --tm-radius-pill: 9999px;
+  --tm-shadow-soft: 0 4px 24px rgba(22, 58, 112, 0.06);
+  --tm-shadow-card: 0 8px 32px rgba(22, 58, 112, 0.08);
+  --tm-shadow-featured: 0 12px 40px rgba(14, 39, 82, 0.22);
+  --tm-transition: 180ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  background-color: var(--tm-bg);
+  color: var(--tm-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Layout */
+.tm-page-content {
+  padding: 1rem 1rem 1.25rem;
+}
+
+.tm-animate-in {
+  animation: tm-fade-in var(--tm-transition) ease-out;
+}
+
+@keyframes tm-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Header — use tm-header class on component */
+
+.tm-header-kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--tm-mint);
+}
+
+.tm-header-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--tm-navy);
+}
+
+.tm-header-sub {
+  font-size: 0.75rem;
+  color: var(--tm-text-muted);
+}
+
+.tm-icon-btn {
+  display: inline-flex;
+  min-height: 44px;
+  min-width: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--tm-radius-input);
+  border: 1px solid rgba(22, 58, 112, 0.1);
+  background: var(--tm-card);
+  color: var(--tm-text-muted);
+  transition: transform var(--tm-transition), background var(--tm-transition);
+}
+
+.tm-icon-btn:active {
+  transform: scale(0.98);
+}
+
+/* Bottom nav */
+.tm-bottom-nav {
+  border-top: 1px solid rgba(22, 58, 112, 0.06);
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+}
+
+.tm-nav-link {
+  display: flex;
+  min-height: 48px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-radius: 14px;
+  padding: 4px 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--tm-text-muted);
+  transition: background var(--tm-transition), color var(--tm-transition), transform var(--tm-transition);
+}
+
+.tm-nav-link:active {
+  transform: scale(0.98);
+}
+
+.tm-nav-link--active {
+  background: linear-gradient(135deg, var(--tm-navy) 0%, var(--tm-navy-dark) 100%);
+  color: #fff;
+  box-shadow: var(--tm-shadow-soft);
+}
+
+.tm-nav-link--active svg {
+  color: var(--tm-mint-light);
+}
+
+/* Featured hero card */
+.tm-featured-card {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  border-radius: var(--tm-radius-featured);
+  background: linear-gradient(135deg, var(--tm-navy) 0%, #1a5089 42%, var(--tm-mint) 100%);
+  padding: 1.125rem 1.25rem;
+  color: #fff;
+  box-shadow: var(--tm-shadow-featured);
+  transition: transform var(--tm-transition), box-shadow var(--tm-transition);
+  animation: tm-fade-in 200ms ease-out;
+}
+
+.tm-featured-card:active {
+  transform: scale(0.985);
+}
+
+.tm-featured-icon {
+  display: flex;
+  height: 3.5rem;
+  width: 3.5rem;
+  shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--tm-radius-pill);
+  background: linear-gradient(145deg, var(--tm-mint) 0%, var(--tm-mint-light) 100%);
+  color: var(--tm-navy-dark);
+  box-shadow: 0 4px 16px rgba(40, 199, 183, 0.35);
+}
+
+.tm-featured-arrow {
+  display: flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--tm-radius-pill);
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  transition: background var(--tm-transition);
+}
+
+.tm-featured-card:hover .tm-featured-arrow {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* Grid menu cards */
+.tm-menu-card {
+  display: flex;
+  height: 100%;
+  min-height: 72px;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: var(--tm-radius-card);
+  border: 1px solid rgba(22, 58, 112, 0.06);
+  background: var(--tm-card);
+  padding: 0.875rem;
+  box-shadow: var(--tm-shadow-soft);
+  transition: transform var(--tm-transition), box-shadow var(--tm-transition);
+  animation: tm-fade-in 200ms ease-out;
+}
+
+.tm-menu-card:active {
+  transform: scale(0.98);
+}
+
+.tm-menu-icon {
+  display: flex;
+  height: 2.5rem;
+  width: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--tm-radius-pill);
+  background: rgba(40, 199, 183, 0.12);
+  color: var(--tm-navy);
+}
+
+.tm-menu-title {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--tm-navy);
+}
+
+.tm-menu-desc {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--tm-text-muted);
+}
+
+/* Generic cards */
+.tm-card {
+  border-radius: var(--tm-radius-card);
+  border: 1px solid rgba(22, 58, 112, 0.06);
+  background: var(--tm-card);
+  box-shadow: var(--tm-shadow-soft);
+}
+
+.tm-card-section {
+  overflow: hidden;
+  border-radius: var(--tm-radius-card);
+  border: 1px solid rgba(22, 58, 112, 0.06);
+  background: var(--tm-card);
+  box-shadow: var(--tm-shadow-soft);
+  transition: box-shadow var(--tm-transition);
+}
+
+/* List row (more page) */
+.tm-list-row {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  gap: 0.75rem;
+  border-radius: var(--tm-radius-card);
+  border: 1px solid rgba(22, 58, 112, 0.06);
+  background: var(--tm-card);
+  padding: 0.875rem 1rem;
+  box-shadow: var(--tm-shadow-soft);
+  transition: transform var(--tm-transition);
+  color: var(--tm-navy);
+  font-weight: 600;
+}
+
+.tm-list-row:active {
+  transform: scale(0.99);
+}
+
+.tm-list-row-icon {
+  color: var(--tm-navy);
+}
+
+/* Tabs */
+.tm-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  border-radius: var(--tm-radius-input);
+  background: rgba(22, 58, 112, 0.06);
+  padding: 4px;
+}
+
+.tm-tab {
+  min-height: 44px;
+  border-radius: 12px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--tm-text-muted);
+  background: var(--tm-card);
+  transition: background var(--tm-transition), color var(--tm-transition), transform var(--tm-transition);
+}
+
+.tm-tab:active {
+  transform: scale(0.98);
+}
+
+.tm-tab--active {
+  background: linear-gradient(135deg, var(--tm-navy) 0%, var(--tm-navy-dark) 100%);
+  color: #fff;
+  box-shadow: var(--tm-shadow-soft);
+}
+
+/* Buttons */
+.tm-btn-primary {
+  min-height: 44px;
+  border-radius: var(--tm-radius-input);
+  background: linear-gradient(135deg, var(--tm-navy) 0%, var(--tm-mint) 100%);
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(22, 58, 112, 0.2);
+  transition: filter var(--tm-transition), transform var(--tm-transition), opacity var(--tm-transition);
+}
+
+.tm-btn-primary:hover {
+  filter: brightness(1.05);
+}
+
+.tm-btn-primary:active {
+  transform: scale(0.98);
+}
+
+.tm-btn-primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.tm-btn-secondary {
+  min-height: 44px;
+  border-radius: var(--tm-radius-input);
+  border: 1px solid rgba(22, 58, 112, 0.12);
+  background: var(--tm-card);
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--tm-text);
+  transition: background var(--tm-transition), transform var(--tm-transition);
+}
+
+.tm-btn-secondary:active {
+  transform: scale(0.98);
+  background: rgba(22, 58, 112, 0.04);
+}
+
+/* Inputs — scoped overrides for shared pages */
+.teacher-mobile-app input:not([type='checkbox']):not([type='radio']),
+.teacher-mobile-app select,
+.teacher-mobile-app textarea {
+  border-radius: var(--tm-radius-input) !important;
+  border-color: rgba(22, 58, 112, 0.12) !important;
+  transition: border-color var(--tm-transition), box-shadow var(--tm-transition) !important;
+}
+
+.teacher-mobile-app input:focus,
+.teacher-mobile-app select:focus,
+.teacher-mobile-app textarea:focus {
+  border-color: var(--tm-mint) !important;
+  box-shadow: 0 0 0 3px rgba(40, 199, 183, 0.22) !important;
+  outline: none !important;
+}
+
+/* Primary buttons inside shared pages */
+.teacher-mobile-app button.bg-blue-600,
+.teacher-mobile-app a.bg-blue-600,
+.teacher-mobile-app .bg-blue-600 {
+  background: linear-gradient(135deg, var(--tm-navy) 0%, var(--tm-mint) 100%) !important;
+  border: none;
+  box-shadow: 0 4px 16px rgba(22, 58, 112, 0.18);
+}
+
+.teacher-mobile-app button.bg-blue-600:hover,
+.teacher-mobile-app a.bg-blue-600:hover {
+  filter: brightness(1.05);
+}
+
+.teacher-mobile-app button.bg-blue-600:active {
+  transform: scale(0.98);
+}
+
+/* Cards in shared pages */
+.teacher-mobile-app .rounded-2xl.border,
+.teacher-mobile-app .rounded-xl.border {
+  border-color: rgba(22, 58, 112, 0.06);
+  box-shadow: var(--tm-shadow-soft);
+}
+
+.teacher-mobile-app .shadow-sm,
+.teacher-mobile-app .shadow-md {
+  box-shadow: var(--tm-shadow-soft) !important;
+}
+
+/* Progress bars — narrow selectors (do not match homework status buttons) */
+.teacher-mobile-app .h-full.rounded-full.bg-emerald-500,
+.teacher-mobile-app .h-full.rounded-full.bg-blue-500,
+.teacher-mobile-app .h-full.rounded-full.bg-blue-600,
+.teacher-mobile-app .bg-blue-600.h-full,
+.teacher-mobile-app .bg-navy-800.h-full {
+  background: linear-gradient(90deg, var(--tm-mint) 0%, var(--tm-mint-light) 100%) !important;
+}
+
+.teacher-mobile-app .bg-slate-100.rounded-full,
+.teacher-mobile-app .bg-slate-200.rounded-full {
+  background: #e8ecf2 !important;
+}
+
+/* Charts — mint theme (line charts) */
+.teacher-mobile-app .recharts-line-curve,
+.teacher-mobile-app .recharts-curve.recharts-line-curve {
+  stroke: var(--tm-mint) !important;
+}
+
+.teacher-mobile-app .recharts-dot circle,
+.teacher-mobile-app .recharts-active-dot circle {
+  fill: var(--tm-mint) !important;
+  stroke: #fff !important;
+}
+
+.teacher-mobile-app .text-blue-700 {
+  color: #0d9488 !important;
+}
+
+/* Student list — contact-style rows */
+.teacher-mobile-app .tm-page-content table tbody tr {
+  transition: background var(--tm-transition);
+}
+
+.teacher-mobile-app .tm-page-content table tbody tr:active {
+  background: rgba(40, 199, 183, 0.06);
+}
+
+/* Question badges (mobile only via class) */
+.tm-badge-wait {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--tm-radius-pill);
+  background: rgba(245, 158, 11, 0.12);
+  padding: 0.125rem 0.5rem;
+  font-size: 11px;
+  font-weight: 700;
+  color: #b45309;
+}
+
+.tm-badge-done {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--tm-radius-pill);
+  background: rgba(40, 199, 183, 0.15);
+  padding: 0.125rem 0.5rem;
+  font-size: 11px;
+  font-weight: 700;
+  color: #0d9488;
+}
+
+/* Student avatar placeholder */
+.tm-student-avatar {
+  display: flex;
+  height: 2.75rem;
+  width: 2.75rem;
+  shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--tm-radius-pill);
+  background: rgba(40, 199, 183, 0.15);
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--tm-navy);
+}
+
+/* Student chip (today report) */
+.tm-student-chip {
+  shrink: 0;
+  border-radius: var(--tm-radius-pill);
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: transform var(--tm-transition), background var(--tm-transition);
+}
+
+.tm-student-chip:active {
+  transform: scale(0.98);
+}
+
+.tm-student-chip--active {
+  background: linear-gradient(135deg, var(--tm-navy) 0%, var(--tm-navy-dark) 100%);
+  color: #fff;
+  box-shadow: var(--tm-shadow-soft);
+}
+
+.tm-student-chip--idle {
+  border: 1px solid rgba(22, 58, 112, 0.1);
+  background: var(--tm-card);
+  color: var(--tm-text);
+}
+
+/* Homework status buttons (Today Report) */
+.tm-hw-status-btn {
+  display: flex;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  border-radius: 12px;
+  border: 1px solid rgba(22, 58, 112, 0.12);
+  background: var(--tm-card);
+  font-weight: 600;
+  color: var(--tm-navy);
+  transition:
+    background var(--tm-transition),
+    border-color var(--tm-transition),
+    color var(--tm-transition),
+    transform var(--tm-transition),
+    box-shadow var(--tm-transition);
+}
+
+.tm-hw-status-btn:active {
+  transform: scale(0.98);
+}
+
+.tm-hw-status-btn--selected.tm-hw-status-btn--complete {
+  border-color: var(--tm-mint);
+  background: linear-gradient(135deg, var(--tm-mint) 0%, var(--tm-mint-light) 100%);
+  color: var(--tm-navy-dark);
+  box-shadow: 0 4px 12px rgba(40, 199, 183, 0.28);
+}
+
+.tm-hw-status-btn--selected.tm-hw-status-btn--partial {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.14);
+  color: #b45309;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.18);
+}
+
+.tm-hw-status-btn--selected.tm-hw-status-btn--incomplete {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+  color: #b91c1c;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.14);
+}
+
+/* Accordion */
+.tm-accordion-btn {
+  display: flex;
+  width: 100%;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1rem;
+  text-align: left;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--tm-navy);
+}
+
+/* Hide duplicate page titles when shell header exists */
+.teacher-mobile-app .tm-page-content h2.text-2xl {
+  font-size: 1.125rem;
+  color: var(--tm-navy);
+}
+
+.teacher-mobile-app .tm-page-content > .space-y-6 > .flex.flex-col.gap-4:first-child p.text-sm {
+  color: var(--tm-text-muted);
+}
+
+/* Student cards — Apple Contacts style (mobile list in StudentsPage) */
+.teacher-mobile-app .tm-page-content .space-y-4.md\:hidden > .rounded-2xl {
+  position: relative;
+  border-radius: var(--tm-radius-card);
+  border-color: rgba(22, 58, 112, 0.06);
+  padding: 1rem 1rem 1rem 4.75rem;
+  box-shadow: var(--tm-shadow-soft);
+}
+
+.teacher-mobile-app .tm-page-content .space-y-4.md\:hidden > .rounded-2xl::before {
+  content: '';
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--tm-radius-pill);
+  background: rgba(40, 199, 183, 0.15);
+}
+
+.teacher-mobile-app .tm-page-content .space-y-4.md\:hidden > .rounded-2xl > button:first-of-type {
+  color: var(--tm-navy);
+}
+
+/* Monthly evaluation chart container */
+.teacher-mobile-app .recharts-responsive-container {
+  background: linear-gradient(180deg, rgba(40, 199, 183, 0.06) 0%, transparent 72%);
+  border-radius: 12px;
+}
+
+/* Mobile teacher login */
+.teacher-mobile-login {
+  background-color: var(--tm-bg);
+  color: var(--tm-text);
+}
+
+.teacher-mobile-login .tm-login-card {
+  border-radius: var(--tm-radius-featured);
+  border: 1px solid rgba(22, 58, 112, 0.06);
+  background: var(--tm-card);
+  box-shadow: var(--tm-shadow-card);
+}
+
+.teacher-mobile-login .tm-login-kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--tm-mint);
+}
+
+.teacher-mobile-login .tm-login-title {
+  color: var(--tm-navy);
+}
+
+.teacher-mobile-login input {
+  border-radius: var(--tm-radius-input);
+  border-color: rgba(22, 58, 112, 0.12);
+}
+
+.teacher-mobile-login input:focus {
+  border-color: var(--tm-mint);
+  box-shadow: 0 0 0 3px rgba(40, 199, 183, 0.22);
+  outline: none;
+}
+
+.teacher-mobile-login .tm-btn-primary {
+  width: 100%;
+}

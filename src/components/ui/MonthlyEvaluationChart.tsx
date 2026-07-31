@@ -1,8 +1,9 @@
 import { useMemo } from 'react'
 import {
+  Area,
   CartesianGrid,
+  ComposedChart,
   Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -162,7 +163,7 @@ export function MonthlyEvaluationChart({
           }`}
         >
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart
+            <ComposedChart
               data={chartData as FixedMonthChartPoint[]}
               margin={
                 mobileFit
@@ -170,6 +171,22 @@ export function MonthlyEvaluationChart({
                   : { top: 8, right: 16, left: 20, bottom: 24 }
               }
             >
+              {mobileFit ? (
+                <Area
+                  type="monotone"
+                  dataKey="percentage"
+                  fill="url(#tmMintAreaFill)"
+                  stroke="none"
+                  connectNulls={variant === 'fixedMonths'}
+                  isAnimationActive={false}
+                />
+              ) : null}
+              <defs>
+                <linearGradient id="tmMintAreaFill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#28C7B7" stopOpacity={0.22} />
+                  <stop offset="100%" stopColor="#28C7B7" stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis
                 dataKey={variant === 'fixedMonths' ? 'monthLabel' : 'label'}
@@ -197,8 +214,8 @@ export function MonthlyEvaluationChart({
               <Line
                 type="monotone"
                 dataKey="percentage"
-                stroke="#1e3a8a"
-                strokeWidth={4}
+                stroke={mobileFit ? '#28C7B7' : '#1e3a8a'}
+                strokeWidth={mobileFit ? 3 : 4}
                 connectNulls={variant === 'fixedMonths'}
                 dot={
                   variant === 'fixedMonths'
@@ -221,18 +238,23 @@ export function MonthlyEvaluationChart({
                             cx={cx}
                             cy={cy}
                             r={4}
-                            fill="#1e3a8a"
+                            fill={mobileFit ? '#28C7B7' : '#1e3a8a'}
                             stroke="#fff"
                             strokeWidth={2}
                           />
                         )
                       }
-                    : { r: 4, fill: '#1e3a8a', strokeWidth: 2, stroke: '#fff' }
+                    : {
+                        r: 4,
+                        fill: mobileFit ? '#28C7B7' : '#1e3a8a',
+                        strokeWidth: 2,
+                        stroke: '#fff',
+                      }
                 }
-                activeDot={{ r: 6, fill: '#1e40af' }}
+                activeDot={{ r: 6, fill: mobileFit ? '#55E3D5' : '#1e40af' }}
                 isAnimationActive={false}
               />
-            </LineChart>
+            </ComposedChart>
           </ResponsiveContainer>
         </div>
       </div>

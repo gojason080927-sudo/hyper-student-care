@@ -7,6 +7,7 @@ import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { EmptyState } from '../components/ui/EmptyState'
 import { Modal } from '../components/ui/Modal'
 import { PageHeader } from '../components/ui/PageHeader'
+import { PageLoadingState } from '../components/ui/PageLoadingState'
 import { RecordActions } from '../components/ui/RecordActions'
 import { StatusBadge } from '../components/ui/StatusBadge'
 import { StudentSelect } from '../components/ui/StudentSelect'
@@ -45,7 +46,8 @@ const emptyForm = (): FormState => ({
 })
 
 export function HomeworkPage() {
-  const { students, homework, saveHomeworkRecord, deleteHomeworkRecord } = useData()
+  const { students, homework, saveHomeworkRecord, deleteHomeworkRecord, isLoading, isSaving } =
+    useData()
   const [dateFilter, setDateFilter] = useState('')
   const [search, setSearch] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
@@ -125,6 +127,10 @@ export function HomeworkPage() {
   }
 
   const getStudentName = (id: string) => students.find((s) => s.id === id)?.name ?? '-'
+
+  if (isLoading) {
+    return <PageLoadingState message="숙제 데이터를 불러오는 중…" />
+  }
 
   return (
     <div className="space-y-6">
@@ -274,8 +280,8 @@ export function HomeworkPage() {
             <button type="button" onClick={() => setModalOpen(false)} className={btnSecondary}>
               취소
             </button>
-            <button type="submit" className={btnPrimary}>
-              저장
+            <button type="submit" disabled={isSaving} className={btnPrimary}>
+              {isSaving ? '저장 중...' : '저장'}
             </button>
           </div>
         </form>

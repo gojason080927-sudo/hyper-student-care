@@ -1279,7 +1279,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
 
       const ts = createTimestamps()
-      const status = data.answer.trim() ? '답변완료' : data.status
+      const hasAnswer =
+        data.answer.trim().length > 0 || (data.answerImages?.length ?? 0) > 0
+      const status = hasAnswer ? '답변완료' : data.status
       const full = {
         ...data,
         status,
@@ -1289,6 +1291,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       let record: QuestionRecord
       if (data.id) {
         const existing = questions.find((r) => r.id === data.id)
+        if (existing && existing.studentId !== data.studentId) {
+          full.studentId = existing.studentId
+        }
         record = touchRecord({
           ...(existing ?? { id: data.id, ...ts }),
           ...full,

@@ -10,6 +10,7 @@ import {
   isActiveGrade,
   parseGradeFromClassName,
 } from '../utils/studentGradeClass'
+import type { ClassTodayReportSyncContext } from '../utils/classTodayReportCommon'
 import type { TodayReportLookupContext } from '../utils/todayReportLookup'
 
 export function TeacherTodayReportBulkPage() {
@@ -58,6 +59,15 @@ export function TeacherTodayReportBulkPage() {
       )
       .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
   }, [activeStudents, className, grade])
+
+  const classSync = useMemo((): ClassTodayReportSyncContext | undefined => {
+    if (!grade || !className || classStudents.length === 0) return undefined
+    return {
+      grade,
+      className,
+      peerStudentIds: classStudents.map((student) => student.id),
+    }
+  }, [className, classStudents, grade])
 
   const lookupContext = useMemo<TodayReportLookupContext>(
     () => ({
@@ -226,6 +236,7 @@ export function TeacherTodayReportBulkPage() {
                 expanded={expandedIds.has(student.id)}
                 onToggle={() => toggleExpanded(student.id)}
                 lookupContext={lookupContext}
+                classSync={classSync}
               />
             ))}
           </div>

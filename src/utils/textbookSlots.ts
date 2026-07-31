@@ -83,7 +83,32 @@ export function resolveProgressContentLabel(
   if (/^\d+$/.test(content)) {
     const n = Number(content)
     if (n === currentPage || n === totalPage) return ''
-    if (String(n).length >= 5) return ''
+  }
+
+  return content
+}
+
+/** 학부모 현재 진도: current_progress 원본 기준, 페이지값과 동일한 숫자만 제외 */
+export function resolveParentProgressContent(
+  rawProgress: string,
+  textbookName: string,
+  currentPage: number,
+  totalPage: number,
+): string {
+  let content = rawProgress.trim()
+  if (!content) return ''
+
+  content = content.replace(/[,，]\s*\d{1,3}\s*%?\s*$/, '').trim()
+  if (!content) return ''
+
+  const textbook = textbookName.trim()
+  if (textbook && content.startsWith(textbook)) {
+    content = content.slice(textbook.length).replace(/^[\s,，·\-/]+/, '').trim()
+  }
+
+  if (/^\d+$/.test(content)) {
+    const n = Number(content)
+    if (n === currentPage || n === totalPage) return ''
   }
 
   return content
@@ -454,6 +479,27 @@ export function buildProgressTextbookDisplays(
   return buildProgressSlotDisplays(studentId, date, slots, progressRecords, classContext).filter(
     hasProgressSlotContent,
   )
+}
+
+/** 학부모 readOnly: 슬롯별 current_progress를 그대로 표시 (과도한 필터링 없음) */
+export function buildParentProgressTextbookDisplays(
+  studentId: string,
+  date: string,
+  slots: StudentTextbookSlot[],
+  progressRecords: ProgressRecord[],
+  classContext?: TextbookDisplayClassContext,
+): ProgressTextbookDisplay[] {
+  return buildProgressSlotDisplays(studentId, date, slots, progressRecords, classContext)
+    .map((item) => ({
+      ...item,
+      progressContent: resolveParentProgressContent(
+        item.currentProgress,
+        item.textbookName,
+        item.currentPage,
+        item.totalPage,
+      ),
+    }))
+    .filter(hasProgressSlotContent)
 }
 
 export function buildProgressTextbookDisplaysForEdit(

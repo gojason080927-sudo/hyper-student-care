@@ -1,6 +1,6 @@
 import { ArrowLeft, Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { DifficultyBreakdownBadges } from '../components/monthly/DifficultyBreakdownBadges'
 import {
   MonthlyEvaluationForm,
@@ -25,6 +25,7 @@ import {
 import { SUBJECTS, btnPrimary, getScoreColor, inputClass } from '../utils/labels'
 
 export function MonthlyEvaluationPage() {
+  const navigate = useNavigate()
   const { students, monthlyEvaluations, saveMonthlyEvaluationRecord, deleteMonthlyEvaluationRecord } =
     useData()
   const [yearFilter, setYearFilter] = useState('')
@@ -70,13 +71,16 @@ export function MonthlyEvaluationPage() {
 
   return (
     <div className="space-y-6">
-      <Link
-        to="/monthly-evaluations"
-        className="inline-flex cursor-pointer items-center gap-1.5 text-sm font-medium text-slate-600 transition hover:text-navy-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-navy-500 focus-visible:ring-offset-2 rounded-lg px-1 py-0.5"
+      <button
+        type="button"
+        onClick={() =>
+          navigate('/monthly-evaluations', { state: { resetAt: Date.now() } })
+        }
+        className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-1 py-0.5 text-sm font-medium text-slate-600 transition hover:text-navy-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-navy-500 focus-visible:ring-offset-2"
       >
         <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />
         월말평가 보기로 돌아가기
-      </Link>
+      </button>
       <PageHeader
         title="강사용 평가 관리"
         description="월말평가를 입력하고 수정합니다."

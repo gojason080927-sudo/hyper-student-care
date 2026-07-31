@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { createTeacherAuthStorage } from './teacherAuthStorage'
 
 let client: SupabaseClient | null = null
 
@@ -40,6 +41,7 @@ function createSupabaseClient(): SupabaseClient {
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
+      storage: createTeacherAuthStorage(),
     },
   })
 }

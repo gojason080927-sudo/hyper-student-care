@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { DailyTestPassRuleBadge } from '../dailytest/DailyTestSessionFormSection'
 import { StudentParentLinkToolbar } from '../students/StudentParentLinkToolbar'
 import { ClassBulkDailyTestCompact } from './ClassBulkDailyTestCompact'
+import { normalizeSessionResultsForForm } from '../../utils/dailyTest'
 import type { ClassBulkStudentDraft } from '../../types/classBulk'
 import type { Student } from '../../types/student'
 import type { AttendanceStatus, HomeworkStatus } from '../../types/records'
@@ -252,8 +253,11 @@ export function ClassBulkStudentCard({
             <DailyTestPassRuleBadge />
           </div>
           <ClassBulkDailyTestCompact
+            key={`${draft.studentId}-${draft.recordIds.dailyTest ?? 'new'}`}
             sessions={draft.sessionResults}
-            onChange={(sessionResults) => patch({ sessionResults })}
+            onChange={(sessionResults) =>
+              patch({ sessionResults: normalizeSessionResultsForForm(sessionResults) })
+            }
           />
         </section>
       </div>

@@ -3,19 +3,47 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hyper Student Care</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#102a56" />
+    <title>HYPER STUDENT CARE</title>
+    <meta name="description" content="하이퍼 학생 관리 시스템" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="HYPER STUDENT CARE" />
     <meta property="og:title" content="HYPER STUDENT CARE" />
     <meta property="og:description" content="하이퍼 학생 관리 시스템" />
-    <meta property="og:image" content="/hyper-care-share.png" />
-    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://hyper-student-care.vercel.app/hyper-care-og.png" />
+    <meta property="og:image:secure_url" content="https://hyper-student-care.vercel.app/hyper-care-og.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:url" content="https://hyper-student-care.vercel.app/" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="HYPER STUDENT CARE" />
+    <meta name="twitter:description" content="하이퍼 학생 관리 시스템" />
+    <meta name="twitter:image" content="https://hyper-student-care.vercel.app/hyper-care-og.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <script>
+      ;(function () {
+        var path = window.location.pathname
+        if (!path.startsWith('/teacher/')) return
+        var manifest = document.createElement('link')
+        manifest.rel = 'manifest'
+        manifest.href = '/teacher/manifest.webmanifest'
+        document.head.appendChild(manifest)
+        var theme = document.querySelector('meta[name="theme-color"]')
+        if (theme) theme.setAttribute('content', '#173564')
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker
+            .register('/teacher/sw.js', { scope: '/teacher/' })
+            .catch(function () {})
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

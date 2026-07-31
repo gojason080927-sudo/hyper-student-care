@@ -185,12 +185,9 @@ export const TEXTBOOK_SUBJECTS: TextbookSubject[] = ['수학', '영어']
 
 export const TEXTBOOK_SLOT_NUMBERS: TextbookSlotNumber[] = [1, 2, 3]
 
-export type TextbookCategory = 'homework' | 'progress'
-
 export type StudentTextbookSlot = {
   id: string
   studentId: string
-  category: TextbookCategory
   subject: TextbookSubject
   slotNumber: TextbookSlotNumber
   textbookName: string
@@ -227,6 +224,23 @@ export type ClassNoteRecord = {
   date: string
   hasClassNote: boolean
   note: string
+  createdAt: string
+  updatedAt: string
+}
+
+/** 반(grade + className) · 날짜 · 과목 · 슬롯별 공통 진도·과제 */
+export type ClassTodayReportCommon = {
+  id: string
+  grade: string
+  className: string
+  reportDate: string
+  subject: TextbookSubject
+  slotNumber: TextbookSlotNumber
+  currentProgress: string
+  currentPage: number
+  totalPage: number
+  previousAssignment: string
+  todayAssignment: string
   createdAt: string
   updatedAt: string
 }

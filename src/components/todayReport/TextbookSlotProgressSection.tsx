@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Save } from 'lucide-react'
 import { EditableTextbookName } from './EditableTextbookName'
+import { KoreanTextarea } from '../ui/KoreanTextField'
 import { inputClass } from '../../utils/labels'
 import {
   ParentProgressSlotCard,
@@ -13,16 +14,23 @@ import type {
   TextbookSlotNumber,
   TextbookSubject,
 } from '../../types/records'
-import { TEXTBOOK_SLOT_NUMBERS, TEXTBOOK_SUBJECTS } from '../../types/records'
+import { TEXTBOOK_SUBJECTS } from '../../types/records'
 import { calcProgressRate } from '../../utils/calc'
 import {
   buildTextbookNameDrafts,
-  buildProgressTextbookDisplays,
   buildProgressTextbookDisplaysForEdit,
+  buildParentProgressTextbookDisplays,
   findTextbookSlot,
   groupProgressBySubject,
   type TextbookDisplayClassContext,
 } from '../../utils/textbookSlots'
+import { logParentProgressDebug } from '../../utils/parentProgressDebug'
+import { filterParentVisibleSlotDisplays } from '../../utils/parentTextbookSlots'
+import {
+  filterVisibleSlotDisplays,
+  getVisibleSlotNumbers,
+  type SubjectVisibleSlots,
+} from '../../utils/teacherMobileTextbookSlots'
 import type { ClassTodayReportSyncContext } from '../../utils/classTodayReportCommon'
 import {
   classTrackIncludesSubject,
@@ -55,10 +63,10 @@ function compactTextareaClass() {
   return `${inputClass()} min-h-[4.5rem] resize-y py-1.5 text-sm leading-snug`
 }
 
-function SectionCard({ title, children }: { title: string; children: ReactNode }) {
+function SectionCard({ title, children, hideTitle = false }: { title: string; children: ReactNode; hideTitle?: boolean }) {
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm sm:p-3">
-      <h3 className="mb-1.5 text-sm font-bold text-navy-900">{title}</h3>
+      {!hideTitle && <h3 className="mb-1.5 text-sm font-bold text-navy-900">{title}</h3>}
       {children}
     </section>
   )
@@ -77,6 +85,8 @@ export function TextbookSlotProgressSection({
   onSaveSubjectWithClassSync,
   onSaveSlot,
   onNotify,
+  hideTitle = false,
+  visibleSlots,
 }: {
   readOnly: boolean
   studentId: string
@@ -100,6 +110,9 @@ export function TextbookSlotProgressSection({
   ) => Promise<boolean>
   onSaveSlot: ReturnType<typeof useData>['saveStudentTextbookSlot']
   onNotify?: (message: string) => void
+  hideTitle?: boolean
+  /** 모바일 PWA 등: 과목별 표시·저장 슬롯 제한 (수학 1~2 등) */
+  visibleSlots?: SubjectVisibleSlots
 }) {
   const initialDisplays = useMemo(
     () =>
@@ -148,10 +161,10 @@ export function TextbookSlotProgressSection({
     수학: initialDisplays.find((item) => item.subject === '수학')?.teacherMemo ?? '',
     영어: initialDisplays.find((item) => item.subject === '영어')?.teacherMemo ?? '',
   }))
-
-  useEffect(() => {
-    setNameDrafts(buildTextbookNameDrafts(studentId, slots))
-  }, [slots, studentId])
+  const dirtyDraftKeysRef = useRef(new Set<string>())
+  const composingDraftKeysRef = useRef(new Set<string>())
+  const dirtyNameKeysRef = useRef(new Set<string>())
+  const dirtyMemoSubjectsRef = useRef(new Set<TextbookSubject>())
 
   useEffect(() => {
     setDrafts(
@@ -166,11 +179,56 @@ export function TextbookSlotProgressSection({
         ]),
       ),
     )
+    setNameDrafts(buildTextbookNameDrafts(studentId, slots))
     setTeacherMemos({
       수학: initialDisplays.find((item) => item.subject === '수학')?.teacherMemo ?? '',
       영어: initialDisplays.find((item) => item.subject === '영어')?.teacherMemo ?? '',
     })
-  }, [studentId, date, displaysSnapshot])
+    dirtyDraftKeysRef.current.clear()
+    composingDraftKeysRef.current.clear()
+    dirtyNameKeysRef.current.clear()
+    dirtyMemoSubjectsRef.current.clear()
+  }, [studentId, date])
+
+  useEffect(() => {
+    if (composingDraftKeysRef.current.size > 0) return
+
+    setDrafts((prev) => {
+      const next = Object.fromEntries(
+        initialDisplays.map((item) => [
+          `${item.subject}-${item.slotNumber}`,
+          {
+            currentProgress: item.currentProgress,
+            currentPage: item.currentPage ? String(item.currentPage) : '',
+            totalPage: item.totalPage ? String(item.totalPage) : '',
+          },
+        ]),
+      )
+      for (const key of dirtyDraftKeysRef.current) {
+        if (prev[key]) next[key] = prev[key]
+      }
+      return next
+    })
+    setTeacherMemos((prev) => ({
+      수학: dirtyMemoSubjectsRef.current.has('수학')
+        ? prev.수학
+        : initialDisplays.find((item) => item.subject === '수학')?.teacherMemo ?? '',
+      영어: dirtyMemoSubjectsRef.current.has('영어')
+        ? prev.영어
+        : initialDisplays.find((item) => item.subject === '영어')?.teacherMemo ?? '',
+    }))
+  }, [displaysSnapshot, initialDisplays])
+
+  useEffect(() => {
+    const fromServer = buildTextbookNameDrafts(studentId, slots)
+    setNameDrafts((prev) => {
+      const next = { ...fromServer }
+      for (const key of dirtyNameKeysRef.current) {
+        if (key in prev) next[key] = prev[key]
+      }
+      return next
+    })
+  }, [slots, studentId])
 
   const saveTextbookName = (
     subject: TextbookSubject,
@@ -179,6 +237,7 @@ export function TextbookSlotProgressSection({
   ) => {
     const trimmed = name.trim()
     const key = `${subject}-${slotNumber}`
+    dirtyNameKeysRef.current.add(key)
     setNameDrafts((prev) => ({ ...prev, [key]: trimmed }))
     if (!trimmed) return
 
@@ -193,24 +252,27 @@ export function TextbookSlotProgressSection({
   }
 
   if (readOnly) {
-    const displays = buildProgressTextbookDisplays(
+    const displays = buildParentProgressTextbookDisplays(
       studentId,
       date,
       slots,
       progressRecords,
       classContext,
     )
+
+    logParentProgressDebug(studentId, date, progressRecords, classContext, displays)
+
     if (displays.length === 0) {
       return (
-        <SectionCard title="오늘의 진도">
+        <SectionCard title="오늘의 진도" hideTitle={hideTitle}>
           <p className="text-sm text-slate-400">오늘 등록된 진도 정보가 없습니다.</p>
         </SectionCard>
       )
     }
 
-    const grouped = groupProgressBySubject(displays)
+    const grouped = groupProgressBySubject(filterParentVisibleSlotDisplays(displays))
     return (
-      <SectionCard title="오늘의 진도">
+      <SectionCard title="오늘의 진도" hideTitle={hideTitle}>
         <div className="space-y-4">
           {TEXTBOOK_SUBJECTS.map((subject) => {
             const items = grouped[subject]
@@ -231,7 +293,15 @@ export function TextbookSlotProgressSection({
     )
   }
 
-  const grouped = groupProgressBySubject(initialDisplays)
+  const displaysForUi = useMemo(
+    () =>
+      visibleSlots
+        ? filterVisibleSlotDisplays(initialDisplays, visibleSlots)
+        : initialDisplays,
+    [initialDisplays, visibleSlots],
+  )
+
+  const grouped = groupProgressBySubject(displaysForUi)
 
   const updateDraft = (
     subject: TextbookSubject,
@@ -239,6 +309,7 @@ export function TextbookSlotProgressSection({
     patch: Partial<ProgressSlotDraft>,
   ) => {
     const key = `${subject}-${slotNumber}`
+    dirtyDraftKeysRef.current.add(key)
     setDrafts((prev) => ({
       ...prev,
       [key]: { ...emptyProgressDraft(), ...prev[key], ...patch },
@@ -247,7 +318,8 @@ export function TextbookSlotProgressSection({
 
   const saveSubject = async (subject: TextbookSubject) => {
     const memo = teacherMemos[subject].trim()
-    const slotsToSave = TEXTBOOK_SLOT_NUMBERS.flatMap((slotNumber) => {
+    const slotNumbers = getVisibleSlotNumbers(subject, visibleSlots)
+    const slotsToSave = slotNumbers.flatMap((slotNumber) => {
       const display = initialDisplays.find(
         (item) => item.subject === subject && item.slotNumber === slotNumber,
       )
@@ -346,10 +418,10 @@ export function TextbookSlotProgressSection({
   }
 
   return (
-    <SectionCard title="오늘의 진도">
+    <SectionCard title="오늘의 진도" hideTitle={hideTitle}>
       <div className="space-y-3">
         {TEXTBOOK_SUBJECTS.map((subject) => (
-          <div key={subject}>
+          <div key={subject} lang="ko">
             <p className="mb-1.5 text-xs font-bold text-navy-800">{subject}</p>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
               {grouped[subject].map((item) => {
@@ -370,18 +442,25 @@ export function TextbookSlotProgressSection({
                       compact
                       value={nameDrafts[key] ?? ''}
                       onSave={(name) => saveTextbookName(item.subject, item.slotNumber, name)}
+                      onDraftChange={() => dirtyNameKeysRef.current.add(key)}
                     />
                     <div className="space-y-1.5">
                       <div>
                         <label className="mb-0.5 block text-[11px] font-semibold text-navy-800">
                           현재 진도
                         </label>
-                        <textarea
+                        <KoreanTextarea
                           value={draft.currentProgress}
                           onChange={(e) =>
                             updateDraft(item.subject, item.slotNumber, {
                               currentProgress: e.target.value,
                             })
+                          }
+                          onCompositionStart={() =>
+                            composingDraftKeysRef.current.add(key)
+                          }
+                          onCompositionEnd={() =>
+                            composingDraftKeysRef.current.delete(key)
                           }
                           rows={2}
                           className={compactTextareaClass()}
@@ -435,10 +514,17 @@ export function TextbookSlotProgressSection({
               <label className="block text-[11px] font-semibold text-slate-600">
                 강사 메모 (선택)
               </label>
-              <textarea
+              <KoreanTextarea
                 value={teacherMemos[subject]}
-                onChange={(e) =>
+                onChange={(e) => {
+                  dirtyMemoSubjectsRef.current.add(subject)
                   setTeacherMemos((prev) => ({ ...prev, [subject]: e.target.value }))
+                }}
+                onCompositionStart={() =>
+                  composingDraftKeysRef.current.add(`memo-${subject}`)
+                }
+                onCompositionEnd={() =>
+                  composingDraftKeysRef.current.delete(`memo-${subject}`)
                 }
                 rows={1}
                 className={compactTextareaClass()}

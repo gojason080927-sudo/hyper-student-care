@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
+import { KoreanTextInput } from '../ui/KoreanTextField'
 import { inputClass } from '../../utils/labels'
 
 type EditableTextbookNameProps = {
   value: string
   onSave: (name: string) => void
+  onDraftChange?: (name: string) => void
   compact?: boolean
   label?: string
 }
@@ -11,6 +13,7 @@ type EditableTextbookNameProps = {
 export function EditableTextbookName({
   value,
   onSave,
+  onDraftChange,
   compact = false,
   label = '교재명',
 }: EditableTextbookNameProps) {
@@ -46,9 +49,12 @@ export function EditableTextbookName({
       </div>
       {editing ? (
         <div className="mt-0.5 flex items-center gap-1">
-          <input
+          <KoreanTextInput
             value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            onChange={(e) => {
+              setDraft(e.target.value)
+              onDraftChange?.(e.target.value)
+            }}
             placeholder="교재명 입력"
             className={`${inputClass()} min-h-9 flex-1 py-1.5 text-sm`}
           />

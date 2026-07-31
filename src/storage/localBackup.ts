@@ -2,6 +2,7 @@ import type {
   AssignmentCompletionRecord,
   AttendanceRecord,
   ClassNoteRecord,
+  ClassTodayReportCommon,
   ContentPost,
   DailyTestRecord,
   HomeworkRecord,
@@ -32,6 +33,7 @@ export type LocalBackupData = {
   contentPosts: ContentPost[]
   todayAssignments: TodayAssignmentRecord[]
   classNotes: ClassNoteRecord[]
+  classTodayReportCommon?: ClassTodayReportCommon[]
 }
 
 function loadArray<T>(newKey: string, legacyKey?: string): T[] {
@@ -120,5 +122,6 @@ export function toLocalBackupData(
     contentPosts: data.contentPosts,
     todayAssignments: data.todayAssignments,
     classNotes: data.classNotes,
+    classTodayReportCommon: data.classTodayReportCommon ?? [],
   }
 }

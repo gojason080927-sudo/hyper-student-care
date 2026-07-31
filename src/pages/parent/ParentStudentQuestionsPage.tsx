@@ -88,6 +88,7 @@ export function ParentStudentQuestionsPage() {
             <QuestionRecordCard
               key={record.id}
               record={record}
+              parentView
               compactImages={false}
               fullWidthImages
             />

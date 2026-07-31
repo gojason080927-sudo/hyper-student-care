@@ -2,13 +2,16 @@ import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Header } from '../Header'
 import { Sidebar } from '../Sidebar'
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 
 /** 강사용 관리자 레이아웃 (TeacherLayout — ParentLayout과 분리) */
 export function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
+  useBodyScrollLock(sidebarOpen)
+
   return (
-    <div className="flex min-h-svh bg-slate-50">
+    <div className="flex min-h-svh overflow-x-hidden bg-slate-50">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Header onMenuClick={() => setSidebarOpen(true)} />

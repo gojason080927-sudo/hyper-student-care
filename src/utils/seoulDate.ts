@@ -19,3 +19,7 @@ export function addDaysInSeoul(dateString: string, delta: number): string {
 export function getPreviousSeoulDateString(dateString: string): string {
   return addDaysInSeoul(dateString, -1)
 }
+
+export function isTodaySeoul(dateString: string): boolean {
+  return dateString === getSeoulDateString()
+}

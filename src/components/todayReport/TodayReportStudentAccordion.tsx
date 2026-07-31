@@ -3,6 +3,7 @@ import { useMemo } from 'react'
 import { StudentKakaoShareAction } from '../students/StudentKakaoShareAction'
 import { TodayReportView } from '../todayReport/TodayReportView'
 import type { Student } from '../../types/student'
+import type { ClassTodayReportSyncContext } from '../../utils/classTodayReportCommon'
 import {
   getTodayReportCompletionColor,
   getTodayReportCompletionLabel,
@@ -16,6 +17,7 @@ type TodayReportStudentAccordionProps = {
   expanded: boolean
   onToggle: () => void
   lookupContext: TodayReportLookupContext
+  classSync?: ClassTodayReportSyncContext
 }
 
 export function TodayReportStudentAccordion({
@@ -24,6 +26,7 @@ export function TodayReportStudentAccordion({
   expanded,
   onToggle,
   lookupContext,
+  classSync,
 }: TodayReportStudentAccordionProps) {
   const records = useMemo(
     () => findStudentDayRecords(student.id, date, lookupContext),
@@ -75,6 +78,7 @@ export function TodayReportStudentAccordion({
             initialDate={date}
             hideHeader
             compactTeacherInput
+            classSync={classSync}
             classNoteExtraActions={<StudentKakaoShareAction student={student} compact />}
           />
         </div>

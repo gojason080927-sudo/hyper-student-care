@@ -14,10 +14,17 @@ import { PageHeader } from '../components/ui/PageHeader'
 import { RecordActions } from '../components/ui/RecordActions'
 import { StudentSelect } from '../components/ui/StudentSelect'
 import { useData } from '../hooks/useData'
-import type { QuestionRecord, QuestionStatus } from '../types/records'
+import type { QuestionImageAttachment, QuestionRecord, QuestionStatus } from '../types/records'
 import { sortByDateDesc } from '../utils/filters'
 import { QUESTION_CATEGORIES, QUESTION_STATUSES, btnPrimary, btnSecondary, inputClass } from '../utils/labels'
 import { requireDate, requireNonEmpty } from '../utils/validation'
+
+function hasAnswerContent(
+  answer: string,
+  answerImages: QuestionImageAttachment[],
+): boolean {
+  return answer.trim().length > 0 || answerImages.length > 0
+}
 
 export function QuestionsPage() {
   const { students, questions, saveQuestionRecord, deleteQuestionRecord, showToast } = useData()
@@ -65,7 +72,9 @@ export function QuestionsPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!validate()) return
-    const status: QuestionStatus = form.answer.trim() ? '답변완료' : form.status
+    const status: QuestionStatus = hasAnswerContent(form.answer, form.answerImages)
+      ? '답변완료'
+      : form.status
     saveQuestionRecord({
       ...form,
       status,

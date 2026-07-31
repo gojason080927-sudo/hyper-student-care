@@ -13,6 +13,25 @@ export function isSameProgressSubject(
   )
 }
 
+export function findProgressRecordIndexForDate(
+  records: ProgressRecord[],
+  record: Pick<
+    ProgressRecord,
+    'id' | 'studentId' | 'subject' | 'slotNumber' | 'lastStudyDate'
+  >,
+): number {
+  const byId = records.findIndex((item) => item.id === record.id)
+  if (byId >= 0) return byId
+  return records.findIndex(
+    (item) =>
+      item.studentId === record.studentId &&
+      item.subject === record.subject &&
+      normalizeSlotNumber(item.slotNumber ?? 1) ===
+        normalizeSlotNumber(record.slotNumber ?? 1) &&
+      item.lastStudyDate === record.lastStudyDate,
+  )
+}
+
 export function findProgressRecordIndex(
   records: ProgressRecord[],
   record: Pick<ProgressRecord, 'id' | 'studentId' | 'subject' | 'slotNumber'>,
