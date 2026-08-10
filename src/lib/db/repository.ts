@@ -91,6 +91,15 @@ function throwIfError(
   }
 }
 
+function isMissingColumnError(error: { message?: string; code?: string }): boolean {
+  const message = error.message ?? ''
+  return (
+    error.code === 'PGRST204' ||
+    /could not find the .+ column/i.test(message) ||
+    /column .+ does not exist/i.test(message)
+  )
+}
+
 function isMissingTableError(error: { message?: string; code?: string }): boolean {
   const message = error.message ?? ''
   return (

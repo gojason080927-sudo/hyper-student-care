@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 type CategoryCardProps = {
   to: string
   title: string
-  description: string
+  description?: string
   icon: LucideIcon
 }
 
@@ -34,9 +34,13 @@ export function CategoryCard({ to, title, description, icon: Icon }: CategoryCar
             ))}
           </h3>
         </div>
-        <p className="mt-4 flex-1 text-[15px] leading-relaxed text-slate-600 sm:text-base sm:leading-7">
-          {description}
-        </p>
+        {description ? (
+          <p className="mt-4 flex-1 text-[15px] leading-relaxed text-slate-600 sm:text-base sm:leading-7">
+            {description}
+          </p>
+        ) : (
+          <div className="flex-1" aria-hidden />
+        )}
       </div>
       <span className="mt-6 inline-flex items-center gap-1 text-sm font-semibold text-slate-400 transition-colors duration-200 ease-out hover-capable:group-hover:text-navy-700">
         메뉴로 이동
