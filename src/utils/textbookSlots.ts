@@ -19,6 +19,11 @@ import {
   resolveCommonTodayAssignment,
 } from './classTodayReportCommon'
 import { getPreviousSeoulDateString } from './seoulDate'
+import {
+  findClassTodayReportCommonForDisplay,
+  findHomeworkTextbookEntryForDisplay,
+  findProgressRecordForDisplay,
+} from './todayReportDisplayFallback'
 import { TEXTBOOK_SLOT_NUMBERS, TEXTBOOK_SUBJECTS } from '../types/records'
 
 export type HomeworkTextbookDisplay = {
@@ -276,6 +281,28 @@ function buildHomeworkSlotDisplays(
             slotNumber,
           )
         : undefined
+      const displayCommon =
+        common ??
+        (classContext
+          ? findClassTodayReportCommonForDisplay(
+              classContext.commonRecords,
+              classContext.grade,
+              classContext.className,
+              date,
+              subject,
+              slotNumber,
+            ).record
+          : undefined)
+      const { entry: displayEntry, isFallback: entryFallback } =
+        entry
+          ? { entry, isFallback: false }
+          : findHomeworkTextbookEntryForDisplay(
+              entries,
+              studentId,
+              date,
+              subject,
+              slotNumber,
+            )
 
       return {
         subject,
@@ -287,9 +314,9 @@ function buildHomeworkSlotDisplays(
           prevCommon,
           prevEntry,
         ),
-        todayAssignment: resolveCommonTodayAssignment(common, entry),
-        status: entry?.status ?? '',
-        entryId: entry?.id,
+        todayAssignment: resolveCommonTodayAssignment(displayCommon, displayEntry),
+        status: entryFallback ? '' : entry?.status ?? '',
+        entryId: entryFallback ? undefined : entry?.id,
       }
     }),
   )
@@ -373,31 +400,31 @@ function buildProgressSlotDisplays(
   progressRecords: ProgressRecord[],
   classContext?: TextbookDisplayClassContext,
 ): ProgressTextbookDisplay[] {
-  const dayRecords = progressRecords.filter(
-    (record) => record.studentId === studentId && record.lastStudyDate === date,
-  )
-
   return TEXTBOOK_SUBJECTS.flatMap((subject) => {
     let subjectMemo = ''
     for (const slotNumber of TEXTBOOK_SLOT_NUMBERS) {
-      const record = dayRecords.find(
-        (item) =>
-          subjectsMatch(item.subject, subject) &&
-          normalizeSlotNumber(item.slotNumber ?? 1) === slotNumber,
+      const { record, isFallback } = findProgressRecordForDisplay(
+        progressRecords,
+        studentId,
+        date,
+        subject,
+        slotNumber,
       )
-      if (!subjectMemo && record?.teacherMemo.trim()) {
+      if (!isFallback && !subjectMemo && record?.teacherMemo.trim()) {
         subjectMemo = record.teacherMemo.trim()
       }
     }
 
     return TEXTBOOK_SLOT_NUMBERS.map((slotNumber) => {
-      const record = dayRecords.find(
-        (item) =>
-          subjectsMatch(item.subject, subject) &&
-          normalizeSlotNumber(item.slotNumber ?? 1) === slotNumber,
+      const { record, isFallback } = findProgressRecordForDisplay(
+        progressRecords,
+        studentId,
+        date,
+        subject,
+        slotNumber,
       )
       const slotName = getTextbookName(slots, studentId, subject, slotNumber)
-      const common = classContext
+      let common = classContext
         ? findClassTodayReportCommon(
             classContext.commonRecords,
             classContext.grade,
@@ -407,6 +434,16 @@ function buildProgressSlotDisplays(
             slotNumber,
           )
         : undefined
+      if (!common && classContext) {
+        common = findClassTodayReportCommonForDisplay(
+          classContext.commonRecords,
+          classContext.grade,
+          classContext.className,
+          date,
+          subject,
+          slotNumber,
+        ).record
+      }
       const textbookName = slotName || record?.textbookName.trim() || ''
       const currentProgress = resolveCommonCurrentProgress(common, record)
       const currentPage = resolveCommonCurrentPage(common, record)
@@ -426,7 +463,7 @@ function buildProgressSlotDisplays(
         totalPage,
         progressRate: calcProgressRate(currentPage, totalPage || 1),
         teacherMemo: subjectMemo,
-        recordId: record?.id,
+        recordId: isFallback ? undefined : record?.id,
       }
     })
   })

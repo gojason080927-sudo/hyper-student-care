@@ -38,10 +38,12 @@ import { TEACHER_MOBILE_VISIBLE_SLOTS } from '../../utils/teacherMobileTextbookS
 import {
   addDays,
   compareDateStrings,
+  formatKoreanDate,
   formatKoreanDateLong,
   getTodayString,
   isToday,
 } from '../../utils/date'
+import { resolveParentTodayReportDisplaySource } from '../../utils/todayReportDisplayFallback'
 import { addDaysInSeoul, getSeoulDateString, isTodaySeoul } from '../../utils/seoulDate'
 import {
   dailyTestFormToSavePayload,
@@ -325,47 +327,81 @@ export function TodayReportView({
 
   const selectedDateIsToday = readOnly ? isTodaySeoul(selectedDate) : isToday(selectedDate)
 
+  const parentDisplaySource = useMemo(() => {
+    if (!readOnly) {
+      return { displayDate: selectedDate, isFallback: false }
+    }
+    return resolveParentTodayReportDisplaySource({
+      studentId: student.id,
+      selectedDate,
+      progressRecords,
+      homeworkTextbookEntries,
+      attendance,
+      dailyTests,
+      todayAssignments,
+      classNotes,
+      classTodayReportCommon,
+      grade: student.grade.trim(),
+      className: student.className.trim(),
+    })
+  }, [
+    attendance,
+    classNotes,
+    classTodayReportCommon,
+    dailyTests,
+    homeworkTextbookEntries,
+    progressRecords,
+    readOnly,
+    selectedDate,
+    student.className,
+    student.grade,
+    student.id,
+    todayAssignments,
+  ])
+
+  const contentDate = readOnly ? parentDisplaySource.displayDate : selectedDate
+
   const dayAttendance = useMemo(
     () =>
       attendance.find(
-        (record) => record.studentId === student.id && record.date === selectedDate,
+        (record) => record.studentId === student.id && record.date === contentDate,
       ),
-    [attendance, selectedDate, student.id],
+    [attendance, contentDate, student.id],
   )
 
   const dayProgressList = useMemo(
     () =>
       progressRecords.filter(
         (record) =>
-          record.studentId === student.id && record.lastStudyDate === selectedDate,
+          record.studentId === student.id && record.lastStudyDate === contentDate,
       ),
-    [progressRecords, selectedDate, student.id],
+    [contentDate, progressRecords, student.id],
   )
 
   const dayHomework = useMemo(
     () =>
       homework.find(
-        (record) => record.studentId === student.id && record.date === selectedDate,
+        (record) => record.studentId === student.id && record.date === contentDate,
       ),
-    [homework, selectedDate, student.id],
+    [contentDate, homework, student.id],
   )
 
   const dayDailyTest = useMemo(
     () =>
       dailyTests.find(
-        (record) => record.studentId === student.id && record.date === selectedDate,
+        (record) => record.studentId === student.id && record.date === contentDate,
       ),
-    [dailyTests, selectedDate, student.id],
+    [contentDate, dailyTests, student.id],
   )
 
   const dayAssignment = useMemo(
-    () => findTodayAssignment(todayAssignments, student.id, selectedDate),
-    [selectedDate, student.id, todayAssignments],
+    () => findTodayAssignment(todayAssignments, student.id, contentDate),
+    [contentDate, student.id, todayAssignments],
   )
 
   const dayClassNote = useMemo(
-    () => findClassNote(classNotes, student.id, selectedDate),
-    [classNotes, selectedDate, student.id],
+    () => findClassNote(classNotes, student.id, contentDate),
+    [classNotes, contentDate, student.id],
   )
 
   const studentSlots = useMemo(
@@ -376,6 +412,11 @@ export function TodayReportView({
   const studentHomeworkEntries = useMemo(
     () => homeworkTextbookEntries.filter((entry) => entry.studentId === student.id),
     [homeworkTextbookEntries, student.id],
+  )
+
+  const studentProgressRecords = useMemo(
+    () => progressRecords.filter((record) => record.studentId === student.id),
+    [progressRecords, student.id],
   )
 
   const textbookClassContext = useMemo((): TextbookDisplayClassContext | undefined => {
@@ -425,6 +466,9 @@ export function TodayReportView({
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
+          <p className="text-center text-[11px] text-slate-500">
+            마지막 업데이트: {formatKoreanDate(parentDisplaySource.displayDate)}
+          </p>
           <StudentSummaryCard student={student} compact />
         </>
       ) : (
@@ -542,7 +586,7 @@ export function TodayReportView({
               studentId={student.id}
               date={selectedDate}
               slots={studentSlots}
-              progressRecords={dayProgressList}
+              progressRecords={studentProgressRecords}
               classContext={textbookClassContext}
               classSync={classSync}
               onSave={saveProgressRecord}

@@ -16,10 +16,8 @@ import {
   getVisibleSlotNumbers,
 } from '../../utils/teacherMobileTextbookSlots'
 import { isHomeworkStatusSelected } from '../../utils/homework'
-import {
-  findHomeworkTextbookEntry,
-  getTextbookName,
-} from '../../utils/textbookSlots'
+import { getTextbookName } from '../../utils/textbookSlots'
+import { findHomeworkTextbookEntryForDisplay } from '../../utils/todayReportDisplayFallback'
 import { SubjectGroupCard, subjectGroupTitle } from './SubjectGroupCard'
 
 type SlotDraft = {
@@ -130,7 +128,7 @@ export function ClassHomeworkStatusBulkPanel({
       for (const student of students) {
         for (const { subject, slotNumber } of slotPlan) {
           const key = draftKey(student.id, subject, slotNumber)
-          const entry = findHomeworkTextbookEntry(
+          const { entry, isFallback } = findHomeworkTextbookEntryForDisplay(
             homeworkTextbookEntries,
             student.id,
             date,
@@ -138,10 +136,11 @@ export function ClassHomeworkStatusBulkPanel({
             slotNumber,
           )
           const fromServer: SlotDraft = {
-            status: isHomeworkStatusSelected(entry?.status)
-              ? (entry!.status as HomeworkStatus)
-              : '',
-            entryId: entry?.id,
+            status:
+              !isFallback && isHomeworkStatusSelected(entry?.status)
+                ? (entry!.status as HomeworkStatus)
+                : '',
+            entryId: isFallback ? undefined : entry?.id,
             todayAssignment: entry?.todayAssignment ?? '',
             previousAssignment: entry?.previousAssignment ?? '',
           }

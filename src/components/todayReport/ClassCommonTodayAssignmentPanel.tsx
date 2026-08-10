@@ -6,10 +6,8 @@ import type {
   TextbookSubject,
 } from '../../types/records'
 import type { Student } from '../../types/student'
-import {
-  findClassTodayReportCommon,
-  type ClassTodayReportSyncContext,
-} from '../../utils/classTodayReportCommon'
+import { type ClassTodayReportSyncContext } from '../../utils/classTodayReportCommon'
+import { findClassTodayReportCommonForDisplay } from '../../utils/todayReportDisplayFallback'
 import { formatKoreanDate } from '../../utils/date'
 import { btnPrimary, inputClass } from '../../utils/labels'
 import { getVisibleTextbookSubjects } from '../../utils/todayReportVisibleSubjects'
@@ -116,7 +114,7 @@ export function ClassCommonTodayAssignmentPanel({
   useEffect(() => {
     const next: Record<string, SlotDraft> = {}
     for (const { subject, slotNumber } of slotPlan) {
-      const found = findClassTodayReportCommon(
+      const { record: found } = findClassTodayReportCommonForDisplay(
         classTodayReportCommon,
         grade,
         className,
