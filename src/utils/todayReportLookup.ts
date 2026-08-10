@@ -129,7 +129,7 @@ export function buildDailyTestDraft(
   record: DailyTestRecord | undefined,
   _studentId: string,
   _date: string,
-): Pick<DailyTestFormData, 'testName' | 'subject' | 'memo' | 'sessionResults'> {
+): Pick<DailyTestFormData, 'testName' | 'subject' | 'memo' | 'sessionResults' | 'learningDiagnosis'> {
   if (record) {
     const form = dailyTestRecordToForm(record)
     return {
@@ -137,6 +137,7 @@ export function buildDailyTestDraft(
       subject: form.subject,
       memo: form.memo,
       sessionResults: form.sessionResults,
+      learningDiagnosis: form.learningDiagnosis,
     }
   }
   return {
@@ -144,6 +145,15 @@ export function buildDailyTestDraft(
     subject: '수학',
     memo: '',
     sessionResults: createDefaultSessionResults(),
+    learningDiagnosis: {
+      wrongAnswerItems: [],
+      questionTotal: 0,
+      fridayRetestTotal: null,
+      fridayRetestWrong: null,
+      englishVocabResult: null,
+      englishGrammarWrongCount: null,
+      englishReadingWrongCount: null,
+    },
   }
 }
 

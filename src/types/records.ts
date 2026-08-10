@@ -87,6 +87,25 @@ export type TestSessionResult = {
   incorrectCount?: number
 }
 
+/** 일일테스트 학습진단 보조 데이터 (daily_tests.learning_diagnosis) */
+export type DailyLearningDiagnosisData = {
+  wrongAnswerItems: WrongAnswerItem[]
+  questionTotal: number
+  fridayRetestTotal: number | null
+  fridayRetestWrong: number | null
+  englishVocabResult: '합격' | '불합격' | null
+  englishGrammarWrongCount: number | null
+  englishReadingWrongCount: number | null
+}
+
+export type MathWrongCause = '개념 부족' | '계산 실수' | '문제 이해 부족'
+
+export type WrongAnswerItem = {
+  id: string
+  label: string
+  cause: MathWrongCause
+}
+
 export type DailyTestRecord = {
   id: string
   studentId: string
@@ -99,6 +118,8 @@ export type DailyTestRecord = {
   incorrectCount: number
   memo: string
   sessionResults: TestSessionResult[]
+  /** 월간 학습진단용 보조 데이터 (없으면 빈 기본값) */
+  learningDiagnosis: DailyLearningDiagnosisData
   createdAt: string
   updatedAt: string
 }
@@ -124,6 +145,50 @@ export type MonthlyEvaluationRecord = {
   teacherComment: string
   strengths: string
   improvements: string
+  /** 수학 월말평가 문항별 오답 원인 */
+  wrongAnswerItems: WrongAnswerItem[]
+  /** 오류율 산출용 총 문항 수 (0이면 difficulty_breakdown 합계 fallback) */
+  questionTotal: number
+  createdAt: string
+  updatedAt: string
+}
+
+export type MonthlyLearningReportStatus = 'draft' | 'published'
+
+/** null = 해당 월 산출 원본 데이터 없음 (평가 전 / 데이터 없음) */
+export type MonthlyLearningReportScores = {
+  metric1: number | null
+  metric2: number | null
+  metric3: number | null
+  homeworkHabit: number | null
+  wrongAnswerManagement: number | null
+  learningSincerity: number | null
+}
+
+export type MonthlyLearningRecordsSnapshot = {
+  lateCount: number
+  absentCount: number
+  partialHomeworkCount: number
+  incompleteHomeworkCount: number
+  testPass2Count: number
+  testPass3Count: number
+  testPass4Count: number
+}
+
+/** 월간 학습진단 REPORT 확정 snapshot */
+export type MonthlyLearningReportRecord = {
+  id: string
+  studentId: string
+  year: number
+  month: number
+  subject: '수학' | '영어'
+  status: MonthlyLearningReportStatus
+  publishedAt: string | null
+  scores: MonthlyLearningReportScores
+  learningRecords: MonthlyLearningRecordsSnapshot
+  strengths: string
+  improvements: string
+  teacherOverallComment: string
   createdAt: string
   updatedAt: string
 }

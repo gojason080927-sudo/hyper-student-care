@@ -48,7 +48,12 @@ const emptyForm = (): FormState => ({
   status: '예정',
 })
 
-export function MakeupPlanPage() {
+type MakeupPlanPageProps = {
+  /** 시간표·공지 화면 탭 등으로 임베드할 때 상단 PageHeader 숨김 */
+  embedded?: boolean
+}
+
+export function MakeupPlanPage({ embedded = false }: MakeupPlanPageProps = {}) {
   const { students, makeupPlans, saveMakeupPlanRecord, deleteMakeupPlanRecord } = useData()
   const [dateFilter, setDateFilter] = useState('')
   const [studentSearch, setStudentSearch] = useState('')
@@ -123,16 +128,29 @@ export function MakeupPlanPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="보강계획"
-        description="학생별 보강 예정 날짜와 진행 방식을 관리합니다."
-        action={
+      {embedded ? (
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold text-navy-900">보강계획</h2>
+            <p className="text-sm text-slate-500">학생별 보강 예정 날짜와 진행 방식을 관리합니다.</p>
+          </div>
           <button type="button" onClick={openAdd} className={`${btnPrimary} inline-flex items-center gap-2`}>
             <Plus className="h-4 w-4" />
             보강계획 추가
           </button>
-        }
-      />
+        </div>
+      ) : (
+        <PageHeader
+          title="보강계획"
+          description="학생별 보강 예정 날짜와 진행 방식을 관리합니다."
+          action={
+            <button type="button" onClick={openAdd} className={`${btnPrimary} inline-flex items-center gap-2`}>
+              <Plus className="h-4 w-4" />
+              보강계획 추가
+            </button>
+          }
+        />
+      )}
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">

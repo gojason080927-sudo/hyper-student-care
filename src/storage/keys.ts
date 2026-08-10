@@ -6,6 +6,7 @@ export const STORAGE_KEYS = {
   assignmentCompletion: 'hyper_assignment_records',
   dailyTests: 'hyper_daily_test_records',
   monthlyEvaluations: 'hyper_monthly_evaluation_records',
+  monthlyLearningReports: 'hyper_monthly_learning_reports',
   questions: 'hyper_question_records',
   progress: 'hyper_progress_records',
   makeupPlans: 'hyper_makeup_plan_records',

@@ -11,6 +11,7 @@ import type {
   HomeworkTextbookEntry,
   MakeupPlanRecord,
   MonthlyEvaluationRecord,
+  MonthlyLearningReportRecord,
   ProgressRecord,
   QuestionRecord,
   StudentTextbookSlot,
@@ -36,6 +37,8 @@ import {
   makeupPlanToRow,
   monthlyEvaluationFromRow,
   monthlyEvaluationToRow,
+  monthlyLearningReportFromRow,
+  monthlyLearningReportToRow,
   noticeFromRow,
   noticeToRow,
   progressFromRow,
@@ -57,6 +60,7 @@ import {
   type HomeworkTextbookEntryRow,
   type MakeupPlanRow,
   type MonthlyEvaluationRow,
+  type MonthlyLearningReportRow,
   type NoticeRow,
   type ProgressRow,
   type StudentTextbookSlotRow,
@@ -285,6 +289,7 @@ export type AllRecords = {
   assignmentCompletion: AssignmentCompletionRecord[]
   dailyTests: DailyTestRecord[]
   monthlyEvaluations: MonthlyEvaluationRecord[]
+  monthlyLearningReports: MonthlyLearningReportRecord[]
   questions: QuestionRecord[]
   progress: ProgressRecord[]
   studentTextbookSlots: StudentTextbookSlot[]
@@ -303,6 +308,7 @@ export async function fetchAllRecords(): Promise<AllRecords> {
     assignmentRows,
     dailyTestRows,
     monthlyRows,
+    monthlyLearningReportRows,
     questionRows,
     progressRows,
     studentTextbookSlotRows,
@@ -318,6 +324,7 @@ export async function fetchAllRecords(): Promise<AllRecords> {
     selectAll<AssignmentCompletionRow>('assignment_completions'),
     selectAll<DailyTestRow>('daily_tests'),
     selectAll<MonthlyEvaluationRow>('monthly_evaluations'),
+    selectAllSafe<MonthlyLearningReportRow>('monthly_learning_reports'),
     selectAll<QuestionRow>('questions'),
     selectAll<ProgressRow>('progress'),
     selectAllSafe<StudentTextbookSlotRow>('student_textbook_slots'),
@@ -335,6 +342,7 @@ export async function fetchAllRecords(): Promise<AllRecords> {
     assignmentCompletion: assignmentRows.map(assignmentCompletionFromRow),
     dailyTests: dailyTestRows.map(dailyTestFromRow),
     monthlyEvaluations: monthlyRows.map(monthlyEvaluationFromRow),
+    monthlyLearningReports: monthlyLearningReportRows.map(monthlyLearningReportFromRow),
     questions: questionRows.map(questionFromRow),
     progress: progressRows.map(progressFromRow),
     studentTextbookSlots: studentTextbookSlotRows.map(studentTextbookSlotFromRow),
@@ -589,7 +597,18 @@ export async function deleteAssignmentCompletion(id: string): Promise<void> {
 // ---------------------------------------------------------------------------
 
 export async function upsertDailyTest(record: DailyTestRecord): Promise<void> {
-  await upsertRow('daily_tests', dailyTestToRow(record))
+  const row = dailyTestToRow(record)
+  const { error } = await getSupabase().from('daily_tests').upsert(row, { onConflict: 'id' })
+  if (!error) return
+  if (isMissingColumnError(error) && 'learning_diagnosis' in row) {
+    console.warn(
+      '[Repository] daily_tests.learning_diagnosis missing — saving without diagnosis fields. Run supabase/monthly-learning-diagnosis-migration.sql',
+    )
+    const { learning_diagnosis: _omit, ...legacyRow } = row
+    await upsertRow('daily_tests', legacyRow)
+    return
+  }
+  throwIfError(error, 'daily_tests', 'daily_tests 저장 실패')
 }
 
 export async function deleteDailyTest(id: string): Promise<void> {
@@ -603,11 +622,79 @@ export async function deleteDailyTest(id: string): Promise<void> {
 export async function upsertMonthlyEvaluation(
   record: MonthlyEvaluationRecord,
 ): Promise<void> {
-  await upsertRow('monthly_evaluations', monthlyEvaluationToRow(record))
+  const row = monthlyEvaluationToRow(record)
+  const { error } = await getSupabase()
+    .from('monthly_evaluations')
+    .upsert(row, { onConflict: 'id' })
+  if (!error) return
+  if (
+    isMissingColumnError(error) &&
+    ('wrong_answer_items' in row || 'question_total' in row)
+  ) {
+    console.warn(
+      '[Repository] monthly_evaluations diagnosis columns missing — saving legacy fields only. Run supabase/monthly-learning-diagnosis-migration.sql',
+    )
+    const { wrong_answer_items: _w, question_total: _q, ...legacyRow } = row
+    await upsertRow('monthly_evaluations', legacyRow)
+    return
+  }
+  throwIfError(error, 'monthly_evaluations', 'monthly_evaluations 저장 실패')
 }
 
 export async function deleteMonthlyEvaluation(id: string): Promise<void> {
   await deleteRow('monthly_evaluations', id)
+}
+
+// ---------------------------------------------------------------------------
+// Monthly learning reports (진단 REPORT snapshot)
+// ---------------------------------------------------------------------------
+
+export async function upsertMonthlyLearningReport(
+  record: MonthlyLearningReportRecord,
+): Promise<void> {
+  // published snapshot 불변성 — 기존 published 행은 덮어쓰지 않음
+  const { data: existingRow, error: existingError } = await getSupabase()
+    .from('monthly_learning_reports')
+    .select('id, status')
+    .eq('student_id', record.studentId)
+    .eq('year', record.year)
+    .eq('month', record.month)
+    .eq('subject', record.subject)
+    .maybeSingle()
+
+  if (existingError && !isMissingTableError(existingError)) {
+    throwIfError(
+      existingError,
+      'monthly_learning_reports',
+      'monthly_learning_reports 조회 실패',
+    )
+  }
+
+  if (existingRow && (existingRow as { status?: string }).status === 'published') {
+    throw new RepositoryError(
+      '이미 확정·공개된 REPORT snapshot은 수정할 수 없습니다.',
+      'monthly_learning_reports',
+    )
+  }
+
+  const row = monthlyLearningReportToRow(record)
+  const { error } = await getSupabase()
+    .from('monthly_learning_reports')
+    .upsert(row, { onConflict: 'id' })
+  if (error) {
+    if (isMissingTableError(error)) {
+      throw new RepositoryError(
+        'monthly_learning_reports 테이블이 없습니다. supabase/monthly-learning-diagnosis-migration.sql 을 실행해 주세요.',
+        'monthly_learning_reports',
+        error,
+      )
+    }
+    throwIfError(error, 'monthly_learning_reports', 'monthly_learning_reports 저장 실패')
+  }
+}
+
+export async function deleteMonthlyLearningReport(id: string): Promise<void> {
+  await deleteRow('monthly_learning_reports', id)
 }
 
 // ---------------------------------------------------------------------------

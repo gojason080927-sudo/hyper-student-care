@@ -10,6 +10,7 @@ import {
   type TeacherMobileDailyTestSessionFormRef,
 } from '../teacherMobile/TeacherMobileDailyTestSessionForm'
 import { DailyTestSessionGrid } from '../dailytest/DailyTestSessionGrid'
+import { DailyLearningDiagnosisFields } from '../diagnosis/DailyLearningDiagnosisFields'
 import { HomeworkStatusPicker } from '../homework/HomeworkStatusPicker'
 import { KoreanTextInput, KoreanTextarea } from '../ui/KoreanTextField'
 import { HeroProgressBar } from '../ui/HeroProgressBar'
@@ -1482,6 +1483,12 @@ function DailyTestSection({
             placeholder="메모 (선택)"
             rows={teacherCompact ? 1 : 2}
             className={teacherCompact ? compactTextareaClass() : inputClass()}
+          />
+          <DailyLearningDiagnosisFields
+            subject={form.subject}
+            value={form.learningDiagnosis}
+            onChange={(learningDiagnosis) => setForm({ ...form, learningDiagnosis })}
+            compact={teacherCompact}
           />
           <div className="flex justify-end">
             <SaveButton onClick={handleSave} label="일일테스트 저장" compact={teacherCompact} />

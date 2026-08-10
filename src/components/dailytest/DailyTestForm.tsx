@@ -1,4 +1,5 @@
 import { StudentSelect } from '../ui/StudentSelect'
+import { DailyLearningDiagnosisFields } from '../diagnosis/DailyLearningDiagnosisFields'
 import {
   DailyTestSessionFormSection,
   validateDailyTestSessions,
@@ -91,6 +92,11 @@ export function DailyTestForm({
           className={inputClass()}
         />
       </div>
+      <DailyLearningDiagnosisFields
+        subject={form.subject}
+        value={form.learningDiagnosis}
+        onChange={(learningDiagnosis) => onChange({ ...form, learningDiagnosis })}
+      />
       <div className="flex justify-end gap-3">
         <button type="button" onClick={onCancel} className={btnSecondary}>
           취소

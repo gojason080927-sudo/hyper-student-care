@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { DifficultyBreakdownBadges } from './DifficultyBreakdownBadges'
-import { MonthlyLearningProgressSection } from './MonthlyLearningProgressSection'
 import { MonthlyEvaluationChart } from '../ui/MonthlyEvaluationChart'
 import {
   ParentEmptyState,
@@ -23,7 +22,7 @@ export type ParentMonthlyEvaluationViewProps = {
   latest: MonthlyEvaluationRecord | null
 }
 
-/** 학부모·학생·강사 열람용 — 학습진행 상황 + 월말평가 결과 */
+/** 학부모·학생·강사 열람용 — 월말평가 결과 (학습 기록은 월간 학습진단 REPORT로 이동) */
 export function ParentMonthlyEvaluationView({
   student,
   studentRecords,
@@ -38,7 +37,6 @@ export function ParentMonthlyEvaluationView({
     const defaultYear = getDefaultChartYear(studentRecords)
     return defaultYear || defaultYearMonth.year
   })
-  const [selectedMonth, setSelectedMonth] = useState(defaultYearMonth.month)
 
   const yearOptions = useMemo(() => {
     const years = new Set<number>(availableYears)
@@ -64,8 +62,8 @@ export function ParentMonthlyEvaluationView({
   return (
     <div className="parent-page space-y-8 pb-6">
       <ParentPageHeader
-        title="학습진행 상황 · 월말평가 결과"
-        description={`${student.name} 학생의 월간 학습 진행과 월말평가 결과를 확인합니다.`}
+        title="월말평가 결과"
+        description={`${student.name} 학생의 월말평가 결과를 확인합니다. 월간 학습 기록은 월간 학습진단 REPORT에서 확인할 수 있습니다.`}
       />
 
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
@@ -84,34 +82,9 @@ export function ParentMonthlyEvaluationView({
             </option>
           ))}
         </select>
-
-        <label htmlFor="progress-month" className="text-sm font-medium text-slate-700">
-          월
-        </label>
-        <select
-          id="progress-month"
-          value={selectedMonth}
-          onChange={(e) => setSelectedMonth(Number(e.target.value))}
-          className={`${inputClass()} w-auto min-w-[96px]`}
-        >
-          {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
-            <option key={month} value={month}>
-              {month}월
-            </option>
-          ))}
-        </select>
       </div>
 
-      <section className="space-y-4" aria-label="학습진행 상황">
-        <h2 className="text-lg font-bold text-navy-900">학습진행 상황</h2>
-        <MonthlyLearningProgressSection
-          studentId={student.id}
-          year={selectedYear}
-          month={selectedMonth}
-        />
-      </section>
-
-      <section className="space-y-4 border-t border-slate-200 pt-8" aria-label="월말평가 결과">
+      <section className="space-y-4" aria-label="월말평가 결과">
         <h2 className="text-lg font-bold text-navy-900">월말평가 결과</h2>
 
         {studentRecords.length === 0 ? (

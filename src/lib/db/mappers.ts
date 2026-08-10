@@ -9,11 +9,15 @@ import type {
   HomeworkTextbookEntry,
   MakeupPlanRecord,
   MonthlyEvaluationRecord,
+  MonthlyLearningReportRecord,
   ProgressRecord,
   QuestionRecord,
   StudentTextbookSlot,
   TodayAssignmentRecord,
 } from '../../types/records'
+  normalizeDailyLearningDiagnosis,
+  normalizeWrongAnswerItems,
+} from '../../utils/learningDiagnosis'
 import type { Student } from '../../types/student'
 import { normalizeHomeworkStatus } from '../../utils/homework'
 
@@ -71,6 +75,7 @@ export type DailyTestRow = {
   incorrect_count: number
   memo: string
   session_results: DailyTestRecord['sessionResults']
+  learning_diagnosis?: DailyTestRecord['learningDiagnosis'] | null
   created_at: string
   updated_at: string
 }
@@ -89,6 +94,25 @@ export type MonthlyEvaluationRow = {
   teacher_comment: string
   strengths: string
   improvements: string
+  wrong_answer_items?: MonthlyEvaluationRecord['wrongAnswerItems'] | null
+  question_total?: number | null
+  created_at: string
+  updated_at: string
+}
+
+export type MonthlyLearningReportRow = {
+  id: string
+  student_id: string
+  year: number
+  month: number
+  subject: string
+  status: string
+  published_at: string | null
+  scores: MonthlyLearningReportRecord['scores']
+  learning_records: MonthlyLearningReportRecord['learningRecords']
+  strengths: string
+  improvements: string
+  teacher_overall_comment: string
   created_at: string
   updated_at: string
 }
@@ -337,6 +361,7 @@ export function dailyTestToRow(record: DailyTestRecord): DailyTestRow {
     incorrect_count: record.incorrectCount,
     memo: record.memo,
     session_results: record.sessionResults,
+    learning_diagnosis: normalizeDailyLearningDiagnosis(record.learningDiagnosis),
     created_at: record.createdAt,
     updated_at: record.updatedAt,
   }
@@ -355,6 +380,7 @@ export function dailyTestFromRow(row: DailyTestRow): DailyTestRecord {
     incorrectCount: row.incorrect_count,
     memo: row.memo,
     sessionResults: row.session_results ?? [],
+    learningDiagnosis: normalizeDailyLearningDiagnosis(row.learning_diagnosis),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -377,6 +403,8 @@ export function monthlyEvaluationToRow(
     teacher_comment: record.teacherComment,
     strengths: record.strengths,
     improvements: record.improvements,
+    wrong_answer_items: normalizeWrongAnswerItems(record.wrongAnswerItems),
+    question_total: Math.max(0, Math.floor(Number(record.questionTotal ?? 0))),
     created_at: record.createdAt,
     updated_at: record.updatedAt,
   }
@@ -399,6 +427,108 @@ export function monthlyEvaluationFromRow(
     teacherComment: row.teacher_comment,
     strengths: row.strengths,
     improvements: row.improvements,
+    wrongAnswerItems: normalizeWrongAnswerItems(row.wrong_answer_items),
+    questionTotal: Math.max(0, Math.floor(Number(row.question_total ?? 0))),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+const EMPTY_REPORT_SCORES: MonthlyLearningReportRecord['scores'] = {
+  metric1: null,
+  metric2: null,
+  metric3: null,
+  homeworkHabit: null,
+  wrongAnswerManagement: null,
+  learningSincerity: null,
+}
+
+const EMPTY_LEARNING_RECORDS: MonthlyLearningReportRecord['learningRecords'] = {
+  lateCount: 0,
+  absentCount: 0,
+  partialHomeworkCount: 0,
+  incompleteHomeworkCount: 0,
+  testPass2Count: 0,
+  testPass3Count: 0,
+  testPass4Count: 0,
+}
+
+function normalizeNullableScore(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null
+  const n = Number(value)
+  if (!Number.isFinite(n)) return null
+  return n
+}
+
+function normalizeReportScores(
+  raw: MonthlyLearningReportRecord['scores'] | null | undefined,
+): MonthlyLearningReportRecord['scores'] {
+  if (!raw) return { ...EMPTY_REPORT_SCORES }
+  return {
+    metric1: normalizeNullableScore(raw.metric1),
+    metric2: normalizeNullableScore(raw.metric2),
+    metric3: normalizeNullableScore(raw.metric3),
+    homeworkHabit: normalizeNullableScore(raw.homeworkHabit),
+    wrongAnswerManagement: normalizeNullableScore(raw.wrongAnswerManagement),
+    learningSincerity: normalizeNullableScore(raw.learningSincerity),
+  }
+}
+
+function normalizeLearningRecords(
+  raw: MonthlyLearningReportRecord['learningRecords'] | null | undefined,
+): MonthlyLearningReportRecord['learningRecords'] {
+  if (!raw) return { ...EMPTY_LEARNING_RECORDS }
+  return {
+    lateCount: Math.max(0, Math.floor(Number(raw.lateCount ?? 0))),
+    absentCount: Math.max(0, Math.floor(Number(raw.absentCount ?? 0))),
+    partialHomeworkCount: Math.max(0, Math.floor(Number(raw.partialHomeworkCount ?? 0))),
+    incompleteHomeworkCount: Math.max(
+      0,
+      Math.floor(Number(raw.incompleteHomeworkCount ?? 0)),
+    ),
+    testPass2Count: Math.max(0, Math.floor(Number(raw.testPass2Count ?? 0))),
+    testPass3Count: Math.max(0, Math.floor(Number(raw.testPass3Count ?? 0))),
+    testPass4Count: Math.max(0, Math.floor(Number(raw.testPass4Count ?? 0))),
+  }
+}
+
+export function monthlyLearningReportToRow(
+  record: MonthlyLearningReportRecord,
+): MonthlyLearningReportRow {
+  return {
+    id: record.id,
+    student_id: record.studentId,
+    year: record.year,
+    month: record.month,
+    subject: record.subject,
+    status: record.status,
+    published_at: record.publishedAt,
+    scores: normalizeReportScores(record.scores),
+    learning_records: normalizeLearningRecords(record.learningRecords),
+    strengths: record.strengths,
+    improvements: record.improvements,
+    teacher_overall_comment: record.teacherOverallComment,
+    created_at: record.createdAt,
+    updated_at: record.updatedAt,
+  }
+}
+
+export function monthlyLearningReportFromRow(
+  row: MonthlyLearningReportRow,
+): MonthlyLearningReportRecord {
+  return {
+    id: row.id,
+    studentId: row.student_id,
+    year: row.year,
+    month: row.month,
+    subject: row.subject === '영어' ? '영어' : '수학',
+    status: row.status === 'published' ? 'published' : 'draft',
+    publishedAt: row.published_at,
+    scores: normalizeReportScores(row.scores),
+    learningRecords: normalizeLearningRecords(row.learning_records),
+    strengths: row.strengths ?? '',
+    improvements: row.improvements ?? '',
+    teacherOverallComment: row.teacher_overall_comment ?? '',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }

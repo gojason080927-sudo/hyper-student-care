@@ -1,12 +1,11 @@
 import { Link } from 'react-router-dom'
 import {
   ArrowRight,
-  CalendarCheck,
   ClipboardList,
+  FileBarChart2,
   GraduationCap,
   HelpCircle,
   Megaphone,
-  TrendingUp,
   Users,
 } from 'lucide-react'
 import { TeacherMobileHeader } from '../../components/teacherMobile/TeacherMobileHeader'
@@ -15,7 +14,7 @@ import { useAuth } from '../../contexts/AuthContext'
 type MenuCard = {
   to: string
   title: string
-  description: string
+  description?: string
   icon: typeof ClipboardList
 }
 
@@ -26,12 +25,18 @@ const featured: MenuCard = {
   icon: ClipboardList,
 }
 
-const gridCards: MenuCard[] = [
+const gridCards: Array<MenuCard | { placeholder: true; title: string }> = [
   {
     to: '/teacher/mobile/students',
     title: '학생관리',
     description: '학생 등록·수정',
     icon: Users,
+  },
+  {
+    to: '/teacher/mobile/monthly-learning-reports',
+    title: '월간 학습진단\nREPORT',
+    description: '현재 예상점수',
+    icon: FileBarChart2,
   },
   {
     to: '/teacher/mobile/evaluation',
@@ -40,14 +45,8 @@ const gridCards: MenuCard[] = [
     icon: GraduationCap,
   },
   {
-    to: '/teacher/mobile/makeup',
-    title: '보강계획',
-    description: '보강 일정',
-    icon: CalendarCheck,
-  },
-  {
     to: '/teacher/mobile/notices',
-    title: '학습정보',
+    title: '학습공지',
     description: '공지사항',
     icon: Megaphone,
   },
@@ -58,10 +57,8 @@ const gridCards: MenuCard[] = [
     icon: HelpCircle,
   },
   {
-    to: '/teacher/mobile/progress',
-    title: '학습진행',
-    description: '진도 조회',
-    icon: TrendingUp,
+    placeholder: true,
+    title: '향후 기능',
   },
 ]
 
@@ -91,7 +88,22 @@ export function TeacherMobileDashboardPage() {
           </Link>
 
           <div className="grid min-h-0 flex-1 auto-rows-fr grid-cols-2 gap-2.5 sm:gap-3">
-            {gridCards.map((item) => {
+            {gridCards.map((item, index) => {
+              if ('placeholder' in item) {
+                return (
+                  <div
+                    key={`placeholder-${index}`}
+                    className="tm-menu-card pointer-events-none opacity-45"
+                    aria-hidden
+                  >
+                    <span className="tm-menu-icon bg-slate-100" />
+                    <span className="mt-2 min-w-0">
+                      <span className="tm-menu-title text-slate-400">{item.title}</span>
+                      <span className="tm-menu-desc">준비 중</span>
+                    </span>
+                  </div>
+                )
+              }
               const Icon = item.icon
               return (
                 <Link key={item.to} to={item.to} className="tm-menu-card">
@@ -99,8 +111,10 @@ export function TeacherMobileDashboardPage() {
                     <Icon className="h-[22px] w-[22px]" strokeWidth={2} aria-hidden />
                   </span>
                   <span className="mt-2 min-w-0">
-                    <span className="tm-menu-title">{item.title}</span>
-                    <span className="tm-menu-desc line-clamp-2">{item.description}</span>
+                    <span className="tm-menu-title whitespace-pre-line">{item.title}</span>
+                    {item.description ? (
+                      <span className="tm-menu-desc line-clamp-2">{item.description}</span>
+                    ) : null}
                   </span>
                 </Link>
               )

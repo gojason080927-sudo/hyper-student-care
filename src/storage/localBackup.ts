@@ -9,6 +9,7 @@ import type {
   HomeworkTextbookEntry,
   MakeupPlanRecord,
   MonthlyEvaluationRecord,
+  MonthlyLearningReportRecord,
   ProgressRecord,
   QuestionRecord,
   StudentTextbookSlot,
@@ -26,6 +27,7 @@ export type LocalBackupData = {
   assignmentCompletion: AssignmentCompletionRecord[]
   dailyTests: DailyTestRecord[]
   monthlyEvaluations: MonthlyEvaluationRecord[]
+  monthlyLearningReports?: MonthlyLearningReportRecord[]
   questions: QuestionRecord[]
   progress: ProgressRecord[]
   studentTextbookSlots: StudentTextbookSlot[]
@@ -76,6 +78,9 @@ export function loadLocalBackup(): LocalBackupData {
       LEGACY_STORAGE_KEYS.dailyTests,
     ),
     monthlyEvaluations: loadArray<MonthlyEvaluationRecord>(STORAGE_KEYS.monthlyEvaluations),
+    monthlyLearningReports: loadArray<MonthlyLearningReportRecord>(
+      STORAGE_KEYS.monthlyLearningReports,
+    ),
     questions: loadArray<QuestionRecord>(STORAGE_KEYS.questions),
     progress: loadArray<ProgressRecord>(STORAGE_KEYS.progress),
     studentTextbookSlots: loadArray<StudentTextbookSlot>(STORAGE_KEYS.studentTextbookSlots),
@@ -95,6 +100,7 @@ export function mirrorLocalBackup(data: LocalBackupData): void {
   saveToStorage(STORAGE_KEYS.assignmentCompletion, data.assignmentCompletion)
   saveToStorage(STORAGE_KEYS.dailyTests, data.dailyTests)
   saveToStorage(STORAGE_KEYS.monthlyEvaluations, data.monthlyEvaluations)
+  saveToStorage(STORAGE_KEYS.monthlyLearningReports, data.monthlyLearningReports ?? [])
   saveToStorage(STORAGE_KEYS.questions, data.questions)
   saveToStorage(STORAGE_KEYS.progress, data.progress)
   saveToStorage(STORAGE_KEYS.studentTextbookSlots, data.studentTextbookSlots)
@@ -115,6 +121,7 @@ export function toLocalBackupData(
     assignmentCompletion: data.assignmentCompletion,
     dailyTests: data.dailyTests,
     monthlyEvaluations: data.monthlyEvaluations,
+    monthlyLearningReports: data.monthlyLearningReports ?? [],
     questions: data.questions,
     progress: data.progress,
     studentTextbookSlots: data.studentTextbookSlots ?? [],

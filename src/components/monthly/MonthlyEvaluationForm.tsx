@@ -1,4 +1,5 @@
 import { StudentSelect } from '../ui/StudentSelect'
+import { WrongAnswerCauseEditor } from '../diagnosis/WrongAnswerCauseEditor'
 import {
   DifficultyBreakdownFormSection,
   validateDifficultyBreakdown,
@@ -128,6 +129,17 @@ export function MonthlyEvaluationForm({
         onChange={(difficultyBreakdown) => onChange({ ...form, difficultyBreakdown })}
         errors={errors}
       />
+      {form.subject.includes('수학') ? (
+        <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50/80 p-3">
+          <p className="text-sm font-semibold text-slate-700">수학 오답 원인 (문항별)</p>
+          <WrongAnswerCauseEditor
+            items={form.wrongAnswerItems}
+            onChange={(wrongAnswerItems) => onChange({ ...form, wrongAnswerItems })}
+            questionTotal={form.questionTotal}
+            onQuestionTotalChange={(questionTotal) => onChange({ ...form, questionTotal })}
+          />
+        </div>
+      ) : null}
       <div>
         <label className="mb-1.5 block text-sm font-medium text-slate-700">시험 총평</label>
         <textarea

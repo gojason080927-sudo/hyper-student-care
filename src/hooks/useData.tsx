@@ -17,6 +17,7 @@ import type {
   HomeworkTextbookEntry,
   MakeupPlanRecord,
   MonthlyEvaluationRecord,
+  MonthlyLearningReportRecord,
   ProgressRecord,
   QuestionRecord,
   StudentTextbookSlot,
@@ -52,6 +53,7 @@ import {
   upsertClassTodayReportCommon,
   upsertMakeupPlan,
   upsertMonthlyEvaluation,
+  upsertMonthlyLearningReport,
   upsertNotice,
   upsertProgress,
   upsertQuestion,
@@ -106,6 +108,7 @@ export type DataContextValue = {
   assignmentCompletion: AssignmentCompletionRecord[]
   dailyTests: DailyTestRecord[]
   monthlyEvaluations: MonthlyEvaluationRecord[]
+  monthlyLearningReports: MonthlyLearningReportRecord[]
   questions: QuestionRecord[]
   progressRecords: ProgressRecord[]
   studentTextbookSlots: StudentTextbookSlot[]
@@ -172,7 +175,29 @@ export type DataContextValue = {
       id?: string
     },
   ) => boolean
+  saveDailyTestRecordAsync: (
+    data: Omit<DailyTestRecord, 'id' | 'createdAt' | 'updatedAt' | 'percentage'> & {
+      id?: string
+    },
+    options?: { silent?: boolean },
+  ) => Promise<{ success: boolean; recordId?: string; error?: string }>
   deleteDailyTestRecord: (id: string) => void
+  saveMonthlyLearningReportRecord: (
+    data: Omit<MonthlyLearningReportRecord, 'id' | 'createdAt' | 'updatedAt'> & {
+      id?: string
+    },
+  ) => Promise<{ success: boolean; recordId?: string; error?: string }>
+  publishMonthlyLearningReport: (input: {
+    studentId: string
+    year: number
+    month: number
+    subject: '수학' | '영어'
+    strengths: string
+    improvements: string
+    teacherOverallComment: string
+    scores: MonthlyLearningReportRecord['scores']
+    learningRecords: MonthlyLearningReportRecord['learningRecords']
+  }) => Promise<{ success: boolean; error?: string }>
   saveMonthlyEvaluationRecord: (
     data: Omit<
       MonthlyEvaluationRecord,
@@ -249,6 +274,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [monthlyEvaluations, setMonthlyEvaluations] = useState<
     MonthlyEvaluationRecord[]
   >([])
+  const [monthlyLearningReports, setMonthlyLearningReports] = useState<
+    MonthlyLearningReportRecord[]
   const [questions, setQuestions] = useState<QuestionRecord[]>([])
   const [progressRecords, setProgressRecords] = useState<ProgressRecord[]>([])
   const [studentTextbookSlots, setStudentTextbookSlots] = useState<StudentTextbookSlot[]>([])
@@ -300,6 +327,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         assignmentCompletion,
         dailyTests,
         monthlyEvaluations,
+        monthlyLearningReports,
         questions,
         progress: progressRecords,
         studentTextbookSlots,
@@ -319,6 +347,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     homeworkTextbookEntries,
     makeupPlans,
     monthlyEvaluations,
+    monthlyLearningReports,
     progressRecords,
     questions,
     students,
@@ -338,6 +367,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         assignmentCompletion,
     dailyTests,
     monthlyEvaluations,
+    monthlyLearningReports,
     questions,
     progressRecords,
     makeupPlans,
@@ -373,6 +403,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setAssignmentCompletion(data.assignmentCompletion)
     setDailyTests(data.dailyTests)
     setMonthlyEvaluations(data.monthlyEvaluations)
+    setMonthlyLearningReports(data.monthlyLearningReports ?? [])
     setQuestions(data.questions)
     setProgressRecords(data.progress)
     setStudentTextbookSlots(dedupeStudentTextbookSlots(data.studentTextbookSlots ?? []))
@@ -1112,16 +1143,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [handlePersistError, showToast],
   )
 
-  const saveDailyTestRecord = useCallback(
-    (
+  const saveDailyTestRecordAsync = useCallback(
+    async (
       data: Omit<DailyTestRecord, 'id' | 'createdAt' | 'updatedAt' | 'percentage'> & {
         id?: string
       },
-    ) => {
+      options?: { silent?: boolean },
+    ): Promise<{ success: boolean; recordId?: string; error?: string }> => {
       if (!validateStudent(data.studentId)) {
-        showToast('존재하지 않는 학생입니다.')
-        return false
+        const message = '존재하지 않는 학생입니다.'
+        if (!options?.silent) showToast(message)
+        return { success: false, error: message }
       }
+
       const ts = createTimestamps()
       const existing = data.id
         ? dailyTests.find((r) => r.id === data.id)
@@ -1144,34 +1178,74 @@ export function DataProvider({ children }: { children: ReactNode }) {
         percentage: calcPercentage(data.score, data.totalScore),
         incorrectCount: data.incorrectCount,
         sessionResults: data.sessionResults ?? [],
+        learningDiagnosis:
+          data.learningDiagnosis ??
+          existing?.learningDiagnosis ?? {
+            wrongAnswerItems: [],
+            questionTotal: 0,
+            fridayRetestTotal: null,
+            fridayRetestWrong: null,
+            englishVocabResult: null,
+            englishGrammarWrongCount: null,
+            englishReadingWrongCount: null,
+          },
         createdAt: existing?.createdAt ?? ts.createdAt,
         updatedAt: ts.updatedAt,
       }
       const record = touchRecord(normalizeDailyTestRecord(draft))
-      if (existing || data.id) {
-        setDailyTests((prev) => {
-          const withoutDuplicate = prev.filter(
-            (item) =>
-              !(
-                item.studentId === record.studentId &&
-                item.date === record.date &&
-                item.subject === record.subject
-              ) && item.id !== record.id,
-          )
-          return [...withoutDuplicate, record]
+      const snapshot = dailyTests
+
+      setDailyTests((prev) => {
+        const withoutDuplicate = prev.filter(
+          (item) =>
+            !(
+              item.studentId === record.studentId &&
+              item.date === record.date &&
+              item.subject === record.subject
+            ) && item.id !== record.id,
+        )
+        return [...withoutDuplicate, record]
+      })
+
+      try {
+        await upsertDailyTest(record)
+        await refreshTodayReport(record.studentId, record.date)
+        if (!options?.silent) showToast('일일테스트 기록이 저장되었습니다.')
+        return { success: true, recordId: record.id }
+      } catch (error) {
+        setDailyTests(snapshot)
+        const detail =
+          error instanceof RepositoryError
+            ? error.message
+            : error instanceof Error
+              ? error.message
+              : '알 수 없는 오류'
+        console.error('[DailyTestSave] save failed', {
+          studentId: data.studentId,
+          date: data.date,
+          error,
         })
-      } else {
-        setDailyTests((prev) => [...prev, record])
+        if (!options?.silent) showToast(`일일테스트 저장 실패: ${detail}`)
+        return { success: false, error: detail }
       }
-      void persistWithReload(
-        () => upsertDailyTest(record),
-        '일일테스트 기록 저장에 실패했습니다.',
-        { type: 'todayReport', studentId: record.studentId, date: record.date },
-      )
-      showToast('일일테스트 기록이 저장되었습니다.')
+    },
+    [dailyTests, refreshTodayReport, showToast, validateStudent],
+  )
+
+  const saveDailyTestRecord = useCallback(
+    (
+      data: Omit<DailyTestRecord, 'id' | 'createdAt' | 'updatedAt' | 'percentage'> & {
+        id?: string
+      },
+    ) => {
+      if (!validateStudent(data.studentId)) {
+        showToast('존재하지 않는 학생입니다.')
+        return false
+      }
+      void saveDailyTestRecordAsync(data)
       return true
     },
-    [dailyTests, handlePersistError, showToast, validateStudent],
+    [saveDailyTestRecordAsync, showToast, validateStudent],
   )
 
   const deleteDailyTestRecord = useCallback(
@@ -1214,6 +1288,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         teacherComment: data.teacherComment,
         strengths: data.strengths,
         improvements: data.improvements,
+        wrongAnswerItems: data.wrongAnswerItems ?? existing?.wrongAnswerItems ?? [],
+        questionTotal: data.questionTotal ?? existing?.questionTotal ?? 0,
         createdAt: existing?.createdAt ?? ts.createdAt,
         updatedAt: ts.updatedAt,
       }
@@ -1233,6 +1309,131 @@ export function DataProvider({ children }: { children: ReactNode }) {
       return true
     },
     [handlePersistError, monthlyEvaluations, showToast, validateStudent],
+  )
+
+  const saveMonthlyLearningReportRecord = useCallback(
+    async (
+      data: Omit<MonthlyLearningReportRecord, 'id' | 'createdAt' | 'updatedAt'> & {
+        id?: string
+      },
+    ): Promise<{ success: boolean; recordId?: string; error?: string }> => {
+      if (!validateStudent(data.studentId)) {
+        const message = '존재하지 않는 학생입니다.'
+        showToast(message)
+        return { success: false, error: message }
+      }
+      const ts = createTimestamps()
+      const existing = data.id
+        ? monthlyLearningReports.find((r) => r.id === data.id)
+        : monthlyLearningReports.find(
+            (r) =>
+              r.studentId === data.studentId &&
+              r.year === data.year &&
+              r.month === data.month &&
+              r.subject === data.subject,
+          )
+
+      // published snapshot은 일반 저장/재기록으로 덮어쓰지 않음 (immutable)
+      if (existing?.status === 'published') {
+        const message =
+          '이미 확정·공개된 REPORT는 수정할 수 없습니다. snapshot이 보호됩니다.'
+        showToast(message)
+        return { success: false, error: message }
+      }
+
+      const record: MonthlyLearningReportRecord = {
+        id: data.id ?? existing?.id ?? createId(),
+        studentId: data.studentId,
+        year: data.year,
+        month: data.month,
+        subject: data.subject,
+        status: data.status,
+        publishedAt: data.publishedAt,
+        scores: data.scores,
+        learningRecords: data.learningRecords,
+        strengths: data.strengths,
+        improvements: data.improvements,
+        teacherOverallComment: data.teacherOverallComment,
+        createdAt: existing?.createdAt ?? ts.createdAt,
+        updatedAt: ts.updatedAt,
+      }
+      const snapshot = monthlyLearningReports
+      setMonthlyLearningReports((prev) => {
+        const without = prev.filter(
+          (item) =>
+            item.id !== record.id &&
+            !(
+              item.studentId === record.studentId &&
+              item.year === record.year &&
+              item.month === record.month &&
+              item.subject === record.subject
+            ),
+        )
+        return [...without, record]
+      })
+      try {
+        await upsertMonthlyLearningReport(record)
+        showToast(
+          record.status === 'published'
+            ? '월간 학습진단 REPORT가 확정·공개되었습니다.'
+            : '월간 학습진단 REPORT가 저장되었습니다.',
+        )
+        return { success: true, recordId: record.id }
+      } catch (error) {
+        setMonthlyLearningReports(snapshot)
+        const detail =
+          error instanceof RepositoryError
+            ? error.message
+            : error instanceof Error
+              ? error.message
+              : '알 수 없는 오류'
+        showToast(`REPORT 저장 실패: ${detail}`)
+        return { success: false, error: detail }
+      }
+    },
+    [monthlyLearningReports, showToast, validateStudent],
+  )
+
+  const publishMonthlyLearningReport = useCallback(
+    async (input: {
+      studentId: string
+      year: number
+      month: number
+      subject: '수학' | '영어'
+      strengths: string
+      improvements: string
+      teacherOverallComment: string
+      scores: MonthlyLearningReportRecord['scores']
+      learningRecords: MonthlyLearningReportRecord['learningRecords']
+    }) => {
+      const existing = monthlyLearningReports.find(
+        (r) =>
+          r.studentId === input.studentId &&
+          r.year === input.year &&
+          r.month === input.month &&
+          r.subject === input.subject,
+      )
+      if (existing?.status === 'published') {
+        const message =
+          '이미 확정·공개된 REPORT는 재확정할 수 없습니다. snapshot이 보호됩니다.'
+        showToast(message)
+        return { success: false, error: message }
+      }
+      return saveMonthlyLearningReportRecord({
+        studentId: input.studentId,
+        year: input.year,
+        month: input.month,
+        subject: input.subject,
+        status: 'published',
+        publishedAt: new Date().toISOString(),
+        scores: input.scores,
+        learningRecords: input.learningRecords,
+        strengths: input.strengths,
+        improvements: input.improvements,
+        teacherOverallComment: input.teacherOverallComment,
+      })
+    },
+    [monthlyLearningReports, saveMonthlyLearningReportRecord, showToast],
   )
 
   const deleteMonthlyEvaluationRecord = useCallback(
@@ -2083,6 +2284,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       assignmentCompletion,
       dailyTests,
       monthlyEvaluations,
+      monthlyLearningReports,
       questions,
       progressRecords,
       studentTextbookSlots,
@@ -2116,6 +2318,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       saveDailyTestRecord,
       deleteDailyTestRecord,
       saveMonthlyEvaluationRecord,
+      saveMonthlyLearningReportRecord,
+      publishMonthlyLearningReport,
       deleteMonthlyEvaluationRecord,
       saveQuestionRecord,
       deleteQuestionRecord,
@@ -2167,7 +2371,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       isSaving,
       makeupPlans,
       monthlyEvaluations,
+      monthlyLearningReports,
       openStudentCareInNewTab,
+      publishMonthlyLearningReport,
       progressRecords,
       studentTextbookSlots,
       questions,
@@ -2189,6 +2395,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       saveStudentTextbookSlot,
       saveMakeupPlanRecord,
       saveMonthlyEvaluationRecord,
+      saveMonthlyLearningReportRecord,
       saveProgressRecord,
       saveProgressRecordAsync,
       saveProgressSubjectWithClassSync,

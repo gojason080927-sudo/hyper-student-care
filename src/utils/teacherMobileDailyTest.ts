@@ -115,6 +115,15 @@ export function mobileDailyTestFormToSavePayload(
     subject: form.subject,
     memo: form.memo,
     sessionResults,
+    learningDiagnosis: form.learningDiagnosis ?? {
+      wrongAnswerItems: [],
+      questionTotal: 0,
+      fridayRetestTotal: null,
+      fridayRetestWrong: null,
+      englishVocabResult: null,
+      englishGrammarWrongCount: null,
+      englishReadingWrongCount: null,
+    },
     ...legacy,
   }
 }

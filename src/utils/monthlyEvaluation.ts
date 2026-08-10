@@ -1,4 +1,5 @@
 import type { DifficultyBreakdown, MonthlyEvaluationRecord } from '../types/records'
+import { normalizeWrongAnswerItems } from './learningDiagnosis'
 
 export const TEACHER_COMMENT_MAX_LENGTH = 1000
 
@@ -34,6 +35,8 @@ export function normalizeMonthlyEvaluationRecord(
     teacherComment: trimComment(record.teacherComment),
     strengths: trimComment(record.strengths),
     improvements: trimComment(record.improvements),
+    wrongAnswerItems: normalizeWrongAnswerItems(record.wrongAnswerItems),
+    questionTotal: Math.max(0, Math.floor(Number(record.questionTotal ?? 0))),
   }
 }
 
@@ -54,6 +57,8 @@ export type MonthlyEvaluationFormData = {
   teacherComment: string
   strengths: string
   improvements: string
+  wrongAnswerItems: MonthlyEvaluationRecord['wrongAnswerItems']
+  questionTotal: number
 }
 
 export function emptyMonthlyEvaluationForm(): MonthlyEvaluationFormData {
@@ -70,6 +75,8 @@ export function emptyMonthlyEvaluationForm(): MonthlyEvaluationFormData {
     teacherComment: '',
     strengths: '',
     improvements: '',
+    wrongAnswerItems: [],
+    questionTotal: 0,
   }
 }
 
@@ -90,6 +97,8 @@ export function monthlyEvaluationRecordToForm(
     teacherComment: normalized.teacherComment,
     strengths: normalized.strengths,
     improvements: normalized.improvements,
+    wrongAnswerItems: normalized.wrongAnswerItems,
+    questionTotal: normalized.questionTotal,
   }
 }
 
@@ -111,6 +120,8 @@ export function monthlyEvaluationFormToSavePayload(
     teacherComment: trimComment(form.teacherComment),
     strengths: trimComment(form.strengths),
     improvements: trimComment(form.improvements),
+    wrongAnswerItems: normalizeWrongAnswerItems(form.wrongAnswerItems),
+    questionTotal: Math.max(0, Math.floor(Number(form.questionTotal ?? 0))),
   }
 }
 

@@ -12,6 +12,7 @@ import {
   homeworkTextbookEntryFromRow,
   makeupPlanFromRow,
   monthlyEvaluationFromRow,
+  monthlyLearningReportFromRow,
   noticeFromRow,
   progressFromRow,
   questionFromRow,
@@ -26,6 +27,7 @@ import {
   type HomeworkTextbookEntryRow,
   type MakeupPlanRow,
   type MonthlyEvaluationRow,
+  type MonthlyLearningReportRow,
   type NoticeRow,
   type ProgressRow,
   type QuestionRow,
@@ -254,6 +256,13 @@ export async function rpcGetParentCareBundle(accessKey: string): Promise<LocalBa
       MonthlyEvaluationRow,
       ReturnType<typeof monthlyEvaluationFromRow>
     >(bundle.monthly_evaluations, monthlyEvaluationFromRow),
+    monthlyLearningReports:
+      bundle.monthly_learning_reports !== undefined
+        ? mapRows<
+            MonthlyLearningReportRow,
+            ReturnType<typeof monthlyLearningReportFromRow>
+          >(bundle.monthly_learning_reports, monthlyLearningReportFromRow)
+        : [],
     questions: mapRows<QuestionRow, ReturnType<typeof questionFromRow>>(
       bundle.questions,
       questionFromRow,

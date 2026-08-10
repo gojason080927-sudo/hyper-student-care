@@ -1,0 +1,57 @@
+/* 월간 학습진단 REPORT — A4 세로 1페이지 인쇄 */
+
+.mlr-report-shell {
+  --mlr-navy: #163a70;
+  --mlr-mint: #28c7b7;
+}
+
+.mlr-no-print {
+  /* interactive chrome */
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .mlr-print-root,
+  .mlr-print-root * {
+    visibility: visible !important;
+  }
+
+  .mlr-print-root {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+  }
+
+  .mlr-no-print {
+    display: none !important;
+  }
+
+  .mlr-report-page {
+    width: 100% !important;
+    min-height: auto !important;
+    max-height: none !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .mlr-report-page,
+  .mlr-report-page * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

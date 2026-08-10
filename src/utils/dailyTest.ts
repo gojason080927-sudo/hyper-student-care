@@ -1,5 +1,9 @@
 import type { DailyTestRecord, TestSessionResult, TestSessionStatus } from '../types/records'
 import { calcPercentage } from './calc'
+import {
+  EMPTY_DAILY_LEARNING_DIAGNOSIS,
+  normalizeDailyLearningDiagnosis,
+} from './learningDiagnosis'
 
 export const DAILY_TEST_PASS_RATE = 85
 export const DAILY_TEST_FULL_SCORE = 100
@@ -203,6 +207,9 @@ export function normalizeDailyTestRecord(record: DailyTestRecord): DailyTestReco
     ...record,
     ...legacy,
     sessionResults,
+    learningDiagnosis: normalizeDailyLearningDiagnosis(
+      record.learningDiagnosis ?? EMPTY_DAILY_LEARNING_DIAGNOSIS,
+    ),
   }
 }
 
@@ -250,6 +257,7 @@ export type DailyTestFormData = {
   subject: string
   memo: string
   sessionResults: DailyTestFormSessionState[]
+  learningDiagnosis: DailyTestRecord['learningDiagnosis']
 }
 
 export function dailyTestRecordToForm(record: DailyTestRecord): DailyTestFormData {
@@ -262,6 +270,7 @@ export function dailyTestRecordToForm(record: DailyTestRecord): DailyTestFormDat
     subject: record.subject,
     memo: record.memo,
     sessionResults,
+    learningDiagnosis: normalizeDailyLearningDiagnosis(record.learningDiagnosis),
   }
 }
 
@@ -282,6 +291,7 @@ export function dailyTestFormToSavePayload(
     subject: form.subject,
     memo: form.memo,
     sessionResults,
+    learningDiagnosis: normalizeDailyLearningDiagnosis(form.learningDiagnosis),
     ...legacy,
   }
 }
@@ -294,6 +304,7 @@ export function emptyDailyTestForm(): DailyTestFormData {
     subject: '수학',
     memo: '',
     sessionResults: createDefaultSessionResults(),
+    learningDiagnosis: { ...EMPTY_DAILY_LEARNING_DIAGNOSIS },
   }
 }
 
@@ -396,6 +407,18 @@ export function clearSessionResult(session: TestSessionResult): TestSessionResul
 
 export function hasDailyTestDisplayData(record?: DailyTestRecord): boolean {
   if (!record) return false
+  if (record.memo?.trim()) return true
+  const diagnosis = normalizeDailyLearningDiagnosis(record.learningDiagnosis)
+  if (
+    diagnosis.wrongAnswerItems.length > 0 ||
+    diagnosis.fridayRetestTotal !== null ||
+    diagnosis.fridayRetestWrong !== null ||
+    diagnosis.englishVocabResult !== null ||
+    diagnosis.englishGrammarWrongCount !== null ||
+    diagnosis.englishReadingWrongCount !== null
+  ) {
+    return true
+  }
   return migrateSessionResults(record).some((session) => session.status !== '미응시')
 }
 

@@ -1,7 +1,7 @@
 import {
   CalendarCheck,
-  CalendarClock,
   ClipboardList,
+  FileBarChart2,
   MessageCircleQuestion,
   Newspaper,
   Users,
@@ -22,16 +22,15 @@ const categories = [
     icon: ClipboardList,
   },
   {
-    to: '/monthly-evaluations',
-    title: '학습진행 상황\n월말평가 결과',
-    description: '월간 학습 진행과 월말평가 결과 확인',
-    icon: CalendarCheck,
+    to: '/monthly-learning-reports',
+    title: '월간 학습진단\nREPORT',
+    description: '실시간 예상점수 · 확정 공개',
+    icon: FileBarChart2,
   },
   {
-    to: '/makeup-plans',
-    title: '보강계획',
-    description: '보강 일정과 진행 방식 관리',
-    icon: CalendarClock,
+    to: '/monthly-evaluations',
+    title: '월말평가 결과',
+    icon: CalendarCheck,
   },
   {
     to: '/teacher/learning-notices',

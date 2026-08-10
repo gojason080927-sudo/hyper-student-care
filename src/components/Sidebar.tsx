@@ -2,8 +2,8 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
   CalendarCheck,
-  CalendarClock,
   ClipboardList,
+  FileBarChart2,
   LayoutDashboard,
   MessageCircleQuestion,
   Newspaper,
@@ -40,13 +40,18 @@ const navItems: NavItem[] = [
     icon: ClipboardList,
   },
   {
+    path: '/monthly-learning-reports',
+    label: '월간 학습진단 REPORT',
+    multilineLabel: ['월간 학습진단', 'REPORT'],
+    icon: FileBarChart2,
+  },
+  {
     path: MONTHLY_EVALUATION_SELECT_PATH,
     label: '월말평가',
-    multilineLabel: ['학습진행 상황', '월말평가 결과'],
+    multilineLabel: ['월말평가', '결과'],
     icon: CalendarCheck,
     resetOnNavigate: true,
   },
-  { path: '/makeup-plans', label: '보강계획', icon: CalendarClock },
   { path: '/teacher/learning-notices', label: '학습정보 & 공지사항', icon: Newspaper },
   { path: '/questions', label: '질문하기', icon: MessageCircleQuestion },
 ]

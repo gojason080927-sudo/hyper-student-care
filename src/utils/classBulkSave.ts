@@ -192,6 +192,16 @@ export async function saveClassBulkStudentDraft(
         subject: draft.dailyTestSubject || '수학',
         memo: draft.dailyTestMemo,
         sessionResults: draft.sessionResults,
+        learningDiagnosis:
+          existing.dailyTest?.learningDiagnosis ?? {
+            wrongAnswerItems: [],
+            questionTotal: 0,
+            fridayRetestTotal: null,
+            fridayRetestWrong: null,
+            englishVocabResult: null,
+            englishGrammarWrongCount: null,
+            englishReadingWrongCount: null,
+          },
       }
       const payload = dailyTestFormToSavePayload(form)
       const ts = createTimestamps()
@@ -207,6 +217,7 @@ export async function saveClassBulkStudentDraft(
         percentage: calcPercentage(payload.score ?? 0, payload.totalScore ?? 100),
         incorrectCount: payload.incorrectCount,
         sessionResults: payload.sessionResults ?? [],
+        learningDiagnosis: payload.learningDiagnosis,
         createdAt: existing.dailyTest?.createdAt ?? ts.createdAt,
         updatedAt: ts.updatedAt,
       }

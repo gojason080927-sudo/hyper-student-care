@@ -70,7 +70,13 @@ import { ParentStudentMakeupPlanPage } from './pages/parent/ParentStudentMakeupP
 
 import { ParentStudentMonthlyEvaluationPage } from './pages/parent/ParentStudentMonthlyEvaluationPage'
 
+import { ParentStudentMonthlyLearningReportPage } from './pages/parent/ParentStudentMonthlyLearningReportPage'
+
 import { ParentStudentProgressPage } from './pages/parent/ParentStudentProgressPage'
+
+import { MonthlyLearningReportSelectPage } from './pages/MonthlyLearningReportSelectPage'
+
+import { MonthlyLearningReportDetailPage } from './pages/MonthlyLearningReportDetailPage'
 
 import { ParentStudentQuestionsPage } from './pages/parent/ParentStudentQuestionsPage'
 
@@ -103,6 +109,11 @@ function App() {
           <Route path="daily-tests" element={<ParentStudentDailyTestPage />} />
 
           <Route path="monthly-evaluation" element={<ParentStudentMonthlyEvaluationPage />} />
+
+          <Route
+            path="monthly-learning-report"
+            element={<ParentStudentMonthlyLearningReportPage />}
+          />
 
           <Route path="makeup-plans" element={<ParentStudentMakeupPlanPage />} />
 
@@ -194,6 +205,41 @@ function App() {
 
             <Route
 
+              path="monthly-learning-reports"
+
+              element={
+
+                <TeacherMobilePageShell title="월간 학습진단 REPORT">
+
+                  <MonthlyLearningReportSelectPage detailBasePath="/teacher/mobile/monthly-learning-reports" />
+
+                </TeacherMobilePageShell>
+
+              }
+
+            />
+
+            <Route
+
+              path="monthly-learning-reports/:studentId"
+
+              element={
+
+                <TeacherMobilePageShell title="월간 학습진단 REPORT">
+
+                  <MonthlyLearningReportDetailPage
+                    backPath="/teacher/mobile/monthly-learning-reports"
+                    mode="teacher"
+                  />
+
+                </TeacherMobilePageShell>
+
+              }
+
+            />
+
+            <Route
+
               path="monthly-evaluation"
 
               element={
@@ -246,7 +292,7 @@ function App() {
 
               element={
 
-                <TeacherMobilePageShell title="학습정보 & 공지">
+                <TeacherMobilePageShell title="수업 시간표 & 학습 공지사항">
 
                   <TeacherLearningNoticesPage />
 
@@ -315,6 +361,13 @@ function App() {
           <Route path="monthly-evaluations" element={<MonthlyEvaluationSelectPage />} />
 
           <Route path="teacher/monthly-evaluation" element={<MonthlyEvaluationPage />} />
+
+          <Route path="monthly-learning-reports" element={<MonthlyLearningReportSelectPage />} />
+
+          <Route
+            path="monthly-learning-reports/:studentId"
+            element={<MonthlyLearningReportDetailPage mode="teacher" />}
+          />
 
           <Route path="makeup-plans" element={<MakeupPlanPage />} />
 
