@@ -6,7 +6,7 @@ import { useData } from '../hooks/useData'
 import { formatKoreanDate, getTodayString } from '../utils/date'
 import { GRADES, inputClass } from '../utils/labels'
 import {
-  getClassOptionsForGrade,
+  getClassPickerOptions,
   isActiveGrade,
   parseGradeFromClassName,
 } from '../utils/studentGradeClass'
@@ -44,12 +44,8 @@ export function TeacherTodayReportBulkPage() {
 
   const classOptions = useMemo(() => {
     if (!grade) return []
-    const standard = getClassOptionsForGrade(grade)
-    if (className && !standard.includes(className)) {
-      return [...standard, className]
-    }
-    return standard
-  }, [className, grade])
+    return getClassPickerOptions(grade)
+  }, [grade])
 
   const classStudents = useMemo(() => {
     if (!grade || !className) return []

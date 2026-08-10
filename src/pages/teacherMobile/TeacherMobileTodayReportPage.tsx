@@ -8,7 +8,7 @@ import { useData } from '../../hooks/useData'
 import { formatKoreanDate, getTodayString } from '../../utils/date'
 import { GRADES, inputClass } from '../../utils/labels'
 import {
-  getClassOptionsForGrade,
+  CLASS_OPTIONS_BY_GRADE,
   isActiveGrade,
   parseGradeFromClassName,
 } from '../../utils/studentGradeClass'
@@ -82,14 +82,11 @@ export function TeacherMobileTodayReportPage() {
     [students],
   )
 
+  /** Today Report 반/과정 — CLASS_OPTIONS_BY_GRADE만 사용 (PC bulk와 동일) */
   const classOptions = useMemo(() => {
-    if (!grade) return []
-    const standard = getClassOptionsForGrade(grade)
-    if (className && !standard.includes(className)) {
-      return [...standard, className]
-    }
-    return standard
-  }, [className, grade])
+    if (!grade || !isActiveGrade(grade)) return []
+    return [...CLASS_OPTIONS_BY_GRADE[grade]]
+  }, [grade])
 
   const classStudents = useMemo(() => {
     if (!grade || !className) return []

@@ -1,8 +1,30 @@
 import type { Grade, StoredGrade, SubjectOption } from '../types/student'
 import { GRADES } from './labels'
 
+/** 학년별 표준 반/과정 — 강사/학부모/학생관리 공통 */
+export const CLASS_OPTIONS_BY_GRADE: Record<Grade, readonly string[]> = {
+  초5: ['초5 수학', '초5 영어', '초5 영수'],
+  초6: ['초6 수학', '초6 영어', '초6 영수'],
+  중1: ['중1 수학', '중1 영어', '중1 영수A', '중1 영수B'],
+  중2: ['중2 수학', '중2 영어', '중2 영수'],
+  중3: ['중3 수학A', '중3 수학B', '중3 영어', '중3 영수A', '중3 영수B'],
+  고1: ['고1 수학A', '고1 수학B', '고1 영어', '고1 영수A', '고1 영수B'],
+  고2: ['고2 수학', '고2 영어', '고2 영수'],
+  고3: ['고3 수학', '고3 영어', '고3 영수'],
+}
+
+/** @deprecated CLASS_OPTIONS_BY_GRADE 사용 */
 export const CLASS_TRACKS = ['수학', '영어', '영수'] as const
 export type ClassTrack = (typeof CLASS_TRACKS)[number]
+
+export type StandardClassTrack =
+  | '수학'
+  | '영어'
+  | '수학A'
+  | '수학B'
+  | '영수'
+  | '영수A'
+  | '영수B'
 
 export function isActiveGrade(grade: string): grade is Grade {
   return (GRADES as readonly string[]).includes(grade)
@@ -11,26 +33,50 @@ export function isActiveGrade(grade: string): grade is Grade {
 /** 학년별 표준 반/과정: 예) 고1 수학, 고1 영어, 고1 영수 */
 export function getClassOptionsForGrade(grade: string): string[] {
   if (!isActiveGrade(grade)) return []
-  return CLASS_TRACKS.map((track) => `${grade} ${track}`)
+  return [...CLASS_OPTIONS_BY_GRADE[grade]]
 }
 
 export function getAllStandardClassOptions(): string[] {
   return GRADES.flatMap((grade) => getClassOptionsForGrade(grade))
 }
 
+/** Today Report·일괄입력 선택용 — CLASS_OPTIONS_BY_GRADE만 (DB/레거시 병합 금지) */
+export function getClassPickerOptions(grade: string): string[] {
+  if (!isActiveGrade(grade)) return []
+  return [...CLASS_OPTIONS_BY_GRADE[grade]]
+}
+
 export function parseStandardClassName(
   className: string,
-): { grade: Grade; track: ClassTrack } | null {
+): { grade: Grade; track: StandardClassTrack } | null {
   const trimmed = className.trim()
   if (!trimmed) return null
+
+  for (const grade of GRADES) {
+    for (const option of CLASS_OPTIONS_BY_GRADE[grade]) {
+      if (option === trimmed) {
+        return { grade, track: option.slice(grade.length + 1) as StandardClassTrack }
+      }
+    }
+  }
+
   for (const grade of GRADES) {
     const prefix = `${grade} `
     if (!trimmed.startsWith(prefix)) continue
-    const track = trimmed.slice(prefix.length) as ClassTrack
-    if (CLASS_TRACKS.includes(track)) {
+    const track = trimmed.slice(prefix.length)
+    if (
+      track === '수학' ||
+      track === '수학A' ||
+      track === '수학B' ||
+      track === '영어' ||
+      track === '영수' ||
+      track === '영수A' ||
+      track === '영수B'
+    ) {
       return { grade, track }
     }
   }
+
   return null
 }
 
@@ -38,13 +84,17 @@ export function parseGradeFromClassName(className: string): Grade | null {
   return parseStandardClassName(className)?.grade ?? null
 }
 
-export function classTrackToSubject(track: ClassTrack): SubjectOption {
+export function classTrackToSubject(track: StandardClassTrack | ClassTrack): SubjectOption {
   switch (track) {
     case '수학':
+    case '수학A':
+    case '수학B':
       return '수학'
     case '영어':
       return '영어'
     case '영수':
+    case '영수A':
+    case '영수B':
       return '영어·수학'
   }
 }
@@ -60,7 +110,7 @@ export function subjectToClassTrack(subject: SubjectOption): ClassTrack {
   }
 }
 
-export function buildStandardClassName(grade: string, track: ClassTrack): string {
+export function buildStandardClassName(grade: string, track: StandardClassTrack | ClassTrack): string {
   return `${grade} ${track}`
 }
 
