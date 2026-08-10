@@ -54,9 +54,27 @@ export function classTrackIncludesSubject(
   subject: TextbookSubject,
 ): boolean {
   const parsed = parseStandardClassName(className)
-  if (!parsed) return true
-  if (parsed.track === '영수') return true
-  if (parsed.track === '수학') return subject === '수학'
+  if (!parsed) {
+    const normalized = className.trim().replace(/\s+/g, '')
+    if (normalized.includes('영수')) return true
+    if (normalized.includes('수학')) return subject === '수학'
+    if (normalized.includes('영어')) return subject === '영어'
+    return true
+  }
+  if (
+    parsed.track === '영수' ||
+    parsed.track === '영수A' ||
+    parsed.track === '영수B'
+  ) {
+    return true
+  }
+  if (
+    parsed.track === '수학' ||
+    parsed.track === '수학A' ||
+    parsed.track === '수학B'
+  ) {
+    return subject === '수학'
+  }
   if (parsed.track === '영어') return subject === '영어'
   return true
 }
