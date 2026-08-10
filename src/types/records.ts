@@ -157,12 +157,17 @@ export type MonthlyLearningReportStatus = 'draft' | 'published'
 
 /** null = 해당 월 산출 원본 데이터 없음 (평가 전 / 데이터 없음) */
 export type MonthlyLearningReportScores = {
+  /** 학습 역량: 진단점수 / 학습 관리: 직접 감점 점수 */
   metric1: number | null
   metric2: number | null
   metric3: number | null
   homeworkHabit: number | null
   wrongAnswerManagement: number | null
   learningSincerity: number | null
+  /** 학습 역량 원점수 (snapshot 보관용). 관리 지표는 null */
+  rawMetric1: number | null
+  rawMetric2: number | null
+  rawMetric3: number | null
 }
 
 export type MonthlyLearningRecordsSnapshot = {
@@ -173,6 +178,10 @@ export type MonthlyLearningRecordsSnapshot = {
   testPass2Count: number
   testPass3Count: number
   testPass4Count: number
+  /** 금요일 오답 재시험 응시 문제 수 (없으면 null = 재시험 기록 없음) */
+  fridayRetestTotalCount: number | null
+  /** 금요일 오답 재시험에서 다시 틀린 문제 수 */
+  fridayRetestWrongCount: number | null
 }
 
 /** 월간 학습진단 REPORT 확정 snapshot */

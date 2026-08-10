@@ -21,7 +21,7 @@ import {
   isDateInYearMonth,
   type MonthlyLearningCounts,
 } from './monthlyLearningProgress'
-import { migrateSessionResults } from './dailyTest'
+import { getFinalPassSession, migrateSessionResults } from './dailyTest'
 
 export type DiagnosisSubject = '수학' | '영어'
 
@@ -62,6 +62,37 @@ export function formatDiagnosisScore(score: number | null | undefined): string {
   return `${score}점`
 }
 
+/**
+ * 학습 역량 원점수 → 진단점수 변환.
+ * 학습 관리 지표에는 적용하지 않는다.
+ */
+export function toDiagnosticAbilityScore(raw: number | null): number | null {
+  if (raw === null || raw === undefined) return null
+  const value = Number(raw)
+  if (!Number.isFinite(value)) return null
+
+  let diagnostic: number
+  if (value >= 85) {
+    diagnostic = 82 + (value - 85) * 0.8
+  } else if (value >= 70) {
+    diagnostic = 70 + (value - 70) * 0.8
+  } else {
+    // 45~69.999 및 45 미만: 같은 기울기로 연장 (음수 금지는 clamp)
+    diagnostic = 55 + (value - 45) * 0.6
+  }
+  return clampScoreInt(diagnostic)
+}
+
+/** 학습 역량 진단점수 등급 문구 (점수 계산과 무관) */
+export function getAbilityGradeLabel(score: number | null | undefined): string | null {
+  if (score === null || score === undefined) return null
+  if (score >= 90) return '매우 우수'
+  if (score >= 82) return '우수'
+  if (score >= 70) return '보통'
+  if (score >= 55) return '보완 필요'
+  return '집중 보완'
+}
+
 function subjectMatches(recordSubject: string, subject: DiagnosisSubject): boolean {
   const value = recordSubject.trim()
   if (!value) return true
@@ -75,11 +106,10 @@ function countCause(items: { cause: MathWrongCause }[], cause: MathWrongCause): 
 
 function scoreFromErrorRate(causeCount: number, totalQuestions: number): number | null {
   if (totalQuestions <= 0) return null
-  const errorRate = causeCount / totalQuestions
-  return clampScore(100 * (1 - errorRate))
+  return clampScore(100 - (causeCount / totalQuestions) * 100)
 }
 
-function weightedScore(
+function weightedRawScore(
   daily: number | null,
   monthly: number | null,
   dailyWeight = 0.6,
@@ -141,15 +171,11 @@ function hasDailyTestInMonth(
     if (test.studentId !== studentId) return false
     if (!isDateInYearMonth(test.date, year, month)) return false
     const sessions = migrateSessionResults(test)
-    return (
-      sessions.some((session) => session.status !== '미응시') ||
-      Boolean(test.memo?.trim()) ||
-      normalizeDailyLearningDiagnosis(test.learningDiagnosis).wrongAnswerItems.length > 0
-    )
+    return sessions.some((session) => session.status !== '미응시')
   })
 }
 
-function computeMathCauseScore(
+function computeMathCauseRawScore(
   dailyTests: DailyTestRecord[],
   monthlyEvaluations: MonthlyEvaluationRecord[],
   studentId: string,
@@ -181,9 +207,17 @@ function computeMathCauseScore(
     monthlyTotal += fromField > 0 ? fromField : fromDifficulty
   }
 
-  return weightedScore(
+  return weightedRawScore(
     scoreFromErrorRate(dailyWrong, dailyTotal),
     scoreFromErrorRate(monthlyWrong, monthlyTotal),
+  )
+}
+
+/** 과제 수행 습관 / 과제 성실도 공통 감점 (최대 -10) */
+function computeHomeworkDeduction(counts: MonthlyLearningCounts): number {
+  return Math.min(
+    counts.partialHomeworkCount * 0.5 + counts.incompleteHomeworkCount * 1,
+    10,
   )
 }
 
@@ -192,17 +226,17 @@ function computeHomeworkHabitScore(
   hasHomeworkData: boolean,
 ): number | null {
   if (!hasHomeworkData) return null
-  const deduction = counts.partialHomeworkCount * 2 + counts.incompleteHomeworkCount * 4
-  return clampScoreInt(100 - deduction)
+  return clampScore(100 - computeHomeworkDeduction(counts))
 }
 
-function computeWrongAnswerManagementScore(
+function aggregateFridayRetest(
   dailyTests: DailyTestRecord[],
   studentId: string,
   year: number,
   month: number,
-): number | null {
-  let wrongAgain = 0
+): { total: number; wrong: number; hasData: boolean } {
+  let total = 0
+  let wrong = 0
   let hasData = false
   for (const test of dailyTests) {
     if (test.studentId !== studentId) continue
@@ -212,29 +246,128 @@ function computeWrongAnswerManagementScore(
       continue
     }
     hasData = true
-    wrongAgain += diagnosis.fridayRetestWrong ?? 0
+    total += diagnosis.fridayRetestTotal ?? 0
+    wrong += diagnosis.fridayRetestWrong ?? 0
   }
-  if (!hasData) return null
-  return clampScoreInt(100 - wrongAgain)
+  return { total, wrong, hasData }
 }
 
-function computeLearningSincerityScore(
-  counts: MonthlyLearningCounts,
-  hasSourceData: boolean,
+function computeWrongAnswerManagementScore(
+  dailyTests: DailyTestRecord[],
+  studentId: string,
+  year: number,
+  month: number,
 ): number | null {
-  if (!hasSourceData) return null
-  const deduction =
-    counts.lateCount * 2 +
-    counts.absentCount * 5 +
-    counts.partialHomeworkCount * 1 +
-    counts.incompleteHomeworkCount * 2 +
-    counts.testPass2Count * 1 +
-    counts.testPass3Count * 2 +
-    counts.testPass4Count * 3
-  return clampScoreInt(100 - deduction)
+  const { wrong, hasData } = aggregateFridayRetest(dailyTests, studentId, year, month)
+  if (!hasData) return null
+  const deduction = Math.min(wrong * 0.5, 8)
+  return clampScore(100 - deduction)
 }
 
-function computeEnglishVocabScore(
+/** 일일테스트 최종 미통과(응시했으나 합격 차시 없음) 횟수 */
+function countDailyTestFinalFail(
+  dailyTests: DailyTestRecord[],
+  studentId: string,
+  year: number,
+  month: number,
+): number {
+  const seenDates = new Set<string>()
+  let count = 0
+  for (const test of dailyTests) {
+    if (test.studentId !== studentId) continue
+    if (!isDateInYearMonth(test.date, year, month)) continue
+    if (seenDates.has(test.date)) continue
+    seenDates.add(test.date)
+    const sessions = migrateSessionResults(test)
+    const attempted = sessions.some((session) => session.status !== '미응시')
+    if (!attempted) continue
+    if (getFinalPassSession(sessions) === null) count += 1
+  }
+  return count
+}
+
+function computeAttendanceSincerityScore(
+  counts: MonthlyLearningCounts,
+  hasAttendance: boolean,
+): number | null {
+  if (!hasAttendance) return null
+  // 지각 -1 / 결석(status==='결석') -3. reason 미사용.
+  return clampScore(100 - counts.lateCount * 1 - counts.absentCount * 3)
+}
+
+function computeHomeworkSincerityScore(
+  counts: MonthlyLearningCounts,
+  hasHomeworkData: boolean,
+): number | null {
+  if (!hasHomeworkData) return null
+  return clampScore(100 - computeHomeworkDeduction(counts))
+}
+
+function computeDailyTestSincerityScore(
+  counts: MonthlyLearningCounts,
+  finalFailCount: number,
+  hasDailyTest: boolean,
+): number | null {
+  if (!hasDailyTest) return null
+  // 1차 통과 0 / 2차 -0.5 / 3차 -1 / 4차 -1.5 / 최종 미통과 -2, 월 최대 -10
+  const deduction = Math.min(
+    counts.testPass2Count * 0.5 +
+      counts.testPass3Count * 1 +
+      counts.testPass4Count * 1.5 +
+      finalFailCount * 2,
+    10,
+  )
+  return clampScore(100 - deduction)
+}
+
+/**
+ * 학습 성실성 = 출결 30% + 과제 40% + 일일테스트 30%
+ * 데이터 있는 영역만 가중치를 재정규화하여 평균.
+ */
+function computeLearningSincerityScore(input: {
+  counts: MonthlyLearningCounts
+  hasAttendance: boolean
+  hasHomeworkData: boolean
+  hasDailyTest: boolean
+  finalFailCount: number
+}): number | null {
+  const parts: Array<{ score: number; weight: number }> = []
+  const attendance = computeAttendanceSincerityScore(input.counts, input.hasAttendance)
+  if (attendance !== null) parts.push({ score: attendance, weight: 0.3 })
+  const homework = computeHomeworkSincerityScore(input.counts, input.hasHomeworkData)
+  if (homework !== null) parts.push({ score: homework, weight: 0.4 })
+  const daily = computeDailyTestSincerityScore(
+    input.counts,
+    input.finalFailCount,
+    input.hasDailyTest,
+  )
+  if (daily !== null) parts.push({ score: daily, weight: 0.3 })
+
+  if (parts.length === 0) return null
+  const weightSum = parts.reduce((sum, part) => sum + part.weight, 0)
+  const weighted =
+    parts.reduce((sum, part) => sum + part.score * part.weight, 0) / weightSum
+  return clampScoreInt(weighted)
+}
+
+function hasMathMonthlyEvaluationInMonth(
+  monthlyEvaluations: MonthlyEvaluationRecord[],
+  studentId: string,
+  year: number,
+  month: number,
+): boolean {
+  return monthlyEvaluations.some((evaluation) => {
+    if (evaluation.studentId !== studentId) return false
+    if (evaluation.year !== year || evaluation.month !== month) return false
+    if (!subjectMatches(evaluation.subject, '수학')) return false
+    const items = evaluation.wrongAnswerItems ?? []
+    const fromField = Math.max(0, evaluation.questionTotal ?? 0)
+    const fromDifficulty = getDifficultyTotal(evaluation.difficultyBreakdown)
+    return items.length > 0 || fromField > 0 || fromDifficulty > 0 || evaluation.totalScore > 0
+  })
+}
+
+function computeEnglishVocabRawScore(
   dailyTests: DailyTestRecord[],
   studentId: string,
   year: number,
@@ -252,10 +385,10 @@ function computeEnglishVocabScore(
     if (diagnosis.englishVocabResult === '합격') pass += 1
   }
   if (total === 0) return null
-  return clampScoreInt((pass / total) * 100)
+  return clampScore((pass / total) * 100)
 }
 
-function computeEnglishGrammarScore(
+function computeEnglishGrammarRawScore(
   dailyTests: DailyTestRecord[],
   studentId: string,
   year: number,
@@ -276,7 +409,7 @@ function computeEnglishGrammarScore(
   return clampScore(100 - wrong * 0.5)
 }
 
-function computeEnglishReadingScore(
+function computeEnglishReadingRawScore(
   dailyTests: DailyTestRecord[],
   studentId: string,
   year: number,
@@ -294,7 +427,8 @@ function computeEnglishReadingScore(
     wrong += diagnosis.englishReadingWrongCount
   }
   if (!hasData) return null
-  return clampScoreInt(100 - wrong)
+  // 독해 오답 1개당 -0.5점
+  return clampScore(100 - wrong * 0.5)
 }
 
 export type LiveDiagnosisResult = {
@@ -304,6 +438,8 @@ export type LiveDiagnosisResult = {
   scores: MonthlyLearningReportScores
   learningRecords: MonthlyLearningRecordsSnapshot
   metricLabels: ReturnType<typeof getMetricLabels>
+  /** 수학: 월말평가 데이터가 반영되었는지 (강사 화면 안내용) */
+  mathMonthlyEvaluationIncluded: boolean
 }
 
 export function computeLiveMonthlyLearningDiagnosis(input: {
@@ -327,6 +463,12 @@ export function computeLiveMonthlyLearningDiagnosis(input: {
     dailyTests: input.dailyTests,
   })
 
+  const fridayRetest = aggregateFridayRetest(
+    input.dailyTests,
+    input.studentId,
+    input.year,
+    input.month,
+  )
   const learningRecords: MonthlyLearningRecordsSnapshot = {
     lateCount: counts.lateCount,
     absentCount: counts.absentCount,
@@ -335,6 +477,8 @@ export function computeLiveMonthlyLearningDiagnosis(input: {
     testPass2Count: counts.testPass2Count,
     testPass3Count: counts.testPass3Count,
     testPass4Count: counts.testPass4Count,
+    fridayRetestTotalCount: fridayRetest.hasData ? fridayRetest.total : null,
+    fridayRetestWrongCount: fridayRetest.hasData ? fridayRetest.wrong : null,
   }
 
   const hasHomeworkData = hasHomeworkSourceInMonth({
@@ -344,10 +488,24 @@ export function computeLiveMonthlyLearningDiagnosis(input: {
     homeworkTextbookEntries: input.homeworkTextbookEntries,
     homework: input.homework,
   })
-  const hasSinceritySource =
-    hasAttendanceInMonth(input.attendance, input.studentId, input.year, input.month) ||
-    hasHomeworkData ||
-    hasDailyTestInMonth(input.dailyTests, input.studentId, input.year, input.month)
+  const hasAttendance = hasAttendanceInMonth(
+    input.attendance,
+    input.studentId,
+    input.year,
+    input.month,
+  )
+  const hasDailyTest = hasDailyTestInMonth(
+    input.dailyTests,
+    input.studentId,
+    input.year,
+    input.month,
+  )
+  const finalFailCount = countDailyTestFinalFail(
+    input.dailyTests,
+    input.studentId,
+    input.year,
+    input.month,
+  )
 
   const homeworkHabit = computeHomeworkHabitScore(counts, hasHomeworkData)
   const wrongAnswerManagement = computeWrongAnswerManagementScore(
@@ -356,14 +514,28 @@ export function computeLiveMonthlyLearningDiagnosis(input: {
     input.year,
     input.month,
   )
-  const learningSincerity = computeLearningSincerityScore(counts, hasSinceritySource)
+  const learningSincerity = computeLearningSincerityScore({
+    counts,
+    hasAttendance,
+    hasHomeworkData,
+    hasDailyTest,
+    finalFailCount,
+  })
+  const mathMonthlyEvaluationIncluded =
+    input.subject === '수학' &&
+    hasMathMonthlyEvaluationInMonth(
+      input.monthlyEvaluations,
+      input.studentId,
+      input.year,
+      input.month,
+    )
 
-  let metric1: number | null
-  let metric2: number | null
-  let metric3: number | null
+  let rawMetric1: number | null
+  let rawMetric2: number | null
+  let rawMetric3: number | null
 
   if (input.subject === '수학') {
-    metric1 = computeMathCauseScore(
+    rawMetric1 = computeMathCauseRawScore(
       input.dailyTests,
       input.monthlyEvaluations,
       input.studentId,
@@ -371,7 +543,7 @@ export function computeLiveMonthlyLearningDiagnosis(input: {
       input.month,
       '개념 부족',
     )
-    metric2 = computeMathCauseScore(
+    rawMetric2 = computeMathCauseRawScore(
       input.dailyTests,
       input.monthlyEvaluations,
       input.studentId,
@@ -379,7 +551,7 @@ export function computeLiveMonthlyLearningDiagnosis(input: {
       input.month,
       '계산 실수',
     )
-    metric3 = computeMathCauseScore(
+    rawMetric3 = computeMathCauseRawScore(
       input.dailyTests,
       input.monthlyEvaluations,
       input.studentId,
@@ -388,19 +560,19 @@ export function computeLiveMonthlyLearningDiagnosis(input: {
       '문제 이해 부족',
     )
   } else {
-    metric1 = computeEnglishVocabScore(
+    rawMetric1 = computeEnglishVocabRawScore(
       input.dailyTests,
       input.studentId,
       input.year,
       input.month,
     )
-    metric2 = computeEnglishGrammarScore(
+    rawMetric2 = computeEnglishGrammarRawScore(
       input.dailyTests,
       input.studentId,
       input.year,
       input.month,
     )
-    metric3 = computeEnglishReadingScore(
+    rawMetric3 = computeEnglishReadingRawScore(
       input.dailyTests,
       input.studentId,
       input.year,
@@ -409,12 +581,15 @@ export function computeLiveMonthlyLearningDiagnosis(input: {
   }
 
   const scores: MonthlyLearningReportScores = {
-    metric1,
-    metric2,
-    metric3,
+    metric1: toDiagnosticAbilityScore(rawMetric1),
+    metric2: toDiagnosticAbilityScore(rawMetric2),
+    metric3: toDiagnosticAbilityScore(rawMetric3),
     homeworkHabit,
     wrongAnswerManagement,
     learningSincerity,
+    rawMetric1,
+    rawMetric2,
+    rawMetric3,
   }
 
   return {
@@ -424,6 +599,7 @@ export function computeLiveMonthlyLearningDiagnosis(input: {
     scores,
     learningRecords,
     metricLabels: getMetricLabels(input.subject),
+    mathMonthlyEvaluationIncluded,
   }
 }
 
@@ -443,7 +619,7 @@ export function buildReportStudentMeta(student: Student): {
   }
 }
 
-/** 값이 있는 지표만 평균. 전부면 null */
+/** @deprecated 대표 평균점수는 사용하지 않음. 호환용으로만 유지 */
 export function getReportAverageScore(
   scores: MonthlyLearningReportScores,
 ): number | null {
@@ -477,6 +653,7 @@ export function pickReportForView(input: {
   status: 'live' | 'draft' | 'published'
 } {
   if (input.mode === 'parent') {
+    // 학부모: published snapshot만 노출. 월중 예상점수 금지.
     if (input.published && isPublishedReport(input.published)) {
       return {
         scores: input.published.scores,
@@ -486,8 +663,28 @@ export function pickReportForView(input: {
       }
     }
     return {
-      scores: input.live.scores,
-      learningRecords: input.live.learningRecords,
+      scores: {
+        metric1: null,
+        metric2: null,
+        metric3: null,
+        homeworkHabit: null,
+        wrongAnswerManagement: null,
+        learningSincerity: null,
+        rawMetric1: null,
+        rawMetric2: null,
+        rawMetric3: null,
+      },
+      learningRecords: {
+        lateCount: 0,
+        absentCount: 0,
+        partialHomeworkCount: 0,
+        incompleteHomeworkCount: 0,
+        testPass2Count: 0,
+        testPass3Count: 0,
+        testPass4Count: 0,
+        fridayRetestTotalCount: null,
+        fridayRetestWrongCount: null,
+      },
       isSnapshot: false,
       status: 'live',
     }

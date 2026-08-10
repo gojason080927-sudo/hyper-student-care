@@ -103,14 +103,36 @@ export function MonthlyLearningReportDetailPage({
   }
 
   const isPublished = existing?.status === 'published'
+
+  // 학부모: published snapshot만 표시. 월중 예상점수 노출 금지.
+  if (mode === 'parent' && !isPublished) {
+    return (
+      <div className="space-y-4 p-4">
+        <p className="text-sm text-slate-600">
+          아직 확정·공개된 월간 학습진단 REPORT가 없습니다. 월중 예상점수는 표시되지 않습니다.
+        </p>
+        <Link to={backPath} className="text-sm font-semibold text-[#163A70]">
+          목록으로
+        </Link>
+      </div>
+    )
+  }
+
   const scores = isPublished && existing ? existing.scores : live.scores
   const learningRecords =
     isPublished && existing ? existing.learningRecords : live.learningRecords
+  const mathMonthlyEvaluationPending =
+    mode === 'teacher' &&
+    !isPublished &&
+    subject === '수학' &&
+    !live.mathMonthlyEvaluationIncluded
   const statusLabel =
     mode === 'teacher'
       ? isPublished
         ? '확정·공개됨 (snapshot 고정 · 수정 불가)'
-        : '현재 예상점수 (실시간 누적)'
+        : mathMonthlyEvaluationPending
+          ? '현재 예상점수 (실시간 누적 · 월말평가 미반영)'
+          : '현재 예상점수 (실시간 누적)'
       : isPublished
         ? '확정 REPORT'
         : ''
@@ -231,6 +253,7 @@ export function MonthlyLearningReportDetailPage({
         }
         statusLabel={statusLabel}
         hideNarrativeOnScreen={mode === 'teacher' && !isPublished}
+        mathMonthlyEvaluationPending={mathMonthlyEvaluationPending}
       />
 
       {mode === 'teacher' && !isPublished ? (

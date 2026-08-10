@@ -6,8 +6,8 @@ import type { Student } from '../../types/student'
 import {
   SCORE_UNAVAILABLE_LABEL,
   formatDiagnosisScore,
+  getAbilityGradeLabel,
   getMetricLabels,
-  getReportAverageScore,
   type DiagnosisSubject,
 } from '../../utils/monthlyLearningDiagnosis'
 import '../../styles/monthlyLearningReportPrint.css'
@@ -25,10 +25,15 @@ type MonthlyLearningReportDocumentProps = {
   statusLabel?: string
   /** 강사 편집 화면: 화면에서는 숨기고 A4 인쇄/PDF에만 표시 */
   hideNarrativeOnScreen?: boolean
+  /** 수학 학습역량: 월말평가 미반영 안내 (강사 화면) */
+  mathMonthlyEvaluationPending?: boolean
 }
 
 const RECORD_ROWS: Array<{
-  key: keyof MonthlyLearningRecordsSnapshot
+  key: Exclude<
+    keyof MonthlyLearningRecordsSnapshot,
+    'fridayRetestTotalCount' | 'fridayRetestWrongCount'
+  >
   label: string
 }> = [
   { key: 'lateCount', label: '지각' },
@@ -40,7 +45,15 @@ const RECORD_ROWS: Array<{
   { key: 'testPass4Count', label: '일일테스트 4차 통과' },
 ]
 
-function ScoreBar({ label, score }: { label: string; score: number | null }) {
+function ScoreBar({
+  label,
+  score,
+  gradeLabel,
+}: {
+  label: string
+  score: number | null
+  gradeLabel?: string | null
+}) {
   if (score === null) {
     return (
       <div className="mlr-score-row">
@@ -69,6 +82,9 @@ function ScoreBar({ label, score }: { label: string; score: number | null }) {
           style={{ width: `${width}%` }}
         />
       </div>
+      {gradeLabel ? (
+        <p className="mt-0.5 text-[10px] font-medium text-slate-500">{gradeLabel}</p>
+      ) : null}
     </div>
   )
 }
@@ -85,17 +101,25 @@ export function MonthlyLearningReportDocument({
   teacherOverallComment,
   statusLabel,
   hideNarrativeOnScreen = false,
+  mathMonthlyEvaluationPending = false,
 }: MonthlyLearningReportDocumentProps) {
   const labels = getMetricLabels(subject)
-  const average = getReportAverageScore(scores)
-  const metrics: Array<{ key: keyof MonthlyLearningReportScores; label: string }> = [
+  const abilityMetrics: Array<{ key: 'metric1' | 'metric2' | 'metric3'; label: string }> = [
     { key: 'metric1', label: labels.metric1 },
     { key: 'metric2', label: labels.metric2 },
     { key: 'metric3', label: labels.metric3 },
+  ]
+  const managementMetrics: Array<{
+    key: 'homeworkHabit' | 'wrongAnswerManagement' | 'learningSincerity'
+    label: string
+  }> = [
     { key: 'homeworkHabit', label: labels.homeworkHabit },
     { key: 'wrongAnswerManagement', label: labels.wrongAnswerManagement },
     { key: 'learningSincerity', label: labels.learningSincerity },
   ]
+  const hasFridayRetestEvidence =
+    learningRecords.fridayRetestTotalCount !== null ||
+    learningRecords.fridayRetestWrongCount !== null
   const narrativeSections = (
     <>
       <section className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -161,14 +185,30 @@ export function MonthlyLearningReportDocument({
       </section>
 
       <section className="mt-4">
-        <div className="mb-2 flex items-end justify-between">
-          <h2 className="text-sm font-bold text-[#163A70]">진단 지표</h2>
-          <p className="text-sm font-bold text-[#163A70]">
-            {average === null ? `평균 ${SCORE_UNAVAILABLE_LABEL}` : `평균 ${average}점`}
-          </p>
+        <div className="mb-2 flex flex-wrap items-end justify-between gap-2">
+          <h2 className="text-sm font-bold text-[#163A70]">학습 역량</h2>
+          {mathMonthlyEvaluationPending ? (
+            <p className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800">
+              월말평가 미반영 (일일테스트만 반영)
+            </p>
+          ) : null}
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
-          {metrics.map((metric) => (
+          {abilityMetrics.map((metric) => (
+            <ScoreBar
+              key={metric.key}
+              label={metric.label}
+              score={scores[metric.key]}
+              gradeLabel={getAbilityGradeLabel(scores[metric.key])}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-4">
+        <h2 className="mb-2 text-sm font-bold text-[#163A70]">학습 관리</h2>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {managementMetrics.map((metric) => (
             <ScoreBar key={metric.key} label={metric.label} score={scores[metric.key]} />
           ))}
         </div>
@@ -198,13 +238,29 @@ export function MonthlyLearningReportDocument({
             </tbody>
           </table>
         </div>
+        {hasFridayRetestEvidence ? (
+          <p className="mt-2 text-[11px] text-slate-600">
+            오답 재시험 근거 · 응시{' '}
+            <span className="font-bold text-[#163A70]">
+              {learningRecords.fridayRetestTotalCount ?? 0}문제
+            </span>
+            {' / '}
+            재오답{' '}
+            <span className="font-bold text-[#163A70]">
+              {learningRecords.fridayRetestWrongCount ?? 0}문제
+            </span>
+          </p>
+        ) : null}
       </section>
 
-      {hideNarrativeOnScreen ? (
-        <div className="mlr-narrative-print-only">{narrativeSections}</div>
-      ) : (
-        narrativeSections
-      )}
+      <section className="mt-4">
+        <h2 className="mb-2 text-sm font-bold text-[#163A70]">강사 평가</h2>
+        {hideNarrativeOnScreen ? (
+          <div className="mlr-narrative-print-only">{narrativeSections}</div>
+        ) : (
+          narrativeSections
+        )}
+      </section>
     </article>
   )
 }

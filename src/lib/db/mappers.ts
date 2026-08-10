@@ -442,6 +442,9 @@ const EMPTY_REPORT_SCORES: MonthlyLearningReportRecord['scores'] = {
   homeworkHabit: null,
   wrongAnswerManagement: null,
   learningSincerity: null,
+  rawMetric1: null,
+  rawMetric2: null,
+  rawMetric3: null,
 }
 
 const EMPTY_LEARNING_RECORDS: MonthlyLearningReportRecord['learningRecords'] = {
@@ -452,6 +455,8 @@ const EMPTY_LEARNING_RECORDS: MonthlyLearningReportRecord['learningRecords'] = {
   testPass2Count: 0,
   testPass3Count: 0,
   testPass4Count: 0,
+  fridayRetestTotalCount: null,
+  fridayRetestWrongCount: null,
 }
 
 function normalizeNullableScore(value: unknown): number | null {
@@ -465,6 +470,11 @@ function normalizeReportScores(
   raw: MonthlyLearningReportRecord['scores'] | null | undefined,
 ): MonthlyLearningReportRecord['scores'] {
   if (!raw) return { ...EMPTY_REPORT_SCORES }
+  const legacy = raw as MonthlyLearningReportRecord['scores'] & {
+    rawMetric1?: number | null
+    rawMetric2?: number | null
+    rawMetric3?: number | null
+  }
   return {
     metric1: normalizeNullableScore(raw.metric1),
     metric2: normalizeNullableScore(raw.metric2),
@@ -472,13 +482,27 @@ function normalizeReportScores(
     homeworkHabit: normalizeNullableScore(raw.homeworkHabit),
     wrongAnswerManagement: normalizeNullableScore(raw.wrongAnswerManagement),
     learningSincerity: normalizeNullableScore(raw.learningSincerity),
+    rawMetric1: normalizeNullableScore(legacy.rawMetric1),
+    rawMetric2: normalizeNullableScore(legacy.rawMetric2),
+    rawMetric3: normalizeNullableScore(legacy.rawMetric3),
   }
+}
+
+function normalizeNullableNonNegInt(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null
+  const n = Number(value)
+  if (!Number.isFinite(n) || n < 0) return null
+  return Math.floor(n)
 }
 
 function normalizeLearningRecords(
   raw: MonthlyLearningReportRecord['learningRecords'] | null | undefined,
 ): MonthlyLearningReportRecord['learningRecords'] {
   if (!raw) return { ...EMPTY_LEARNING_RECORDS }
+  const legacy = raw as MonthlyLearningReportRecord['learningRecords'] & {
+    fridayRetestTotalCount?: number | null
+    fridayRetestWrongCount?: number | null
+  }
   return {
     lateCount: Math.max(0, Math.floor(Number(raw.lateCount ?? 0))),
     absentCount: Math.max(0, Math.floor(Number(raw.absentCount ?? 0))),
@@ -490,6 +514,8 @@ function normalizeLearningRecords(
     testPass2Count: Math.max(0, Math.floor(Number(raw.testPass2Count ?? 0))),
     testPass3Count: Math.max(0, Math.floor(Number(raw.testPass3Count ?? 0))),
     testPass4Count: Math.max(0, Math.floor(Number(raw.testPass4Count ?? 0))),
+    fridayRetestTotalCount: normalizeNullableNonNegInt(legacy.fridayRetestTotalCount),
+    fridayRetestWrongCount: normalizeNullableNonNegInt(legacy.fridayRetestWrongCount),
   }
 }
 
