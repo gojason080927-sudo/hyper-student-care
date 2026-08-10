@@ -253,6 +253,7 @@ export function MonthlyLearningReportDetailPage({
         }
         statusLabel={statusLabel}
         mathMonthlyEvaluationPending={mathMonthlyEvaluationPending}
+        hideNarrativeOnScreen={mode === 'teacher' && !isPublished}
         dailyTests={dailyTests}
         monthlyEvaluations={monthlyEvaluations}
       />

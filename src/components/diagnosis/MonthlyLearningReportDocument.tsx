@@ -28,6 +28,11 @@ type MonthlyLearningReportDocumentProps = {
   statusLabel?: string
   /** 수학 학습역량: 월말평가 미반영 안내 (강사 화면) */
   mathMonthlyEvaluationPending?: boolean
+  /**
+   * 강사 미확정 편집 화면: 강점/보완/종합평가 결과 카드를 화면에서 숨기고
+   * A4 인쇄/PDF에만 표시. textarea와 중복 렌더링 방지.
+   */
+  hideNarrativeOnScreen?: boolean
   /** 월간 세부 현황 카드용 원본 (표시 집계만, 점수 산식과 무관) */
   dailyTests?: DailyTestRecord[]
   monthlyEvaluations?: MonthlyEvaluationRecord[]
@@ -77,6 +82,7 @@ export function MonthlyLearningReportDocument({
   teacherOverallComment,
   statusLabel,
   mathMonthlyEvaluationPending = false,
+  hideNarrativeOnScreen = false,
   dailyTests = [],
   monthlyEvaluations = [],
   detailCards: detailCardsProp,
@@ -95,6 +101,9 @@ export function MonthlyLearningReportDocument({
       monthlyEvaluations,
       learningRecords,
     })
+  const narrativeClassName = hideNarrativeOnScreen
+    ? 'mlr-narrative-print-only'
+    : undefined
 
   return (
     <article className="mlr-report-shell mlr-report-page mx-auto max-w-[210mm] overflow-hidden rounded-2xl border border-[rgba(22,58,112,0.12)] bg-white p-4 shadow-sm sm:p-6">
@@ -192,31 +201,33 @@ export function MonthlyLearningReportDocument({
         <DetailStatusCards cards={detailCards} accent={theme.chartStroke} />
       </section>
 
-      <section className="mlr-narrative mt-4 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl p-3" style={{ backgroundColor: theme.strengthBg }}>
-          <h3 className="text-xs font-bold" style={{ color: theme.strengthTitle }}>
-            강점
-          </h3>
-          <p className="mt-1 whitespace-pre-wrap text-[12px] leading-relaxed text-slate-700">
-            {strengths.trim() || '작성된 내용이 없습니다.'}
-          </p>
-        </div>
-        <div className="rounded-xl p-3" style={{ backgroundColor: theme.improveBg }}>
-          <h3 className="text-xs font-bold" style={{ color: theme.improveTitle }}>
-            보완 필요 항목
-          </h3>
-          <p className="mt-1 whitespace-pre-wrap text-[12px] leading-relaxed text-slate-700">
-            {improvements.trim() || '작성된 내용이 없습니다.'}
-          </p>
-        </div>
-      </section>
+      <div className={narrativeClassName}>
+        <section className="mlr-narrative mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl p-3" style={{ backgroundColor: theme.strengthBg }}>
+            <h3 className="text-xs font-bold" style={{ color: theme.strengthTitle }}>
+              강점
+            </h3>
+            <p className="mt-1 whitespace-pre-wrap text-[12px] leading-relaxed text-slate-700">
+              {strengths.trim() || '작성된 내용이 없습니다.'}
+            </p>
+          </div>
+          <div className="rounded-xl p-3" style={{ backgroundColor: theme.improveBg }}>
+            <h3 className="text-xs font-bold" style={{ color: theme.improveTitle }}>
+              보완 필요 항목
+            </h3>
+            <p className="mt-1 whitespace-pre-wrap text-[12px] leading-relaxed text-slate-700">
+              {improvements.trim() || '작성된 내용이 없습니다.'}
+            </p>
+          </div>
+        </section>
 
-      <section className="mt-3 rounded-xl border border-[rgba(22,58,112,0.12)] bg-[#FBFCFE] p-3 sm:p-4">
-        <h3 className="text-xs font-bold text-[#163A70]">강사 종합 평가</h3>
-        <p className="mt-1 whitespace-pre-wrap text-[12px] leading-relaxed text-slate-700">
-          {teacherOverallComment.trim() || '작성된 내용이 없습니다.'}
-        </p>
-      </section>
+        <section className="mt-3 rounded-xl border border-[rgba(22,58,112,0.12)] bg-[#FBFCFE] p-3 sm:p-4">
+          <h3 className="text-xs font-bold text-[#163A70]">강사 종합 평가</h3>
+          <p className="mt-1 whitespace-pre-wrap text-[12px] leading-relaxed text-slate-700">
+            {teacherOverallComment.trim() || '작성된 내용이 없습니다.'}
+          </p>
+        </section>
+      </div>
     </article>
   )
 }

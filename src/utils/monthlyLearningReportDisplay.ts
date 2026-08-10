@@ -145,9 +145,12 @@ function buildFridayRetestCard(
   learningRecords: MonthlyLearningRecordsSnapshot,
 ): ReportDetailCard {
   let attemptDays = 0
-  let total = 0
-  let wrong = 0
+  let totalSum = 0
+  let wrongSum = 0
   let hasData = false
+  /** 재시험 기록이 있는 날 중 총 문제 수가 null인 날이 있으면 총합을 확정할 수 없음 */
+  let totalIncomplete = false
+  let hasWrongValue = false
 
   for (const test of dailyTests) {
     if (test.studentId !== studentId) continue
@@ -157,8 +160,16 @@ function buildFridayRetestCard(
     if (diagnosis.fridayRetestTotal === null && diagnosis.fridayRetestWrong === null) continue
     hasData = true
     attemptDays += 1
-    total += diagnosis.fridayRetestTotal ?? 0
-    wrong += diagnosis.fridayRetestWrong ?? 0
+    // null 총 문제 수를 0으로 치환하지 않는다 (0문제+재오답 N 모순 방지)
+    if (diagnosis.fridayRetestTotal === null) {
+      totalIncomplete = true
+    } else {
+      totalSum += diagnosis.fridayRetestTotal
+    }
+    if (diagnosis.fridayRetestWrong !== null) {
+      hasWrongValue = true
+      wrongSum += diagnosis.fridayRetestWrong
+    }
   }
 
   if (!hasData) {
@@ -167,18 +178,37 @@ function buildFridayRetestCard(
       learningRecords.fridayRetestTotalCount !== null ||
       learningRecords.fridayRetestWrongCount !== null
     ) {
-      const snapTotal = learningRecords.fridayRetestTotalCount ?? 0
-      const snapWrong = learningRecords.fridayRetestWrongCount ?? 0
-      const correct = Math.max(0, snapTotal - snapWrong)
+      const snapTotal = learningRecords.fridayRetestTotalCount
+      const snapWrong = learningRecords.fridayRetestWrongCount
+      const totalKnown = snapTotal !== null
+      const wrongKnown = snapWrong !== null
+      // snapshot이 null→0 치환으로 모순된 경우(총 0·재오답>0) 총/정답률은 데이터 없음
+      const inconsistent =
+        totalKnown && wrongKnown && snapWrong! > snapTotal!
       return {
         title: '오답 재시험 현황',
         items: [
           { label: '응시 횟수', value: '데이터 없음' },
-          { label: '재시험 총 문제 수', value: formatOptionalCount(snapTotal, '문제') },
-          { label: '재오답 문제 수', value: formatOptionalCount(snapWrong, '문제') },
+          {
+            label: '재시험 총 문제 수',
+            value:
+              !totalKnown || inconsistent
+                ? '데이터 없음'
+                : formatOptionalCount(snapTotal, '문제'),
+          },
+          {
+            label: '재오답 문제 수',
+            value: wrongKnown ? formatOptionalCount(snapWrong, '문제') : '데이터 없음',
+          },
           {
             label: '재시험 정답률',
-            value: snapTotal > 0 ? formatPercent(correct, snapTotal) : '데이터 없음',
+            value:
+              totalKnown &&
+              wrongKnown &&
+              !inconsistent &&
+              snapTotal! > 0
+                ? formatPercent(Math.max(0, snapTotal! - snapWrong!), snapTotal!)
+                : '데이터 없음',
           },
         ],
       }
@@ -194,14 +224,22 @@ function buildFridayRetestCard(
     }
   }
 
-  const correct = Math.max(0, total - wrong)
+  const totalDisplay = totalIncomplete
+    ? '데이터 없음'
+    : `${totalSum}문제`
+  const wrongDisplay = hasWrongValue ? `${wrongSum}문제` : '데이터 없음'
+  const rateDisplay =
+    !totalIncomplete && totalSum > 0 && hasWrongValue && wrongSum <= totalSum
+      ? formatPercent(totalSum - wrongSum, totalSum)
+      : '데이터 없음'
+
   return {
     title: '오답 재시험 현황',
     items: [
       { label: '응시 횟수', value: `${attemptDays}회` },
-      { label: '재시험 총 문제 수', value: `${total}문제` },
-      { label: '재오답 문제 수', value: `${wrong}문제` },
-      { label: '재시험 정답률', value: total > 0 ? formatPercent(correct, total) : '데이터 없음' },
+      { label: '재시험 총 문제 수', value: totalDisplay },
+      { label: '재오답 문제 수', value: wrongDisplay },
+      { label: '재시험 정답률', value: rateDisplay },
     ],
   }
 }
