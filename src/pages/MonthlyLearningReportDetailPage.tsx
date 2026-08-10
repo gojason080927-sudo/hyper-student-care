@@ -230,6 +230,7 @@ export function MonthlyLearningReportDetailPage({
             : teacherOverallComment || existing?.teacherOverallComment || ''
         }
         statusLabel={statusLabel}
+        hideNarrativeOnScreen={mode === 'teacher' && !isPublished}
       />
 
       {mode === 'teacher' && !isPublished ? (
