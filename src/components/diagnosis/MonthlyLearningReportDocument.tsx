@@ -23,6 +23,8 @@ type MonthlyLearningReportDocumentProps = {
   improvements: string
   teacherOverallComment: string
   statusLabel?: string
+  /** 강사 편집 화면: 화면에서는 숨기고 A4 인쇄/PDF에만 표시 */
+  hideNarrativeOnScreen?: boolean
 }
 
 const RECORD_ROWS: Array<{
@@ -82,6 +84,7 @@ export function MonthlyLearningReportDocument({
   improvements,
   teacherOverallComment,
   statusLabel,
+  hideNarrativeOnScreen = false,
 }: MonthlyLearningReportDocumentProps) {
   const labels = getMetricLabels(subject)
   const average = getReportAverageScore(scores)
@@ -93,6 +96,31 @@ export function MonthlyLearningReportDocument({
     { key: 'wrongAnswerManagement', label: labels.wrongAnswerManagement },
     { key: 'learningSincerity', label: labels.learningSincerity },
   ]
+  const narrativeSections = (
+    <>
+      <section className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl bg-[#F7FBFA] p-3">
+          <h3 className="text-xs font-bold text-[#0F766E]">강점</h3>
+          <p className="mt-1 whitespace-pre-wrap text-[12px] leading-relaxed text-slate-700">
+            {strengths.trim() || '작성된 내용이 없습니다.'}
+          </p>
+        </div>
+        <div className="rounded-xl bg-[#F8F5F2] p-3">
+          <h3 className="text-xs font-bold text-[#9A3412]">보완 필요 항목</h3>
+          <p className="mt-1 whitespace-pre-wrap text-[12px] leading-relaxed text-slate-700">
+            {improvements.trim() || '작성된 내용이 없습니다.'}
+          </p>
+        </div>
+      </section>
+
+      <section className="mt-3 rounded-xl border border-[rgba(22,58,112,0.12)] p-3">
+        <h3 className="text-xs font-bold text-[#163A70]">강사 종합 평가</h3>
+        <p className="mt-1 whitespace-pre-wrap text-[12px] leading-relaxed text-slate-700">
+          {teacherOverallComment.trim() || '작성된 내용이 없습니다.'}
+        </p>
+      </section>
+    </>
+  )
 
   return (
     <article className="mlr-report-shell mlr-report-page mx-auto max-w-[210mm] rounded-2xl border border-[rgba(22,58,112,0.12)] bg-white p-5 shadow-sm sm:p-6">
@@ -172,27 +200,11 @@ export function MonthlyLearningReportDocument({
         </div>
       </section>
 
-      <section className="mt-4 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl bg-[#F7FBFA] p-3">
-          <h3 className="text-xs font-bold text-[#0F766E]">강점</h3>
-          <p className="mt-1 whitespace-pre-wrap text-[12px] leading-relaxed text-slate-700">
-            {strengths.trim() || '작성된 내용이 없습니다.'}
-          </p>
-        </div>
-        <div className="rounded-xl bg-[#F8F5F2] p-3">
-          <h3 className="text-xs font-bold text-[#9A3412]">보완 필요 항목</h3>
-          <p className="mt-1 whitespace-pre-wrap text-[12px] leading-relaxed text-slate-700">
-            {improvements.trim() || '작성된 내용이 없습니다.'}
-          </p>
-        </div>
-      </section>
-
-      <section className="mt-3 rounded-xl border border-[rgba(22,58,112,0.12)] p-3">
-        <h3 className="text-xs font-bold text-[#163A70]">강사 종합 평가</h3>
-        <p className="mt-1 whitespace-pre-wrap text-[12px] leading-relaxed text-slate-700">
-          {teacherOverallComment.trim() || '작성된 내용이 없습니다.'}
-        </p>
-      </section>
+      {hideNarrativeOnScreen ? (
+        <div className="mlr-narrative-print-only">{narrativeSections}</div>
+      ) : (
+        narrativeSections
+      )}
     </article>
   )
 }

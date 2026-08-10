@@ -9,6 +9,11 @@
   /* interactive chrome */
 }
 
+/* 강사 편집 화면: 결과용 서술 블록은 화면에 숨기고 인쇄/PDF에만 출력 */
+.mlr-narrative-print-only {
+  display: none !important;
+}
+
 @media print {
   @page {
     size: A4 portrait;
@@ -36,6 +41,10 @@
 
   .mlr-no-print {
     display: none !important;
+  }
+
+  .mlr-narrative-print-only {
+    display: block !important;
   }
 
   .mlr-report-page {
