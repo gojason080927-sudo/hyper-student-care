@@ -24,3 +24,32 @@ export function getVisibleSlotNumbers(
   if (!visibleSlots) return [...TEXTBOOK_SLOT_NUMBERS]
   return [...visibleSlots[subject]]
 }
+
+export function getMathHomeworkSlotHeading(
+  slotNumber: TextbookSlotNumber,
+): string | null {
+  if (slotNumber === 1) return '개념교재'
+  if (slotNumber === 2) return '유형교재'
+  if (slotNumber === 3) return '부교재'
+  return null
+}
+
+export const getMathProgressSlotHeading = getMathHomeworkSlotHeading
+
+export function getEnglishHomeworkSlotHeading(
+  slotNumber: TextbookSlotNumber,
+): string | null {
+  if (slotNumber === 1) return '문법교재'
+  if (slotNumber === 2) return '독해 교재'
+  if (slotNumber === 3) return '단어장'
+  return null
+}
+
+export function getTextbookSlotHeading(
+  subject: TextbookSubject,
+  slotNumber: TextbookSlotNumber,
+): string | null {
+  if (subject === '수학') return getMathHomeworkSlotHeading(slotNumber)
+  if (subject === '영어') return getEnglishHomeworkSlotHeading(slotNumber)
+  return null
+}

@@ -95,3 +95,12 @@ export function normalizeHomeworkRecord(record: HomeworkRecord): HomeworkRecord 
     status,
   }
 }
+
+export function isHomeworkStatusSelected(status: unknown): boolean {
+  const category = classifyHomeworkStatus(status)
+  return (
+    category === 'complete' ||
+    category === 'partial' ||
+    category === 'incomplete'
+  )
+}

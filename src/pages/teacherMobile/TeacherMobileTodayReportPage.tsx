@@ -1,7 +1,13 @@
-import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { ChevronDown } from 'lucide-react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { SectionTitleWithHint } from '../../components/ui/SectionTitleWithHint'
 import { TeacherMobileHeader } from '../../components/teacherMobile/TeacherMobileHeader'
+import { ClassAttendanceBulkPanel } from '../../components/todayReport/ClassAttendanceBulkPanel'
+import { ClassCommonProgressPanel } from '../../components/todayReport/ClassCommonProgressPanel'
+import { ClassCommonTodayAssignmentPanel } from '../../components/todayReport/ClassCommonTodayAssignmentPanel'
+import { ClassDailyTestBulkPanel } from '../../components/todayReport/ClassDailyTestBulkPanel'
+import { ClassHomeworkStatusBulkPanel } from '../../components/todayReport/ClassHomeworkStatusBulkPanel'
 import { TodayReportView } from '../../components/todayReport/TodayReportView'
 import { StudentKakaoShareAction } from '../../components/students/StudentKakaoShareAction'
 import { useData } from '../../hooks/useData'
@@ -18,16 +24,17 @@ import type { Student } from '../../types/student'
 type ReportSection =
   | 'attendance'
   | 'homework'
+  | 'classTodayHomework'
   | 'progress'
   | 'dailyTest'
   | 'classNote'
 
-const SECTIONS: { id: ReportSection; label: string }[] = [
+const CLASS_SCOPED_SECTIONS: { id: ReportSection; label: string }[] = [
   { id: 'attendance', label: '출결' },
   { id: 'homework', label: '숙제 수행 결과' },
-  { id: 'progress', label: '오늘의 진도' },
+  { id: 'classTodayHomework', label: '반 공통 오늘 과제' },
+  { id: 'progress', label: '반 공통 오늘의 진도' },
   { id: 'dailyTest', label: '일일테스트' },
-  { id: 'classNote', label: '수업 중 특이사항' },
 ]
 
 function MobileSectionAccordion({
@@ -36,7 +43,7 @@ function MobileSectionAccordion({
   onToggle,
   children,
 }: {
-  label: string
+  label: ReactNode
   open: boolean
   onToggle: () => void
   children: ReactNode
@@ -62,7 +69,7 @@ function MobileSectionAccordion({
 }
 
 export function TeacherMobileTodayReportPage() {
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
   const initialClassFromUrl = searchParams.get('class')?.trim() ?? ''
   const initialStudentId = searchParams.get('student')?.trim() ?? ''
   const initialDateFromUrl = searchParams.get('date')?.trim() ?? ''
@@ -72,7 +79,6 @@ export function TeacherMobileTodayReportPage() {
   const [date, setDate] = useState(initialDateFromUrl || getTodayString())
   const [grade, setGrade] = useState('')
   const [className, setClassName] = useState('')
-  const [selectedStudentId, setSelectedStudentId] = useState('')
   const [openSections, setOpenSections] = useState<Set<ReportSection>>(
     () => new Set(['attendance']),
   )
@@ -82,7 +88,7 @@ export function TeacherMobileTodayReportPage() {
     [students],
   )
 
-  /** Today Report 반/과정 — CLASS_OPTIONS_BY_GRADE만 사용 (PC bulk와 동일) */
+  /** Today Report 반/과정 — CLASS_OPTIONS_BY_GRADE만 사용 (DB·레거시 병합 없음) */
   const classOptions = useMemo(() => {
     if (!grade || !isActiveGrade(grade)) return []
     return [...CLASS_OPTIONS_BY_GRADE[grade]]
@@ -96,16 +102,6 @@ export function TeacherMobileTodayReportPage() {
       )
       .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
   }, [activeStudents, className, grade])
-
-  const selectedStudent = useMemo(
-    () => classStudents.find((s) => s.id === selectedStudentId),
-    [classStudents, selectedStudentId],
-  )
-
-  const selectedIndex = useMemo(
-    () => classStudents.findIndex((s) => s.id === selectedStudentId),
-    [classStudents, selectedStudentId],
-  )
 
   const classSync = useMemo((): ClassTodayReportSyncContext | undefined => {
     if (!grade || !className || classStudents.length === 0) return undefined
@@ -128,55 +124,13 @@ export function TeacherMobileTodayReportPage() {
     const student = activeStudents.find((s) => s.id === initialStudentId)
     if (student) {
       if (isActiveGrade(student.grade)) setGrade((c) => c || student.grade)
-      if (student.className.trim()) setClassName((c) => c || student.className.trim())
+      if (student.className.trim()) {
+        setClassName((c) =>
+          c || (student.className.trim()),
+        )
+      }
     }
   }, [activeStudents, initialClassFromUrl, initialStudentId])
-
-  useEffect(() => {
-    if (classStudents.length === 0) {
-      setSelectedStudentId('')
-      return
-    }
-    if (selectedStudentId && classStudents.some((s) => s.id === selectedStudentId)) return
-    const preferred = initialStudentId && classStudents.some((s) => s.id === initialStudentId)
-      ? initialStudentId
-      : classStudents[0].id
-    setSelectedStudentId(preferred)
-  }, [classStudents, initialStudentId, selectedStudentId])
-
-  const syncUrl = useCallback(
-    (studentId: string) => {
-      const params = new URLSearchParams()
-      if (date) params.set('date', date)
-      if (className) params.set('class', className)
-      if (studentId) params.set('student', studentId)
-      setSearchParams(params, { replace: true })
-    },
-    [className, date, setSearchParams],
-  )
-
-  const selectStudent = (studentId: string) => {
-    if (studentId === selectedStudentId) return
-    const hasOpen = openSections.size > 0
-    if (
-      hasOpen &&
-      selectedStudentId &&
-      !window.confirm(
-        '다른 학생으로 이동하면 저장하지 않은 입력이 사라질 수 있습니다. 계속하시겠습니까?',
-      )
-    ) {
-      return
-    }
-    setSelectedStudentId(studentId)
-    setOpenSections(new Set(['attendance']))
-    syncUrl(studentId)
-  }
-
-  const goStudent = (delta: number) => {
-    if (selectedIndex < 0 || classStudents.length === 0) return
-    const next = classStudents[selectedIndex + delta]
-    if (next) selectStudent(next.id)
-  }
 
   const toggleSection = (id: ReportSection) => {
     setOpenSections((prev) => {
@@ -198,10 +152,7 @@ export function TeacherMobileTodayReportPage() {
 
   return (
     <div className="tm-animate-in">
-      <TeacherMobileHeader
-        title="Today Report"
-        subtitle={formatKoreanDate(date)}
-      />
+      <TeacherMobileHeader title="Today Report" subtitle={formatKoreanDate(date)} />
 
       <div className="tm-page-content space-y-3">
         <section className="tm-card p-3">
@@ -220,7 +171,10 @@ export function TeacherMobileTodayReportPage() {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label htmlFor="mtr-grade" className="mb-1 block text-xs font-semibold text-slate-700">
+                <label
+                  htmlFor="mtr-grade"
+                  className="mb-1 block text-xs font-semibold text-slate-700"
+                >
                   학년
                 </label>
                 <select
@@ -229,7 +183,6 @@ export function TeacherMobileTodayReportPage() {
                   onChange={(e) => {
                     setGrade(e.target.value)
                     setClassName('')
-                    setSelectedStudentId('')
                   }}
                   className={`${inputClass()} min-h-11 py-2 text-base`}
                 >
@@ -242,16 +195,16 @@ export function TeacherMobileTodayReportPage() {
                 </select>
               </div>
               <div>
-                <label htmlFor="mtr-class" className="mb-1 block text-xs font-semibold text-slate-700">
+                <label
+                  htmlFor="mtr-class"
+                  className="mb-1 block text-xs font-semibold text-slate-700"
+                >
                   반/과정
                 </label>
                 <select
                   id="mtr-class"
                   value={className}
-                  onChange={(e) => {
-                    setClassName(e.target.value)
-                    setSelectedStudentId('')
-                  }}
+                  onChange={(e) => setClassName(e.target.value)}
                   disabled={!grade}
                   className={`${inputClass()} min-h-11 py-2 text-base disabled:bg-slate-50`}
                 >
@@ -277,69 +230,81 @@ export function TeacherMobileTodayReportPage() {
           </p>
         ) : (
           <>
-            <div className="-mx-1 overflow-x-auto px-1 pb-1">
-              <div className="flex min-w-min gap-2">
-                {classStudents.map((student) => (
-                  <button
-                    key={student.id}
-                    type="button"
-                    onClick={() => selectStudent(student.id)}
-                    className={`tm-student-chip ${
-                      student.id === selectedStudentId
-                        ? 'tm-student-chip--active'
-                        : 'tm-student-chip--idle'
-                    }`}
-                  >
-                    {student.name}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {CLASS_SCOPED_SECTIONS.map((section) => (
+              <MobileSectionAccordion
+                key={section.id}
+                label={section.label}
+                open={openSections.has(section.id)}
+                onToggle={() => toggleSection(section.id)}
+              >
+                {section.id === 'attendance' ? (
+                  <ClassAttendanceBulkPanel
+                    key={`class-attendance-${date}-${className}`}
+                    date={date}
+                    grade={grade}
+                    className={className}
+                    students={classStudents}
+                    compact
+                  />
+                ) : section.id === 'homework' ? (
+                  <ClassHomeworkStatusBulkPanel
+                    key={`class-homework-status-${date}-${className}`}
+                    date={date}
+                    grade={grade}
+                    className={className}
+                    students={classStudents}
+                    compact
+                  />
+                ) : section.id === 'classTodayHomework' ? (
+                  <ClassCommonTodayAssignmentPanel
+                    key={`class-today-hw-${date}-${className}`}
+                    date={date}
+                    grade={grade}
+                    className={className}
+                    students={classStudents}
+                    classSync={classSync}
+                    compact
+                  />
+                ) : section.id === 'progress' ? (
+                  <ClassCommonProgressPanel
+                    key={`class-progress-${date}-${className}`}
+                    date={date}
+                    grade={grade}
+                    className={className}
+                    students={classStudents}
+                    classSync={classSync}
+                    compact
+                  />
+                ) : (
+                  <ClassDailyTestBulkPanel
+                    key={`class-daily-test-${date}-${className}`}
+                    date={date}
+                    grade={grade}
+                    className={className}
+                    students={classStudents}
+                    compact
+                  />
+                )}
+              </MobileSectionAccordion>
+            ))}
 
-            {selectedStudent && (
-              <div className="tm-card flex items-center justify-between gap-2 px-3 py-2">
-                <button
-                  type="button"
-                  disabled={selectedIndex <= 0}
-                  onClick={() => goStudent(-1)}
-                  className="tm-icon-btn disabled:opacity-40"
-                  aria-label="이전 학생"
-                >
-                  <ChevronLeft className="h-5 w-5" strokeWidth={2} />
-                </button>
-                <div className="min-w-0 flex-1 text-center">
-                  <div className="mx-auto mb-1 flex justify-center">
-                    <span className="tm-student-avatar">
-                      {selectedStudent.name.slice(0, 1)}
-                    </span>
-                  </div>
-                  <p className="truncate text-sm font-bold text-[#163A70]">{selectedStudent.name}</p>
-                  <p className="truncate text-xs text-[#6B7280]">
-                    {selectedStudent.school} · {selectedStudent.teacher || '-'}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  disabled={selectedIndex >= classStudents.length - 1}
-                  onClick={() => goStudent(1)}
-                  className="tm-icon-btn disabled:opacity-40"
-                  aria-label="다음 학생"
-                >
-                  <ChevronRight className="h-5 w-5" strokeWidth={2} />
-                </button>
-              </div>
-            )}
-
-            {selectedStudent && (
-              <MobileTodayReportSections
-                key={`${selectedStudent.id}-${date}`}
-                student={selectedStudent}
+            <MobileSectionAccordion
+              label={
+                <SectionTitleWithHint
+                  title="강사 피드백"
+                  hint="수업을 통해 확인한 학습 상태"
+                  hintClassName="text-[11px]"
+                />
+              }
+              open={openSections.has('classNote')}
+              onToggle={() => toggleSection('classNote')}
+            >
+              <ClassNoteStudentList
+                students={classStudents}
                 date={date}
                 classSync={classSync}
-                openSections={openSections}
-                onToggleSection={toggleSection}
               />
-            )}
+            </MobileSectionAccordion>
           </>
         )}
       </div>
@@ -347,28 +312,24 @@ export function TeacherMobileTodayReportPage() {
   )
 }
 
-function MobileTodayReportSections({
-  student,
+/** 학생 선택 UI 없이 반 학생별 특이사항을 이어서 입력 */
+function ClassNoteStudentList({
+  students,
   date,
   classSync,
-  openSections,
-  onToggleSection,
 }: {
-  student: Student
+  students: Student[]
   date: string
   classSync?: ClassTodayReportSyncContext
-  openSections: Set<ReportSection>
-  onToggleSection: (id: ReportSection) => void
 }) {
   return (
-    <div className="space-y-2">
-      {SECTIONS.map(({ id, label }) => (
-        <MobileSectionAccordion
-          key={id}
-          label={label}
-          open={openSections.has(id)}
-          onToggle={() => onToggleSection(id)}
-        >
+    <div className="divide-y divide-[rgba(22,58,112,0.06)]">
+      {students.map((student) => (
+        <div key={student.id} className="py-2 first:pt-0 last:pb-0">
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <p className="text-sm font-bold text-[#163A70]">{student.name}</p>
+            <StudentKakaoShareAction student={student} compact />
+          </div>
           <TodayReportView
             student={student}
             readOnly={false}
@@ -376,14 +337,9 @@ function MobileTodayReportSections({
             hideHeader
             compactTeacherInput
             classSync={classSync}
-            classNoteExtraActions={
-              id === 'classNote' ? (
-                <StudentKakaoShareAction student={student} compact />
-              ) : undefined
-            }
-            mobileSection={id}
+            mobileSection="classNote"
           />
-        </MobileSectionAccordion>
+        </div>
       ))}
     </div>
   )

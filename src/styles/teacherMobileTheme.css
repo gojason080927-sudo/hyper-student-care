@@ -619,3 +619,32 @@
 .teacher-mobile-login .tm-btn-primary {
   width: 100%;
 }
+
+/* Today Report: math / english subject group cards */
+.tm-subject-group {
+  box-shadow: none;
+}
+
+.tm-subject-group--math {
+  border-color: rgba(22, 58, 112, 0.28) !important;
+  background: #eef4fc !important;
+}
+
+.tm-subject-group--english {
+  border-color: rgba(40, 199, 183, 0.42) !important;
+  background: #eefbf8 !important;
+}
+
+.tm-subject-group__title {
+  line-height: 1.25;
+}
+
+.tm-subject-group__title--math {
+  border-color: rgba(22, 58, 112, 0.18) !important;
+  color: #163a70 !important;
+}
+
+.tm-subject-group__title--english {
+  border-color: rgba(15, 118, 110, 0.22) !important;
+  color: #0f766e !important;
+}
