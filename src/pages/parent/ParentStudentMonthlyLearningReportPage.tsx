@@ -12,7 +12,7 @@ import type { DiagnosisSubject } from '../../utils/monthlyLearningDiagnosis'
 
 export function ParentStudentMonthlyLearningReportPage() {
   const { studentAccessKey = '' } = useParams()
-  const { students, monthlyLearningReports } = useData()
+  const { students, monthlyLearningReports, dailyTests, monthlyEvaluations } = useData()
   const student = students.find((item) => item.studentAccessKey === studentAccessKey)
   const current = getSeoulYearMonth()
 
@@ -102,6 +102,8 @@ export function ParentStudentMonthlyLearningReportPage() {
           improvements={active.improvements}
           teacherOverallComment={active.teacherOverallComment}
           statusLabel={`${active.year}년 ${active.month}월 확정 REPORT`}
+          dailyTests={dailyTests}
+          monthlyEvaluations={monthlyEvaluations}
         />
       ) : null}
 

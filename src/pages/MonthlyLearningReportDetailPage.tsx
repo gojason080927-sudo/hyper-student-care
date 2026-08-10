@@ -252,8 +252,9 @@ export function MonthlyLearningReportDetailPage({
             : teacherOverallComment || existing?.teacherOverallComment || ''
         }
         statusLabel={statusLabel}
-        hideNarrativeOnScreen={mode === 'teacher' && !isPublished}
         mathMonthlyEvaluationPending={mathMonthlyEvaluationPending}
+        dailyTests={dailyTests}
+        monthlyEvaluations={monthlyEvaluations}
       />
 
       {mode === 'teacher' && !isPublished ? (

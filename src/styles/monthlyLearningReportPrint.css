@@ -9,15 +9,19 @@
   /* interactive chrome */
 }
 
-/* 강사 편집 화면: 결과용 서술 블록은 화면에 숨기고 인쇄/PDF에만 출력 */
-.mlr-narrative-print-only {
-  display: none !important;
+.mlr-radar-wrap {
+  min-width: 0;
+}
+
+.mlr-score-table td,
+.mlr-score-table th {
+  vertical-align: middle;
 }
 
 @media print {
   @page {
     size: A4 portrait;
-    margin: 10mm 12mm;
+    margin: 8mm 10mm;
   }
 
   body * {
@@ -43,17 +47,15 @@
     display: none !important;
   }
 
-  .mlr-narrative-print-only {
-    display: block !important;
-  }
-
   .mlr-report-page {
     width: 100% !important;
+    max-width: none !important;
     min-height: auto !important;
     max-height: none !important;
     box-shadow: none !important;
     border: none !important;
     border-radius: 0 !important;
+    padding: 0 !important;
     page-break-inside: avoid;
     break-inside: avoid;
   }
@@ -62,5 +64,44 @@
   .mlr-report-page * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+
+  .mlr-radar-score {
+    display: grid !important;
+    grid-template-columns: 1.1fr 0.9fr !important;
+    gap: 10px !important;
+  }
+
+  .mlr-radar-wrap {
+    height: 230px !important;
+  }
+
+  .mlr-detail-cards {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .mlr-narrative {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+  }
+
+  .mlr-report-page h1 {
+    font-size: 18px !important;
+  }
+
+  .mlr-report-page h2 {
+    font-size: 12px !important;
+    margin-bottom: 4px !important;
+  }
+
+  .mlr-report-page section {
+    margin-top: 10px !important;
+  }
+
+  .mlr-meta {
+    font-size: 11px !important;
   }
 }
