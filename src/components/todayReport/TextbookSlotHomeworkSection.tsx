@@ -147,6 +147,17 @@ export function TextbookSlotHomeworkSection({
   /** 강사용 모바일 PWA: 숙제 상태 버튼 전용 UI */
   useMobileStatusPicker?: boolean
 }) {
+  const subjectsToRender = useMemo(
+    () => {
+      const selectedClassName = classSync?.className ?? classContext?.className ?? ''
+      if (!selectedClassName.trim()) return [...TEXTBOOK_SUBJECTS]
+      return TEXTBOOK_SUBJECTS.filter((subject) =>
+        classTrackIncludesSubject(selectedClassName, subject),
+      )
+    },
+    [classContext?.className, classSync?.className],
+  )
+
   const initialDisplays = useMemo(
     () => buildHomeworkTextbookDisplaysForEdit(studentId, date, slots, entries, classContext),
     [classContext, date, entries, slots, studentId],
@@ -244,7 +255,7 @@ export function TextbookSlotHomeworkSection({
     return (
       <SectionCard title="숙제 수행 결과" hideTitle={hideTitle}>
         <div className="space-y-4">
-          {TEXTBOOK_SUBJECTS.map((subject) => {
+          {subjectsToRender.map((subject) => {
             const items = grouped[subject]
             if (items.length === 0) return null
             return (
@@ -393,7 +404,7 @@ export function TextbookSlotHomeworkSection({
   return (
     <SectionCard title="숙제 수행 결과" hideTitle={hideTitle}>
       <div className="space-y-3">
-        {TEXTBOOK_SUBJECTS.map((subject) => (
+        {subjectsToRender.map((subject) => (
           <div key={subject} lang="ko">
             <p className="mb-1.5 text-xs font-bold text-navy-800">{subject}</p>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">

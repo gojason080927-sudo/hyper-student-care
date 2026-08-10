@@ -114,6 +114,17 @@ export function TextbookSlotProgressSection({
   /** 모바일 PWA 등: 과목별 표시·저장 슬롯 제한 (수학 1~2 등) */
   visibleSlots?: SubjectVisibleSlots
 }) {
+  const subjectsToRender = useMemo(
+    () => {
+      const selectedClassName = classSync?.className ?? classContext?.className ?? ''
+      if (!selectedClassName.trim()) return [...TEXTBOOK_SUBJECTS]
+      return TEXTBOOK_SUBJECTS.filter((subject) =>
+        classTrackIncludesSubject(selectedClassName, subject),
+      )
+    },
+    [classContext?.className, classSync?.className],
+  )
+
   const initialDisplays = useMemo(
     () =>
       buildProgressTextbookDisplaysForEdit(
@@ -274,7 +285,7 @@ export function TextbookSlotProgressSection({
     return (
       <SectionCard title="오늘의 진도" hideTitle={hideTitle}>
         <div className="space-y-4">
-          {TEXTBOOK_SUBJECTS.map((subject) => {
+          {subjectsToRender.map((subject) => {
             const items = grouped[subject]
             if (items.length === 0) return null
             return (
@@ -420,7 +431,7 @@ export function TextbookSlotProgressSection({
   return (
     <SectionCard title="오늘의 진도" hideTitle={hideTitle}>
       <div className="space-y-3">
-        {TEXTBOOK_SUBJECTS.map((subject) => (
+        {subjectsToRender.map((subject) => (
           <div key={subject} lang="ko">
             <p className="mb-1.5 text-xs font-bold text-navy-800">{subject}</p>
             <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
