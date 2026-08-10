@@ -15,6 +15,7 @@ import type {
   StudentTextbookSlot,
   TodayAssignmentRecord,
 } from '../../types/records'
+import {
   normalizeDailyLearningDiagnosis,
   normalizeWrongAnswerItems,
 } from '../../utils/learningDiagnosis'

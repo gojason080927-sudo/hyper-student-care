@@ -276,6 +276,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   >([])
   const [monthlyLearningReports, setMonthlyLearningReports] = useState<
     MonthlyLearningReportRecord[]
+  >([])
   const [questions, setQuestions] = useState<QuestionRecord[]>([])
   const [progressRecords, setProgressRecords] = useState<ProgressRecord[]>([])
   const [studentTextbookSlots, setStudentTextbookSlots] = useState<StudentTextbookSlot[]>([])
