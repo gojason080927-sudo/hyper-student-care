@@ -254,7 +254,8 @@ function buildMathDailyTestCard(
   let attemptedDays = 0
   let firstPassDays = 0
   let totalQuestions = 0
-  let wrongQuestions = 0
+  /** 최초 응시(1차)에서 통과한 문항 수 누적 — 오답 재시험은 포함하지 않음 */
+  let firstAttemptPassedQuestions = 0
   let hasQuestionTotal = false
 
   for (const test of dailyTests) {
@@ -271,8 +272,14 @@ function buildMathDailyTestCard(
     const diagnosis = normalizeDailyLearningDiagnosis(test.learningDiagnosis)
     if (diagnosis.questionTotal > 0) {
       hasQuestionTotal = true
-      totalQuestions += diagnosis.questionTotal
-      wrongQuestions += diagnosis.wrongAnswerItems.length
+      const questionTotal = diagnosis.questionTotal
+      // 최초 응시 오답 = wrongAnswerItems (재시험 fridayRetest* 와 분리된 저장값)
+      const firstAttemptWrong = Math.min(
+        diagnosis.wrongAnswerItems.length,
+        questionTotal,
+      )
+      totalQuestions += questionTotal
+      firstAttemptPassedQuestions += Math.max(0, questionTotal - firstAttemptWrong)
     }
   }
 
@@ -283,12 +290,13 @@ function buildMathDailyTestCard(
         { label: '응시율', value: '평가 전' },
         { label: '1차시 통과율', value: '평가 전' },
         { label: '총 응시 문제 수', value: '평가 전' },
-        { label: '통과 문제 수', value: '평가 전' },
+        { label: '오답 문제 수', value: '평가 전' },
       ],
     }
   }
 
-  const passedQuestions = Math.max(0, totalQuestions - wrongQuestions)
+  // 오답 문제 수 = 총 응시 문제 수 - 최초 응시 통과 문제 수 (재시험 오답 미포함)
+  const wrongQuestionCount = Math.max(0, totalQuestions - firstAttemptPassedQuestions)
   return {
     title: '일일테스트 현황',
     items: [
@@ -302,8 +310,8 @@ function buildMathDailyTestCard(
         value: hasQuestionTotal ? `${totalQuestions}문제` : '데이터 없음',
       },
       {
-        label: '통과 문제 수',
-        value: hasQuestionTotal ? `${passedQuestions}문제` : '데이터 없음',
+        label: '오답 문제 수',
+        value: hasQuestionTotal ? `${wrongQuestionCount}문제` : '데이터 없음',
       },
     ],
   }
