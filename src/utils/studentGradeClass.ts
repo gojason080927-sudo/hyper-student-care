@@ -1,3 +1,5 @@
+import type { TextbookSubject } from '../types/records'
+import { TEXTBOOK_SUBJECTS } from '../types/records'
 import type { Grade, StoredGrade, SubjectOption } from '../types/student'
 import { GRADES } from './labels'
 
@@ -119,6 +121,40 @@ export function syncSubjectFromClassName(className: string): SubjectOption | nul
   const parsed = parseStandardClassName(className)
   if (!parsed) return null
   return classTrackToSubject(parsed.track)
+}
+
+/**
+ * 월간 학습진단 REPORT 표시 과목 (수강 기준, 수학 → 영어 순).
+ * subjects[0]이 있으면 우선, 없으면 className 표준/레거시 반 과정으로 판별.
+ */
+export function getStudentDiagnosisSubjects(
+  className: string,
+  subjects?: readonly string[],
+): TextbookSubject[] {
+  const subjectHint = subjects?.[0]?.trim()
+  if (subjectHint === '영어·수학') return [...TEXTBOOK_SUBJECTS]
+  if (subjectHint === '수학') return ['수학']
+  if (subjectHint === '영어') return ['영어']
+
+  const trimmed = className.trim()
+  if (!trimmed) return [...TEXTBOOK_SUBJECTS]
+
+  const parsed = parseStandardClassName(trimmed)
+  if (parsed) {
+    if (parsed.track === '영수' || parsed.track === '영수A' || parsed.track === '영수B') {
+      return [...TEXTBOOK_SUBJECTS]
+    }
+    if (parsed.track === '수학' || parsed.track === '수학A' || parsed.track === '수학B') {
+      return ['수학']
+    }
+    if (parsed.track === '영어') return ['영어']
+  }
+
+  const normalized = trimmed.replace(/\s+/g, '')
+  if (normalized.includes('영수')) return [...TEXTBOOK_SUBJECTS]
+  if (normalized.includes('수학')) return ['수학']
+  if (normalized.includes('영어')) return ['영어']
+  return [...TEXTBOOK_SUBJECTS]
 }
 
 /** 학년 select: 활성 학년 + 기존(비활성) 학년 1개 */

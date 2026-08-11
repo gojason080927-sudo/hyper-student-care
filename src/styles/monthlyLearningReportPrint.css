@@ -5,6 +5,11 @@
   --mlr-mint: #28c7b7;
 }
 
+/* 화면: 수학·영어 REPORT 연속 표시 시 간격 */
+.mlr-print-root .mlr-report-page + .mlr-report-page {
+  margin-top: 1.25rem;
+}
+
 .mlr-no-print {
   /* interactive chrome */
 }
@@ -67,6 +72,13 @@
     padding: 0 !important;
     page-break-inside: avoid;
     break-inside: avoid;
+  }
+
+  /* 수학+영어: 과목 REPORT를 각각 이어서 인쇄 (가능하면 페이지 분리) */
+  .mlr-report-page + .mlr-report-page {
+    break-before: page;
+    page-break-before: always;
+    margin-top: 0 !important;
   }
 
   .mlr-report-page,
