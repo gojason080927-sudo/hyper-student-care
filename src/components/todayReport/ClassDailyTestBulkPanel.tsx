@@ -1,5 +1,4 @@
 import { Check } from 'lucide-react'
-import { SectionTitleWithHint } from '../ui/SectionTitleWithHint'
 import { useEffect, useMemo, useState } from 'react'
 import { DailyLearningDiagnosisFields } from '../diagnosis/DailyLearningDiagnosisFields'
 import { DailyTestPassRuleBadge } from '../dailytest/DailyTestSessionFormSection'
@@ -127,19 +126,6 @@ export function ClassDailyTestBulkPanel({
         [studentId]: {
           ...current,
           rounds: updater(current.rounds),
-        },
-      }
-    })
-  }
-
-  const updateWrongAnswerBank = (studentId: string, value: string) => {
-    setDrafts((prev) => {
-      const current = prev[studentId] ?? emptyStudentDraft()
-      return {
-        ...prev,
-        [studentId]: {
-          ...current,
-          wrongAnswerBank: value,
         },
       }
     })
@@ -413,24 +399,6 @@ export function ClassDailyTestBulkPanel({
                   최종 합격: {passRound}차시
                 </p>
               ) : null}
-              <div className="mt-1.5">
-                <label className="mb-0.5 block text-[11px] font-semibold text-slate-600">
-                  <SectionTitleWithHint
-                    title="오답 BANK"
-                    hint="오답 저장 후 오답 보강 실시"
-                    hintClassName="text-[10px]"
-                  />
-                </label>
-                <textarea
-                  value={draft.wrongAnswerBank}
-                  onChange={(e) =>
-                    updateWrongAnswerBank(student.id, e.target.value)
-                  }
-                  disabled={saving}
-                  rows={2}
-                  className={`${inputClass()} min-h-[2.75rem] resize-y py-1.5 text-sm leading-snug`}
-                />
-              </div>
               <div className="mt-2">
                 <DailyLearningDiagnosisFields
                   subject={subject}
