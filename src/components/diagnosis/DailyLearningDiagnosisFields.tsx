@@ -29,11 +29,9 @@ export function DailyLearningDiagnosisFields({
 
   return (
     <div className={`space-y-3 rounded-xl border border-[rgba(22,58,112,0.12)] bg-[#F7FBFA] p-3 ${compact ? '' : 'sm:p-4'}`.trim()}>
-      <p className="text-sm font-bold text-[#163A70]">월간 학습진단 입력</p>
-
       {isMath ? (
         <div className="space-y-2">
-          <p className="text-xs font-semibold text-slate-600">수학 오답 원인 (문항별)</p>
+          <p className="text-sm font-semibold text-slate-600">수학 오답 원인 (문항별)</p>
           <WrongAnswerCauseEditor
             items={diagnosis.wrongAnswerItems}
             onChange={(wrongAnswerItems) => patch({ wrongAnswerItems })}
@@ -102,8 +100,8 @@ export function DailyLearningDiagnosisFields({
 
       <div className="grid gap-2 sm:grid-cols-2">
         <label>
-          <span className="mb-1 block text-xs font-semibold text-slate-600">
-            금요 재시험 총 문제 수
+          <span className="mb-1 block text-sm font-semibold text-slate-600">
+            주간 오답 재시험
           </span>
           <input
             type="number"
@@ -120,8 +118,8 @@ export function DailyLearningDiagnosisFields({
           />
         </label>
         <label>
-          <span className="mb-1 block text-xs font-semibold text-slate-600">
-            재시험 다시 틀린 수
+          <span className="mb-1 block text-sm font-semibold text-slate-600">
+            재시험 오답 수
           </span>
           <input
             type="number"
