@@ -1,0 +1,561 @@
+/* 신입생 종합진단 REPORT — A4 세로 인쇄 */
+
+.ee-report-print-root {
+  --ee-report-navy: #163a70;
+  --ee-report-mint: #0f766e;
+}
+
+/* 화면: 페이지 블록을 연속 스크롤로 표시 */
+.ee-report-print-page + .ee-report-print-page {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px dashed #cbd5e1;
+}
+
+/* 화면: 인쇄용 영역별 점수표 숨김 (인쇄에서만 표시) */
+.ee-report-area-table-print {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 11mm 12mm 11mm;
+
+    @bottom-center {
+      content: '- ' counter(page) ' -';
+      font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+      font-size: 9pt;
+      color: #334155;
+    }
+  }
+
+  html.ee-printing-report,
+  html.ee-printing-report body {
+    background: #fff !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /*
+   * 월간 REPORT CSS의 `body * { visibility: hidden }` 를 덮어쓴다.
+   * 이 규칙이 없으면 Print Preview가 빈 문서/미응답처럼 보이거나
+   * 미리보기 생성에 실패할 수 있다.
+   */
+  html.ee-printing-report body * {
+    visibility: hidden !important;
+  }
+
+  html.ee-printing-report .ee-report-print-root,
+  html.ee-printing-report .ee-report-print-root * {
+    visibility: visible !important;
+  }
+
+  html.ee-printing-report .ee-report-no-print {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  html.ee-printing-report aside,
+  html.ee-printing-report [data-sidebar],
+  html.ee-printing-report nav.ee-report-no-print {
+    display: none !important;
+  }
+
+  html.ee-printing-report .flex.min-h-svh > aside {
+    display: none !important;
+  }
+
+  html.ee-printing-report .flex.min-h-svh > div.flex > :not(main) {
+    display: none !important;
+  }
+
+  html.ee-printing-report main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+    min-height: 0 !important;
+    height: auto !important;
+  }
+
+  html.ee-printing-report main > div {
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+  }
+
+  html.ee-printing-report .ee-report-print-root {
+    display: block !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    border: none !important;
+    border-radius: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  html.ee-printing-report .ee-report-document {
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #fff !important;
+    font-size: 11pt !important;
+    line-height: 1.42 !important;
+    color: #0f172a !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  html.ee-printing-report .ee-report-document,
+  html.ee-printing-report .ee-report-document * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 개별 REPORT 등: 연속 .ee-report-print-page 기본 page break 유지 */
+  html.ee-printing-report .ee-report-print-page {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #fff !important;
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  html.ee-printing-report .ee-report-print-page + .ee-report-print-page {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    border-top: none !important;
+    break-before: page !important;
+    page-break-before: always !important;
+  }
+
+  /* ========== 통합 REPORT 전용 인쇄 레이아웃 ========== */
+  /*
+   * 페이지 고정:
+   * PAGE1 수학 | PAGE2 영어 | PAGE3 학습성향 | PAGE4+ 종합진단
+   * 구분: 각 평가 블록 break-after:page (수학 앞 break-before 금지 → 빈 첫 페이지 방지)
+   * 과목/설문 전체 section 에 break-inside:avoid 금지 (빈 페이지·침범 유발)
+   */
+  html.ee-printing-report .ee-report-document--integrated .ee-report-print-page + .ee-report-print-page {
+    /* 기본 sibling break-before 끄고, 아래 break-after 규칙으로만 구분 */
+    break-before: auto !important;
+    page-break-before: auto !important;
+  }
+
+  html.ee-printing-report .ee-report-document--integrated .ee-report-print-page--math,
+  html.ee-printing-report .ee-report-document--integrated .ee-report-print-page--english,
+  html.ee-printing-report .ee-report-document--integrated .ee-report-print-page--survey {
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+    break-after: page !important;
+    page-break-after: always !important;
+  }
+
+  /* 수학(첫 페이지): 앞에 강제 page break 없음 */
+  html.ee-printing-report .ee-report-document--integrated .ee-report-print-page--math {
+    break-before: auto !important;
+    page-break-before: auto !important;
+  }
+
+  /* 종합진단: 학습성향 break-after 로 새 페이지 시작. 여러 페이지 연속 허용 */
+  html.ee-printing-report .ee-report-document--integrated .ee-report-print-page--diagnosis {
+    break-before: auto !important;
+    page-break-before: auto !important;
+    break-after: auto !important;
+    page-break-after: auto !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+
+  /* 과목 전체를 원자 블록으로 만들지 않음 */
+  html.ee-printing-report .ee-report-document--integrated .ee-report-subject-section {
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+    margin-bottom: 0 !important;
+  }
+
+  /* 헤더가 단독 페이지로 남지 않도록 수학과 붙임 + print용 compact */
+  html.ee-printing-report .ee-report-document--integrated .ee-report-integrated-header {
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+    padding-bottom: 1.5mm !important;
+    margin-bottom: 1.5mm !important;
+  }
+
+  html.ee-printing-report .ee-report-document--integrated .ee-report-subject-section--math {
+    break-before: avoid !important;
+    page-break-before: avoid !important;
+  }
+
+  html.ee-printing-report .ee-report-document--integrated .ee-report-student-meta {
+    margin-top: 1.5mm !important;
+    gap: 1mm 3mm !important;
+  }
+
+  html.ee-printing-report .ee-report-document--integrated .ee-report-print-page--math .ee-report-title {
+    font-size: 16pt !important;
+    margin-top: 0.5mm !important;
+  }
+
+  html.ee-printing-report .ee-report-document--integrated .ee-report-print-page--math .ee-report-brand {
+    font-size: 10pt !important;
+  }
+
+  html.ee-printing-report .ee-report-document--integrated .ee-report-print-page--math .ee-report-score-panel {
+    padding: 2mm 3mm !important;
+  }
+
+  html.ee-printing-report .ee-report-document--integrated .ee-report-print-page--math .ee-report-score-big {
+    font-size: 18pt !important;
+  }
+
+  html.ee-printing-report .ee-report-document--integrated .ee-report-print-page--math .ee-report-section-title {
+    margin-bottom: 1mm !important;
+  }
+
+  html.ee-printing-report .ee-report-document--integrated .ee-report-result-detail-grid,
+  html.ee-printing-report .ee-report-document--integrated .ee-report-score-grid {
+    display: block !important;
+    grid-template-columns: none !important;
+    gap: 0 !important;
+    align-items: stretch !important;
+    /* 큰 블록 전체를 avoid 하면 하단 공백 유발 → 제거 */
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+
+  html.ee-printing-report .ee-report-document--integrated .ee-report-radar-panel {
+    width: 100% !important;
+    margin: 0 0 3.5mm 0 !important;
+    padding: 2.5mm !important;
+    border: 1px solid rgba(22, 58, 112, 0.18) !important;
+    background: #fff !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  html.ee-printing-report .ee-report-document--integrated .ee-report-area-score-panel {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 3mm 3.5mm !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  html.ee-printing-report .ee-report-document--integrated .ee-report-area-list-screen {
+    display: none !important;
+  }
+
+  html.ee-printing-report .ee-report-document--integrated .ee-report-area-table-print {
+    display: table !important;
+    width: 100% !important;
+    border-collapse: collapse !important;
+    table-layout: fixed !important;
+    margin-top: 1mm !important;
+  }
+
+  html.ee-printing-report .ee-report-document--integrated .ee-report-area-table-print th,
+  html.ee-printing-report .ee-report-document--integrated .ee-report-area-table-print td {
+    border: 1px solid rgba(22, 58, 112, 0.22) !important;
+    padding: 2.2mm 2.8mm !important;
+    font-size: 10.5pt !important;
+    line-height: 1.35 !important;
+    color: #0f172a !important;
+    text-align: left !important;
+    vertical-align: middle !important;
+  }
+
+  html.ee-printing-report .ee-report-document--integrated .ee-report-area-table-print thead th {
+    background: rgba(22, 58, 112, 0.1) !important;
+    font-weight: 800 !important;
+    color: #163a70 !important;
+  }
+
+  html.ee-printing-report .ee-report-document--integrated .ee-report-area-table-print td:nth-child(2),
+  html.ee-printing-report .ee-report-document--integrated .ee-report-area-table-print th:nth-child(2),
+  html.ee-printing-report .ee-report-document--integrated .ee-report-area-table-print td:nth-child(3),
+  html.ee-printing-report .ee-report-document--integrated .ee-report-area-table-print th:nth-child(3) {
+    text-align: center !important;
+    font-weight: 700 !important;
+  }
+
+  html.ee-printing-report .ee-report-document--integrated .ee-report-radar-print-only--subject .ee-report-radar-fixed,
+  html.ee-printing-report .ee-report-document--integrated .ee-report-radar-print-only--survey .ee-report-radar-fixed {
+    margin: 1mm auto 0 !important;
+  }
+
+  html.ee-printing-report .ee-report-document--integrated .ee-report-survey-section {
+    margin-bottom: 0 !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+  }
+
+  /* 총점 카드: 내부 컴포넌트 단위 avoid */
+  html.ee-printing-report .ee-report-document--integrated .ee-report-score-panel-navy,
+  html.ee-printing-report .ee-report-document--integrated .ee-report-score-panel-mint {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* 종합진단: 전체 container avoid 금지. 카드만 avoid */
+  html.ee-printing-report .ee-report-document--integrated .ee-report-diagnosis-section {
+    break-before: auto !important;
+    page-break-before: auto !important;
+    break-after: auto !important;
+    page-break-after: auto !important;
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+    padding: 3.5mm 4mm !important;
+  }
+
+  html.ee-printing-report .ee-report-document--integrated .ee-report-block,
+  html.ee-printing-report .ee-report-document--integrated .ee-report-chip-block,
+  html.ee-printing-report .ee-report-document--integrated .ee-report-manage-block {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    padding: 2.5mm 3.5mm !important;
+  }
+
+  html.ee-printing-report .ee-report-document--integrated .ee-report-score-big {
+    font-size: 20pt !important;
+  }
+
+  html.ee-printing-report .ee-report-document--integrated .ee-report-section-title {
+    font-size: 13.5pt !important;
+    margin-bottom: 1.5mm !important;
+  }
+
+  /* 제목·부제·학생정보 대비 */
+  html.ee-printing-report .ee-report-brand {
+    color: #0f766e !important;
+    font-size: 11pt !important;
+    font-weight: 700 !important;
+  }
+
+  html.ee-printing-report .ee-report-title {
+    color: #163a70 !important;
+    font-size: 18pt !important;
+    font-weight: 800 !important;
+    line-height: 1.2 !important;
+  }
+
+  html.ee-printing-report .ee-report-subtitle {
+    color: #334155 !important;
+    font-size: 10pt !important;
+    font-weight: 600 !important;
+  }
+
+  html.ee-printing-report .ee-report-info-label {
+    color: #334155 !important;
+    font-size: 8.5pt !important;
+    font-weight: 700 !important;
+  }
+
+  html.ee-printing-report .ee-report-info-value {
+    color: #0f172a !important;
+    font-size: 10.5pt !important;
+    font-weight: 700 !important;
+  }
+
+  html.ee-printing-report .ee-report-section-title {
+    color: #163a70 !important;
+    font-size: 13pt !important;
+    font-weight: 800 !important;
+  }
+
+  html.ee-printing-report .ee-report-body-text {
+    color: #1e293b !important;
+    font-size: 9.5pt !important;
+    line-height: 1.4 !important;
+  }
+
+  html.ee-printing-report .ee-report-score-big {
+    font-size: 22pt !important;
+    font-weight: 800 !important;
+  }
+
+  html.ee-printing-report .ee-report-eval-date {
+    background: rgba(22, 58, 112, 0.1) !important;
+    border: 1px solid rgba(22, 58, 112, 0.28) !important;
+  }
+
+  html.ee-printing-report .ee-report-student-card {
+    background: rgba(22, 58, 112, 0.07) !important;
+    border: 1px solid rgba(22, 58, 112, 0.22) !important;
+  }
+
+  /* 배경 대비 강화 */
+  html.ee-printing-report .ee-report-diagnosis-section {
+    background: linear-gradient(
+      180deg,
+      rgba(22, 58, 112, 0.08),
+      rgba(40, 199, 183, 0.1)
+    ) !important;
+    border: 1px solid rgba(22, 58, 112, 0.28) !important;
+    padding: 2.5mm 3mm !important;
+  }
+
+  html.ee-printing-report .ee-report-block,
+  html.ee-printing-report .ee-report-chip-block {
+    background: #ffffff !important;
+    border: 1px solid rgba(22, 58, 112, 0.18) !important;
+    padding: 2mm 2.5mm !important;
+  }
+
+  html.ee-printing-report .ee-report-manage-block {
+    background: rgba(40, 199, 183, 0.12) !important;
+    border: 1.5px solid rgba(15, 118, 110, 0.45) !important;
+    padding: 2mm 2.5mm !important;
+  }
+
+  html.ee-printing-report .ee-report-score-panel-navy {
+    background: rgba(22, 58, 112, 0.1) !important;
+    border: 1px solid rgba(22, 58, 112, 0.22) !important;
+  }
+
+  html.ee-printing-report .ee-report-score-panel-mint {
+    background: rgba(40, 199, 183, 0.16) !important;
+    border: 1px solid rgba(15, 118, 110, 0.3) !important;
+  }
+
+  html.ee-printing-report .ee-report-summary-section {
+    background: #f8fafc !important;
+    border: 1px solid rgba(22, 58, 112, 0.2) !important;
+  }
+
+  html.ee-printing-report .ee-report-summary-table thead tr {
+    background: rgba(22, 58, 112, 0.1) !important;
+  }
+
+  html.ee-printing-report .ee-report-summary-table th,
+  html.ee-printing-report .ee-report-summary-table td {
+    color: #0f172a !important;
+    font-size: 10pt !important;
+    padding: 2mm 2.5mm !important;
+  }
+
+  html.ee-printing-report .ee-report-diag-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 2.5mm !important;
+  }
+
+  /* 개별(비통합) REPORT: 기존 2열·avoid 유지 */
+  html.ee-printing-report .ee-report-document:not(.ee-report-document--integrated) .ee-report-block,
+  html.ee-printing-report .ee-report-document:not(.ee-report-document--integrated) .ee-report-chip-block,
+  html.ee-printing-report .ee-report-document:not(.ee-report-document--integrated) .ee-report-manage-block,
+  html.ee-printing-report .ee-report-document:not(.ee-report-document--integrated) .ee-report-score-panel,
+  html.ee-printing-report .ee-report-document:not(.ee-report-document--integrated) .ee-report-radar-panel,
+  html.ee-printing-report .ee-report-document:not(.ee-report-document--integrated) .ee-report-score-grid,
+  html.ee-printing-report .ee-report-document:not(.ee-report-document--integrated) .ee-report-summary-section,
+  html.ee-printing-report .ee-report-document:not(.ee-report-document--integrated) .ee-report-student-card {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  html.ee-printing-report .ee-report-document:not(.ee-report-document--integrated) .ee-report-score-grid {
+    display: grid !important;
+    grid-template-columns: 1.1fr 0.9fr !important;
+    gap: 4mm !important;
+    align-items: start !important;
+  }
+
+  html.ee-printing-report .ee-report-radar-panel {
+    border: 1px solid rgba(22, 58, 112, 0.18) !important;
+    background: #fff !important;
+    padding: 2mm !important;
+  }
+
+  html.ee-printing-report .ee-report-radar-fixed,
+  html.ee-printing-report .ee-report-radar-fixed svg {
+    display: block !important;
+    visibility: visible !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  html.ee-printing-report .ee-report-radar-screen-only {
+    display: none !important;
+  }
+
+  html.ee-printing-report .ee-report-radar-print-only {
+    position: static !important;
+    left: auto !important;
+    top: auto !important;
+    width: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    pointer-events: auto !important;
+    opacity: 1 !important;
+    display: block !important;
+  }
+
+  html.ee-printing-report .ee-report-print-page--2 .ee-report-diagnosis-section,
+  html.ee-printing-report .ee-report-print-page--4 .ee-report-diagnosis-section {
+    padding: 3.5mm 4mm !important;
+  }
+
+  html.ee-printing-report .ee-report-print-page--2 .ee-report-block,
+  html.ee-printing-report .ee-report-print-page--2 .ee-report-chip-block,
+  html.ee-printing-report .ee-report-print-page--2 .ee-report-manage-block,
+  html.ee-printing-report .ee-report-print-page--4 .ee-report-block,
+  html.ee-printing-report .ee-report-print-page--4 .ee-report-chip-block,
+  html.ee-printing-report .ee-report-print-page--4 .ee-report-manage-block {
+    padding: 2.5mm 3.5mm !important;
+  }
+
+  html.ee-printing-report .ee-report-print-page--2 .ee-report-body-text,
+  html.ee-printing-report .ee-report-print-page--4 .ee-report-body-text {
+    font-size: 10pt !important;
+    line-height: 1.42 !important;
+  }
+
+  html.ee-printing-report .ee-report-print-page--1 .ee-report-score-big,
+  html.ee-printing-report .ee-report-print-page--2 .ee-report-score-big,
+  html.ee-printing-report .ee-report-print-page--3 .ee-report-score-big {
+    font-size: 24pt !important;
+  }
+}
+
+/* 화면: print용 고정 SVG를 레이아웃 밖에서 미리 렌더 (display:none 사용 금지) */
+.ee-report-radar-print-only {
+  position: absolute;
+  left: -99999px;
+  top: 0;
+  width: 520px;
+  height: 440px;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.ee-report-radar-print-only--subject {
+  width: 460px;
+  height: 390px;
+}
+
+.ee-report-radar-print-only--survey {
+  width: 520px;
+  height: 440px;
+}

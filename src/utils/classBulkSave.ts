@@ -21,7 +21,8 @@ import {
   normalizeDailyTestRecord,
   type DailyTestFormData,
 } from './dailyTest'
-import { homeworkRecordToSavePayload } from './homework'
+import { EMPTY_DAILY_LEARNING_DIAGNOSIS } from './learningDiagnosis'
+import { getHomeworkContent, homeworkRecordToSavePayload } from './homework'
 import { createId } from './id'
 import { createTimestamps, touchRecord } from './recordStorage'
 import type { StudentDayRecords } from './todayReportLookup'
@@ -119,7 +120,6 @@ export async function saveClassBulkStudentDraft(
 
   const shouldSaveHomework =
     draft.homeworkStatus ||
-    draft.previousAssignment.trim() ||
     draft.todayAssignment.trim()
 
   if (shouldSaveHomework) {
@@ -130,7 +130,7 @@ export async function saveClassBulkStudentDraft(
           id: draft.recordIds.homework ?? existing.homework?.id,
           studentId: draft.studentId,
           date,
-          content: draft.previousAssignment,
+          content: existing.homework ? getHomeworkContent(existing.homework) : '',
           status: draft.homeworkStatus,
           teacherMemo: existing.homework?.teacherMemo ?? '',
         })
@@ -193,15 +193,7 @@ export async function saveClassBulkStudentDraft(
         memo: draft.dailyTestMemo,
         sessionResults: draft.sessionResults,
         learningDiagnosis:
-          existing.dailyTest?.learningDiagnosis ?? {
-            wrongAnswerItems: [],
-            questionTotal: 0,
-            fridayRetestTotal: null,
-            fridayRetestWrong: null,
-            englishVocabResult: null,
-            englishGrammarWrongCount: null,
-            englishReadingWrongCount: null,
-          },
+          existing.dailyTest?.learningDiagnosis ?? { ...EMPTY_DAILY_LEARNING_DIAGNOSIS },
       }
       const payload = dailyTestFormToSavePayload(form)
       const ts = createTimestamps()
@@ -239,7 +231,6 @@ export function draftHasSaveableData(draft: ClassBulkStudentDraft): boolean {
       draft.mathProgress.trim() ||
       draft.englishProgress.trim() ||
       draft.homeworkStatus ||
-      draft.previousAssignment.trim() ||
       draft.todayAssignment.trim() ||
       draft.classNote.trim() ||
       hasActiveDailyTest(draft.sessionResults),

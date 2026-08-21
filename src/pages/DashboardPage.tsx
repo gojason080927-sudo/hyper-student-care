@@ -1,5 +1,6 @@
 import {
   CalendarCheck,
+  ClipboardCheck,
   ClipboardList,
   FileBarChart2,
   MessageCircleQuestion,
@@ -31,6 +32,12 @@ const categories = [
     to: '/monthly-evaluations',
     title: '월말평가 결과',
     icon: CalendarCheck,
+  },
+  {
+    to: '/entrance-exam',
+    title: '신입생 평가 및\n성향 진단',
+    description: '문제은행 · 시험지 · 응시 · 종합진단 REPORT',
+    icon: ClipboardCheck,
   },
   {
     to: '/teacher/learning-notices',

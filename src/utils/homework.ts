@@ -104,3 +104,13 @@ export function isHomeworkStatusSelected(status: unknown): boolean {
     category === 'incomplete'
   )
 }
+
+/** Resolve UI selected status; empty input must not appear as 미완료 */
+export function resolveSelectedHomeworkStatus(
+  status: unknown,
+): HomeworkStatus | null {
+  if (!String(status ?? '').trim()) return null
+  const category = classifyHomeworkStatus(status)
+  if (category === 'none') return null
+  return normalizeHomeworkStatus(status)
+}

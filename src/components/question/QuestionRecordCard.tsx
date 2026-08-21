@@ -38,7 +38,7 @@ export function QuestionRecordCard({
 
   if (parentView) {
     return (
-      <div className="pm-question-card p-4 sm:p-5">
+      <div className="tm-question-card p-4 sm:p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1 space-y-3">
             <div className="flex flex-wrap items-center gap-2">
@@ -52,7 +52,7 @@ export function QuestionRecordCard({
               <p className="break-anywhere font-medium text-[#163A70]">{record.title}</p>
             )}
 
-            <section className="pm-question-section space-y-2">
+            <section className="tm-question-section space-y-2">
               <p className="text-xs font-bold uppercase tracking-wide text-[#6B7280]">학생 질문</p>
               <p className="whitespace-pre-wrap break-anywhere text-sm text-slate-700">
                 {record.content}
@@ -67,7 +67,7 @@ export function QuestionRecordCard({
               )}
             </section>
 
-            <section className="pm-answer-section space-y-2">
+            <section className="tm-answer-section space-y-2">
               <p className="text-xs font-bold uppercase tracking-wide text-[#163A70]">강사 답변</p>
               {answered ? (
                 <>

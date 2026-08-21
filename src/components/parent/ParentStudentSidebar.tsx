@@ -2,7 +2,11 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { ClipboardList, Home, X } from 'lucide-react'
 import { BrandMark } from '../brand/BrandMark'
 import { useParentStudent } from '../../contexts/ParentStudentContext'
-import { parentCategoryItems, parentTodayReportItem } from './parentNavItems'
+import { formatStudentGradeClassLine } from '../../utils/studentGradeClass'
+import { useParentUnread } from '../../contexts/ParentUnreadContext'
+import { ParentUnreadDot } from './ParentUnreadDot'
+import { parentSidebarItems, parentTodayReportItem } from './parentNavItems'
+import type { ParentUnreadCategory } from '../../utils/parentUnread'
 
 type ParentStudentSidebarProps = {
   isOpen: boolean
@@ -12,10 +16,11 @@ type ParentStudentSidebarProps = {
 export function ParentStudentSidebar({ isOpen, onClose }: ParentStudentSidebarProps) {
   const student = useParentStudent()
   const location = useLocation()
+  const { isCategoryUnread } = useParentUnread()
   const basePath = `/care/${student.studentAccessKey}`
 
   const linkClass = (isActive: boolean) =>
-    `pm-nav-link ${isActive ? 'pm-nav-link--active' : ''}`
+    `tm-nav-link ${isActive ? 'tm-nav-link--active' : ''}`
 
   const iconClass = (isActive: boolean) =>
     `h-[18px] w-[18px] shrink-0 ${isActive ? '' : 'text-[#6B7280]'}`
@@ -32,7 +37,7 @@ export function ParentStudentSidebar({ isOpen, onClose }: ParentStudentSidebarPr
       )}
 
       <aside
-        className={`pm-sidebar fixed inset-y-0 left-0 z-50 flex w-[min(100%,280px)] flex-col shadow-xl transition-transform duration-300 lg:static lg:w-64 lg:translate-x-0 lg:shadow-none ${
+        className={`pm-sidebar fixed inset-y-0 left-0 z-50 flex w-[min(100%,280px)] flex-col bg-white shadow-xl transition-transform duration-300 lg:static lg:w-64 lg:translate-x-0 lg:shadow-none ${
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
@@ -42,7 +47,7 @@ export function ParentStudentSidebar({ isOpen, onClose }: ParentStudentSidebarPr
             <button
               type="button"
               aria-label="사이드바 닫기"
-              className="pm-menu-btn lg:hidden"
+              className="tm-icon-btn lg:hidden"
               onClick={onClose}
             >
               <X className="h-5 w-5" strokeWidth={2} />
@@ -50,7 +55,7 @@ export function ParentStudentSidebar({ isOpen, onClose }: ParentStudentSidebarPr
           </div>
           <p className="mt-4 text-sm font-semibold text-[#163A70]">{student.name}</p>
           <p className="mt-0.5 break-anywhere text-xs text-[#6B7280]">
-            {student.school} · {student.grade}
+            {formatStudentGradeClassLine(student)}
           </p>
         </div>
 
@@ -75,7 +80,7 @@ export function ParentStudentSidebar({ isOpen, onClose }: ParentStudentSidebarPr
               <NavLink
                 to={`${basePath}/${parentTodayReportItem.segment}`}
                 onClick={onClose}
-                className={({ isActive }) => linkClass(isActive)}
+                className={({ isActive }) => `${linkClass(isActive)} relative`}
               >
                 <ClipboardList
                   className={iconClass(location.pathname.includes('today-report'))}
@@ -83,21 +88,30 @@ export function ParentStudentSidebar({ isOpen, onClose }: ParentStudentSidebarPr
                   aria-hidden
                 />
                 {parentTodayReportItem.label}
+                {isCategoryUnread('today-report') && (
+                  <ParentUnreadDot className="right-2 top-1/2 -translate-y-1/2" />
+                )}
               </NavLink>
             </li>
-            {parentCategoryItems.map(({ segment, label, icon: Icon }) => {
+            {parentSidebarItems.map(({ segment, label, icon: Icon }) => {
               const path = `${basePath}/${segment}`
               const isActive =
                 location.pathname === path || location.pathname.startsWith(`${path}/`)
+              const unread = isCategoryUnread(segment as ParentUnreadCategory)
               return (
                 <li key={segment}>
                   <NavLink
                     to={path}
                     onClick={onClose}
-                    className={({ isActive: linkActive }) => linkClass(linkActive || isActive)}
+                    className={({ isActive: linkActive }) =>
+                      `${linkClass(linkActive || isActive)} relative`
+                    }
                   >
                     <Icon className={iconClass(isActive)} strokeWidth={2} aria-hidden />
                     <span className="whitespace-pre-line leading-snug">{label}</span>
+                    {unread && (
+                      <ParentUnreadDot className="right-2 top-1/2 -translate-y-1/2" />
+                    )}
                   </NavLink>
                 </li>
               )

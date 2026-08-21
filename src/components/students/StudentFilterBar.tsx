@@ -7,6 +7,7 @@ import {
   collectLegacyClassNamesForGrade,
   getClassFilterOptions,
   getGradeSelectOptions,
+  resolveClassNameOnGradeChange,
 } from '../../utils/studentGradeClass'
 
 type StudentFilterBarProps = {
@@ -64,7 +65,11 @@ export function StudentFilterBar({
             id="student-grade"
             value={filters.grade}
             onChange={(e) =>
-              onChange({ ...filters, grade: e.target.value, className: '' })
+              onChange({
+                ...filters,
+                grade: e.target.value,
+                className: resolveClassNameOnGradeChange(e.target.value, filters.className),
+              })
             }
             className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500"
           >

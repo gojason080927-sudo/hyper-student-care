@@ -8,23 +8,21 @@ import type {
   TextbookSubject,
   TodayAssignmentRecord,
 } from '../types/records'
-import { getHomeworkContent } from './homework'
 import { calcProgressRate } from './calc'
 import {
-  findClassTodayReportCommon,
+  findClassCommonTextbookName,
+  findClassTodayReportCommonForSubject,
   resolveCommonCurrentProgress,
   resolveCommonCurrentPage,
   resolveCommonTotalPage,
-  resolveCommonPreviousAssignment,
   resolveCommonTodayAssignment,
 } from './classTodayReportCommon'
-import { getPreviousSeoulDateString } from './seoulDate'
+import { TEXTBOOK_SLOT_NUMBERS, TEXTBOOK_SUBJECTS } from '../types/records'
 import {
   findClassTodayReportCommonForDisplay,
   findHomeworkTextbookEntryForDisplay,
   findProgressRecordForDisplay,
 } from './todayReportDisplayFallback'
-import { TEXTBOOK_SLOT_NUMBERS, TEXTBOOK_SUBJECTS } from '../types/records'
 
 export type HomeworkTextbookDisplay = {
   subject: TextbookSubject
@@ -203,13 +201,12 @@ export function findHomeworkTextbookEntry(
   )
 }
 
+/** @deprecated 지난 과제 내용 UI 제거 — 항상 빈 문자열 */
 export function resolvePreviousAssignment(
-  entry: HomeworkTextbookEntry | undefined,
-  prevDayEntry: HomeworkTextbookEntry | undefined,
+  _entry?: HomeworkTextbookEntry | undefined,
+  _prevDayEntry?: HomeworkTextbookEntry | undefined,
 ): string {
-  const saved = entry?.previousAssignment?.trim() ?? ''
-  if (saved) return saved
-  return prevDayEntry?.todayAssignment?.trim() ?? ''
+  return ''
 }
 
 export function resolveTodayAssignment(entry: HomeworkTextbookEntry | undefined): string {
@@ -219,7 +216,6 @@ export function resolveTodayAssignment(entry: HomeworkTextbookEntry | undefined)
 export function hasHomeworkSlotContent(item: HomeworkTextbookDisplay): boolean {
   return Boolean(
     item.textbookName.trim() ||
-      item.previousAssignment.trim() ||
       item.todayAssignment.trim() ||
       item.status,
   )
@@ -239,7 +235,71 @@ export function hasProgressSlotContent(item: ProgressTextbookDisplay): boolean {
 export type TextbookDisplayClassContext = {
   grade: string
   className: string
+  subjects?: readonly string[]
   commonRecords: ClassTodayReportCommon[]
+  /** 반·연동반 peer legacy 교재명 fallback 조회용 */
+  classSlots?: StudentTextbookSlot[]
+  getTextbookPeerStudentIds?: (subject: TextbookSubject) => string[]
+}
+
+export function findClassPeerTextbookName(
+  slots: StudentTextbookSlot[],
+  peerStudentIds: string[],
+  subject: TextbookSubject,
+  slotNumber: TextbookSlotNumber,
+): string {
+  for (const peerId of peerStudentIds) {
+    const name = getTextbookName(slots, peerId, subject, slotNumber)
+    if (name) return name
+  }
+  return ''
+}
+
+function resolveDisplayTextbookName(
+  classContext: TextbookDisplayClassContext | undefined,
+  studentId: string,
+  date: string,
+  subject: TextbookSubject,
+  slotNumber: TextbookSlotNumber,
+  slots: StudentTextbookSlot[],
+): string {
+  if (!classContext) {
+    return getTextbookName(slots, studentId, subject, slotNumber)
+  }
+
+  const common = findClassTodayReportCommonForSubject(
+    classContext.commonRecords,
+    classContext.grade,
+    classContext.className,
+    date,
+    subject,
+    slotNumber,
+  )
+  const commonName = common?.textbookName.trim()
+  if (commonName) return commonName
+
+  const fromAnyCommon = findClassCommonTextbookName(
+    classContext.commonRecords,
+    classContext.grade,
+    classContext.className,
+    subject,
+    slotNumber,
+    date,
+  ).trim()
+  if (fromAnyCommon) return fromAnyCommon
+
+  const lookupSlots = classContext.classSlots ?? slots
+  if (classContext.getTextbookPeerStudentIds) {
+    const peerName = findClassPeerTextbookName(
+      lookupSlots,
+      classContext.getTextbookPeerStudentIds(subject),
+      subject,
+      slotNumber,
+    )
+    if (peerName) return peerName
+  }
+
+  return getTextbookName(lookupSlots, studentId, subject, slotNumber)
 }
 
 function buildHomeworkSlotDisplays(
@@ -249,20 +309,17 @@ function buildHomeworkSlotDisplays(
   entries: HomeworkTextbookEntry[],
   classContext?: TextbookDisplayClassContext,
 ): HomeworkTextbookDisplay[] {
-  const prevDate = getPreviousSeoulDateString(date)
-
   return TEXTBOOK_SUBJECTS.flatMap((subject) =>
     TEXTBOOK_SLOT_NUMBERS.map((slotNumber) => {
-      const entry = findHomeworkTextbookEntry(entries, studentId, date, subject, slotNumber)
-      const prevEntry = findHomeworkTextbookEntry(
+      const { entry, isFallback: entryFallback } = findHomeworkTextbookEntryForDisplay(
         entries,
         studentId,
-        prevDate,
+        date,
         subject,
         slotNumber,
       )
-      const common = classContext
-        ? findClassTodayReportCommon(
+      let common = classContext
+        ? findClassTodayReportCommonForSubject(
             classContext.commonRecords,
             classContext.grade,
             classContext.className,
@@ -271,50 +328,31 @@ function buildHomeworkSlotDisplays(
             slotNumber,
           )
         : undefined
-      const prevCommon = classContext
-        ? findClassTodayReportCommon(
-            classContext.commonRecords,
-            classContext.grade,
-            classContext.className,
-            prevDate,
-            subject,
-            slotNumber,
-          )
-        : undefined
-      const displayCommon =
-        common ??
-        (classContext
-          ? findClassTodayReportCommonForDisplay(
-              classContext.commonRecords,
-              classContext.grade,
-              classContext.className,
-              date,
-              subject,
-              slotNumber,
-            ).record
-          : undefined)
-      const { entry: displayEntry, isFallback: entryFallback } =
-        entry
-          ? { entry, isFallback: false }
-          : findHomeworkTextbookEntryForDisplay(
-              entries,
-              studentId,
-              date,
-              subject,
-              slotNumber,
-            )
+      if (!common && classContext) {
+        common = findClassTodayReportCommonForDisplay(
+          classContext.commonRecords,
+          classContext.grade,
+          classContext.className,
+          date,
+          subject,
+          slotNumber,
+        ).record
+      }
 
       return {
         subject,
         slotNumber,
-        textbookName: getTextbookName(slots, studentId, subject, slotNumber),
-        previousAssignment: resolveCommonPreviousAssignment(
-          common,
-          entry,
-          prevCommon,
-          prevEntry,
+        textbookName: resolveDisplayTextbookName(
+          classContext,
+          studentId,
+          date,
+          subject,
+          slotNumber,
+          slots,
         ),
-        todayAssignment: resolveCommonTodayAssignment(displayCommon, displayEntry),
+        previousAssignment: '',
+        todayAssignment: resolveCommonTodayAssignment(common, entry),
+        // Event status only from actual same-date rows (monthly diagnosis safety).
         status: entryFallback ? '' : entry?.status ?? '',
         entryId: entryFallback ? undefined : entry?.id,
       }
@@ -340,7 +378,6 @@ export function buildHomeworkTextbookDisplays(
   const hasAnySlotEntries = entries.some((entry) => entry.studentId === studentId)
 
   if (!hasNewEntries && !hasNamedSlots && !hasAnySlotEntries && (legacyHomework || legacyAssignment)) {
-    const previous = legacyHomework ? getHomeworkContent(legacyHomework).trim() : ''
     const today = legacyAssignment
       ? legacyAssignment.assignment2.trim() || legacyAssignment.assignment1.trim()
       : ''
@@ -349,13 +386,13 @@ export function buildHomeworkTextbookDisplays(
       legacyHomework?.title?.trim() ||
       ''
 
-    if (previous || today || legacyHomework?.status) {
+    if (today || legacyHomework?.status) {
       return [
         {
           subject: '수학',
           slotNumber: 1,
           textbookName: legacyName,
-          previousAssignment: previous,
+          previousAssignment: '',
           todayAssignment: today,
           status: legacyHomework?.status ?? '',
           entryId: undefined,
@@ -423,9 +460,16 @@ function buildProgressSlotDisplays(
         subject,
         slotNumber,
       )
-      const slotName = getTextbookName(slots, studentId, subject, slotNumber)
+      const slotName = resolveDisplayTextbookName(
+        classContext,
+        studentId,
+        date,
+        subject,
+        slotNumber,
+        slots,
+      )
       let common = classContext
-        ? findClassTodayReportCommon(
+        ? findClassTodayReportCommonForSubject(
             classContext.commonRecords,
             classContext.grade,
             classContext.className,
@@ -463,6 +507,7 @@ function buildProgressSlotDisplays(
         totalPage,
         progressRate: calcProgressRate(currentPage, totalPage || 1),
         teacherMemo: subjectMemo,
+        // Never reuse a prior-date id — save must create a new row for `date`.
         recordId: isFallback ? undefined : record?.id,
       }
     })
@@ -560,6 +605,17 @@ export function buildTextbookNameDrafts(
         getTextbookName(slots, studentId, subject, slotNumber),
       ]),
     ),
+  )
+}
+
+export function buildTextbookNameDraftsFromDisplays(
+  displays: Array<Pick<HomeworkTextbookDisplay, 'subject' | 'slotNumber' | 'textbookName'>>,
+): Record<string, string> {
+  return Object.fromEntries(
+    displays.map((item) => [
+      `${item.subject}-${item.slotNumber}`,
+      item.textbookName.trim(),
+    ]),
   )
 }
 

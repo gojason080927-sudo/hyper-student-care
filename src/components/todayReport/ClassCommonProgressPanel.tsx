@@ -116,6 +116,7 @@ export function ClassCommonProgressPanel({
   useEffect(() => {
     const next: Record<string, SlotDraft> = {}
     for (const { subject, slotNumber } of slotPlan) {
+      // Display fallback only — save still writes the selected `date` as a new/actual record.
       const { record: found } = findClassTodayReportCommonForDisplay(
         classTodayReportCommon,
         grade,

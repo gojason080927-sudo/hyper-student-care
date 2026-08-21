@@ -82,18 +82,17 @@ export function ClassDailyTestBulkPanel({
   useEffect(() => {
     const next: Record<string, StudentDraft> = {}
     let sharedTestName = ''
-    let sharedSubject = ''
 
     for (const student of students) {
       const record = dailyTests.find(
-        (item) => item.studentId === student.id && item.date === date,
+        (item) =>
+          item.studentId === student.id &&
+          item.date === date &&
+          item.subject === subject,
       )
       if (record) {
         if (!sharedTestName && record.testName.trim()) {
           sharedTestName = record.testName.trim()
-        }
-        if (!sharedSubject && record.subject.trim()) {
-          sharedSubject = record.subject.trim()
         }
         next[student.id] = {
           recordId: record.id,
@@ -108,12 +107,10 @@ export function ClassDailyTestBulkPanel({
 
     setDrafts(next)
     setTestName(sharedTestName || defaultDailyTestNameForDate(date))
-    if (sharedSubject) {
-      setSubject(sharedSubject)
-    } else if (subjectOptions[0]) {
+    if (subjectOptions[0] && !subjectOptions.includes(subject as (typeof subjectOptions)[number])) {
       setSubject(subjectOptions[0])
     }
-  }, [dailyTests, date, studentIdsKey, students, subjectOptions])
+  }, [dailyTests, date, studentIdsKey, students, subject, subjectOptions])
 
   const updateRounds = (
     studentId: string,

@@ -9,7 +9,8 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'prompt',
+      // 새 배포 시 설치형 강사 PWA가 자동으로 새 SW를 활성화 (수동 프롬프트 의존 최소화)
+      registerType: 'autoUpdate',
       injectRegister: false,
       manifest: false,
       filename: 'teacher/sw.js',
@@ -34,6 +35,7 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,webmanifest}'],
         navigateFallback: '/index.html',
+        // 학부모 /care 는 SW navigateFallback 대상에서 제외 (브라우저 정상 fingerprint asset 사용)
         navigateFallbackDenylist: [/^\/care\//],
         cleanupOutdatedCaches: true,
         clientsClaim: true,
@@ -50,4 +52,10 @@ export default defineConfig({
       },
     }),
   ],
+  server: {
+    port: 5174,
+    watch: {
+      ignored: ['**/.playwright-profile/**'],
+    },
+  },
 })

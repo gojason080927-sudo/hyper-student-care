@@ -1,13 +1,18 @@
 import { useMemo } from 'react'
 import type { ContentPost } from '../types/records'
+import type { Student } from '../types/student'
 import { sortContentPosts } from '../utils/contentPost'
+import { filterNoticesForStudent } from '../utils/noticeAudience'
 import { useData } from './useData'
 
-/** 학부모·학생용 읽기 전용 게시글 (공개 글만, 저장·삭제 함수 미포함) */
-export function usePublishedContentPosts(): ContentPost[] {
+/** 학부모·학생용 읽기 전용 게시글 (공개·대상 필터 적용) */
+export function usePublishedContentPosts(student?: Pick<Student, 'id' | 'grade' | 'className'>): ContentPost[] {
   const { contentPosts } = useData()
-  return useMemo(
-    () => sortContentPosts(contentPosts.filter((post) => post.isPublished)),
-    [contentPosts],
-  )
+  return useMemo(() => {
+    let list = contentPosts.filter((post) => post.isPublished)
+    if (student) {
+      list = filterNoticesForStudent(list, student)
+    }
+    return sortContentPosts(list)
+  }, [contentPosts, student])
 }

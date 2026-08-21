@@ -8,6 +8,10 @@ type EditableTextbookNameProps = {
   onDraftChange?: (name: string) => void
   compact?: boolean
   label?: string
+  /** true면 '교재명' 등 라벨 텍스트 미표시 (레이아웃 구조는 유지) */
+  hideLabel?: boolean
+  /** 교재명 표시 줄 추가 클래스 (폰트 크기·굵기만) */
+  displayClassName?: string
 }
 
 export function EditableTextbookName({
@@ -16,6 +20,8 @@ export function EditableTextbookName({
   onDraftChange,
   compact = false,
   label = '교재명',
+  hideLabel = false,
+  displayClassName,
 }: EditableTextbookNameProps) {
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(value)
@@ -32,11 +38,17 @@ export function EditableTextbookName({
   return (
     <div className={compact ? 'mb-1' : 'mb-1.5'}>
       <div className="flex items-center justify-between gap-1">
-        <span
-          className={`font-semibold text-navy-800 ${compact ? 'text-[11px]' : 'text-xs'}`}
-        >
-          {label}
-        </span>
+        {hideLabel ? (
+          <span className="text-[11px]" aria-hidden="true">
+            {'\u00A0'}
+          </span>
+        ) : (
+          <span
+            className={`font-semibold text-navy-800 ${compact ? 'text-[11px]' : 'text-xs'}`}
+          >
+            {label}
+          </span>
+        )}
         {!editing && (
           <button
             type="button"
@@ -78,8 +90,8 @@ export function EditableTextbookName({
         </div>
       ) : (
         <p
-          className={`mt-0.5 truncate font-medium text-slate-700 ${
-            compact ? 'text-xs' : 'text-sm'
+          className={`mt-0.5 truncate text-slate-700 ${
+            displayClassName ?? (compact ? 'text-xs font-medium' : 'text-sm font-medium')
           }`}
         >
           {value.trim() || '교재명 미입력'}

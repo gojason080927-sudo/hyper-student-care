@@ -12,6 +12,8 @@ import type { Student } from '../types/student'
 import {
   clampScore,
   clampScoreInt,
+  getDailyQuestionTotal,
+  getDailyWrongCountForCause,
   normalizeDailyLearningDiagnosis,
   type MathWrongCause,
 } from './learningDiagnosis'
@@ -190,8 +192,8 @@ function computeMathCauseRawScore(
     if (!isDateInYearMonth(test.date, year, month)) continue
     if (!subjectMatches(test.subject, '수학')) continue
     const diagnosis = normalizeDailyLearningDiagnosis(test.learningDiagnosis)
-    dailyWrong += countCause(diagnosis.wrongAnswerItems, cause)
-    dailyTotal += Math.max(diagnosis.questionTotal, 0)
+    dailyWrong += getDailyWrongCountForCause(diagnosis, cause)
+    dailyTotal += getDailyQuestionTotal(diagnosis)
   }
 
   let monthlyWrong = 0

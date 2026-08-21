@@ -1,7 +1,7 @@
 import { Check } from 'lucide-react'
 import type { HomeworkStatus } from '../../types/records'
 import { HOMEWORK_STATUSES } from '../../utils/labels'
-import { normalizeHomeworkStatus } from '../../utils/homework'
+import { resolveSelectedHomeworkStatus } from '../../utils/homework'
 
 export const homeworkStatusStyles: Record<
   HomeworkStatus,
@@ -28,6 +28,7 @@ type HomeworkStatusButtonsProps = {
   value: HomeworkStatus | string
   onChange: (status: HomeworkStatus) => void
   label?: string
+  labelClassName?: string
   error?: string
   compact?: boolean
 }
@@ -36,22 +37,26 @@ export function HomeworkStatusButtons({
   value,
   onChange,
   label,
+  labelClassName,
   error,
   compact = false,
 }: HomeworkStatusButtonsProps) {
-  const current = normalizeHomeworkStatus(value)
+  // Empty/unset must not look selected as 미완료 (normalize maps empty → 미완료)
+  const current = resolveSelectedHomeworkStatus(value)
+
+  const labelClass =
+    labelClassName ??
+    (compact ? 'mb-1 text-xs font-medium text-slate-700' : 'mb-2 text-sm font-medium text-slate-700')
 
   return (
     <div>
       {label && (
-        <p className={`font-medium text-slate-700 ${compact ? 'mb-1 text-xs' : 'mb-2 text-sm'}`}>
-          {label}
-        </p>
+        <p className={labelClass}>{label}</p>
       )}
       <div
         className={`flex flex-wrap gap-1.5 ${compact ? '' : 'grid grid-cols-1 gap-2 sm:grid-cols-3'}`}
         role="group"
-        aria-label={label ?? '수행 상태'}
+        aria-label={label ?? '지난 과제'}
       >
         {HOMEWORK_STATUSES.map((status) => {
           const selected = current === status

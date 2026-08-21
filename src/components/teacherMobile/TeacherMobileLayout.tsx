@@ -11,7 +11,7 @@ export function TeacherMobileLayout() {
     document.title = 'HYPER TEACHER'
 
     const theme = document.querySelector('meta[name="theme-color"]')
-    if (theme) theme.setAttribute('content', '#163A70')
+    if (theme) theme.setAttribute('content', '#0B1F4A')
 
     let appleIcon = document.querySelector(
       'link[rel="apple-touch-icon"]',
@@ -21,7 +21,13 @@ export function TeacherMobileLayout() {
       appleIcon.rel = 'apple-touch-icon'
       document.head.appendChild(appleIcon)
     }
-    appleIcon.href = '/teacher/apple-touch-icon.png'
+    appleIcon.href = '/teacher/hyper-teacher-v3-apple-touch.png?v=3'
+
+    let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null
+    if (favicon) {
+      favicon.href = '/teacher/hyper-teacher-v3-192.png?v=3'
+      favicon.type = 'image/png'
+    }
 
     let appleTitle = document.querySelector(
       'meta[name="apple-mobile-web-app-title"]',

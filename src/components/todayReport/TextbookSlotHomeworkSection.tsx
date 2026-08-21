@@ -140,6 +140,12 @@ export function TextbookSlotHomeworkSection({
     }>,
   ) => Promise<boolean>
   onSaveSlot: ReturnType<typeof useData>['saveStudentTextbookSlot']
+  onSaveClassCommonTextbookName?: (
+    subject: TextbookSubject,
+    slotNumber: TextbookSlotNumber,
+    name: string,
+    options?: { silent?: boolean },
+  ) => Promise<boolean>
   onNotify?: (message: string) => void
   hideTitle?: boolean
   /** 모바일 PWA 등: 과목별 표시·저장 슬롯 제한 (수학 1~2 등) */

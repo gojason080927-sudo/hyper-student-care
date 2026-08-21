@@ -114,6 +114,7 @@ export function ClassCommonTodayAssignmentPanel({
   useEffect(() => {
     const next: Record<string, SlotDraft> = {}
     for (const { subject, slotNumber } of slotPlan) {
+      // Display fallback only — save still writes the selected `date`.
       const { record: found } = findClassTodayReportCommonForDisplay(
         classTodayReportCommon,
         grade,

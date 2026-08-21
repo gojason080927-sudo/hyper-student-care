@@ -1,7 +1,13 @@
+import { useMemo } from 'react'
 import type { StudentFilters } from '../../types'
 import { GRADES, SUBJECTS } from '../../utils/labels'
-import { getUniqueClassNames, getUniqueSchools } from '../../utils/filters'
+import { getUniqueSchools } from '../../utils/filters'
 import type { Student } from '../../types/student'
+import {
+  collectLegacyClassNamesForGrade,
+  getClassFilterOptions,
+  resolveClassNameOnGradeChange,
+} from '../../utils/studentGradeClass'
 
 type FilterBarProps = {
   students: Student[]
@@ -21,7 +27,15 @@ export function FilterBar({
   onDateChange,
 }: FilterBarProps) {
   const schools = getUniqueSchools(students)
-  const classNames = getUniqueClassNames(students)
+  const classNames = useMemo(() => {
+    if (!filters.grade) {
+      return [...new Set(students.map((s) => s.className.trim()).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b, 'ko'),
+      )
+    }
+    const legacy = collectLegacyClassNamesForGrade(students, filters.grade)
+    return getClassFilterOptions(filters.grade, legacy)
+  }, [filters.grade, students])
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -76,7 +90,13 @@ export function FilterBar({
           <select
             id="filter-grade"
             value={filters.grade}
-            onChange={(e) => onChange({ ...filters, grade: e.target.value })}
+            onChange={(e) =>
+              onChange({
+                ...filters,
+                grade: e.target.value,
+                className: resolveClassNameOnGradeChange(e.target.value, filters.className),
+              })
+            }
             className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-blue-500"
           >
             <option value="">전체</option>

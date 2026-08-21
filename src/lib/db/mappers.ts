@@ -2,6 +2,7 @@ import type {
   AssignmentCompletionRecord,
   AttendanceRecord,
   ClassNoteRecord,
+  ClassScheduleGrid,
   ClassTodayReportCommon,
   ContentPost,
   DailyTestRecord,
@@ -244,11 +245,24 @@ export type ClassTodayReportCommonRow = {
   report_date: string
   subject: string
   slot_number: number
+  textbook_name?: string | null
   current_progress: string
   current_page: number
   total_page: number
   previous_assignment: string
   today_assignment: string
+  created_at: string
+  updated_at: string
+}
+
+export type ClassScheduleGridRow = {
+  id: string
+  grade: string
+  class_name: string
+  template_type: string
+  time_labels: unknown
+  cells: unknown
+  is_active: boolean
   created_at: string
   updated_at: string
 }
@@ -853,6 +867,7 @@ export function classTodayReportCommonToRow(
     report_date: record.reportDate,
     subject: record.subject,
     slot_number: record.slotNumber,
+    textbook_name: record.textbookName,
     current_progress: record.currentProgress,
     current_page: record.currentPage,
     total_page: record.totalPage,
@@ -873,11 +888,54 @@ export function classTodayReportCommonFromRow(
     reportDate: row.report_date,
     subject: row.subject as ClassTodayReportCommon['subject'],
     slotNumber: row.slot_number as ClassTodayReportCommon['slotNumber'],
+    textbookName: row.textbook_name ?? '',
     currentProgress: row.current_progress,
     currentPage: row.current_page ?? 0,
     totalPage: row.total_page ?? 0,
     previousAssignment: row.previous_assignment,
     todayAssignment: row.today_assignment,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+export function classScheduleGridToRow(record: ClassScheduleGrid): ClassScheduleGridRow {
+  return {
+    id: record.id,
+    grade: record.grade,
+    class_name: record.className,
+    template_type: record.templateType,
+    time_labels: record.timeLabels,
+    cells: record.cells,
+    is_active: record.isActive,
+    created_at: record.createdAt,
+    updated_at: record.updatedAt,
+  }
+}
+
+function parseStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value.map((item) => String(item ?? ''))
+}
+
+function parseCellsRecord(value: unknown): Record<string, string> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  const result: Record<string, string> = {}
+  for (const [key, cell] of Object.entries(value as Record<string, unknown>)) {
+    result[key] = String(cell ?? '')
+  }
+  return result
+}
+
+export function classScheduleGridFromRow(row: ClassScheduleGridRow): ClassScheduleGrid {
+  return {
+    id: row.id,
+    grade: row.grade,
+    className: row.class_name,
+    templateType: row.template_type as ClassScheduleGrid['templateType'],
+    timeLabels: parseStringArray(row.time_labels),
+    cells: parseCellsRecord(row.cells),
+    isActive: row.is_active,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }

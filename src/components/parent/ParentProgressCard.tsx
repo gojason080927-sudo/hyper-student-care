@@ -27,7 +27,7 @@ export function ParentProgressCard({ record }: ParentProgressCardProps) {
   )
 
   return (
-    <article className="pm-card overflow-hidden">
+    <article className="tm-card overflow-hidden">
       {hasPages && (
         <div className="border-b border-[rgba(22,58,112,0.06)] bg-gradient-to-b from-[rgba(22,58,112,0.04)] to-white px-5 pb-5 pt-5 sm:px-6 sm:pb-6 sm:pt-6">
           <HeroProgressBar value={record.progressRate} size="hero" />

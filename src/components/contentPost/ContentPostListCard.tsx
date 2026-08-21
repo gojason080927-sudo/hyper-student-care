@@ -1,7 +1,11 @@
 import { Link } from 'react-router-dom'
-import type { ContentPost } from '../../types/records'
+import type { ContentPost, ContentPostCategory } from '../../types/records'
 import { formatKoreanDate } from '../../utils/date'
-import { getContentPostPreview } from '../../utils/contentPost'
+import {
+  getContentPostDisplayCategory,
+  getContentPostPreview,
+  hasContentPostAttachment,
+} from '../../utils/contentPost'
 import {
   getContentPostCategoryColor,
   getContentPostPublishColor,
@@ -29,9 +33,18 @@ export function ContentPostListCard({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <StatusBadge label={post.category} colorClass={getContentPostCategoryColor(post.category)} />
+            <StatusBadge
+              label={getContentPostDisplayCategory(post.category as ContentPostCategory)}
+              colorClass={getContentPostCategoryColor(post.category)}
+            />
+            {post.isImportant && (
+              <StatusBadge label="중요" colorClass="bg-rose-100 text-rose-900 border-rose-200" />
+            )}
             {post.isPinned && (
               <StatusBadge label="고정" colorClass="bg-amber-100 text-amber-900 border-amber-200" />
+            )}
+            {hasContentPostAttachment(post) && (
+              <StatusBadge label="첨부" colorClass="bg-sky-100 text-sky-900 border-sky-200" />
             )}
             {showAdmin && (
               <StatusBadge

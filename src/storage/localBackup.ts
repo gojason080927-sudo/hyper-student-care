@@ -2,6 +2,7 @@ import type {
   AssignmentCompletionRecord,
   AttendanceRecord,
   ClassNoteRecord,
+  ClassScheduleGrid,
   ClassTodayReportCommon,
   ContentPost,
   DailyTestRecord,
@@ -33,6 +34,7 @@ export type LocalBackupData = {
   studentTextbookSlots: StudentTextbookSlot[]
   makeupPlans: MakeupPlanRecord[]
   contentPosts: ContentPost[]
+  classScheduleGrids?: ClassScheduleGrid[]
   todayAssignments: TodayAssignmentRecord[]
   classNotes: ClassNoteRecord[]
   classTodayReportCommon?: ClassTodayReportCommon[]
@@ -86,6 +88,7 @@ export function loadLocalBackup(): LocalBackupData {
     studentTextbookSlots: loadArray<StudentTextbookSlot>(STORAGE_KEYS.studentTextbookSlots),
     makeupPlans: loadArray<MakeupPlanRecord>(STORAGE_KEYS.makeupPlans),
     contentPosts: loadArray<ContentPost>(STORAGE_KEYS.contentPosts),
+    classScheduleGrids: loadArray<ClassScheduleGrid>(STORAGE_KEYS.classScheduleGrids),
     todayAssignments: loadArray<TodayAssignmentRecord>(STORAGE_KEYS.todayAssignments),
     classNotes: loadArray<ClassNoteRecord>(STORAGE_KEYS.classNotes),
   }
@@ -106,6 +109,7 @@ export function mirrorLocalBackup(data: LocalBackupData): void {
   saveToStorage(STORAGE_KEYS.studentTextbookSlots, data.studentTextbookSlots)
   saveToStorage(STORAGE_KEYS.makeupPlans, data.makeupPlans)
   saveToStorage(STORAGE_KEYS.contentPosts, data.contentPosts)
+  saveToStorage(STORAGE_KEYS.classScheduleGrids, data.classScheduleGrids ?? [])
   saveToStorage(STORAGE_KEYS.todayAssignments, data.todayAssignments)
   saveToStorage(STORAGE_KEYS.classNotes, data.classNotes)
 }
@@ -127,6 +131,7 @@ export function toLocalBackupData(
     studentTextbookSlots: data.studentTextbookSlots ?? [],
     makeupPlans: data.makeupPlans,
     contentPosts: data.contentPosts,
+    classScheduleGrids: data.classScheduleGrids ?? [],
     todayAssignments: data.todayAssignments,
     classNotes: data.classNotes,
     classTodayReportCommon: data.classTodayReportCommon ?? [],

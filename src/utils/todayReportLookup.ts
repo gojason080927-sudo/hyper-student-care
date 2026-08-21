@@ -18,6 +18,7 @@ import {
   dailyTestRecordToForm,
   type DailyTestFormData,
 } from './dailyTest'
+import { EMPTY_DAILY_LEARNING_DIAGNOSIS } from './learningDiagnosis'
 
 export type StudentDayRecords = {
   attendance?: AttendanceRecord
@@ -145,15 +146,7 @@ export function buildDailyTestDraft(
     subject: '수학',
     memo: '',
     sessionResults: createDefaultSessionResults(),
-    learningDiagnosis: {
-      wrongAnswerItems: [],
-      questionTotal: 0,
-      fridayRetestTotal: null,
-      fridayRetestWrong: null,
-      englishVocabResult: null,
-      englishGrammarWrongCount: null,
-      englishReadingWrongCount: null,
-    },
+    learningDiagnosis: { ...EMPTY_DAILY_LEARNING_DIAGNOSIS },
   }
 }
 
@@ -175,7 +168,7 @@ export function buildClassBulkStudentDraft(
       records.progressEnglish?.teacherMemo?.trim() ||
       '',
     homeworkStatus: records.homework?.status ?? '',
-    previousAssignment: homeworkFields.previous,
+    previousAssignment: '',
     todayAssignment: homeworkFields.today,
     classNote: records.classNote?.note ?? '',
     dailyTestName: dailyTest.testName,

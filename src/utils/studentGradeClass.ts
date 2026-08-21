@@ -1,7 +1,7 @@
+import type { Grade, StoredGrade, SubjectOption } from '../types/student'
 import type { TextbookSubject } from '../types/records'
 import { TEXTBOOK_SUBJECTS } from '../types/records'
-import type { Grade, StoredGrade, SubjectOption } from '../types/student'
-import { GRADES } from './labels'
+import { GRADES, SUBJECTS } from './labels'
 
 /** 학년별 표준 반/과정 — 강사/학부모/학생관리 공통 */
 export const CLASS_OPTIONS_BY_GRADE: Record<Grade, readonly string[]> = {
@@ -32,7 +32,6 @@ export function isActiveGrade(grade: string): grade is Grade {
   return (GRADES as readonly string[]).includes(grade)
 }
 
-/** 학년별 표준 반/과정: 예) 고1 수학, 고1 영어, 고1 영수 */
 export function getClassOptionsForGrade(grade: string): string[] {
   if (!isActiveGrade(grade)) return []
   return [...CLASS_OPTIONS_BY_GRADE[grade]]
@@ -42,10 +41,9 @@ export function getAllStandardClassOptions(): string[] {
   return GRADES.flatMap((grade) => getClassOptionsForGrade(grade))
 }
 
-/** Today Report·일괄입력 선택용 — CLASS_OPTIONS_BY_GRADE만 (DB/레거시 병합 금지) */
-export function getClassPickerOptions(grade: string): string[] {
-  if (!isActiveGrade(grade)) return []
-  return [...CLASS_OPTIONS_BY_GRADE[grade]]
+export function isStandardClassNameForGrade(grade: string, className: string): boolean {
+  if (!isActiveGrade(grade)) return false
+  return getClassOptionsForGrade(grade).includes(className.trim())
 }
 
 export function parseStandardClassName(
@@ -62,6 +60,7 @@ export function parseStandardClassName(
     }
   }
 
+  // 레거시 표준 형식: {grade} 수학 | 수학A/B | 영어 | 영수 | 영수A/B
   for (const grade of GRADES) {
     const prefix = `${grade} `
     if (!trimmed.startsWith(prefix)) continue
@@ -116,45 +115,89 @@ export function buildStandardClassName(grade: string, track: StandardClassTrack 
   return `${grade} ${track}`
 }
 
-/** 반/과정 선택 시 과목 자동 매핑 (표준 형식만) */
+/** 반/과정 선택 시 과목 자동 매핑 (표준·레거시 표준 형식) */
 export function syncSubjectFromClassName(className: string): SubjectOption | null {
   const parsed = parseStandardClassName(className)
   if (!parsed) return null
   return classTrackToSubject(parsed.track)
 }
 
+/** Today Report 과목 표시 모드 (수학만 / 영어만 / 둘 다) */
+export type StudentSubjectMode = 'math' | 'english' | 'both'
+
+function getStudentSubjectModeFromClassName(className: string): StudentSubjectMode {
+  const trimmed = className.trim()
+  if (!trimmed) return 'both'
+
+  const parsed = parseStandardClassName(trimmed)
+  if (parsed) {
+    if (
+      parsed.track === '영수' ||
+      parsed.track === '영수A' ||
+      parsed.track === '영수B'
+    ) {
+      return 'both'
+    }
+    if (
+      parsed.track === '수학' ||
+      parsed.track === '수학A' ||
+      parsed.track === '수학B'
+    ) {
+      return 'math'
+    }
+    if (parsed.track === '영어') return 'english'
+  }
+
+  const normalized = trimmed.replace(/\s+/g, '')
+  if (normalized.includes('영수')) return 'both'
+  if (normalized.includes('수학')) return 'math'
+  if (normalized.includes('영어')) return 'english'
+
+  return 'both'
+}
+
 /**
- * 월간 학습진단 REPORT 표시 과목 (수강 기준, 수학 → 영어 순).
- * subjects[0]이 있으면 우선, 없으면 className 표준/레거시 반 과정으로 판별.
+ * 학생 반/과정·과목 필드로 Today Report 표시 과목 모드 판별.
+ * subjects[0]이 있으면 우선, 없으면 className 파싱(영수 → 수학A/B → 레거시 '반' 접미 포함).
  */
+export function getStudentSubjectMode(
+  className: string,
+  subjects?: readonly string[],
+): StudentSubjectMode {
+  const subjectHint = subjects?.[0]?.trim()
+  if (subjectHint === '영어·수학') return 'both'
+  if (subjectHint === '수학') return 'math'
+  if (subjectHint === '영어') return 'english'
+
+  return getStudentSubjectModeFromClassName(className)
+}
+
+export function getVisibleTextbookSubjects(
+  className: string,
+  subjects?: readonly string[],
+): TextbookSubject[] {
+  const mode = getStudentSubjectMode(className, subjects)
+  if (mode === 'math') return ['수학']
+  if (mode === 'english') return ['영어']
+  return [...TEXTBOOK_SUBJECTS]
+}
+
+/** 월간 학습진단 REPORT 표시 과목 (수강 기준, 수학 → 영어 순) */
 export function getStudentDiagnosisSubjects(
   className: string,
   subjects?: readonly string[],
 ): TextbookSubject[] {
-  const subjectHint = subjects?.[0]?.trim()
-  if (subjectHint === '영어·수학') return [...TEXTBOOK_SUBJECTS]
-  if (subjectHint === '수학') return ['수학']
-  if (subjectHint === '영어') return ['영어']
+  return getVisibleTextbookSubjects(className, subjects)
+}
 
-  const trimmed = className.trim()
-  if (!trimmed) return [...TEXTBOOK_SUBJECTS]
-
-  const parsed = parseStandardClassName(trimmed)
-  if (parsed) {
-    if (parsed.track === '영수' || parsed.track === '영수A' || parsed.track === '영수B') {
-      return [...TEXTBOOK_SUBJECTS]
-    }
-    if (parsed.track === '수학' || parsed.track === '수학A' || parsed.track === '수학B') {
-      return ['수학']
-    }
-    if (parsed.track === '영어') return ['영어']
-  }
-
-  const normalized = trimmed.replace(/\s+/g, '')
-  if (normalized.includes('영수')) return [...TEXTBOOK_SUBJECTS]
-  if (normalized.includes('수학')) return ['수학']
-  if (normalized.includes('영어')) return ['영어']
-  return [...TEXTBOOK_SUBJECTS]
+export function getVisibleDailyTestSubjects(
+  className: string,
+  subjects?: readonly string[],
+): SubjectOption[] {
+  const mode = getStudentSubjectMode(className, subjects)
+  if (mode === 'math') return ['수학']
+  if (mode === 'english') return ['영어']
+  return [...SUBJECTS]
 }
 
 /** 학년 select: 활성 학년 + 기존(비활성) 학년 1개 */
@@ -165,7 +208,32 @@ export function getGradeSelectOptions(currentGrade?: string): string[] {
   return [...GRADES]
 }
 
-/** 필터용 반/과정: 표준 3개 + 해당 학년의 기존 비표준 값 */
+/** Today Report·일괄입력용 — 표준 과정만 유지 (다른 학년·비표준 값은 초기화) */
+export function resolveClassNameOnGradeChange(
+  grade: string,
+  className: string,
+): string {
+  const trimmed = className.trim()
+  if (!trimmed || !grade) return ''
+  if (isStandardClassNameForGrade(grade, trimmed)) return trimmed
+  return ''
+}
+
+/** 학생 등록/수정 폼용 — 같은 학년의 비표준 레거시(기존) 값 유지 */
+export function resolveClassNameOnFormGradeChange(
+  grade: string,
+  className: string,
+): string {
+  const trimmed = className.trim()
+  if (!trimmed || !grade) return ''
+  if (isStandardClassNameForGrade(grade, trimmed)) return trimmed
+  if (isDeprecatedStandardClassName(trimmed)) return ''
+  const parsedGrade = parseGradeFromClassName(trimmed)
+  if (parsedGrade && parsedGrade !== grade) return ''
+  return trimmed
+}
+
+/** 필터용 반/과정: 표준 + 해당 학년의 기존 비표준 값 */
 export function getClassFilterOptions(
   grade: string,
   legacyClassNames: string[] = [],
@@ -193,48 +261,168 @@ export function collectLegacyClassNamesForGrade(
   ].sort((a, b) => a.localeCompare(b, 'ko'))
 }
 
-/** 기존 반/과정 → 표준 형식 자동 매핑 (가능할 때만) */
+function inferGo1MathClass(normalized: string): string | null {
+  if (/b반|수학\s*b|mathb/i.test(normalized)) {
+    return '고1 수학B'
+  }
+  if (/a반|수학\s*a|matha|\s+a\s*반/i.test(normalized)) {
+    return '고1 수학A'
+  }
+  return null
+}
+
+/**
+ * 기존 반/과정 → 표준 형식 자동 매핑 (명확할 때만)
+ * 고1 수학 A/B 구분 불가·영수반 등 애매한 값은 원본 유지
+ */
 export function mapLegacyClassName(
   className: string,
   grade: StoredGrade,
   subject: SubjectOption,
 ): string {
-  if (parseStandardClassName(className)) return className
-  if (!isActiveGrade(grade)) return className
+  const trimmed = className.trim()
+  if (!trimmed) {
+    if (!isActiveGrade(grade)) return ''
+    return ''
+  }
 
-  const normalized = className.trim().toLowerCase()
+  if (isActiveGrade(grade) && isStandardClassNameForGrade(grade, trimmed)) {
+    return trimmed
+  }
 
-  if (!normalized) {
-    return buildStandardClassName(grade, subjectToClassTrack(subject))
+  if (parseStandardClassName(trimmed)) return trimmed
+  if (!isActiveGrade(grade)) return trimmed
+
+  const normalized = trimmed.toLowerCase()
+
+  if (grade === '고1') {
+    const go1Math = inferGo1MathClass(normalized)
+    if (go1Math) return go1Math
+    if (normalized.includes('영어') || normalized.includes('english')) {
+      return '고1 영어'
+    }
+    if (
+      normalized.includes('수학') ||
+      normalized.includes('math') ||
+      normalized.includes('수학반')
+    ) {
+      return trimmed
+    }
   }
 
   if (
     normalized.includes('영수') ||
     normalized.includes('영어·수학') ||
-    normalized.includes('영어/수학')
+    normalized.includes('영어/수학') ||
+    normalized.includes('종합')
   ) {
-    return buildStandardClassName(grade, '영수')
-  }
-  if (normalized.includes('영어') || normalized.includes('english')) {
-    return buildStandardClassName(grade, '영어')
-  }
-  if (normalized.includes('수학') || normalized.includes('math')) {
-    return buildStandardClassName(grade, '수학')
+    return trimmed
   }
 
-  return className
+  if (normalized.includes('영어') || normalized.includes('english') || normalized.includes('영어반')) {
+    return `${grade} 영어`
+  }
+
+  if (normalized.includes('수학') || normalized.includes('math') || normalized.includes('수학반')) {
+    return `${grade} 수학`
+  }
+
+  if (!normalized) {
+    const track = subjectToClassTrack(subject)
+    if (track === '영수') return trimmed
+    if (grade === '고1' && track === '수학') return trimmed
+    const built = buildStandardClassName(grade, track)
+    if (isStandardClassNameForGrade(grade, built)) return built
+  }
+
+  return trimmed
 }
 
-export function getClassSelectOptions(
+export function isDeprecatedStandardClassName(className: string): boolean {
+  const trimmed = className.trim()
+  const parsed = parseStandardClassName(trimmed)
+  if (!parsed) return false
+  return !isStandardClassNameForGrade(parsed.grade, trimmed)
+}
+
+/** Today Report·일괄입력 선택용 — CLASS_OPTIONS_BY_GRADE만 (DB/레거시 병합 금지) */
+export function getClassPickerOptions(grade: string): string[] {
+  if (!isActiveGrade(grade)) return []
+  return [...CLASS_OPTIONS_BY_GRADE[grade]]
+}
+
+/** 학생 등록/수정 폼용 — 현재 레거시 값을 (기존)으로 추가 */
+export function getClassFormSelectOptions(
   grade: string,
   currentClassName?: string,
 ): string[] {
   const standard = getClassOptionsForGrade(grade)
-  if (currentClassName?.trim() && !standard.includes(currentClassName)) {
-    return [...standard, currentClassName]
+  const current = currentClassName?.trim()
+  if (current && !standard.includes(current)) {
+    return [...standard, current]
   }
   return standard
 }
+
+/** @deprecated getClassFormSelectOptions 또는 getClassPickerOptions 사용 */
+export function getClassSelectOptions(
+  grade: string,
+  currentClassName?: string,
+): string[] {
+  return getClassFormSelectOptions(grade, currentClassName)
+}
+
+/** 학년·반/과정 조합 저장 가능 여부 */
+export function validateGradeClassCombination(grade: string, className: string): boolean {
+  const trimmed = className.trim()
+  if (!grade || !trimmed) return false
+
+  const allowed = getClassFormSelectOptions(grade, trimmed)
+  if (!allowed.includes(trimmed)) return false
+
+  const parsedGrade = parseGradeFromClassName(trimmed)
+  if (parsedGrade && parsedGrade !== grade) return false
+
+  if (isActiveGrade(grade) && isStandardClassNameForGrade(grade, trimmed)) {
+    return true
+  }
+
+  // 비표준(레거시) 값: 같은 학년에만 허용
+  return !parsedGrade || parsedGrade === grade
+}
+
+/** 학부모·강사 UI용: "중3 · 중3 수학" */
+export function formatStudentGradeClassLine(student: {
+  grade: string
+  className: string
+}): string {
+  const grade = student.grade.trim()
+  const className = student.className.trim()
+  if (grade && className) return `${grade} · ${className}`
+  return grade || className
+}
+
+/** 자동 매핑 제안 (DB 변경 없음, UI 안내용) */
+export const LEGACY_CLASS_MAPPING_HINTS: ReadonlyArray<{
+  pattern: string
+  suggestion: string
+  note?: string
+}> = [
+  { pattern: '중3 수학반', suggestion: '중3 수학' },
+  { pattern: '중3 영어반', suggestion: '중3 영어' },
+  { pattern: '고2 수학반', suggestion: '고2 수학' },
+  { pattern: '고2 영어반', suggestion: '고2 영어' },
+  {
+    pattern: '고1 수학반 / 고1 수학',
+    suggestion: '고1 수학A 또는 고1 수학B',
+    note: 'A/B 구분 불가 시 자동 변환하지 않음',
+  },
+  {
+    pattern: '영수반 / 종합반',
+    suggestion: '수동 선택 필요',
+    note: '자동 변환하지 않음',
+  },
+]
 
 /** 재원 학생에 실제 등록된 반/과정 목록 (중복 제거, 표준 순서 우선) */
 export function sortClassNamesForDisplay(classNames: string[]): string[] {

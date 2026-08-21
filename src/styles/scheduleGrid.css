@@ -1,0 +1,258 @@
+.schedule-grid-wrap {
+  --sg-navy: #163a70;
+  --sg-mint: #2dd4bf;
+}
+
+.schedule-grid-table {
+  table-layout: fixed;
+}
+
+.schedule-grid-corner {
+  position: relative;
+  width: 22%;
+  min-width: 4.5rem;
+  height: 2.75rem;
+  padding: 0;
+  background: linear-gradient(135deg, var(--sg-navy) 0%, #1a5089 45%, var(--sg-mint) 100%);
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  vertical-align: middle;
+  overflow: hidden;
+}
+
+.schedule-grid-corner::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top right,
+    transparent calc(50% - 0.5px),
+    rgba(255, 255, 255, 0.45) calc(50% - 0.5px),
+    rgba(255, 255, 255, 0.45) calc(50% + 0.5px),
+    transparent calc(50% + 0.5px)
+  );
+  pointer-events: none;
+}
+
+.schedule-grid-corner-time {
+  position: absolute;
+  left: 0.5rem;
+  bottom: 0.375rem;
+  z-index: 1;
+}
+
+.schedule-grid-corner-day {
+  position: absolute;
+  right: 0.5rem;
+  top: 0.375rem;
+  z-index: 1;
+}
+
+.schedule-grid-header {
+  background: linear-gradient(135deg, var(--sg-navy) 0%, #1a5089 50%, var(--sg-mint) 100%);
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  padding: 0.625rem 0.25rem;
+  text-align: center;
+  border-left: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.schedule-grid-time-col {
+  width: 26%;
+  min-width: 6.5rem;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  border-right: 1px solid #e2e8f0;
+  padding: 0.25rem;
+  vertical-align: top;
+}
+
+.schedule-grid-cell {
+  background: #fff;
+  border-top: 1px solid #e2e8f0;
+  border-left: 1px solid #e2e8f0;
+  padding: 0.125rem;
+  vertical-align: middle;
+}
+
+.schedule-grid-cell-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  border: none;
+  border-radius: 0.375rem;
+  background: transparent;
+  padding: 0.5rem;
+  font-family: inherit;
+  pointer-events: auto;
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 3.25rem;
+  resize: none;
+  overflow: hidden;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.45;
+  text-align: center;
+  color: var(--sg-navy, #163a70);
+}
+
+.schedule-grid-cell-input::placeholder {
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.schedule-grid-cell-input:focus {
+  outline: none;
+  background: rgba(45, 212, 191, 0.08);
+  box-shadow: inset 0 0 0 2px rgba(45, 212, 191, 0.45);
+}
+
+.schedule-grid-time-range {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.25rem;
+  pointer-events: auto;
+  position: relative;
+  z-index: 1;
+}
+
+.schedule-grid-time-separator {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1;
+  color: #64748b;
+  text-align: center;
+  pointer-events: none;
+}
+
+/*
+  Native time inputs must keep default appearance.
+  appearance:none breaks iOS/Android time pickers (looks like text, tap does nothing).
+*/
+.schedule-grid-time-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 2.5rem;
+  margin: 0;
+  border: 1px solid rgba(22, 58, 112, 0.16);
+  border-radius: 0.5rem;
+  background: #fff;
+  padding: 0.375rem 0.35rem;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--sg-navy, #163a70);
+  pointer-events: auto;
+  cursor: pointer;
+  -webkit-appearance: auto;
+  appearance: auto;
+  color-scheme: light;
+}
+
+.schedule-grid-time-input[type='time']::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 1;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-left: 0.1rem;
+}
+
+.schedule-grid-time-input:focus {
+  outline: none;
+  border-color: rgba(45, 212, 191, 0.8);
+  background: rgba(45, 212, 191, 0.08);
+  box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.35);
+}
+
+.schedule-grid-read-text {
+  display: flex;
+  min-height: 3.25rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.45;
+  text-align: center;
+  color: var(--sg-navy, #163a70);
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.schedule-grid-cell .schedule-grid-read-text {
+  white-space: pre-wrap;
+}
+
+.schedule-grid-time-col .schedule-grid-read-text {
+  font-weight: 600;
+  text-align: center;
+}
+
+.schedule-grid-actions-header {
+  width: 2.75rem;
+  min-width: 2.75rem;
+  background: #f8fafc;
+  border-left: 1px solid #e2e8f0;
+}
+
+.schedule-grid-actions-col {
+  width: 2.75rem;
+  min-width: 2.75rem;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  border-left: 1px solid #e2e8f0;
+  padding: 0.25rem;
+  vertical-align: middle;
+  text-align: center;
+}
+
+.schedule-grid-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.schedule-grid-delete-btn:hover {
+  color: #dc2626;
+  background: #fef2f2;
+}
+
+.schedule-grid-delete-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.35);
+}
+
+@media (max-width: 640px) {
+  .schedule-grid-time-col {
+    width: 30%;
+    min-width: 7rem;
+  }
+
+  .schedule-grid-time-input {
+    min-height: 2.75rem;
+    font-size: 0.875rem;
+    padding: 0.4rem 0.3rem;
+  }
+
+  .schedule-grid-cell-input,
+  .schedule-grid-cell .schedule-grid-read-text {
+    font-size: 0.875rem;
+    min-height: 3rem;
+    padding: 0.4375rem;
+  }
+}

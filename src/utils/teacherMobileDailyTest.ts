@@ -10,6 +10,7 @@ import {
   syncLegacyFieldsFromSessions,
   type DailyTestFormData,
 } from './dailyTest'
+import { EMPTY_DAILY_LEARNING_DIAGNOSIS } from './learningDiagnosis'
 
 export type MobileDailyTestRound = {
   round: 1 | 2 | 3 | 4
@@ -117,15 +118,7 @@ export function mobileDailyTestFormToSavePayload(
     subject: form.subject,
     memo: form.memo,
     sessionResults,
-    learningDiagnosis: form.learningDiagnosis ?? {
-      wrongAnswerItems: [],
-      questionTotal: 0,
-      fridayRetestTotal: null,
-      fridayRetestWrong: null,
-      englishVocabResult: null,
-      englishGrammarWrongCount: null,
-      englishReadingWrongCount: null,
-    },
+    learningDiagnosis: form.learningDiagnosis ?? { ...EMPTY_DAILY_LEARNING_DIAGNOSIS },
     ...legacy,
   }
 }
@@ -232,15 +225,7 @@ export function bulkDailyTestToSavePayload(input: {
     subject: input.subject.trim() || '수학',
     memo: input.memo?.trim() ?? '',
     sessionResults,
-    learningDiagnosis: input.learningDiagnosis ?? {
-      wrongAnswerItems: [],
-      questionTotal: 0,
-      fridayRetestTotal: null,
-      fridayRetestWrong: null,
-      englishVocabResult: null,
-      englishGrammarWrongCount: null,
-      englishReadingWrongCount: null,
-    },
+    learningDiagnosis: input.learningDiagnosis ?? { ...EMPTY_DAILY_LEARNING_DIAGNOSIS },
     ...legacy,
   }
 }

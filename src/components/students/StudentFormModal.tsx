@@ -2,11 +2,14 @@ import { useMemo, useState } from 'react'
 import type { Student, StudentFormData, SubjectOption } from '../../types/student'
 import { STUDENT_STATUSES, SUBJECTS } from '../../utils/labels'
 import {
-  getClassSelectOptions,
+  getClassFormSelectOptions,
   getGradeSelectOptions,
   isActiveGrade,
+  isStandardClassNameForGrade,
   mapLegacyClassName,
+  resolveClassNameOnFormGradeChange,
   syncSubjectFromClassName,
+  validateGradeClassCombination,
 } from '../../utils/studentGradeClass'
 import { useData } from '../../hooks/useData'
 import { Modal } from '../ui/Modal'
@@ -90,7 +93,7 @@ function StudentFormModalContent({
     [form.grade],
   )
   const classOptions = useMemo(
-    () => getClassSelectOptions(form.grade, form.className),
+    () => getClassFormSelectOptions(form.grade, form.className),
     [form.className, form.grade],
   )
 
@@ -100,7 +103,11 @@ function StudentFormModalContent({
     if (!form.school.trim()) next.school = '학교를 입력해 주세요.'
     if (!form.grade) next.grade = '학년을 선택해 주세요.'
     if (!form.subject) next.subject = '수강 과목을 선택해 주세요.'
-    if (!form.className.trim()) next.className = '반/과정을 선택해 주세요.'
+    if (!form.className.trim()) {
+      next.className = '반/과정을 선택해 주세요.'
+    } else if (!validateGradeClassCombination(form.grade, form.className)) {
+      next.className = '학년과 맞지 않는 반/과정입니다. 다시 선택해 주세요.'
+    }
     setErrors(next)
     return Object.keys(next).length === 0
   }
@@ -116,7 +123,7 @@ function StudentFormModalContent({
     setForm((prev) => ({
       ...prev,
       grade,
-      className: '',
+      className: resolveClassNameOnFormGradeChange(grade, prev.className),
     }))
   }
 
@@ -185,7 +192,7 @@ function StudentFormModalContent({
               {classOptions.map((option) => {
                 const isLegacy =
                   form.className === option &&
-                  !getClassSelectOptions(form.grade).includes(option)
+                  !isStandardClassNameForGrade(form.grade, option)
                 return (
                   <option key={option} value={option}>
                     {option}

@@ -80,7 +80,7 @@ export function TeacherMobileTodayReportPage() {
   const [grade, setGrade] = useState('')
   const [className, setClassName] = useState('')
   const [openSections, setOpenSections] = useState<Set<ReportSection>>(
-    () => new Set(['attendance']),
+    () => new Set(['attendance', 'dailyTest']),
   )
 
   const activeStudents = useMemo(

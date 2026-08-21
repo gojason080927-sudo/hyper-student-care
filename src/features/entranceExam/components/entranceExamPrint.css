@@ -1,0 +1,680 @@
+/* 화면: display:none 금지(Chromium이 인쇄에서 누락함) — 렌더트리 유지한 채 화면 밖으로 */
+.ee-print-sheet {
+  position: absolute;
+  left: -99999px;
+  top: 0;
+  width: 210mm;
+  height: auto;
+  overflow: visible;
+  pointer-events: none;
+  z-index: -1;
+  color: #111;
+  background: #fff;
+}
+
+/* ========== 화면 미리보기 + 인쇄 공통 레이아웃 토큰 ========== */
+.ee-exam-print-sheet {
+  color: #111;
+  font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  font-size: 10pt;
+  line-height: 1.4;
+  background: #fff;
+}
+
+.ee-exam-masthead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 3px;
+  padding: 0 0 3px;
+  border-bottom: 1.2pt solid #111;
+}
+
+.ee-exam-masthead-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.ee-exam-logo {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.ee-exam-academy {
+  margin: 0;
+  font-size: 9pt;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.ee-exam-doc-title {
+  margin: 0;
+  font-size: 12pt;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.ee-exam-masthead-right {
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 9.5pt;
+  font-weight: 700;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.ee-exam-masthead-right p {
+  margin: 0;
+}
+
+.ee-exam-info-row {
+  display: grid;
+  grid-template-columns: 1.1fr 1.2fr 0.7fr 1fr;
+  gap: 1px 10px;
+  margin: 2px 0;
+  font-size: 9pt;
+  line-height: 1.25;
+}
+
+.ee-exam-info-row p {
+  margin: 0;
+}
+
+.ee-exam-info-label {
+  font-weight: 700;
+  margin-right: 3px;
+}
+
+/*
+ * 수학 전용 상단 헤더 박스 (문제 영역 CSS와 분리)
+ * 로고만 원본 컬러, 나머지 흑백
+ */
+.ee-exam-header-box {
+  /* 네 면 동일 농도 — shorthand만 쓰면 Chromium 인쇄에서 우측이 흐려지는 경우가 있어 명시 */
+  position: relative;
+  border-top: 1px solid #222;
+  border-right: 1px solid #222;
+  border-bottom: 1px solid #222;
+  border-left: 1px solid #222;
+  padding: 10px 14px 12px;
+  margin: 0;
+  color: #000;
+  background: #fff;
+  box-sizing: border-box;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.ee-exam-header-box-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.ee-exam-header-box-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ee-exam-logo--color {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  flex-shrink: 0;
+  filter: none !important;
+  -webkit-filter: none !important;
+  opacity: 1 !important;
+  mix-blend-mode: normal !important;
+}
+
+.ee-exam-header-box .ee-exam-academy {
+  margin: 0;
+  color: #000;
+  font-size: 12.5pt;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.ee-exam-header-box .ee-exam-doc-title {
+  margin: 3px 0 0;
+  color: #000;
+  font-size: 18pt;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+}
+
+.ee-exam-header-box-right {
+  flex-shrink: 0;
+  text-align: right;
+  color: #000;
+  font-size: 12.5pt;
+  font-weight: 700;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.ee-exam-header-box-right p {
+  margin: 0;
+  color: #000;
+}
+
+.ee-exam-header-box-info {
+  display: grid;
+  grid-template-columns: 1.15fr 1.25fr 0.75fr 1.05fr;
+  gap: 6px 16px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #444;
+  color: #000;
+  font-size: 11.5pt;
+  line-height: 1.35;
+}
+
+.ee-exam-header-box-info p {
+  margin: 0;
+  color: #000;
+}
+
+.ee-exam-header-box-info .ee-exam-info-label {
+  color: #000;
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+/* 유의사항: 최소 높이 */
+.ee-exam-notices {
+  margin: 0 0 4px;
+  padding: 1px 4px;
+  border: 0.4pt solid #555;
+  font-size: 7pt;
+  line-height: 1.15;
+}
+
+.ee-exam-notices-title {
+  margin: 0;
+  font-weight: 700;
+  font-size: 7pt;
+  line-height: 1.15;
+}
+
+.ee-exam-notices ol {
+  margin: 0;
+  padding-left: 1.1em;
+  list-style: decimal;
+}
+
+.ee-exam-notices li {
+  margin: 0;
+  padding: 0;
+}
+
+/* 문제 블록: block 루트 (Chrome flex+break-inside 버그 회피) */
+.ee-exam-print-item {
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  break-inside: avoid;
+  page-break-inside: avoid;
+  -webkit-column-break-inside: avoid;
+}
+
+.ee-exam-print-qhead {
+  display: flex;
+  gap: 5px;
+  align-items: flex-start;
+}
+
+.ee-exam-print-qnum {
+  margin: 0;
+  flex: 0 0 1.35em;
+  font-weight: 700;
+  font-size: 10pt;
+}
+
+.ee-exam-print-qbody {
+  flex: 1;
+  min-width: 0;
+}
+
+.ee-exam-print-stem {
+  margin: 0 0 3px;
+  white-space: pre-wrap;
+  font-weight: 600;
+  font-size: 10pt;
+}
+
+.ee-exam-print-choices {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ee-exam-print-choices li {
+  display: flex;
+  gap: 5px;
+  margin: 0 0 1px;
+  align-items: flex-start;
+  font-size: 9.5pt;
+}
+
+.ee-print-choice-label {
+  flex: 0 0 1.4em;
+  font-weight: 700;
+}
+
+/*
+ * 수학: 고정 2단 (좌 3 + 우 3 / 페이지), 중앙 세로선
+ * CSS column 자동 재배치 사용하지 않음
+ */
+.ee-exam-subject-math .ee-exam-math-body {
+  margin-top: 8mm; /* 유의사항과 1·4번 사이 약 1~2줄 */
+}
+
+.ee-exam-math-page {
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr;
+  column-gap: 3.5mm;
+  align-items: stretch;
+  box-sizing: border-box;
+}
+
+.ee-exam-math-page + .ee-exam-math-page {
+  margin-top: 0;
+}
+
+.ee-exam-math-vrule {
+  width: 1px;
+  background: #333;
+  justify-self: center;
+  align-self: stretch;
+}
+
+.ee-exam-math-col {
+  display: grid;
+  grid-template-rows: repeat(3, 1fr);
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.ee-exam-math-slot {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  height: auto;
+  padding: 0 2mm;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+.ee-exam-math-slot.ee-exam-print-item {
+  margin: 0;
+  padding-left: 2mm;
+  padding-right: 2mm;
+}
+
+.ee-exam-math-slot-empty {
+  min-height: 0;
+}
+
+/* 슬롯 내 남은 세로 공간 = 흰 풀이 여백 (박스/라벨 없음) */
+.ee-exam-subject-math .ee-exam-math-slot .ee-exam-work-space {
+  display: block;
+  flex: 1 1 0;
+  width: 100%;
+  min-height: 0;
+  height: auto;
+  margin: 2px 0 0;
+  padding: 0;
+  border: 0 none;
+  outline: none;
+  background: transparent;
+  box-shadow: none;
+  /* 인쇄 시 빈 flex 영역 축소 방지 */
+  overflow: hidden;
+}
+
+.ee-exam-subject-math .ee-exam-math-slot .ee-exam-work-space::before {
+  content: '';
+  display: block;
+  height: 100%;
+  min-height: 1px;
+}
+
+.ee-exam-subject-math .ee-exam-math-slot.ee-exam-item-long .ee-exam-work-space {
+  min-height: 0;
+}
+
+/*
+ * 영어 본문: 수학과 동일 페이지 프레임(.ee-exam-math-page / .ee-exam-math-vrule) 재사용
+ * 차이점만 — 단당 문항 수 비고정, 문항 높이 자동, 풀이 여백 없음, 문항 간 일정 gap
+ */
+.ee-exam-subject-english .ee-exam-english-body {
+  margin-top: 8mm; /* 수학 .ee-exam-math-body 와 동일 (수학 selector는 건드리지 않음) */
+}
+
+.ee-exam-subject-english .ee-exam-english-col {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-content: flex-start;
+  /* 문항↔문항 사이만 (내부 stem/choices 간격은 건드리지 않음) */
+  gap: 18mm; /* ≈68px @96dpi — 기존 5mm 대비 명확 분리, 수학 짧은문항 시각간격(~99px)에 근접 */
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.ee-exam-subject-english .ee-exam-english-item {
+  display: block;
+  flex: 0 0 auto;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0 2mm; /* 수학 .ee-exam-math-slot 좌우 패딩과 동일 */
+  box-sizing: border-box;
+  break-inside: avoid;
+  page-break-inside: avoid;
+  overflow: visible;
+}
+
+.ee-exam-subject-english .ee-exam-english-item .ee-exam-print-stem {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.ee-exam-subject-english .ee-exam-english-item .ee-exam-print-choices li span:last-child {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  min-width: 0;
+}
+
+/* 화면 미리보기 */
+.ee-exam-screen-preview {
+  display: block;
+}
+
+.ee-exam-screen-preview .ee-exam-math-page--first {
+  min-height: 640px;
+  height: 640px;
+}
+
+.ee-exam-screen-preview .ee-exam-math-page:not(.ee-exam-math-page--first) {
+  min-height: 780px;
+  height: 780px;
+  margin-top: 20px;
+}
+
+.ee-exam-screen-preview + .ee-exam-screen-preview {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px dashed #cbd5e1;
+}
+
+@media (max-width: 640px) {
+  .ee-exam-info-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm 13mm 12mm;
+
+    @bottom-center {
+      content: '- ' counter(page) ' -';
+      font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+      font-size: 9pt;
+      color: #333;
+    }
+  }
+
+  html,
+  body {
+    background: #fff !important;
+    height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* 시험지 출력 시에만 포털 시트 외 숨김 (종합진단 REPORT 등과 충돌 방지) */
+  html.ee-printing-exam body > *:not(.ee-print-sheet) {
+    display: none !important;
+  }
+
+  /* 월간 REPORT 전역 body*{visibility:hidden} 보다 높은 특이성으로 덮어씀 */
+  html.ee-printing-exam body .ee-print-sheet,
+  html.ee-printing-exam body .ee-print-sheet * {
+    visibility: visible !important;
+  }
+
+  .ee-print-sheet {
+    display: block !important;
+    position: static !important;
+    left: auto !important;
+    top: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    pointer-events: auto !important;
+    z-index: auto !important;
+    color: #111 !important;
+    background: #fff !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .ee-exam-sheet-next {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  .ee-exam-masthead,
+  .ee-exam-info-row,
+  .ee-exam-notices,
+  .ee-exam-header-box {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /*
+   * 상단 박스: Chromium PDF가 width:100% 요소의 우측 끝 세로선(border/shadow)을
+   * 누락·희석하는 버그가 있음. 인쇄 프레임을 우측으로 1px 안쪽에 두어
+   * 상/하/좌/우를 동일 #222 1px solid로 그림.
+   */
+  .ee-exam-header-box {
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+    opacity: 1 !important;
+    background: #fff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .ee-exam-header-box::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 1px; /* 페이지/콘텐츠 우측 끝 클리핑 회피 */
+    border: 1px solid #222;
+    box-sizing: border-box;
+    pointer-events: none;
+    opacity: 1;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* 로고 원본 컬러 유지 (인쇄 포함) */
+  .ee-exam-logo--color {
+    filter: none !important;
+    -webkit-filter: none !important;
+    opacity: 1 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .ee-exam-print-item {
+    display: block !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+    -webkit-column-break-inside: avoid !important;
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .ee-exam-math-slot.ee-exam-print-item {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .ee-exam-print-qhead {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* 수학: 유의사항 아래~footer 위까지를 채우고 3슬롯 균등 분할 */
+  .ee-exam-math-page {
+    page-break-after: always;
+    break-after: page;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .ee-exam-math-page:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+
+  /*
+   * @page margin 10mm+13mm → 본문 가용 ≈ 274mm
+   * 1페이지: 확대된 헤더박스(≈46mm) + 본문상단여백 8mm → 문제영역 ≈ 220mm
+   * 2페이지~: 헤더 없음 → 문제영역 ≈ 270mm (하단 페이지번호는 @page margin)
+   */
+  .ee-exam-math-page--first {
+    height: 220mm;
+  }
+
+  .ee-exam-math-page:not(.ee-exam-math-page--first) {
+    height: 270mm;
+  }
+
+  .ee-exam-math-col {
+    display: grid !important;
+    grid-template-rows: repeat(3, 1fr);
+    height: 100%;
+  }
+
+  .ee-exam-math-vrule {
+    height: 100%;
+    align-self: stretch;
+    width: 1px;
+    background: #333 !important;
+    opacity: 1 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .ee-exam-math-slot,
+  .ee-exam-math-slot-empty {
+    min-height: 0;
+    height: auto;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .ee-exam-subject-math .ee-exam-math-slot .ee-exam-work-space {
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+  }
+
+  /* 영어: 수학 3슬롯 그리드를 flex 흐름으로만 덮어씀 (페이지/vrule/높이는 수학 규칙 그대로) */
+  .ee-exam-subject-english .ee-exam-english-col.ee-exam-math-col {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-start !important;
+    grid-template-rows: none !important;
+    gap: 18mm;
+    height: 100%;
+  }
+
+  .ee-exam-subject-english .ee-exam-english-item {
+    display: block !important;
+    flex: 0 0 auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* ----- 개별 문제 미리보기 출력(기존 단일 문제 출력 유지) ----- */
+  .ee-print-header {
+    margin-bottom: 18px;
+    padding-bottom: 10px;
+    border-bottom: 1.5pt solid #111;
+  }
+
+  .ee-print-brand {
+    margin: 0;
+    font-size: 11pt;
+    font-weight: 700;
+  }
+
+  .ee-print-meta {
+    margin: 4px 0 0;
+    font-size: 10pt;
+  }
+
+  .ee-print-label {
+    margin: 0 0 6px;
+    font-size: 10pt;
+    font-weight: 700;
+  }
+
+  .ee-print-stem {
+    margin-bottom: 18px;
+  }
+
+  .ee-print-stem-text {
+    margin: 0;
+    white-space: pre-wrap;
+    font-size: 12pt;
+    font-weight: 600;
+  }
+
+  .ee-print-choices ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .ee-print-choices li {
+    display: flex;
+    gap: 8px;
+    margin: 0 0 8px;
+    align-items: flex-start;
+  }
+}

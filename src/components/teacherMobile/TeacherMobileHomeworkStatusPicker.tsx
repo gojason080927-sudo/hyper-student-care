@@ -6,6 +6,9 @@ type TeacherMobileHomeworkStatusPickerProps = {
   onChange: (status: HomeworkStatus) => void
   error?: string
   compact?: boolean
+  label?: string
+  labelClassName?: string
+  hideLabel?: boolean
 }
 
 export function TeacherMobileHomeworkStatusPicker({
@@ -13,13 +16,17 @@ export function TeacherMobileHomeworkStatusPicker({
   onChange,
   error,
   compact = false,
+  label = '지난 과제 *',
+  labelClassName,
+  hideLabel = false,
 }: TeacherMobileHomeworkStatusPickerProps) {
   return (
     <fieldset>
       <TeacherMobileHomeworkStatusButtons
         value={value}
         onChange={onChange}
-        label="수행 상태 *"
+        label={hideLabel ? undefined : label}
+        labelClassName={labelClassName}
         error={error}
         compact={compact}
       />

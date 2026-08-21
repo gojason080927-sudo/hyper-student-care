@@ -26,3 +26,7 @@ export function useParentStudent(): Student {
   }
   return student
 }
+
+export function useParentStudentOptional(): Student | null {
+  return useContext(ParentStudentContext)
+}

@@ -8,6 +8,7 @@ import {
   Megaphone,
   Users,
 } from 'lucide-react'
+import { HyperFeaturedCardWave } from '../../components/ui/HyperFeaturedCardWave'
 import { TeacherMobileHeader } from '../../components/teacherMobile/TeacherMobileHeader'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -73,18 +74,21 @@ export function TeacherMobileDashboardPage() {
       <div className="teacher-mobile-home flex min-h-0 flex-1 flex-col px-4 pb-2 pt-3">
         <div className="flex min-h-0 flex-1 flex-col space-y-3">
           <Link to={featured.to} className="tm-featured-card">
-            <div className="flex items-center gap-3">
-              <span className="tm-featured-icon">
-                <FeaturedIcon className="h-7 w-7" strokeWidth={2} aria-hidden />
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-lg font-bold leading-tight">{featured.title}</p>
-                <p className="mt-1 text-[15px] leading-snug text-white/85">{featured.description}</p>
+            <div className="tm-featured-card__body">
+              <div className="flex items-center gap-3">
+                <span className="tm-featured-icon">
+                  <FeaturedIcon className="h-7 w-7" strokeWidth={2} aria-hidden />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-lg font-bold leading-tight">{featured.title}</p>
+                  <p className="mt-1 text-[15px] leading-snug text-white/85">{featured.description}</p>
+                </div>
+                <span className="tm-featured-arrow" aria-hidden>
+                  <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
+                </span>
               </div>
-              <span className="tm-featured-arrow" aria-hidden>
-                <ArrowRight className="h-5 w-5" strokeWidth={2.25} />
-              </span>
             </div>
+            <HyperFeaturedCardWave />
           </Link>
 
           <div className="grid min-h-0 flex-1 auto-rows-fr grid-cols-2 gap-2.5 sm:gap-3">

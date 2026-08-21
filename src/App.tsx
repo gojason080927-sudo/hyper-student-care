@@ -82,6 +82,15 @@ import { ParentStudentQuestionsPage } from './pages/parent/ParentStudentQuestion
 
 import { ParentStudentTodayReportPage } from './pages/parent/ParentStudentTodayReportPage'
 
+import { EntranceExamAttemptPage } from './features/entranceExam/EntranceExamAttemptPage'
+import { EntranceExamHubPage } from './features/entranceExam/EntranceExamHubPage'
+import { EntranceExamIntegratedReportPage } from './features/entranceExam/EntranceExamIntegratedReportPage'
+import { EntranceExamIntegratedSessionsPage } from './features/entranceExam/EntranceExamIntegratedSessionsPage'
+import { EntranceExamQuestionBankPage } from './features/entranceExam/EntranceExamQuestionBankPage'
+import { EntranceExamReportPage } from './features/entranceExam/EntranceExamReportPage'
+import { EntranceExamResultsPage } from './features/entranceExam/EntranceExamResultsPage'
+import { EntranceExamSurveyPage } from './features/entranceExam/EntranceExamSurveyPage'
+
 
 
 function App() {
@@ -361,6 +370,20 @@ function App() {
           <Route path="monthly-evaluations" element={<MonthlyEvaluationSelectPage />} />
 
           <Route path="teacher/monthly-evaluation" element={<MonthlyEvaluationPage />} />
+
+          {/* 신입생 평가만 Supabase Auth session 필수 (기존 PC 라우트는 유지) */}
+          <Route element={<ProtectedRoute />}>
+            <Route path="entrance-exam">
+              <Route index element={<EntranceExamHubPage />} />
+              <Route path="questions" element={<EntranceExamQuestionBankPage />} />
+              <Route path="attempts" element={<EntranceExamAttemptPage />} />
+              <Route path="survey" element={<EntranceExamSurveyPage />} />
+              <Route path="results" element={<EntranceExamResultsPage />} />
+              <Route path="report" element={<EntranceExamReportPage />} />
+              <Route path="integrated" element={<EntranceExamIntegratedSessionsPage />} />
+              <Route path="integrated-report" element={<EntranceExamIntegratedReportPage />} />
+            </Route>
+          </Route>
 
           <Route path="monthly-learning-reports" element={<MonthlyLearningReportSelectPage />} />
 

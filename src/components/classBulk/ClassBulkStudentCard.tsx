@@ -14,6 +14,8 @@ import {
   inputClass,
 } from '../../utils/labels'
 import { homeworkStatusStyles } from '../homework/HomeworkStatusButtons'
+import { HomeworkResultEditor } from '../homework/HomeworkResultFields'
+import { TODAY_REPORT_CONTENT_INPUT_EMPHASIS_CLASS } from '../../utils/homeworkCardTypography'
 
 export type ClassBulkCardSyncStatus = 'unsaved' | 'saved' | 'modified' | 'failed'
 
@@ -197,39 +199,29 @@ export function ClassBulkStudentCard({
         <Divider />
 
         <section>
-          <SectionLabel>과제</SectionLabel>
-          <div className="mb-1.5 flex gap-1">
-            {HOMEWORK_STATUSES.map((status) => (
-              <CompactHomeworkButton
-                key={status}
-                status={status}
-                selected={draft.homeworkStatus === status}
-                onClick={() => patch({ homeworkStatus: status })}
-              />
-            ))}
-          </div>
-          <div className="space-y-1.5">
-            <div>
-              <p className="mb-0.5 text-[11px] text-slate-600">지난 과제</p>
-              <textarea
-                rows={2}
-                value={draft.previousAssignment}
-                onChange={(e) => patch({ previousAssignment: e.target.value })}
-                className={compactTextarea}
-                placeholder="지난 과제"
-              />
-            </div>
-            <div>
-              <p className="mb-0.5 text-[11px] text-slate-600">오늘 해야 할 과제</p>
+          <HomeworkResultEditor
+            pastControls={
+              <div className="flex flex-wrap gap-1">
+                {HOMEWORK_STATUSES.map((status) => (
+                  <CompactHomeworkButton
+                    key={status}
+                    status={status}
+                    selected={draft.homeworkStatus === status}
+                    onClick={() => patch({ homeworkStatus: status })}
+                  />
+                ))}
+              </div>
+            }
+            todayControls={
               <textarea
                 rows={2}
                 value={draft.todayAssignment}
                 onChange={(e) => patch({ todayAssignment: e.target.value })}
-                className={compactTextarea}
+                className={`${compactTextarea} ${TODAY_REPORT_CONTENT_INPUT_EMPHASIS_CLASS}`}
                 placeholder="오늘 과제"
               />
-            </div>
-          </div>
+            }
+          />
         </section>
 
         <Divider />

@@ -36,7 +36,7 @@ export function DailyTestSessionGrid({
 
   if (variant === 'parentReport') {
     return (
-      <div className="grid grid-cols-2 gap-2.5">
+      <div className="grid grid-cols-2 gap-2">
         {sessions.map((session) => (
           <ParentReportSessionCard key={session.session} session={session} />
         ))}
@@ -96,13 +96,13 @@ function ParentReportSessionCard({ session }: { session: TestSessionResult }) {
 
   return (
     <div
-      className={`flex min-h-[5.5rem] flex-col items-center justify-center rounded-xl border px-3 py-3 text-center ${getDailyTestSessionColor(session.status)}`}
+      className={`flex min-h-[4.25rem] flex-col items-center justify-center rounded-xl border px-2.5 py-2 text-center ${getDailyTestSessionColor(session.status)}`}
     >
       <p className="text-xs font-semibold text-slate-600">{session.session}차시</p>
       {hasScore ? (
-        <p className="mt-1.5 text-lg font-bold leading-none">{scoreOnFullScale}점</p>
+        <p className="mt-1 text-base font-bold leading-none">{scoreOnFullScale}점</p>
       ) : null}
-      <p className={`font-bold ${hasScore ? 'mt-1 text-sm' : 'mt-2 text-sm'}`}>
+      <p className={`font-bold ${hasScore ? 'mt-0.5 text-sm' : 'mt-1 text-sm'}`}>
         {session.status}
       </p>
     </div>

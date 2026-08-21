@@ -16,6 +16,7 @@ import {
   getAssignmentStatusFromRate,
 } from '../utils/calc'
 import { createId } from '../utils/id'
+import { EMPTY_DAILY_LEARNING_DIAGNOSIS } from '../utils/learningDiagnosis'
 
 const today = new Date().toISOString().slice(0, 10)
 const now = new Date().toISOString()
@@ -163,15 +164,7 @@ export function createSeedRecords(students: Student[]): {
       incorrectCount: 2,
       memo: '',
       sessionResults: [],
-      learningDiagnosis: {
-        wrongAnswerItems: [],
-        questionTotal: 0,
-        fridayRetestTotal: null,
-        fridayRetestWrong: null,
-        englishVocabResult: null,
-        englishGrammarWrongCount: null,
-        englishReadingWrongCount: null,
-      },
+      learningDiagnosis: { ...EMPTY_DAILY_LEARNING_DIAGNOSIS },
       createdAt: now,
       updatedAt: now,
     },
@@ -187,15 +180,7 @@ export function createSeedRecords(students: Student[]): {
       incorrectCount: 6,
       memo: '어휘 부분 보완',
       sessionResults: [],
-      learningDiagnosis: {
-        wrongAnswerItems: [],
-        questionTotal: 0,
-        fridayRetestTotal: null,
-        fridayRetestWrong: null,
-        englishVocabResult: null,
-        englishGrammarWrongCount: null,
-        englishReadingWrongCount: null,
-      },
+      learningDiagnosis: { ...EMPTY_DAILY_LEARNING_DIAGNOSIS },
       createdAt: now,
       updatedAt: now,
     },

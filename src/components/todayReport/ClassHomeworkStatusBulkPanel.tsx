@@ -135,6 +135,8 @@ export function ClassHomeworkStatusBulkPanel({
             subject,
             slotNumber,
           )
+          // Status/entryId only from actual same-date records (no event carry-forward).
+          // Text fields may display the latest prior save for teacher convenience.
           const fromServer: SlotDraft = {
             status:
               !isFallback && isHomeworkStatusSelected(entry?.status)

@@ -4,13 +4,18 @@ import {
   normalizeDailyLearningDiagnosis,
 } from '../../utils/learningDiagnosis'
 import { inputClass } from '../../utils/labels'
-import { WrongAnswerCauseEditor } from './WrongAnswerCauseEditor'
+import { KoreanTextarea } from '../ui/KoreanTextField'
 
 type DailyLearningDiagnosisFieldsProps = {
   subject: string
   value: DailyLearningDiagnosisData
   onChange: (next: DailyLearningDiagnosisData) => void
   compact?: boolean
+}
+
+function parseNonNegIntInput(raw: string): number {
+  if (raw.trim() === '') return 0
+  return Math.max(0, Math.floor(Number(raw) || 0))
 }
 
 export function DailyLearningDiagnosisFields({
@@ -28,17 +33,59 @@ export function DailyLearningDiagnosisFields({
   }
 
   return (
-    <div className={`space-y-3 rounded-xl border border-[rgba(22,58,112,0.12)] bg-[#F7FBFA] p-3 ${compact ? '' : 'sm:p-4'}`.trim()}>
+    <div
+      className={`space-y-3 rounded-xl border border-[rgba(22,58,112,0.12)] bg-[#F7FBFA] p-3 ${compact ? '' : 'sm:p-4'}`.trim()}
+    >
       {isMath ? (
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-slate-600">수학 오답 원인 (문항별)</p>
-          <WrongAnswerCauseEditor
-            items={diagnosis.wrongAnswerItems}
-            onChange={(wrongAnswerItems) => patch({ wrongAnswerItems })}
-            questionTotal={diagnosis.questionTotal}
-            onQuestionTotalChange={(questionTotal) => patch({ questionTotal })}
-            compact={compact}
-          />
+          <p className="text-sm font-semibold text-slate-700">오답 분석</p>
+          <div className="grid grid-cols-3 gap-2">
+            <label>
+              <span className="mb-1 block text-xs font-semibold text-slate-600">개념 부족</span>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                inputMode="numeric"
+                value={diagnosis.conceptLackCount || ''}
+                onChange={(e) => patch({ conceptLackCount: parseNonNegIntInput(e.target.value) })}
+                className={inputClass()}
+                placeholder="0"
+              />
+            </label>
+            <label>
+              <span className="mb-1 block text-xs font-semibold text-slate-600">계산 실수</span>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                inputMode="numeric"
+                value={diagnosis.calculationErrorCount || ''}
+                onChange={(e) =>
+                  patch({ calculationErrorCount: parseNonNegIntInput(e.target.value) })
+                }
+                className={inputClass()}
+                placeholder="0"
+              />
+            </label>
+            <label>
+              <span className="mb-1 block text-xs font-semibold text-slate-600">
+                응용 능력 부족
+              </span>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                inputMode="numeric"
+                value={diagnosis.applicationLackCount || ''}
+                onChange={(e) =>
+                  patch({ applicationLackCount: parseNonNegIntInput(e.target.value) })
+                }
+                className={inputClass()}
+                placeholder="0"
+              />
+            </label>
+          </div>
         </div>
       ) : null}
 
@@ -98,10 +145,21 @@ export function DailyLearningDiagnosisFields({
         </div>
       ) : null}
 
+      <label className="block">
+        <span className="mb-1 block text-sm font-semibold text-slate-700">강사의 피드백</span>
+        <KoreanTextarea
+          value={diagnosis.teacherFeedback}
+          onChange={(e) => patch({ teacherFeedback: e.target.value })}
+          rows={compact ? 3 : 5}
+          className={`${inputClass()} min-h-[5.5rem] resize-y`}
+          placeholder="학생·학부모에게 전달할 피드백을 입력해 주세요."
+        />
+      </label>
+
       <div className="grid gap-2 sm:grid-cols-2">
         <label>
           <span className="mb-1 block text-sm font-semibold text-slate-600">
-            주간 오답 재시험
+            격주간 오답 재시험
           </span>
           <input
             type="number"
@@ -118,9 +176,7 @@ export function DailyLearningDiagnosisFields({
           />
         </label>
         <label>
-          <span className="mb-1 block text-sm font-semibold text-slate-600">
-            재시험 오답 수
-          </span>
+          <span className="mb-1 block text-sm font-semibold text-slate-600">재시험 오답 수</span>
           <input
             type="number"
             min={0}

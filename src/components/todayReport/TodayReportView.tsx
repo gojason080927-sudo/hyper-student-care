@@ -11,10 +11,12 @@ import {
 } from '../teacherMobile/TeacherMobileDailyTestSessionForm'
 import { DailyTestSessionGrid } from '../dailytest/DailyTestSessionGrid'
 import { DailyLearningDiagnosisFields } from '../diagnosis/DailyLearningDiagnosisFields'
+import { WrongAnswerBankBlock } from '../dailytest/WrongAnswerBankBlock'
+import { ParentDailyTestDiagnosisBlock } from '../dailytest/ParentDailyTestDiagnosisBlock'
+import { SectionTitleWithHint } from '../ui/SectionTitleWithHint'
 import { HomeworkStatusPicker } from '../homework/HomeworkStatusPicker'
 import { KoreanTextInput, KoreanTextarea } from '../ui/KoreanTextField'
 import { HeroProgressBar } from '../ui/HeroProgressBar'
-import { StatusBadge } from '../ui/StatusBadge'
 import { TextbookSlotHomeworkSection } from './TextbookSlotHomeworkSection'
 import { TextbookSlotProgressSection } from './TextbookSlotProgressSection'
 import { TodayReportErrorBoundary } from './TodayReportErrorBoundary'
@@ -32,7 +34,10 @@ import type {
   ClassNoteRecord,
 } from '../../types/records'
 import type { Student } from '../../types/student'
-import type { ClassTodayReportSyncContext } from '../../utils/classTodayReportCommon'
+import {
+  getTextbookSyncPeerStudentIds,
+  type ClassTodayReportSyncContext,
+} from '../../utils/classTodayReportCommon'
 import type { TextbookDisplayClassContext } from '../../utils/textbookSlots'
 import { TEACHER_MOBILE_VISIBLE_SLOTS } from '../../utils/teacherMobileTextbookSlots'
 import {
@@ -61,15 +66,22 @@ import { calcProgressRate } from '../../utils/calc'
 import { findTodayAssignment, TODAY_ASSIGNMENT_MAX_LENGTH } from '../../utils/todayAssignment'
 import { CLASS_NOTE_MAX_LENGTH, findClassNote } from '../../utils/classNote'
 import { getHomeworkContent, homeworkRecordToSavePayload } from '../../utils/homework'
+import {
+  HOMEWORK_CARD_FIELD_LABEL_CLASS,
+  HOMEWORK_CARD_FIELD_VALUE_CLASS,
+  TODAY_REPORT_CONTENT_EMPHASIS_CLASS,
+  TODAY_REPORT_CONTENT_INPUT_EMPHASIS_CLASS,
+} from '../../utils/homeworkCardTypography'
+import { HomeworkResultDisplay, HomeworkResultEditor } from '../homework/HomeworkResultFields'
 import { findProgressBySubject } from '../../utils/progressRecord'
 import {
   ATTENDANCE_STATUSES,
   btnPrimary,
   getAttendanceColor,
-  getHomeworkColor,
   inputClass,
-  SUBJECTS,
 } from '../../utils/labels'
+import { resolveCommonClassContext } from '../../utils/classCommonDataKey'
+import { getVisibleDailyTestSubjects } from '../../utils/studentGradeClass'
 
 const PARENT_EMPTY_MESSAGES = {
   attendance: '오늘 등록된 출결 정보가 없습니다.',
@@ -110,6 +122,8 @@ type TodayReportViewProps = {
   classSync?: ClassTodayReportSyncContext
   /** 강사용 모바일 PWA: 단일 섹션만 렌더 (아코디언 내부) */
   mobileSection?: MobileReportSection
+  /** 반 전체 출결 패널 등으로 대체할 때 숨길 섹션 */
+  omitSections?: MobileReportSection[]
 }
 
 function compactInputClass(error?: string) {
@@ -129,7 +143,7 @@ function SectionCard({
   teacherCompact = false,
   hideTitle = false,
 }: {
-  title: string
+  title: React.ReactNode
   titleExtra?: React.ReactNode
   children: React.ReactNode
   compact?: boolean
@@ -266,6 +280,7 @@ export function TodayReportView({
   compactTeacherInput = false,
   classSync,
   mobileSection,
+  omitSections,
 }: TodayReportViewProps) {
   const today = readOnly ? getSeoulDateString() : getTodayString()
   const [selectedDate, setSelectedDate] = useState(initialDate ?? today)
@@ -279,6 +294,7 @@ export function TodayReportView({
     homeworkTextbookEntries: homeworkTextbookEntriesRaw,
     studentTextbookSlots: studentTextbookSlotsRaw,
     classTodayReportCommon,
+    students,
     saveAttendanceRecord,
     saveProgressRecord,
     saveProgressRecordAsync,
@@ -287,6 +303,7 @@ export function TodayReportView({
     saveHomeworkTextbookEntry,
     saveHomeworkTextbookEntryAsync,
     saveHomeworkSubjectWithClassSync,
+    saveClassCommonTextbookName,
     saveStudentTextbookSlot,
     saveDailyTestRecord,
     saveTodayAssignmentRecord,
@@ -327,6 +344,7 @@ export function TodayReportView({
 
   const selectedDateIsToday = readOnly ? isTodaySeoul(selectedDate) : isToday(selectedDate)
 
+  /** Parent read-only: show latest actual report on/before selected date (no DB copy). */
   const parentDisplaySource = useMemo(() => {
     if (!readOnly) {
       return { displayDate: selectedDate, isFallback: false }
@@ -386,13 +404,15 @@ export function TodayReportView({
     [contentDate, homework, student.id],
   )
 
-  const dayDailyTest = useMemo(
+  const dayDailyTests = useMemo(
     () =>
-      dailyTests.find(
-        (record) => record.studentId === student.id && record.date === contentDate,
-      ),
+      dailyTests
+        .filter((record) => record.studentId === student.id && record.date === contentDate)
+        .sort((a, b) => a.subject.localeCompare(b.subject, 'ko')),
     [contentDate, dailyTests, student.id],
   )
+
+  const dayDailyTest = dayDailyTests[0]
 
   const dayAssignment = useMemo(
     () => findTodayAssignment(todayAssignments, student.id, contentDate),
@@ -419,14 +439,56 @@ export function TodayReportView({
     [progressRecords, student.id],
   )
 
+  const effectiveClassSync = useMemo((): ClassTodayReportSyncContext | undefined => {
+    if (classSync) return classSync
+    const grade = student.grade.trim()
+    const className = student.className.trim()
+    if (!grade || !className) return undefined
+    const peerStudentIds = students
+      .filter(
+        (item) =>
+          item.status === '재원' &&
+          item.grade === grade &&
+          item.className === className,
+      )
+      .map((item) => item.id)
+    if (peerStudentIds.length === 0) return undefined
+    return { grade, className, peerStudentIds }
+  }, [classSync, student.className, student.grade, students])
+
   const textbookClassContext = useMemo((): TextbookDisplayClassContext | undefined => {
-    if (!student.grade.trim() || !student.className.trim()) return undefined
+    const resolved = resolveCommonClassContext({
+      grade: effectiveClassSync?.grade,
+      className: effectiveClassSync?.className,
+      studentGrade: student.grade,
+      studentClassName: student.className,
+    })
+    if (!resolved.grade || !resolved.className) return undefined
     return {
-      grade: student.grade,
-      className: student.className,
+      grade: resolved.grade,
+      className: resolved.className,
+      subjects: student.subjects,
       commonRecords: classTodayReportCommon,
+      classSlots: studentTextbookSlots,
+      getTextbookPeerStudentIds: effectiveClassSync
+        ? (subject) =>
+            getTextbookSyncPeerStudentIds(
+              students,
+              resolved.grade,
+              resolved.className,
+              subject,
+            )
+        : undefined,
     }
-  }, [classTodayReportCommon, student.className, student.grade])
+  }, [
+    classTodayReportCommon,
+    effectiveClassSync,
+    student.className,
+    student.grade,
+    student.subjects,
+    studentTextbookSlots,
+    students,
+  ])
 
   const canGoNext = compareDateStrings(selectedDate, today) < 0
   const dateLabel = `${formatKoreanDateLong(selectedDate)}${selectedDateIsToday ? ' · 오늘' : ''}`
@@ -436,7 +498,8 @@ export function TodayReportView({
   const embeddedMobile = Boolean(mobileSection)
   const visibleSlots = embeddedMobile ? TEACHER_MOBILE_VISIBLE_SLOTS : undefined
   const showSection = (section: MobileReportSection) =>
-    !mobileSection || mobileSection === section
+    (!mobileSection || mobileSection === section) &&
+    !(omitSections?.includes(section) ?? false)
   const sectionHideTitle = embeddedMobile
 
   return (
@@ -544,18 +607,31 @@ export function TodayReportView({
               slots={studentSlots}
               entries={studentHomeworkEntries}
               classContext={textbookClassContext}
-              classSync={classSync}
+              classSync={effectiveClassSync}
               onSaveEntry={saveHomeworkTextbookEntry}
               onSaveEntryAsync={saveHomeworkTextbookEntryAsync}
               onSaveSubjectWithClassSync={
-                classSync
+                effectiveClassSync
                   ? (subject, slots) =>
                       saveHomeworkSubjectWithClassSync(
                         student.id,
-                        classSync,
+                        effectiveClassSync,
                         selectedDate,
                         subject,
                         slots,
+                      )
+                  : undefined
+              }
+              onSaveClassCommonTextbookName={
+                effectiveClassSync
+                  ? (subject, slotNumber, name, options) =>
+                      saveClassCommonTextbookName(
+                        effectiveClassSync,
+                        selectedDate,
+                        subject,
+                        slotNumber,
+                        name,
+                        options,
                       )
                   : undefined
               }
@@ -588,19 +664,32 @@ export function TodayReportView({
               slots={studentSlots}
               progressRecords={studentProgressRecords}
               classContext={textbookClassContext}
-              classSync={classSync}
+              classSync={effectiveClassSync}
               onSave={saveProgressRecord}
               onSaveAsync={saveProgressRecordAsync}
               onSaveSubjectWithClassSync={
-                classSync
+                effectiveClassSync
                   ? (subject, teacherMemo, slots) =>
                       saveProgressSubjectWithClassSync(
                         student.id,
-                        classSync,
+                        effectiveClassSync,
                         selectedDate,
                         subject,
                         teacherMemo,
                         slots,
+                      )
+                  : undefined
+              }
+              onSaveClassCommonTextbookName={
+                effectiveClassSync
+                  ? (subject, slotNumber, name, options) =>
+                      saveClassCommonTextbookName(
+                        effectiveClassSync,
+                        selectedDate,
+                        subject,
+                        slotNumber,
+                        name,
+                        options,
                       )
                   : undefined
               }
@@ -626,12 +715,15 @@ export function TodayReportView({
             key={`daily-test-${selectedDate}`}
             readOnly={readOnly}
             record={dayDailyTest}
+            records={dayDailyTests}
             studentId={student.id}
             date={selectedDate}
             onSave={saveDailyTestRecord}
             teacherCompact={tc}
             hideTitle={sectionHideTitle}
             useMobileDailyTestInput={mobileSection === 'dailyTest'}
+            className={student.className}
+            subjects={student.subjects}
           />
           )}
 
@@ -915,11 +1007,17 @@ function ProgressSection({
                       </p>
                     )}
                     {content.trim() ? (
-                      <p className="mt-1.5 whitespace-pre-wrap text-sm leading-snug text-slate-700">
-                        <span className="font-medium text-slate-700">현재 진도:</span> {content}
-                      </p>
+                      <div className="mt-1.5">
+                        <p className={HOMEWORK_CARD_FIELD_LABEL_CLASS}>현재 진도</p>
+                        <p className={`mt-1 whitespace-pre-wrap ${TODAY_REPORT_CONTENT_EMPHASIS_CLASS}`}>
+                          {content}
+                        </p>
+                      </div>
                     ) : (
-                      <p className="mt-1.5 text-sm text-slate-400">등록된 진도가 없습니다.</p>
+                      <div className="mt-1.5">
+                        <p className={HOMEWORK_CARD_FIELD_LABEL_CLASS}>현재 진도</p>
+                        <p className={`mt-1 ${TODAY_REPORT_CONTENT_EMPHASIS_CLASS}`}>미입력</p>
+                      </div>
                     )}
                     {record.totalPage > 0 && (
                       <div className="mt-2.5">
@@ -1045,12 +1143,9 @@ function resolveHomeworkFields(
 
 function hasHomeworkDisplayData(
   homeworkRecord: HomeworkRecord | undefined,
-  previousAssignment: string,
   todayAssignment: string,
 ): boolean {
-  return Boolean(
-    homeworkRecord?.status || previousAssignment.trim() || todayAssignment.trim(),
-  )
+  return Boolean(homeworkRecord?.status || todayAssignment.trim())
 }
 
 function HomeworkAssignmentSection({
@@ -1073,13 +1168,11 @@ function HomeworkAssignmentSection({
   teacherCompact?: boolean
 }) {
   const [status, setStatus] = useState<HomeworkStatus | ''>(homeworkRecord?.status ?? '')
-  const [previousAssignment, setPreviousAssignment] = useState('')
   const [todayAssignment, setTodayAssignment] = useState('')
 
   useEffect(() => {
     const fields = resolveHomeworkFields(homeworkRecord, assignmentRecord)
     setStatus(homeworkRecord?.status ?? '')
-    setPreviousAssignment(fields.previous)
     setTodayAssignment(fields.today)
   }, [assignmentRecord, homeworkRecord])
 
@@ -1087,7 +1180,6 @@ function HomeworkAssignmentSection({
     () => resolveHomeworkFields(homeworkRecord, assignmentRecord),
     [homeworkRecord, assignmentRecord],
   )
-  const displayPrevious = readOnly ? readOnlyFields.previous : previousAssignment
   const displayToday = readOnly ? readOnlyFields.today : todayAssignment
 
   const handleSave = () => {
@@ -1097,7 +1189,7 @@ function HomeworkAssignmentSection({
         id: homeworkRecord?.id,
         studentId,
         date,
-        content: previousAssignment,
+        content: homeworkRecord ? getHomeworkContent(homeworkRecord) : '',
         status,
         teacherMemo: homeworkRecord?.teacherMemo ?? '',
       }),
@@ -1111,11 +1203,7 @@ function HomeworkAssignmentSection({
     })
   }
 
-  const hasReadContent = hasHomeworkDisplayData(
-    homeworkRecord,
-    displayPrevious,
-    displayToday,
-  )
+  const hasReadContent = hasHomeworkDisplayData(homeworkRecord, displayToday)
 
   return (
     <SectionCard title="숙제 수행 결과" teacherCompact={teacherCompact}>
@@ -1125,98 +1213,66 @@ function HomeworkAssignmentSection({
           emptyMessage={PARENT_EMPTY_MESSAGES.homework}
         >
           {() => (
-            <div className="space-y-3">
-              {homeworkRecord?.status && (
-                <StatusBadge
-                  label={homeworkRecord.status}
-                  colorClass={getHomeworkColor(homeworkRecord.status)}
-                />
-              )}
-              {displayPrevious.trim() && (
-                <div>
-                  <p className="text-xs font-semibold text-navy-700">숙제 내용</p>
-                  <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
-                    {displayPrevious}
-                  </p>
-                </div>
-              )}
-              {displayToday.trim() && (
-                <div>
-                  <p className="text-xs font-semibold text-navy-700">오늘 해야 할 과제</p>
-                  <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
-                    {displayToday}
-                  </p>
-                </div>
-              )}
-            </div>
+            <HomeworkResultDisplay
+              pastValue={homeworkRecord?.status?.trim() || '미입력'}
+              todayValue={displayToday.trim() || '미입력'}
+            />
           )}
         </ParentReadOnlyBody>
       ) : teacherCompact ? (
         <div className="space-y-2">
-          <HomeworkStatusPicker value={status} onChange={setStatus} compact />
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <div>
-              <label className="mb-0.5 block text-xs font-semibold text-navy-800">① 지난 과제</label>
-              <input
-                value={previousAssignment}
-                onChange={(e) => setPreviousAssignment(e.target.value)}
-                placeholder="예: 3단원 연습문제 1~10번"
-                className={compactInputClass()}
+          <HomeworkResultEditor
+            pastControls={
+              <HomeworkStatusPicker
+                value={status}
+                onChange={setStatus}
+                compact
+                hideLabel
               />
-            </div>
-            <div>
-              <label className="mb-0.5 block text-xs font-semibold text-navy-800">
-                ② 오늘 해야 할 과제
-              </label>
+            }
+            todayControls={
               <input
                 value={todayAssignment}
                 onChange={(e) =>
                   setTodayAssignment(e.target.value.slice(0, TODAY_ASSIGNMENT_MAX_LENGTH))
                 }
                 placeholder="예: 4단원 개념 정리"
-                className={compactInputClass()}
+                className={`${compactInputClass()} ${TODAY_REPORT_CONTENT_INPUT_EMPHASIS_CLASS}`}
               />
-            </div>
-          </div>
+            }
+          />
           <div className="flex justify-end">
             <SaveButton onClick={handleSave} disabled={!status} label="과제 저장" compact />
           </div>
         </div>
       ) : (
         <div className="space-y-4">
-          <HomeworkStatusPicker value={status} onChange={setStatus} />
-          <div>
-            <label className="mb-1.5 block text-sm font-semibold text-navy-800">
-              ① 지난 과제
-            </label>
-            <p className="mb-2 text-xs text-slate-500">
-              이전에 내준 숙제 내용을 기록해 주세요.
-            </p>
-            <textarea
-              value={previousAssignment}
-              onChange={(e) => setPreviousAssignment(e.target.value)}
-              rows={3}
-              placeholder="예: 3단원 연습문제 1~10번"
-              className={inputClass()}
-            />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-sm font-semibold text-navy-800">
-              ② 오늘 해야 할 과제
-            </label>
-            <p className="mb-2 text-xs text-slate-500">
-              오늘 새롭게 내주는 숙제를 기록해 주세요.
-            </p>
-            <textarea
-              value={todayAssignment}
-              onChange={(e) =>
-                setTodayAssignment(e.target.value.slice(0, TODAY_ASSIGNMENT_MAX_LENGTH))
-              }
-              rows={3}
-              placeholder="예: 4단원 개념 정리 및 예제 풀이"
-              className={inputClass()}
-            />
-          </div>
+          <HomeworkResultEditor
+            pastLabel="지난 과제 *"
+            pastControls={
+              <HomeworkStatusPicker
+                value={status}
+                onChange={setStatus}
+                hideLabel
+              />
+            }
+            todayControls={
+              <>
+                <p className={`mb-2 ${HOMEWORK_CARD_FIELD_VALUE_CLASS} text-slate-500`}>
+                  오늘 새롭게 내주는 숙제를 기록해 주세요.
+                </p>
+                <textarea
+                  value={todayAssignment}
+                  onChange={(e) =>
+                    setTodayAssignment(e.target.value.slice(0, TODAY_ASSIGNMENT_MAX_LENGTH))
+                  }
+                  rows={3}
+                  placeholder="예: 4단원 개념 정리 및 예제 풀이"
+                  className={`${inputClass()} ${TODAY_REPORT_CONTENT_INPUT_EMPHASIS_CLASS}`}
+                />
+              </>
+            }
+          />
           <div className="flex justify-end">
             <SaveButton onClick={handleSave} disabled={!status} label="과제 저장" />
           </div>
@@ -1274,7 +1330,13 @@ function ClassNoteSection({
   const showParentNote = Boolean(record?.hasClassNote && record.note.trim())
   const showNoSpecialNote = Boolean(record && !record.hasClassNote)
 
-  const sectionTitle = '수업 중 특이사항'
+  const sectionTitle = (
+    <SectionTitleWithHint
+      title="강사 피드백"
+      hint="수업을 통해 확인한 학습 상태"
+      hintClassName={teacherCompact ? 'text-[11px]' : 'text-xs'}
+    />
+  )
 
   return (
     <div className="min-w-0 max-w-full">
@@ -1366,13 +1428,14 @@ function ClassNoteSection({
 
 function DailyTestParentSection({ record }: { record: DailyTestRecord }) {
   return (
-    <div className="space-y-3">
-      {record.testName && (
-        <p className="text-sm text-slate-600">
-          <span className="font-medium text-slate-700">{record.subject}</span> · {record.testName}
-        </p>
-      )}
+    <div className="space-y-2.5">
+      <p className="text-sm text-slate-600">
+        <span className="font-medium text-slate-800">{record.subject}</span>
+        {record.testName ? <> · {record.testName}</> : null}
+      </p>
       <DailyTestSessionGrid record={record} variant="parentReport" readOnly />
+      <ParentDailyTestDiagnosisBlock record={record} />
+      <WrongAnswerBankBlock memo={record.memo} />
     </div>
   )
 }
@@ -1380,22 +1443,34 @@ function DailyTestParentSection({ record }: { record: DailyTestRecord }) {
 function DailyTestSection({
   readOnly,
   record,
+  records,
   studentId,
   date,
   onSave,
   teacherCompact = false,
   hideTitle = false,
   useMobileDailyTestInput = false,
+  className: studentClassName = '',
+  subjects = [],
 }: {
   readOnly: boolean
   record?: DailyTestRecord
+  /** 학부모: 같은 날짜 복수 과목 일일테스트 */
+  records?: DailyTestRecord[]
   studentId: string
   date: string
   onSave: ReturnType<typeof useData>['saveDailyTestRecord']
   teacherCompact?: boolean
   hideTitle?: boolean
   useMobileDailyTestInput?: boolean
+  className?: string
+  subjects?: readonly string[]
 }) {
+  const parentRecords = records && records.length > 0 ? records : record ? [record] : []
+  const visibleDailyTestSubjects = useMemo(
+    () => getVisibleDailyTestSubjects(studentClassName, subjects),
+    [studentClassName, subjects],
+  )
   const [form, setForm] = useState<DailyTestFormData>(() => {
     if (record) {
       const loaded = dailyTestRecordToForm(record)
@@ -1420,6 +1495,16 @@ function DailyTestSection({
     }
     setErrors({})
   }, [date, record, studentId])
+
+  useEffect(() => {
+    if (readOnly) return
+    setForm((prev) => {
+      if (visibleDailyTestSubjects.includes(prev.subject as (typeof visibleDailyTestSubjects)[number])) {
+        return prev
+      }
+      return { ...prev, subject: visibleDailyTestSubjects[0] ?? '수학' }
+    })
+  }, [readOnly, visibleDailyTestSubjects])
 
   const handleSave = () => {
     const committedSessions = useMobileDailyTestInput
@@ -1469,10 +1554,16 @@ function DailyTestSection({
     >
       {readOnly ? (
         <ParentReadOnlyBody
-          hasData={hasDailyTestDisplayData(record)}
+          hasData={parentRecords.some((item) => hasDailyTestDisplayData(item))}
           emptyMessage={PARENT_EMPTY_MESSAGES.dailyTest}
         >
-          {() => <DailyTestParentSection record={record!} />}
+          {() => (
+            <div className="space-y-4">
+              {parentRecords.map((item) => (
+                <DailyTestParentSection key={item.id} record={item} />
+              ))}
+            </div>
+          )}
         </ParentReadOnlyBody>
       ) : (
         <div className={teacherCompact ? 'space-y-1.5' : 'space-y-2'}>
@@ -1484,7 +1575,7 @@ function DailyTestSection({
                 onChange={(e) => setForm({ ...form, subject: e.target.value })}
                 className={teacherCompact ? compactInputClass() : inputClass()}
               >
-                {SUBJECTS.map((item) => (
+                {visibleDailyTestSubjects.map((item) => (
                   <option key={item} value={item}>
                     {item}
                   </option>
@@ -1521,13 +1612,6 @@ function DailyTestSection({
               showHeader={!teacherCompact}
             />
           )}
-          <textarea
-            value={form.memo}
-            onChange={(e) => setForm({ ...form, memo: e.target.value })}
-            placeholder="메모 (선택)"
-            rows={teacherCompact ? 1 : 2}
-            className={teacherCompact ? compactTextareaClass() : inputClass()}
-          />
           <DailyLearningDiagnosisFields
             subject={form.subject}
             value={form.learningDiagnosis}

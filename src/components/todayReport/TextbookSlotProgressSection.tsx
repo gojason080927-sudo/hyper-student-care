@@ -109,6 +109,12 @@ export function TextbookSlotProgressSection({
     }>,
   ) => Promise<boolean>
   onSaveSlot: ReturnType<typeof useData>['saveStudentTextbookSlot']
+  onSaveClassCommonTextbookName?: (
+    subject: TextbookSubject,
+    slotNumber: TextbookSlotNumber,
+    name: string,
+    options?: { silent?: boolean },
+  ) => Promise<boolean>
   onNotify?: (message: string) => void
   hideTitle?: boolean
   /** 모바일 PWA 등: 과목별 표시·저장 슬롯 제한 (수학 1~2 등) */
@@ -284,7 +290,7 @@ export function TextbookSlotProgressSection({
     const grouped = groupProgressBySubject(filterParentVisibleSlotDisplays(displays))
     return (
       <SectionCard title="오늘의 진도" hideTitle={hideTitle}>
-        <div className="space-y-4">
+        <div className="space-y-2.5">
           {subjectsToRender.map((subject) => {
             const items = grouped[subject]
             if (items.length === 0) return null

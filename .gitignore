@@ -27,3 +27,9 @@ dist-ssr
 *.sw?
 
 .vercel
+.env*
+
+# Local debug / ephemeral
+.playwright-profile/
+tmp-ee-exam-design/
+e2e-debug*.png

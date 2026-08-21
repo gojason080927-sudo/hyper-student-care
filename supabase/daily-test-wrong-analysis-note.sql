@@ -1,0 +1,15 @@
+-- Hyper Student Care
+-- 일일테스트 오답 분석 / 강사 피드백
+--
+-- ※ 실행 불필요 (참고용)
+-- 신규 필드(conceptLackCount, calculationErrorCount, applicationLackCount, teacherFeedback)는
+-- 기존 daily_tests.learning_diagnosis (JSONB) 안에 저장됩니다.
+-- 컬럼 추가·DROP·TRUNCATE·RLS 변경 없음.
+-- 레거시 wrongAnswerItems / questionTotal 키는 JSON에 그대로 남겨 UI에서만 미사용합니다.
+
+-- 확인용(선택): learning_diagnosis 컬럼 존재 여부
+-- select column_name, data_type
+-- from information_schema.columns
+-- where table_schema = 'public'
+--   and table_name = 'daily_tests'
+--   and column_name = 'learning_diagnosis';

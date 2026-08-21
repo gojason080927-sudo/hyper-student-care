@@ -139,7 +139,18 @@ export function mergeTodayReportIntoState(
         report.todayAssignment,
       ),
       classNotes: setOptionalByStudentDate(current.classNotes, studentId, date, report.classNote),
-      dailyTests: setOptionalByStudentDate(current.dailyTests, studentId, date, report.dailyTest),
+      dailyTests: (() => {
+        const incoming =
+          report.dailyTests && report.dailyTests.length > 0
+            ? report.dailyTests
+            : report.dailyTest
+              ? [report.dailyTest]
+              : []
+        return [
+          ...removeByStudentDate(current.dailyTests, studentId, date),
+          ...incoming,
+        ]
+      })(),
     }
   }
 
@@ -166,10 +177,36 @@ export function mergeTodayReportIntoState(
     classNotes: report.classNote
       ? upsertByStudentDateLegacy(current.classNotes, report.classNote)
       : current.classNotes,
-    dailyTests: report.dailyTest
-      ? upsertByStudentDateLegacy(current.dailyTests, report.dailyTest)
-      : current.dailyTests,
+    dailyTests: (() => {
+      const incoming =
+        report.dailyTests && report.dailyTests.length > 0
+          ? report.dailyTests
+          : report.dailyTest
+            ? [report.dailyTest]
+            : []
+      if (incoming.length === 0) return current.dailyTests
+      let next = current.dailyTests
+      for (const record of incoming) {
+        next = upsertByStudentDateAndSubject(next, record)
+      }
+      return next
+    })(),
   }
+}
+
+function upsertByStudentDateAndSubject(
+  prev: DailyTestRecord[],
+  incoming: DailyTestRecord,
+): DailyTestRecord[] {
+  const next = prev.filter(
+    (item) =>
+      !(
+        item.studentId === incoming.studentId &&
+        item.date === incoming.date &&
+        item.subject === incoming.subject
+      ),
+  )
+  return [...next, incoming]
 }
 
 function upsertByStudentDate<T extends { id: string; studentId: string; date: string }>(

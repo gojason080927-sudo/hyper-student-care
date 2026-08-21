@@ -1,0 +1,42 @@
+{
+  "id": "/care/",
+  "name": "HYPER STUDENT CARE",
+  "short_name": "HYPER CARE",
+  "description": "하이퍼 학생 관리 시스템 — 학부모용",
+  "start_url": "/care/",
+  "scope": "/care/",
+  "display": "standalone",
+  "display_override": [
+    "standalone"
+  ],
+  "background_color": "#0B1F4A",
+  "theme_color": "#0B1F4A",
+  "orientation": "portrait-primary",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "/care/hyper-icon-v6-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/care/hyper-icon-v6-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/care/hyper-icon-v6-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/care/hyper-icon-v6-splash.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

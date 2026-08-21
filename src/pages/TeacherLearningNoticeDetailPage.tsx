@@ -19,7 +19,7 @@ import { useMemo, useState } from 'react'
 export function TeacherLearningNoticeDetailPage() {
   const { postId = '' } = useParams()
   const navigate = useNavigate()
-  const { contentPosts, saveContentPost, deleteContentPost } = useData()
+  const { students, contentPosts, saveContentPost, deleteContentPost } = useData()
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState<ContentPostFormData>(emptyContentPostForm())
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -67,6 +67,13 @@ export function TeacherLearningNoticeDetailPage() {
       isPinned: form.isPinned,
       isPublished: form.isPublished,
       publishedAt: form.publishedAt,
+      audienceType: form.audienceType,
+      targetGrade: form.targetGrade.trim(),
+      targetClassName: form.targetClassName.trim(),
+      targetStudentId: form.targetStudentId.trim(),
+      publishStartDate: form.publishStartDate,
+      publishEndDate: form.publishEndDate,
+      isImportant: form.isImportant,
     })
     setModalOpen(false)
   }
@@ -97,6 +104,7 @@ export function TeacherLearningNoticeDetailPage() {
         <ContentPostForm
           form={form}
           errors={errors}
+          students={students}
           onChange={setForm}
           onSubmit={handleSubmit}
           onCancel={() => setModalOpen(false)}

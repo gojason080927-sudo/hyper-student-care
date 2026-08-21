@@ -4,7 +4,6 @@ import {
   buildStudentCareShareMessage,
   getStudentCareUrl,
   getPublicAssetUrl,
-  normalizeStudentCareUrl,
 } from '../utils/studentCareUrl'
 import { isValidStudentAccessKey } from '../utils/studentAccessKey'
 
@@ -90,11 +89,6 @@ async function ensureKakaoReady(): Promise<KakaoShareResult | null> {
   return null
 }
 
-function buildShareDescription(studentCareUrl: string): string {
-  const url = normalizeStudentCareUrl(studentCareUrl)
-  return `학생 학습관리 내용을 확인해주세요.\n${url}`
-}
-
 /** 카카오 피드형 공유 — 실패 시 Web Share / 클립보드 fallback */
 export async function shareStudentCareToKakao(student: Student): Promise<KakaoShareResult> {
   if (!student) {
@@ -125,7 +119,7 @@ export async function shareStudentCareToKakao(student: Student): Promise<KakaoSh
     return setupError
   }
 
-  const shareImageUrl = getPublicAssetUrl('/hyper-care-share.png')
+  const shareImageUrl = getPublicAssetUrl('/hyper-student-care-share-v3.jpg')
   const link = {
     mobileWebUrl: studentCareUrl,
     webUrl: studentCareUrl,
@@ -135,8 +129,8 @@ export async function shareStudentCareToKakao(student: Student): Promise<KakaoSh
     window.Kakao!.Share.sendDefault({
       objectType: 'feed',
       content: {
-        title: '[Hyper Student Care]',
-        description: buildShareDescription(studentCareUrl),
+        title: 'HYPER STUDENT CARE',
+        description: '하이퍼 학생 관리 시스템',
         imageUrl: shareImageUrl,
         link,
       },

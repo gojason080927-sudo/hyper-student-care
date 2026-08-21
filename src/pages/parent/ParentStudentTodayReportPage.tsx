@@ -2,11 +2,13 @@ import { ArrowLeft } from 'lucide-react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { TodayReportView } from '../../components/todayReport/TodayReportView'
 import { useParentStudent } from '../../contexts/ParentStudentContext'
+import { useMarkParentCategoryReadOnView } from '../../hooks/useMarkParentCategoryReadOnView'
 
 export function ParentStudentTodayReportPage() {
   const { studentAccessKey = '' } = useParams()
   const navigate = useNavigate()
   const student = useParentStudent()
+  useMarkParentCategoryReadOnView('today-report')
   const homePath = `/care/${studentAccessKey || student.studentAccessKey}`
 
   return (
@@ -15,7 +17,7 @@ export function ParentStudentTodayReportPage() {
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="pm-btn-secondary"
+          className="tm-btn-secondary"
         >
           <ArrowLeft className="h-4 w-4" strokeWidth={2} aria-hidden />
           이전 화면

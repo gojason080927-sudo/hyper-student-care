@@ -5,6 +5,7 @@ import {
   ParentRecordCard,
 } from '../../components/parent/ParentStudentComponents'
 import { useParentStudentRecords } from '../../hooks/useParentStudentRecords'
+import { useMarkParentCategoryReadOnView } from '../../hooks/useMarkParentCategoryReadOnView'
 import { formatKoreanDate } from '../../utils/date'
 import {
   getMakeupMethodColor,
@@ -14,6 +15,7 @@ import {
 
 export function ParentStudentMakeupPlanPage() {
   const { makeupPlans } = useParentStudentRecords()
+  useMarkParentCategoryReadOnView('makeup-plans')
 
   return (
     <div className="parent-page space-y-5 pb-6">

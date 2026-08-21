@@ -11,6 +11,7 @@ export const STORAGE_KEYS = {
   progress: 'hyper_progress_records',
   makeupPlans: 'hyper_makeup_plan_records',
   contentPosts: 'hyper_learning_notice_posts',
+  classScheduleGrids: 'hyper_class_schedule_grids',
   todayAssignments: 'hyper_today_assignments',
   classNotes: 'hyper_class_notes',
   studentTextbookSlots: 'hyper_student_textbook_slots',

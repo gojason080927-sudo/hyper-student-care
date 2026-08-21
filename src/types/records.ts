@@ -31,6 +31,8 @@ export type MakeupPlanStatus = '예정' | '완료' | '취소'
 
 export type ContentPostCategory = '학습정보' | '공지사항'
 
+export type NoticeAudienceType = 'all' | 'grade' | 'class' | 'student'
+
 export type ContentPost = {
   id: string
   category: ContentPostCategory
@@ -43,6 +45,13 @@ export type ContentPost = {
   isPinned: boolean
   isPublished: boolean
   publishedAt: string
+  audienceType?: NoticeAudienceType
+  targetGrade?: string
+  targetClassName?: string
+  targetStudentId?: string
+  publishStartDate?: string
+  publishEndDate?: string
+  isImportant?: boolean
   createdAt: string
   updatedAt: string
 }
@@ -89,8 +98,17 @@ export type TestSessionResult = {
 
 /** 일일테스트 학습진단 보조 데이터 (daily_tests.learning_diagnosis) */
 export type DailyLearningDiagnosisData = {
+  /** 레거시: 문항별 오답 (UI 미사용, 기존 데이터·월간집계 호환용 유지) */
   wrongAnswerItems: WrongAnswerItem[]
   questionTotal: number
+  /** 오답 분석 — 개념 부족 문항 수 */
+  conceptLackCount: number
+  /** 오답 분석 — 계산 실수 문항 수 */
+  calculationErrorCount: number
+  /** 오답 분석 — 응용 능력 부족 문항 수 */
+  applicationLackCount: number
+  /** 강사 피드백 */
+  teacherFeedback: string
   fridayRetestTotal: number | null
   fridayRetestWrong: number | null
   englishVocabResult: '합격' | '불합격' | null
@@ -310,11 +328,26 @@ export type ClassTodayReportCommon = {
   reportDate: string
   subject: TextbookSubject
   slotNumber: TextbookSlotNumber
+  textbookName: string
   currentProgress: string
   currentPage: number
   totalPage: number
   previousAssignment: string
   todayAssignment: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type ScheduleTemplateType = 'mon-sun' | 'mon-wed-fri-sat' | 'tue-thu-sat'
+
+export type ClassScheduleGrid = {
+  id: string
+  grade: string
+  className: string
+  templateType: ScheduleTemplateType
+  timeLabels: string[]
+  cells: Record<string, string>
+  isActive: boolean
   createdAt: string
   updatedAt: string
 }

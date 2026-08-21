@@ -411,6 +411,10 @@ export function hasDailyTestDisplayData(record?: DailyTestRecord): boolean {
   const diagnosis = normalizeDailyLearningDiagnosis(record.learningDiagnosis)
   if (
     diagnosis.wrongAnswerItems.length > 0 ||
+    diagnosis.conceptLackCount > 0 ||
+    diagnosis.calculationErrorCount > 0 ||
+    diagnosis.applicationLackCount > 0 ||
+    diagnosis.teacherFeedback.trim() ||
     diagnosis.fridayRetestTotal !== null ||
     diagnosis.fridayRetestWrong !== null ||
     diagnosis.englishVocabResult !== null ||

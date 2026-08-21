@@ -1,20 +1,15 @@
 import { Check } from 'lucide-react'
 import type { HomeworkStatus } from '../../types/records'
 import { HOMEWORK_STATUSES } from '../../utils/labels'
-import { normalizeHomeworkStatus } from '../../utils/homework'
+import { resolveSelectedHomeworkStatus } from '../../utils/homework'
 
 type TeacherMobileHomeworkStatusButtonsProps = {
   value: HomeworkStatus | string
   onChange: (status: HomeworkStatus) => void
   label?: string
+  labelClassName?: string
   error?: string
   compact?: boolean
-}
-
-function resolveSelectedStatus(value: HomeworkStatus | string): HomeworkStatus | null {
-  const trimmed = String(value ?? '').trim()
-  if (!trimmed) return null
-  return normalizeHomeworkStatus(value)
 }
 
 const STATUS_VARIANT: Record<HomeworkStatus, 'complete' | 'partial' | 'incomplete'> = {
@@ -27,22 +22,25 @@ export function TeacherMobileHomeworkStatusButtons({
   value,
   onChange,
   label,
+  labelClassName,
   error,
   compact = false,
 }: TeacherMobileHomeworkStatusButtonsProps) {
-  const current = resolveSelectedStatus(value)
+  const current = resolveSelectedHomeworkStatus(value)
+
+  const labelClass =
+    labelClassName ??
+    (compact
+      ? 'mb-1 text-xs font-medium text-[#1E293B]'
+      : 'mb-2 text-sm font-medium text-[#1E293B]')
 
   return (
     <div>
-      {label && (
-        <p className={`font-medium text-[#1E293B] ${compact ? 'mb-1 text-xs' : 'mb-2 text-sm'}`}>
-          {label}
-        </p>
-      )}
+      {label && <p className={labelClass}>{label}</p>}
       <div
         className={`flex flex-wrap gap-1.5 ${compact ? '' : 'grid grid-cols-1 gap-2 sm:grid-cols-3'}`}
         role="group"
-        aria-label={label ?? '수행 상태'}
+        aria-label={label ?? '지난 과제'}
       >
         {HOMEWORK_STATUSES.map((status) => {
           const selected = current === status

@@ -15,7 +15,7 @@ import {
   SCORE_UNAVAILABLE_LABEL,
   type DiagnosisSubject,
 } from './monthlyLearningDiagnosis'
-import { normalizeDailyLearningDiagnosis } from './learningDiagnosis'
+import { getDailyQuestionTotal, normalizeDailyLearningDiagnosis } from './learningDiagnosis'
 import { getDifficultyTotal } from './monthlyEvaluation'
 import { getFinalPassSession, migrateSessionResults } from './dailyTest'
 import { isDateInYearMonth } from './monthlyLearningProgress'
@@ -270,12 +270,16 @@ function buildMathDailyTestCard(
       if (getFinalPassSession(sessions) === 1) firstPassDays += 1
     }
     const diagnosis = normalizeDailyLearningDiagnosis(test.learningDiagnosis)
-    if (diagnosis.questionTotal > 0) {
+    const questionTotal = getDailyQuestionTotal(diagnosis)
+    if (questionTotal > 0) {
       hasQuestionTotal = true
-      const questionTotal = diagnosis.questionTotal
-      // 최초 응시 오답 = wrongAnswerItems (재시험 fridayRetest* 와 분리된 저장값)
+      const fromItems = diagnosis.wrongAnswerItems.length
+      const fromCounts =
+        diagnosis.conceptLackCount +
+        diagnosis.calculationErrorCount +
+        diagnosis.applicationLackCount
       const firstAttemptWrong = Math.min(
-        diagnosis.wrongAnswerItems.length,
+        fromCounts > 0 ? fromCounts : fromItems,
         questionTotal,
       )
       totalQuestions += questionTotal

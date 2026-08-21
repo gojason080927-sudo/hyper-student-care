@@ -8,7 +8,8 @@ import type {
 } from '../types/records'
 import type { Student } from '../types/student'
 import { calcProgressRate } from './calc'
-import { parseStandardClassName } from './studentGradeClass'
+import { classNamesForClassCommonLookup, getMathSharedLinkedClassNames } from './mathSharedGroup'
+import { getStudentSubjectMode } from './studentGradeClass'
 
 function classCommonSubjectsMatch(stored: unknown, expected: TextbookSubject): boolean {
   const raw = String(stored ?? '').trim().toLowerCase()
@@ -53,29 +54,10 @@ export function classTrackIncludesSubject(
   className: string,
   subject: TextbookSubject,
 ): boolean {
-  const parsed = parseStandardClassName(className)
-  if (!parsed) {
-    const normalized = className.trim().replace(/\s+/g, '')
-    if (normalized.includes('영수')) return true
-    if (normalized.includes('수학')) return subject === '수학'
-    if (normalized.includes('영어')) return subject === '영어'
-    return true
-  }
-  if (
-    parsed.track === '영수' ||
-    parsed.track === '영수A' ||
-    parsed.track === '영수B'
-  ) {
-    return true
-  }
-  if (
-    parsed.track === '수학' ||
-    parsed.track === '수학A' ||
-    parsed.track === '수학B'
-  ) {
-    return subject === '수학'
-  }
-  if (parsed.track === '영어') return subject === '영어'
+  const mode = getStudentSubjectMode(className)
+  if (mode === 'both') return true
+  if (mode === 'math') return subject === '수학'
+  if (mode === 'english') return subject === '영어'
   return true
 }
 
@@ -99,6 +81,109 @@ export function findClassTodayReportCommon(
   )
 }
 
+/** 수학 A/B 연동 반: linked class_name 우선순위로 조회 (현재 반 → 연동 반) */
+export function findClassTodayReportCommonForSubject(
+  records: ClassTodayReportCommon[],
+  grade: string,
+  className: string,
+  reportDate: string,
+  subject: TextbookSubject,
+  slotNumber: TextbookSlotNumber,
+): ClassTodayReportCommon | undefined {
+  const classNames = classNamesForClassCommonLookup(grade, className, subject)
+  if (classNames.length <= 1) {
+    return findClassTodayReportCommon(
+      records,
+      grade,
+      className,
+      reportDate,
+      subject,
+      slotNumber,
+    )
+  }
+
+  for (const linkedClassName of classNames) {
+    const found = findClassTodayReportCommon(
+      records,
+      grade,
+      linkedClassName,
+      reportDate,
+      subject,
+      slotNumber,
+    )
+    if (
+      found &&
+      (found.textbookName.trim() ||
+        found.previousAssignment.trim() ||
+        found.todayAssignment.trim() ||
+        found.currentProgress.trim() ||
+        found.currentPage > 0 ||
+        found.totalPage > 0)
+    ) {
+      return found
+    }
+  }
+
+  for (const linkedClassName of classNames) {
+    const found = findClassTodayReportCommon(
+      records,
+      grade,
+      linkedClassName,
+      reportDate,
+      subject,
+      slotNumber,
+    )
+    if (found) return found
+  }
+
+  return undefined
+}
+
+export function findClassCommonTextbookName(
+  records: ClassTodayReportCommon[],
+  grade: string,
+  className: string,
+  subject: TextbookSubject,
+  slotNumber: TextbookSlotNumber,
+  reportDate?: string,
+): string {
+  const classNames = classNamesForClassCommonLookup(grade, className, subject)
+
+  const pickName = (record: ClassTodayReportCommon | undefined): string =>
+    record?.textbookName.trim() ?? ''
+
+  if (reportDate) {
+    for (const linkedClassName of classNames) {
+      const found = findClassTodayReportCommon(
+        records,
+        grade,
+        linkedClassName,
+        reportDate,
+        subject,
+        slotNumber,
+      )
+      const name = pickName(found)
+      if (name) return name
+    }
+  }
+
+  for (const linkedClassName of classNames) {
+    const matches = records
+      .filter(
+        (record) =>
+          record.grade === grade &&
+          record.className === linkedClassName &&
+          record.subject === subject &&
+          classCommonSlotNumber(record.slotNumber) === slotNumber &&
+          record.textbookName.trim(),
+      )
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    if (matches[0]) return matches[0].textbookName.trim()
+  }
+
+  return ''
+}
+
 export function getClassPeerStudentIds(
   students: Student[],
   anchor: Student,
@@ -120,22 +205,42 @@ export function getClassPeerStudentIds(
     .map((student) => student.id)
 }
 
+/** 교재명 반 공유용 — 수학 A/B 연동 반 학생 포함 */
+export function getTextbookSyncPeerStudentIds(
+  students: Student[],
+  grade: string,
+  className: string,
+  subject: TextbookSubject,
+): string[] {
+  const trimmedGrade = grade.trim()
+  const trimmedClass = className.trim()
+  if (!trimmedGrade || !trimmedClass) return []
+
+  const classNames =
+    subject === '수학'
+      ? getMathSharedLinkedClassNames(trimmedGrade, trimmedClass)
+      : [trimmedClass]
+
+  const ids = students
+    .filter(
+      (student) =>
+        student.status === '재원' &&
+        student.grade === trimmedGrade &&
+        classNames.includes(student.className.trim()),
+    )
+    .map((student) => student.id)
+
+  return ids.length > 0 ? ids : []
+}
+
+/** @deprecated 지난 과제 내용 UI 제거 — 항상 빈 문자열 (DB 기존 값은 유지, 화면·저장에서 미사용) */
 export function resolveCommonPreviousAssignment(
-  common: ClassTodayReportCommon | undefined,
-  studentEntry: HomeworkTextbookEntry | undefined,
-  prevDayCommon: ClassTodayReportCommon | undefined,
-  prevDayStudentEntry: HomeworkTextbookEntry | undefined,
+  _common?: ClassTodayReportCommon | undefined,
+  _studentEntry?: HomeworkTextbookEntry | undefined,
+  _prevDayCommon?: ClassTodayReportCommon | undefined,
+  _prevDayStudentEntry?: HomeworkTextbookEntry | undefined,
 ): string {
-  const fromCommon = common?.previousAssignment.trim()
-  if (fromCommon) return fromCommon
-
-  const fromStudent = studentEntry?.previousAssignment?.trim()
-  if (fromStudent) return fromStudent
-
-  const fromPrevCommon = prevDayCommon?.todayAssignment?.trim()
-  if (fromPrevCommon) return fromPrevCommon
-
-  return prevDayStudentEntry?.todayAssignment?.trim() ?? ''
+  return ''
 }
 
 export function resolveCommonTodayAssignment(
@@ -176,6 +281,15 @@ export function resolveCommonTotalPage(
   return studentRecord?.totalPage ?? 0
 }
 
+export function resolveCommonTextbookName(
+  common: ClassTodayReportCommon | undefined,
+  legacyStudentSlotName?: string,
+): string {
+  const fromCommon = common?.textbookName.trim()
+  if (fromCommon) return fromCommon
+  return legacyStudentSlotName?.trim() ?? ''
+}
+
 export function buildClassCommonRecord(params: {
   id?: string
   grade: string
@@ -183,6 +297,7 @@ export function buildClassCommonRecord(params: {
   reportDate: string
   subject: TextbookSubject
   slotNumber: TextbookSlotNumber
+  textbookName?: string
   currentProgress?: string
   currentPage?: number
   totalPage?: number
@@ -214,6 +329,14 @@ export function buildClassCommonRecord(params: {
     reportDate,
     subject,
     slotNumber,
+    textbookName: (() => {
+      if (params.textbookName === undefined) {
+        return existing?.textbookName?.trim() ?? ''
+      }
+      const trimmed = params.textbookName.trim()
+      if (trimmed) return trimmed
+      return existing?.textbookName?.trim() ?? ''
+    })(),
     currentProgress: params.currentProgress?.trim() ?? existing?.currentProgress ?? '',
     currentPage: pages.currentPage,
     totalPage: pages.totalPage,
@@ -253,7 +376,7 @@ export function buildSyncedHomeworkEntryForPeer(params: {
     date: params.date,
     subject: params.subject,
     slotNumber: params.slotNumber,
-    previousAssignment: params.previousAssignment.trim(),
+    previousAssignment: existing?.previousAssignment?.trim() ?? '',
     todayAssignment: params.todayAssignment.trim(),
     status: isAnchor ? params.anchorStatus : existing?.status ?? '',
     createdAt: existing?.createdAt ?? params.timestamps.createdAt,

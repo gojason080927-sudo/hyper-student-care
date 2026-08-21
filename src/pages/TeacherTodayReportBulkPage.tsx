@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../components/ui/PageHeader'
+import { ClassAttendanceBulkPanel } from '../components/todayReport/ClassAttendanceBulkPanel'
+import { ClassCommonProgressPanel } from '../components/todayReport/ClassCommonProgressPanel'
+import { ClassCommonTodayAssignmentPanel } from '../components/todayReport/ClassCommonTodayAssignmentPanel'
+import { ClassDailyTestBulkPanel } from '../components/todayReport/ClassDailyTestBulkPanel'
+import { ClassHomeworkStatusBulkPanel } from '../components/todayReport/ClassHomeworkStatusBulkPanel'
 import { TodayReportStudentAccordion } from '../components/todayReport/TodayReportStudentAccordion'
 import { useData } from '../hooks/useData'
 import { formatKoreanDate, getTodayString } from '../utils/date'
@@ -9,6 +14,7 @@ import {
   getClassPickerOptions,
   isActiveGrade,
   parseGradeFromClassName,
+  resolveClassNameOnGradeChange,
 } from '../utils/studentGradeClass'
 import type { ClassTodayReportSyncContext } from '../utils/classTodayReportCommon'
 import type { TodayReportLookupContext } from '../utils/todayReportLookup'
@@ -86,7 +92,9 @@ export function TeacherTodayReportBulkPage() {
       const parsedGrade = parseGradeFromClassName(initialClassFromUrl)
       if (parsedGrade) {
         setGrade((current) => current || parsedGrade)
-        setClassName((current) => current || initialClassFromUrl)
+        setClassName((current) =>
+          current || resolveClassNameOnGradeChange(parsedGrade, initialClassFromUrl),
+        )
         return
       }
     }
@@ -98,7 +106,9 @@ export function TeacherTodayReportBulkPage() {
       setGrade((current) => current || student.grade)
     }
     if (student.className.trim()) {
-      setClassName((current) => current || student.className.trim())
+      setClassName((current) =>
+        current || resolveClassNameOnGradeChange(student.grade, student.className.trim()),
+      )
     }
   }, [activeStudents, focusStudentId, initialClassFromUrl])
 
@@ -220,8 +230,65 @@ export function TeacherTodayReportBulkPage() {
         </p>
       ) : (
         <>
+          <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+            <h3 className="mb-2 text-sm font-bold text-navy-900">반 전체 출결</h3>
+            <ClassAttendanceBulkPanel
+              key={`pc-class-attendance-${date}-${className}`}
+              date={date}
+              grade={grade}
+              className={className}
+              students={classStudents}
+            />
+          </section>
+
+          <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+            <h3 className="mb-2 text-sm font-bold text-navy-900">숙제 수행 결과</h3>
+            <ClassHomeworkStatusBulkPanel
+              key={`pc-class-homework-status-${date}-${className}`}
+              date={date}
+              grade={grade}
+              className={className}
+              students={classStudents}
+            />
+          </section>
+
+          <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+            <h3 className="mb-2 text-sm font-bold text-navy-900">반 공통 오늘 과제</h3>
+            <ClassCommonTodayAssignmentPanel
+              key={`pc-class-today-hw-${date}-${className}`}
+              date={date}
+              grade={grade}
+              className={className}
+              students={classStudents}
+              classSync={classSync}
+            />
+          </section>
+
+          <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+            <h3 className="mb-2 text-sm font-bold text-navy-900">반 공통 오늘의 진도</h3>
+            <ClassCommonProgressPanel
+              key={`pc-class-progress-${date}-${className}`}
+              date={date}
+              grade={grade}
+              className={className}
+              students={classStudents}
+              classSync={classSync}
+            />
+          </section>
+
+          <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+            <h3 className="mb-2 text-sm font-bold text-navy-900">일일테스트</h3>
+            <ClassDailyTestBulkPanel
+              key={`pc-class-daily-test-${date}-${className}`}
+              date={date}
+              grade={grade}
+              className={className}
+              students={classStudents}
+            />
+          </section>
+
           <p className="text-xs font-medium text-slate-500">
-            재원 {classStudents.length}명 · 학생 이름을 클릭하면 입력란이 펼쳐집니다.
+            재원 {classStudents.length}명 · 학생 이름을 클릭하면 특이사항을 입력합니다.
           </p>
           <div className="space-y-2">
             {classStudents.map((student) => (
@@ -233,6 +300,9 @@ export function TeacherTodayReportBulkPage() {
                 onToggle={() => toggleExpanded(student.id)}
                 lookupContext={lookupContext}
                 classSync={classSync}
+                omitAttendance
+                omitHomeworkAndProgress
+                omitDailyTest
               />
             ))}
           </div>

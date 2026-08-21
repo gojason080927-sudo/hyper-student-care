@@ -17,9 +17,10 @@ import {
 import { formatKoreanDate, getTodayString } from '../utils/date'
 import { GRADES, inputClass } from '../utils/labels'
 import {
-  getClassOptionsForGrade,
+  getClassPickerOptions,
   isActiveGrade,
   parseGradeFromClassName,
+  resolveClassNameOnGradeChange,
 } from '../utils/studentGradeClass'
 import {
   buildClassBulkStudentDraft,
@@ -86,12 +87,8 @@ export function TeacherClassBulkInputPage() {
 
   const classOptions = useMemo(() => {
     if (!grade) return []
-    const standard = getClassOptionsForGrade(grade)
-    if (className && !standard.includes(className)) {
-      return [...standard, className]
-    }
-    return standard
-  }, [className, grade])
+    return getClassPickerOptions(grade)
+  }, [grade])
 
   const classStudents = useMemo(() => {
     if (!grade || !className) return []
@@ -169,7 +166,9 @@ export function TeacherClassBulkInputPage() {
       const parsedGrade = parseGradeFromClassName(initialClassFromUrl)
       if (parsedGrade) {
         setGrade((current) => current || parsedGrade)
-        setClassName((current) => current || initialClassFromUrl)
+        setClassName((current) =>
+          current || resolveClassNameOnGradeChange(parsedGrade, initialClassFromUrl),
+        )
         return
       }
     }
@@ -181,7 +180,9 @@ export function TeacherClassBulkInputPage() {
       setGrade((current) => current || student.grade)
     }
     if (student.className.trim()) {
-      setClassName((current) => current || student.className.trim())
+      setClassName((current) =>
+        current || resolveClassNameOnGradeChange(student.grade, student.className.trim()),
+      )
     }
   }, [activeStudents, focusStudentId, initialClassFromUrl])
 

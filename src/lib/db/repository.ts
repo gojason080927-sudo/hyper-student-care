@@ -4,6 +4,7 @@ import type {
   AssignmentCompletionRecord,
   AttendanceRecord,
   ClassNoteRecord,
+  ClassScheduleGrid,
   ClassTodayReportCommon,
   ContentPost,
   DailyTestRecord,
@@ -25,6 +26,8 @@ import {
   attendanceToRow,
   classNoteFromRow,
   classNoteToRow,
+  classScheduleGridFromRow,
+  classScheduleGridToRow,
   classTodayReportCommonFromRow,
   classTodayReportCommonToRow,
   dailyTestFromRow,
@@ -54,6 +57,7 @@ import {
   type AssignmentCompletionRow,
   type AttendanceRow,
   type ClassNoteRow,
+  type ClassScheduleGridRow,
   type ClassTodayReportCommonRow,
   type DailyTestRow,
   type HomeworkRow,
@@ -304,6 +308,7 @@ export type AllRecords = {
   studentTextbookSlots: StudentTextbookSlot[]
   makeupPlans: MakeupPlanRecord[]
   contentPosts: ContentPost[]
+  classScheduleGrids: ClassScheduleGrid[]
   todayAssignments: TodayAssignmentRecord[]
   classNotes: ClassNoteRecord[]
   classTodayReportCommon: ClassTodayReportCommon[]
@@ -323,6 +328,7 @@ export async function fetchAllRecords(): Promise<AllRecords> {
     studentTextbookSlotRows,
     makeupRows,
     noticeRows,
+    classScheduleGridRows,
     todayAssignmentRows,
     classNoteRows,
     classTodayReportCommonRows,
@@ -339,6 +345,7 @@ export async function fetchAllRecords(): Promise<AllRecords> {
     selectAllSafe<StudentTextbookSlotRow>('student_textbook_slots'),
     selectAll<MakeupPlanRow>('makeup_plans'),
     selectAll<NoticeRow>('notices'),
+    selectAllSafe<ClassScheduleGridRow>('class_schedule_grids'),
     selectAll<TodayAssignmentRow>('today_assignments'),
     selectAll<ClassNoteRow>('class_notes'),
     selectAllSafe<ClassTodayReportCommonRow>('class_today_report_common'),
@@ -357,6 +364,7 @@ export async function fetchAllRecords(): Promise<AllRecords> {
     studentTextbookSlots: studentTextbookSlotRows.map(studentTextbookSlotFromRow),
     makeupPlans: makeupRows.map(makeupPlanFromRow),
     contentPosts: noticeRows.map(noticeFromRow),
+    classScheduleGrids: classScheduleGridRows.map(classScheduleGridFromRow),
     todayAssignments: todayAssignmentRows.map(todayAssignmentFromRow),
     classNotes: classNoteRows.map(classNoteFromRow),
     classTodayReportCommon: classTodayReportCommonRows.map(classTodayReportCommonFromRow),
@@ -381,7 +389,10 @@ export type TodayReportData = {
   studentTextbookSlots?: StudentTextbookSlot[]
   todayAssignment: TodayAssignmentRecord | null
   classNote: ClassNoteRecord | null
+  /** @deprecated Prefer dailyTests — kept for RPC/compat (첫 1건) */
   dailyTest: DailyTestRecord | null
+  /** 같은 날짜 수학/영어 등 복수 일일테스트 */
+  dailyTests?: DailyTestRecord[]
   classTodayReportCommon?: ClassTodayReportCommon[]
 }
 
@@ -438,6 +449,7 @@ export async function fetchTodayReportData(
       ? todayAssignmentFromRow(todayAssignmentRow)
       : null,
     classNote: classNoteRow ? classNoteFromRow(classNoteRow) : null,
+    dailyTests: dailyTestRows.map(dailyTestFromRow),
     dailyTest: dailyTestRows[0] ? dailyTestFromRow(dailyTestRows[0]) : null,
   }
 }
@@ -505,12 +517,20 @@ export async function upsertHomeworkTextbookEntry(
 export async function upsertClassTodayReportCommon(
   record: ClassTodayReportCommon,
 ): Promise<void> {
+  const row = classTodayReportCommonToRow(record)
   const { error } = await getSupabase()
     .from('class_today_report_common')
-    .upsert(classTodayReportCommonToRow(record), {
+    .upsert(row, {
       onConflict: 'grade,class_name,report_date,subject,slot_number',
     })
   if (error) {
+    console.error('[Repository] class_today_report_common upsert failed', {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      payloadKeys: Object.keys(row),
+    })
     if (isMissingTableError(error)) {
       throw new RepositoryError(
         'class_today_report_common 테이블이 없습니다. Supabase SQL Editor에서 supabase/class-today-report-common-migration.sql을 실행해 주세요.',
@@ -757,6 +777,35 @@ export async function upsertNotice(record: ContentPost): Promise<void> {
 
 export async function deleteNotice(id: string): Promise<void> {
   await deleteRow('notices', id)
+}
+
+// ---------------------------------------------------------------------------
+// Class schedules (반별 공통)
+// ---------------------------------------------------------------------------
+
+export async function upsertClassScheduleGrid(record: ClassScheduleGrid): Promise<void> {
+  const row = classScheduleGridToRow(record)
+  const { error } = await getSupabase()
+    .from('class_schedule_grids')
+    .upsert(row, { onConflict: 'grade,class_name' })
+  if (error) {
+    console.error('[class_schedule_grids] upsert failed', {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      grade: row.grade,
+      class_name: row.class_name,
+      template_type: row.template_type,
+      time_labels_count: Array.isArray(row.time_labels) ? row.time_labels.length : null,
+      cells_keys: row.cells && typeof row.cells === 'object' ? Object.keys(row.cells).length : null,
+    })
+  }
+  throwIfError(error, 'class_schedule_grids', 'class_schedule_grids 저장 실패')
+}
+
+export async function deleteClassScheduleGrid(id: string): Promise<void> {
+  await deleteRow('class_schedule_grids', id)
 }
 
 // ---------------------------------------------------------------------------

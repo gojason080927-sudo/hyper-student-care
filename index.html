@@ -11,16 +11,15 @@
     <meta property="og:site_name" content="HYPER STUDENT CARE" />
     <meta property="og:title" content="HYPER STUDENT CARE" />
     <meta property="og:description" content="하이퍼 학생 관리 시스템" />
-    <meta property="og:image" content="https://hyper-student-care.vercel.app/hyper-care-og.png" />
-    <meta property="og:image:secure_url" content="https://hyper-student-care.vercel.app/hyper-care-og.png" />
-    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image" content="https://hyper-student-care.vercel.app/hyper-student-care-share-v3.jpg" />
+    <meta property="og:image:secure_url" content="https://hyper-student-care.vercel.app/hyper-student-care-share-v3.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:url" content="https://hyper-student-care.vercel.app/" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="HYPER STUDENT CARE" />
     <meta name="twitter:description" content="하이퍼 학생 관리 시스템" />
-    <meta name="twitter:image" content="https://hyper-student-care.vercel.app/hyper-care-og.png" />
+    <meta name="twitter:image" content="https://hyper-student-care.vercel.app/hyper-student-care-share-v3.jpg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -31,12 +30,43 @@
       ;(function () {
         var path = window.location.pathname
         if (!path.startsWith('/teacher/')) return
+        var iconVersion = '3'
         var manifest = document.createElement('link')
         manifest.rel = 'manifest'
-        manifest.href = '/teacher/manifest.webmanifest'
+        manifest.href = '/teacher/manifest.webmanifest?v=' + iconVersion
         document.head.appendChild(manifest)
         var theme = document.querySelector('meta[name="theme-color"]')
-        if (theme) theme.setAttribute('content', '#173564')
+        if (theme) theme.setAttribute('content', '#0B1F4A')
+        var icon = document.querySelector('link[rel="icon"]')
+        if (icon) {
+          icon.setAttribute('href', '/teacher/hyper-teacher-v3-192.png')
+          icon.setAttribute('type', 'image/png')
+        }
+        var icon32 = document.querySelector('link[rel="icon"][sizes="32x32"]')
+        if (!icon32) {
+          icon32 = document.createElement('link')
+          icon32.rel = 'icon'
+          icon32.sizes = '32x32'
+          icon32.type = 'image/png'
+          document.head.appendChild(icon32)
+        }
+        icon32.href = '/teacher/hyper-teacher-v3-192.png'
+        var icon16 = document.querySelector('link[rel="icon"][sizes="16x16"]')
+        if (!icon16) {
+          icon16 = document.createElement('link')
+          icon16.rel = 'icon'
+          icon16.sizes = '16x16'
+          icon16.type = 'image/png'
+          document.head.appendChild(icon16)
+        }
+        icon16.href = '/teacher/hyper-teacher-v3-192.png'
+        var appleIcon = document.querySelector('link[rel="apple-touch-icon"]')
+        if (!appleIcon) {
+          appleIcon = document.createElement('link')
+          appleIcon.rel = 'apple-touch-icon'
+          document.head.appendChild(appleIcon)
+        }
+        appleIcon.href = '/teacher/hyper-teacher-v3-apple-touch.png'
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker
             .register('/teacher/sw.js', { scope: '/teacher/' })

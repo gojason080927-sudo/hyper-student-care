@@ -11,6 +11,7 @@ import {
 import type {
   AssignmentCompletionRecord,
   AttendanceRecord,
+  ClassScheduleGrid,
   ContentPost,
   DailyTestRecord,
   HomeworkRecord,
@@ -24,6 +25,8 @@ import type {
   TodayAssignmentRecord,
   ClassNoteRecord,
   ClassTodayReportCommon,
+  TextbookSlotNumber,
+  TextbookSubject,
 } from '../types/records'
 import type { Student, StudentFormData } from '../types/student'
 import { loadAppData, loadParentCareData as fetchParentCareData, loadTodayReportFromSupabase, shouldDeferInitialLoadForParentRoute, type DataSource } from '../lib/dataLoader'
@@ -40,12 +43,14 @@ import {
   deleteHomework,
   deleteMakeupPlan,
   deleteMonthlyEvaluation,
+  deleteClassScheduleGrid as deleteClassScheduleGridRecord,
   deleteNotice,
   deleteProgress,
   deleteQuestion,
   deleteStudentById,
   upsertAssignmentCompletion,
   upsertAttendance,
+  upsertClassScheduleGrid,
   upsertClassNote,
   upsertDailyTest,
   upsertHomework,
@@ -66,6 +71,7 @@ import { mirrorLocalBackup, toLocalBackupData } from '../storage/localBackup'
 import { createId } from '../utils/id'
 import { normalizeContentPostRecord } from '../utils/contentPost'
 import { normalizeDailyTestRecord } from '../utils/dailyTest'
+import { EMPTY_DAILY_LEARNING_DIAGNOSIS } from '../utils/learningDiagnosis'
 import { normalizeHomeworkStatus } from '../utils/homework'
 import {
   normalizeDifficultyBreakdown,
@@ -90,13 +96,14 @@ import {
 } from '../utils/calc'
 import {
   buildClassCommonRecord,
-  buildSyncedHomeworkEntryForPeer,
   buildSyncedProgressRecordForPeer,
   classTrackIncludesSubject,
   findClassTodayReportCommon,
+  findClassTodayReportCommonForSubject,
   normalizeProgressPages,
   type ClassTodayReportSyncContext,
 } from '../utils/classTodayReportCommon'
+import { getCommonStorageClassNames } from '../utils/classCommonDataKey'
 
 type ToastMessage = { id: string; text: string }
 
@@ -114,6 +121,7 @@ export type DataContextValue = {
   studentTextbookSlots: StudentTextbookSlot[]
   makeupPlans: MakeupPlanRecord[]
   contentPosts: ContentPost[]
+  classScheduleGrids: ClassScheduleGrid[]
   todayAssignments: TodayAssignmentRecord[]
   classNotes: ClassNoteRecord[]
   classTodayReportCommon: ClassTodayReportCommon[]
@@ -153,11 +161,20 @@ export type DataContextValue = {
     subject: HomeworkTextbookEntry['subject'],
     slots: Array<{
       slotNumber: HomeworkTextbookEntry['slotNumber']
-      previousAssignment: string
+      textbookName?: string
       todayAssignment: string
       status: HomeworkTextbookEntry['status']
       entryId?: string
     }>,
+    options?: { silent?: boolean },
+  ) => Promise<boolean>
+  saveClassCommonTextbookName: (
+    classSync: ClassTodayReportSyncContext,
+    date: string,
+    subject: TextbookSubject,
+    slotNumber: TextbookSlotNumber,
+    textbookName: string,
+    options?: { silent?: boolean },
   ) => Promise<boolean>
   saveStudentTextbookSlot: (
     data: Omit<StudentTextbookSlot, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
@@ -228,11 +245,13 @@ export type DataContextValue = {
     teacherMemo: string,
     slots: Array<{
       slotNumber: ProgressRecord['slotNumber']
+      textbookName?: string
       currentProgress: string
       currentPage: number
       totalPage: number
       recordId?: string
     }>,
+    options?: { silent?: boolean },
   ) => Promise<boolean>
   deleteProgressRecord: (id: string) => void
   saveMakeupPlanRecord: (
@@ -243,6 +262,14 @@ export type DataContextValue = {
     data: Omit<ContentPost, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
   ) => boolean
   deleteContentPost: (id: string) => void
+  saveClassScheduleGrid: (
+    data: Omit<ClassScheduleGrid, 'id' | 'createdAt' | 'updatedAt'> & {
+      id?: string
+      createdAt?: string
+      updatedAt?: string
+    },
+  ) => Promise<boolean>
+  deleteClassScheduleGrid: (id: string) => void
   saveTodayAssignmentRecord: (
     data: Omit<TodayAssignmentRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
   ) => boolean
@@ -282,6 +309,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [studentTextbookSlots, setStudentTextbookSlots] = useState<StudentTextbookSlot[]>([])
   const [makeupPlans, setMakeupPlans] = useState<MakeupPlanRecord[]>([])
   const [contentPosts, setContentPosts] = useState<ContentPost[]>([])
+  const [classScheduleGrids, setClassScheduleGrids] = useState<ClassScheduleGrid[]>([])
   const [todayAssignments, setTodayAssignments] = useState<TodayAssignmentRecord[]>([])
   const [classNotes, setClassNotes] = useState<ClassNoteRecord[]>([])
   const [classTodayReportCommon, setClassTodayReportCommon] = useState<
@@ -334,6 +362,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         studentTextbookSlots,
         makeupPlans,
         contentPosts,
+        classScheduleGrids,
         todayAssignments,
         classNotes,
       }),
@@ -342,6 +371,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     assignmentCompletion,
     attendance,
     classNotes,
+    classScheduleGrids,
     contentPosts,
     dailyTests,
     homework,
@@ -372,6 +402,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     questions,
     progressRecords,
     makeupPlans,
+    classScheduleGrids,
     contentPosts,
     todayAssignments,
     classNotes,
@@ -410,6 +441,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setStudentTextbookSlots(dedupeStudentTextbookSlots(data.studentTextbookSlots ?? []))
     setMakeupPlans(data.makeupPlans)
     setContentPosts(data.contentPosts)
+    setClassScheduleGrids(data.classScheduleGrids ?? [])
     setTodayAssignments(data.todayAssignments)
     setClassNotes(data.classNotes)
     setClassTodayReportCommon(data.classTodayReportCommon ?? [])
@@ -893,7 +925,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         date: data.date,
         subject: data.subject,
         slotNumber: data.slotNumber,
-        previousAssignment: data.previousAssignment.trim(),
+        previousAssignment: existing?.previousAssignment?.trim() ?? '',
         todayAssignment: data.todayAssignment.trim(),
         status: data.status ? normalizeHomeworkStatus(data.status) : '',
         createdAt: existing?.createdAt ?? ts.createdAt,
@@ -959,7 +991,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         date: data.date,
         subject: data.subject,
         slotNumber: data.slotNumber,
-        previousAssignment: data.previousAssignment.trim(),
+        previousAssignment: existing?.previousAssignment?.trim() ?? '',
         todayAssignment: data.todayAssignment.trim(),
         status: data.status ? normalizeHomeworkStatus(data.status) : '',
         createdAt: existing?.createdAt ?? ts.createdAt,
@@ -1181,15 +1213,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         sessionResults: data.sessionResults ?? [],
         learningDiagnosis:
           data.learningDiagnosis ??
-          existing?.learningDiagnosis ?? {
-            wrongAnswerItems: [],
-            questionTotal: 0,
-            fridayRetestTotal: null,
-            fridayRetestWrong: null,
-            englishVocabResult: null,
-            englishGrammarWrongCount: null,
-            englishReadingWrongCount: null,
-          },
+          existing?.learningDiagnosis ?? { ...EMPTY_DAILY_LEARNING_DIAGNOSIS },
         createdAt: existing?.createdAt ?? ts.createdAt,
         updatedAt: ts.updatedAt,
       }
@@ -1706,11 +1730,12 @@ export function DataProvider({ children }: { children: ReactNode }) {
       subject: HomeworkTextbookEntry['subject'],
       slots: Array<{
         slotNumber: HomeworkTextbookEntry['slotNumber']
-        previousAssignment: string
+        textbookName?: string
         todayAssignment: string
         status: HomeworkTextbookEntry['status']
         entryId?: string
       }>,
+      options?: { silent?: boolean },
     ): Promise<boolean> => {
       if (import.meta.env.DEV) {
         console.log('[ClassSync][HomeworkSave] saveHomeworkSubjectWithClassSync', {
@@ -1726,25 +1751,24 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
 
       if (!classSync.grade.trim() || !classSync.className.trim()) {
-        showToast('반 정보를 찾지 못했습니다. 현재 학생 과제는 저장되었습니다.')
+        if (!options?.silent) {
+          showToast('반 정보를 찾지 못했습니다. 현재 학생 과제는 저장되었습니다.')
+        }
         return false
       }
       if (!classTrackIncludesSubject(classSync.className, subject)) {
         return true
       }
 
-      const slotsToSync = slots.filter(
-        (slot) =>
-          slot.previousAssignment.trim() || slot.todayAssignment.trim(),
-      )
+      const slotsToSync = slots.filter((slot) => slot.todayAssignment.trim())
       if (slotsToSync.length === 0) {
         return true
       }
 
-      const peerIdsToSync = classSync.peerStudentIds.filter((id) => id !== anchorStudentId)
-
       if (savingRef.current) {
-        showToast('다른 저장 작업이 진행 중입니다. 잠시 후 다시 시도해 주세요.')
+        if (!options?.silent) {
+          showToast('다른 저장 작업이 진행 중입니다. 잠시 후 다시 시도해 주세요.')
+        }
         return false
       }
       savingRef.current = true
@@ -1752,11 +1776,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
       const ts = createTimestamps()
       const commonRecords: ClassTodayReportCommon[] = []
-      const homeworkRecords: HomeworkTextbookEntry[] = []
 
       try {
         for (const slot of slotsToSync) {
-          const existingCommon = findClassTodayReportCommon(
+          const existingCommon = findClassTodayReportCommonForSubject(
             classTodayReportCommon,
             classSync.grade,
             classSync.className,
@@ -1764,67 +1787,35 @@ export function DataProvider({ children }: { children: ReactNode }) {
             subject,
             slot.slotNumber,
           )
-          commonRecords.push(
-            buildClassCommonRecord({
-              grade: classSync.grade,
-              className: classSync.className,
-              reportDate: date,
-              subject,
-              slotNumber: slot.slotNumber,
-              previousAssignment: slot.previousAssignment,
-              todayAssignment: slot.todayAssignment,
-              existing: existingCommon,
-              timestamps: ts,
-              createId,
-            }),
+          const targetClassNames = getCommonStorageClassNames(
+            classSync.grade,
+            classSync.className,
+            subject,
           )
-
-          for (const peerId of peerIdsToSync) {
-            homeworkRecords.push(
-              buildSyncedHomeworkEntryForPeer({
-                peerStudentId: peerId,
-                anchorStudentId,
-                date,
+          for (const targetClassName of targetClassNames) {
+            const classExisting = findClassTodayReportCommon(
+              classTodayReportCommon,
+              classSync.grade,
+              targetClassName,
+              date,
+              subject,
+              slot.slotNumber,
+            )
+            commonRecords.push(
+              buildClassCommonRecord({
+                grade: classSync.grade,
+                className: targetClassName,
+                reportDate: date,
                 subject,
                 slotNumber: slot.slotNumber,
-                previousAssignment: slot.previousAssignment,
+                textbookName: slot.textbookName,
                 todayAssignment: slot.todayAssignment,
-                anchorStatus: slot.status,
-                existingEntries: homeworkTextbookEntries,
+                existing: classExisting ?? existingCommon,
                 timestamps: ts,
                 createId,
               }),
             )
           }
-        }
-
-        for (const entry of homeworkRecords) {
-          if (import.meta.env.DEV) {
-            console.log('[ClassSync][HomeworkSave] upsert peer homework', {
-              table: 'homework_textbook_entries',
-              payload: entry,
-            })
-          }
-          await upsertHomeworkTextbookEntry(entry)
-        }
-
-        if (homeworkRecords.length > 0) {
-          setHomeworkTextbookEntries((prev) => {
-            let next = [...prev]
-            for (const entry of homeworkRecords) {
-              next = next.filter(
-                (item) =>
-                  !(
-                    item.studentId === entry.studentId &&
-                    item.date === entry.date &&
-                    item.subject === entry.subject &&
-                    item.slotNumber === entry.slotNumber
-                  ) && item.id !== entry.id,
-              )
-              next.push(entry)
-            }
-            return next
-          })
         }
 
         let commonSyncFailed = false
@@ -1859,33 +1850,40 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 : error instanceof Error
                   ? error.message
                   : '반 공통 저장 실패'
-            console.error('[ClassSync][HomeworkSave] common upsert failed:', error)
+            const errorCode =
+              error instanceof RepositoryError &&
+              error.cause &&
+              typeof error.cause === 'object' &&
+              'code' in error.cause
+                ? String((error.cause as { code?: string }).code ?? '')
+                : undefined
+            console.error('[ClassSync][HomeworkSave] common upsert failed:', {
+              code: errorCode,
+              message: commonSyncError,
+              error,
+            })
           }
         }
 
-        if (commonSyncFailed && peerIdsToSync.length > 0) {
-          showToast(
-            `같은 반 ${peerIdsToSync.length}명 연동은 완료했으나 반 공통 저장 실패: ${commonSyncError}`,
-          )
-        } else if (commonSyncFailed) {
-          showToast(`과제는 저장되었으나 반 공통 연동 실패: ${commonSyncError}`)
-        } else if (peerIdsToSync.length > 0) {
-          showToast(
-            `같은 반 ${peerIdsToSync.length}명에게 과제 내용이 연동되었습니다.`,
-          )
+        if (commonSyncFailed) {
+          if (!options?.silent) {
+            showToast(`과제는 저장되었으나 반 공통 연동 실패: ${commonSyncError}`)
+          }
+        } else if (!options?.silent) {
+          showToast('반 공통 과제가 저장되었습니다.')
         }
 
         await load({ silent: true })
-        return !commonSyncFailed || peerIdsToSync.length > 0
+        return !commonSyncFailed
       } catch (error) {
-        console.error('[ClassSync] homework peer sync failed:', error)
+        console.error('[ClassSync] homework common save failed:', error)
         const detail =
           error instanceof RepositoryError
             ? error.message
             : error instanceof Error
               ? error.message
               : '반별 과제 연동에 실패했습니다.'
-        showToast(`같은 반 연동 실패: ${detail}. 현재 학생 과제는 저장되었습니다.`)
+        if (!options?.silent) showToast(`반 공통 저장 실패: ${detail}`)
         await load({ silent: true })
         return false
       } finally {
@@ -1893,7 +1891,117 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setIsSaving(false)
       }
     },
-    [classTodayReportCommon, homeworkTextbookEntries, load, showToast],
+    [classTodayReportCommon, load, showToast],
+  )
+
+  const saveClassCommonTextbookName = useCallback(
+    async (
+      classSync: ClassTodayReportSyncContext,
+      date: string,
+      subject: TextbookSubject,
+      slotNumber: TextbookSlotNumber,
+      textbookName: string,
+      options?: { silent?: boolean },
+    ): Promise<boolean> => {
+      const trimmed = textbookName.trim()
+      if (!trimmed) return true
+      if (!classSync.grade.trim() || !classSync.className.trim()) {
+        if (!options?.silent) showToast('반 정보를 찾지 못했습니다.')
+        return false
+      }
+      if (!classTrackIncludesSubject(classSync.className, subject)) {
+        return true
+      }
+
+      const ts = createTimestamps()
+      const commonRecords: ClassTodayReportCommon[] = []
+      const existingCommon = findClassTodayReportCommonForSubject(
+        classTodayReportCommon,
+        classSync.grade,
+        classSync.className,
+        date,
+        subject,
+        slotNumber,
+      )
+      const targetClassNames = getCommonStorageClassNames(
+        classSync.grade,
+        classSync.className,
+        subject,
+      )
+
+      for (const targetClassName of targetClassNames) {
+        const classExisting = findClassTodayReportCommon(
+          classTodayReportCommon,
+          classSync.grade,
+          targetClassName,
+          date,
+          subject,
+          slotNumber,
+        )
+        commonRecords.push(
+          buildClassCommonRecord({
+            grade: classSync.grade,
+            className: targetClassName,
+            reportDate: date,
+            subject,
+            slotNumber,
+            textbookName: trimmed,
+            existing: classExisting ?? existingCommon,
+            timestamps: ts,
+            createId,
+          }),
+        )
+      }
+
+      try {
+        for (const common of commonRecords) {
+          await upsertClassTodayReportCommon(common)
+          setClassTodayReportCommon((prev) => {
+            const next = prev.filter(
+              (item) =>
+                !(
+                  item.grade === common.grade &&
+                  item.className === common.className &&
+                  item.reportDate === common.reportDate &&
+                  item.subject === common.subject &&
+                  item.slotNumber === common.slotNumber
+                ),
+            )
+            return [...next, common]
+          })
+        }
+        if (!options?.silent) {
+          showToast('교재명이 반 공통으로 저장되었습니다.')
+        }
+        await load({ silent: true })
+        return true
+      } catch (error) {
+        const detail =
+          error instanceof RepositoryError
+            ? error.message
+            : error instanceof Error
+              ? error.message
+              : '알 수 없는 오류'
+        console.error('[ClassSync] textbook name common save failed:', {
+          code:
+            error instanceof RepositoryError &&
+            error.cause &&
+            typeof error.cause === 'object' &&
+            'code' in error.cause
+              ? String((error.cause as { code?: string }).code ?? '')
+              : undefined,
+          message: detail,
+          subject,
+          slotNumber,
+          date,
+        })
+        if (!options?.silent) {
+          showToast(`교재명 반 공통 저장 실패: ${detail}`)
+        }
+        return false
+      }
+    },
+    [classTodayReportCommon, load, showToast],
   )
 
   const saveProgressSubjectWithClassSync = useCallback(
@@ -1905,11 +2013,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
       teacherMemo: string,
       slots: Array<{
         slotNumber: ProgressRecord['slotNumber']
+        textbookName?: string
         currentProgress: string
         currentPage: number
         totalPage: number
         recordId?: string
       }>,
+      options?: { silent?: boolean },
     ): Promise<boolean> => {
       if (import.meta.env.DEV) {
         console.log('[ClassSync][ProgressSave] saveProgressSubjectWithClassSync', {
@@ -1926,7 +2036,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
 
       if (!classSync.grade.trim() || !classSync.className.trim()) {
-        showToast('반 정보를 찾지 못했습니다. 현재 학생 진도는 저장되었습니다.')
+        if (!options?.silent) {
+          showToast('반 정보를 찾지 못했습니다. 현재 학생 진도는 저장되었습니다.')
+        }
         return false
       }
       if (
@@ -1938,6 +2050,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         return true
       }
 
+      // origin/main 복구: peer progress + common 저장. textbookName DB 연동은 이번 범위 외.
       const memo = teacherMemo.trim()
       const slotsToSync = slots.filter(
         (slot) =>
@@ -1953,7 +2066,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const peerIdsToSync = classSync.peerStudentIds.filter((id) => id !== anchorStudentId)
 
       if (savingRef.current) {
-        showToast('다른 저장 작업이 진행 중입니다. 잠시 후 다시 시도해 주세요.')
+        if (!options?.silent) {
+          showToast('다른 저장 작업이 진행 중입니다. 잠시 후 다시 시도해 주세요.')
+        }
         return false
       }
       savingRef.current = true
@@ -1966,21 +2081,23 @@ export function DataProvider({ children }: { children: ReactNode }) {
       try {
         for (const slot of slotsToSync) {
           const pages = normalizeProgressPages(slot.currentPage, slot.totalPage)
+          const subjectKey = subject as HomeworkTextbookEntry['subject']
+          const slotKeyNum = slot.slotNumber as HomeworkTextbookEntry['slotNumber']
           const existingCommon = findClassTodayReportCommon(
             classTodayReportCommon,
             classSync.grade,
             classSync.className,
             date,
-            subject as HomeworkTextbookEntry['subject'],
-            slot.slotNumber as HomeworkTextbookEntry['slotNumber'],
+            subjectKey,
+            slotKeyNum,
           )
           commonRecords.push(
             buildClassCommonRecord({
               grade: classSync.grade,
               className: classSync.className,
               reportDate: date,
-              subject: subject as HomeworkTextbookEntry['subject'],
-              slotNumber: slot.slotNumber as HomeworkTextbookEntry['slotNumber'],
+              subject: subjectKey,
+              slotNumber: slotKeyNum,
               currentProgress: slot.currentProgress,
               currentPage: pages.currentPage,
               totalPage: pages.totalPage,
@@ -1994,8 +2111,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
             const built = buildSyncedProgressRecordForPeer({
               peerStudentId: peerId,
               anchorStudentId,
-              subject: subject as HomeworkTextbookEntry['subject'],
-              slotNumber: slot.slotNumber as HomeworkTextbookEntry['slotNumber'],
+              subject: subjectKey,
+              slotNumber: slotKeyNum,
               date,
               syncedContent: {
                 currentProgress: slot.currentProgress,
@@ -2074,16 +2191,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        if (commonSyncFailed && peerIdsToSync.length > 0) {
-          showToast(
-            `같은 반 ${peerIdsToSync.length}명 연동은 완료했으나 반 공통 저장 실패: ${commonSyncError}`,
-          )
-        } else if (commonSyncFailed) {
-          showToast(`진도는 저장되었으나 반 공통 연동 실패: ${commonSyncError}`)
-        } else if (peerIdsToSync.length > 0) {
-          showToast(
-            `같은 반 ${peerIdsToSync.length}명에게 진도 내용이 연동되었습니다.`,
-          )
+        if (!options?.silent) {
+          if (commonSyncFailed && peerIdsToSync.length > 0) {
+            showToast(
+              `같은 반 ${peerIdsToSync.length}명 동기화는 완료했으나 반 공통 저장 실패: ${commonSyncError}`,
+            )
+          } else if (commonSyncFailed) {
+            showToast(`진도는 저장되었으나 반 공통 연동 실패: ${commonSyncError}`)
+          } else if (peerIdsToSync.length > 0) {
+            showToast(`같은 반 ${peerIdsToSync.length}명에게 진도 내용이 동기화되었습니다.`)
+          }
         }
 
         await load({ silent: true })
@@ -2096,7 +2213,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
             : error instanceof Error
               ? error.message
               : '반별 진도 연동에 실패했습니다.'
-        showToast(`같은 반 연동 실패: ${detail}. 현재 학생 진도는 저장되었습니다.`)
+        if (!options?.silent) {
+          showToast(`같은 반 동기화 실패: ${detail}. 현재 학생 진도는 저장되었습니다.`)
+        }
         await load({ silent: true })
         return false
       } finally {
@@ -2164,6 +2283,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
         isPinned: data.isPinned,
         isPublished: data.isPublished,
         publishedAt: data.publishedAt,
+        audienceType: data.audienceType ?? 'all',
+        targetGrade: data.targetGrade ?? '',
+        targetClassName: data.targetClassName ?? '',
+        targetStudentId: data.targetStudentId ?? '',
+        publishStartDate: data.publishStartDate ?? '',
+        publishEndDate: data.publishEndDate ?? '',
+        isImportant: data.isImportant ?? false,
         createdAt: existing?.createdAt ?? ts.createdAt,
         updatedAt: ts.updatedAt,
       }
@@ -2186,6 +2312,67 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setContentPosts((prev) => prev.filter((r) => r.id !== id))
       void persistWithReload(() => deleteNotice(id), '게시글 삭제에 실패했습니다.')
       showToast('게시글이 삭제되었습니다.')
+    },
+    [handlePersistError, showToast],
+  )
+
+  const saveClassScheduleGrid = useCallback(
+    async (
+      data: Omit<ClassScheduleGrid, 'id' | 'createdAt' | 'updatedAt'> & {
+        id?: string
+        createdAt?: string
+        updatedAt?: string
+      },
+    ): Promise<boolean> => {
+      if (savingRef.current) return false
+
+      const ts = createTimestamps()
+      const existingById = data.id
+        ? classScheduleGrids.find((r) => r.id === data.id)
+        : undefined
+      const existingByClass = classScheduleGrids.find(
+        (r) => r.grade === data.grade.trim() && r.className === data.className.trim(),
+      )
+      const existing = existingById ?? existingByClass
+      const record: ClassScheduleGrid = touchRecord({
+        id: data.id ?? existing?.id ?? createId(),
+        grade: data.grade.trim(),
+        className: data.className.trim(),
+        templateType: data.templateType,
+        timeLabels: data.timeLabels,
+        cells: data.cells,
+        isActive: data.isActive,
+        createdAt: existing?.createdAt ?? data.createdAt ?? ts.createdAt,
+        updatedAt: ts.updatedAt,
+      })
+
+      savingRef.current = true
+      setIsSaving(true)
+      try {
+        await upsertClassScheduleGrid(record)
+        await load({ silent: true })
+        showToast('시간표가 저장되었습니다.')
+        return true
+      } catch (error) {
+        console.error('[saveClassScheduleGrid] persist failed', error)
+        showToast('시간표 저장에 실패했습니다.')
+        return false
+      } finally {
+        savingRef.current = false
+        setIsSaving(false)
+      }
+    },
+    [classScheduleGrids, load, showToast],
+  )
+
+  const deleteClassScheduleGrid = useCallback(
+    (id: string) => {
+      setClassScheduleGrids((prev) => prev.filter((r) => r.id !== id))
+      void persistWithReload(
+        () => deleteClassScheduleGridRecord(id),
+        '시간표 삭제에 실패했습니다.',
+      )
+      showToast('시간표가 삭제되었습니다.')
     },
     [handlePersistError, showToast],
   )
@@ -2291,6 +2478,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       studentTextbookSlots,
       makeupPlans,
       contentPosts,
+      classScheduleGrids,
       todayAssignments,
       classNotes,
       classTodayReportCommon,
@@ -2312,6 +2500,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       saveHomeworkTextbookEntry,
       saveHomeworkTextbookEntryAsync,
       saveHomeworkSubjectWithClassSync,
+      saveClassCommonTextbookName,
       saveStudentTextbookSlot,
       deleteHomeworkRecord,
       saveAssignmentRecord,
@@ -2333,6 +2522,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       deleteMakeupPlanRecord,
       saveContentPost,
       deleteContentPost,
+      saveClassScheduleGrid,
+      deleteClassScheduleGrid,
       saveTodayAssignmentRecord,
       saveClassNoteRecord,
       isLoading,
@@ -2348,6 +2539,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       assignmentCompletion,
       attendance,
       classNotes,
+      classScheduleGrids,
       classTodayReportCommon,
       contentPosts,
       copyStudentCareLink,
@@ -2355,6 +2547,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       dataSource,
       deleteAssignmentRecord,
       deleteAttendanceRecord,
+      deleteClassScheduleGrid,
       deleteContentPost,
       deleteDailyTestRecord,
       deleteHomeworkRecord,
@@ -2388,6 +2581,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       saveAttendanceRecord,
       saveAttendanceRecordAsync,
       saveClassNoteRecord,
+      saveClassScheduleGrid,
       saveContentPost,
       saveDailyTestRecord,
       saveDailyTestRecordAsync,
@@ -2395,6 +2589,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       saveHomeworkTextbookEntry,
       saveHomeworkTextbookEntryAsync,
       saveHomeworkSubjectWithClassSync,
+      saveClassCommonTextbookName,
       saveStudentTextbookSlot,
       saveMakeupPlanRecord,
       saveMonthlyEvaluationRecord,

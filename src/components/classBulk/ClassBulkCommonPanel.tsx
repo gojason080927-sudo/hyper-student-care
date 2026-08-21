@@ -80,7 +80,7 @@ export function ClassBulkCommonPanel({
                 htmlFor="common-today"
                 className="mb-1 block text-xs font-semibold text-slate-700"
               >
-                오늘 해야 할 과제
+                오늘 과제
               </label>
               <textarea
                 id="common-today"

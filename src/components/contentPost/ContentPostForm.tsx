@@ -1,13 +1,18 @@
+import type { Student } from '../../types/student'
 import type { ContentPostFormData } from '../../utils/contentPost'
 import {
   CONTENT_POST_CATEGORIES,
   CONTENT_POST_MAX_LENGTH,
 } from '../../utils/contentPost'
+import { NOTICE_AUDIENCE_OPTIONS } from '../../utils/noticeAudience'
+import { getClassOptionsForGrade, isActiveGrade } from '../../utils/studentGradeClass'
+import { GRADES } from '../../utils/labels'
 import { btnPrimary, btnSecondary, inputClass } from '../../utils/labels'
 
 type ContentPostFormProps = {
   form: ContentPostFormData
   errors: Record<string, string>
+  students: Student[]
   onChange: (form: ContentPostFormData) => void
   onSubmit: (e: React.FormEvent) => void
   onCancel: () => void
@@ -16,10 +21,16 @@ type ContentPostFormProps = {
 export function ContentPostForm({
   form,
   errors,
+  students,
   onChange,
   onSubmit,
   onCancel,
 }: ContentPostFormProps) {
+  const classOptions =
+    form.targetGrade && isActiveGrade(form.targetGrade)
+      ? getClassOptionsForGrade(form.targetGrade)
+      : []
+
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div>
@@ -34,7 +45,7 @@ export function ContentPostForm({
           <option value="">선택</option>
           {CONTENT_POST_CATEGORIES.map((category) => (
             <option key={category} value={category}>
-              {category}
+              {category === '학습정보' ? '학습 공지사항 (학습정보)' : '학습 공지사항 (공지)'}
             </option>
           ))}
         </select>
@@ -113,20 +124,166 @@ export function ContentPostForm({
         {errors.authorName && <p className="mt-1 text-sm text-rose-500">{errors.authorName}</p>}
       </div>
 
-      <div>
-        <label className="mb-1.5 block text-sm font-medium text-slate-700">게시일 *</label>
-        <input
-          type="date"
-          value={form.publishedAt}
-          onChange={(e) => onChange({ ...form, publishedAt: e.target.value })}
-          className={inputClass(errors.publishedAt)}
-        />
-        {errors.publishedAt && (
-          <p className="mt-1 text-sm text-rose-500">{errors.publishedAt}</p>
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-4">
+        <p className="text-sm font-semibold text-slate-800">공개 대상</p>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">대상 유형</label>
+          <select
+            value={form.audienceType}
+            onChange={(e) =>
+              onChange({
+                ...form,
+                audienceType: e.target.value as ContentPostFormData['audienceType'],
+                targetGrade: '',
+                targetClassName: '',
+                targetStudentId: '',
+              })
+            }
+            className={inputClass()}
+          >
+            {NOTICE_AUDIENCE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {form.audienceType === 'grade' && (
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">대상 학년 *</label>
+            <select
+              value={form.targetGrade}
+              onChange={(e) => onChange({ ...form, targetGrade: e.target.value })}
+              className={inputClass(errors.targetGrade)}
+            >
+              <option value="">선택</option>
+              {GRADES.map((grade) => (
+                <option key={grade} value={grade}>
+                  {grade}
+                </option>
+              ))}
+            </select>
+            {errors.targetGrade && (
+              <p className="mt-1 text-sm text-rose-500">{errors.targetGrade}</p>
+            )}
+          </div>
+        )}
+
+        {form.audienceType === 'class' && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">대상 학년 *</label>
+              <select
+                value={form.targetGrade}
+                onChange={(e) =>
+                  onChange({ ...form, targetGrade: e.target.value, targetClassName: '' })
+                }
+                className={inputClass(errors.targetGrade)}
+              >
+                <option value="">선택</option>
+                {GRADES.map((grade) => (
+                  <option key={grade} value={grade}>
+                    {grade}
+                  </option>
+                ))}
+              </select>
+              {errors.targetGrade && (
+                <p className="mt-1 text-sm text-rose-500">{errors.targetGrade}</p>
+              )}
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">대상 반/과정 *</label>
+              <select
+                value={form.targetClassName}
+                onChange={(e) => onChange({ ...form, targetClassName: e.target.value })}
+                className={inputClass(errors.targetClassName)}
+                disabled={!form.targetGrade}
+              >
+                <option value="">선택</option>
+                {classOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+              {errors.targetClassName && (
+                <p className="mt-1 text-sm text-rose-500">{errors.targetClassName}</p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {form.audienceType === 'student' && (
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">대상 학생 *</label>
+            <select
+              value={form.targetStudentId}
+              onChange={(e) => onChange({ ...form, targetStudentId: e.target.value })}
+              className={inputClass(errors.targetStudentId)}
+            >
+              <option value="">선택</option>
+              {students
+                .filter((student) => student.status === '재원')
+                .map((student) => (
+                  <option key={student.id} value={student.id}>
+                    {student.name} ({student.grade} {student.className})
+                  </option>
+                ))}
+            </select>
+            {errors.targetStudentId && (
+              <p className="mt-1 text-sm text-rose-500">{errors.targetStudentId}</p>
+            )}
+          </div>
         )}
       </div>
 
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">게시일 *</label>
+          <input
+            type="date"
+            value={form.publishedAt}
+            onChange={(e) => onChange({ ...form, publishedAt: e.target.value })}
+            className={inputClass(errors.publishedAt)}
+          />
+          {errors.publishedAt && (
+            <p className="mt-1 text-sm text-rose-500">{errors.publishedAt}</p>
+          )}
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">게시 시작일</label>
+          <input
+            type="date"
+            value={form.publishStartDate}
+            onChange={(e) => onChange({ ...form, publishStartDate: e.target.value })}
+            className={inputClass()}
+          />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-slate-700">게시 종료일</label>
+          <input
+            type="date"
+            value={form.publishEndDate}
+            onChange={(e) => onChange({ ...form, publishEndDate: e.target.value })}
+            className={inputClass(errors.publishEndDate)}
+          />
+          {errors.publishEndDate && (
+            <p className="mt-1 text-sm text-rose-500">{errors.publishEndDate}</p>
+          )}
+        </div>
+      </div>
+
       <div className="flex flex-wrap gap-4">
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={form.isImportant}
+            onChange={(e) => onChange({ ...form, isImportant: e.target.checked })}
+            className="h-4 w-4 rounded border-slate-300"
+          />
+          중요 공지
+        </label>
         <label className="flex items-center gap-2 text-sm text-slate-700">
           <input
             type="checkbox"
