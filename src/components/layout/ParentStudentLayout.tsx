@@ -1,16 +1,13 @@
+import { Menu } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Outlet, useParams } from 'react-router-dom'
 import { resolveStudentByAccessKey } from '../../lib/dataLoader'
 import { isSupabaseConfigured, normalizeRouteAccessKey } from '../../lib/supabase'
 import { ParentStudentProvider } from '../../contexts/ParentStudentContext'
-import { ParentUnreadProvider } from '../../contexts/ParentUnreadContext'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 import { useData } from '../../hooks/useData'
 import type { Student } from '../../types/student'
-import { ParentPwaRegistrar } from '../parent/ParentPwaRegistrar'
-import { ParentStudentBottomNav } from '../parent/ParentStudentBottomNav'
 import { ParentStudentSidebar } from '../parent/ParentStudentSidebar'
-import '../../styles/teacherMobileTheme.css'
 import '../../styles/parentMobileTheme.css'
 
 function InvalidStudentAccessPage() {
@@ -62,7 +59,10 @@ type ParentStudentLayoutInnerProps = {
 
 function ParentStudentLayoutInner({ studentAccessKey }: ParentStudentLayoutInnerProps) {
   const { isLoading, loadParentCareData } = useData()
-  const [resolvedStudent, setResolvedStudent] = useState<Student | null | undefined>(undefined)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [resolvedStudent, setResolvedStudent] = useState<Student | null | undefined>(
+    undefined,
+  )
   const [recordsLoaded, setRecordsLoaded] = useState(false)
   const [resolveError, setResolveError] = useState<'config' | 'invalid' | null>(null)
   const loadedAccessKeyRef = useRef<string | null>(null)
@@ -72,6 +72,8 @@ function ParentStudentLayoutInner({ studentAccessKey }: ParentStudentLayoutInner
     () => normalizeRouteAccessKey(studentAccessKey),
     [studentAccessKey],
   )
+
+  useBodyScrollLock(sidebarOpen)
 
   useEffect(() => {
     if (isLoading || !normalizedAccessKey) return
@@ -174,36 +176,37 @@ function ParentStudentLayoutInner({ studentAccessKey }: ParentStudentLayoutInner
     )
   }
 
-  return (
-    <ParentStudentProvider student={resolvedStudent}>
-      <ParentUnreadProvider>
-        <ParentStudentLayoutChrome student={resolvedStudent} />
-      </ParentUnreadProvider>
-    </ParentStudentProvider>
-  )
-}
-
-function ParentStudentLayoutChrome({ student }: { student: Student }) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-
-  useBodyScrollLock(sidebarOpen)
+  const student = resolvedStudent
 
   return (
-    <div className="parent-mobile-app flex min-h-svh overflow-x-hidden">
-      <ParentPwaRegistrar studentAccessKey={student.studentAccessKey} />
-      <ParentStudentSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <main
-          className="parent-main parent-main--with-bottom-nav flex-1 px-3 py-4 sm:px-5 sm:py-5 lg:px-8 lg:py-8"
-          style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}
-        >
-          <div className="mx-auto max-w-3xl lg:max-w-4xl">
-            <Outlet key={student.id} />
-          </div>
-        </main>
-        <ParentStudentBottomNav onOpenMore={() => setSidebarOpen(true)} />
+    <ParentStudentProvider student={student}>
+      <div className="parent-mobile-app flex min-h-svh overflow-x-hidden">
+        <ParentStudentSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="pm-app-header sticky top-0 z-30 px-3 py-3 sm:px-4">
+            <div className="mx-auto flex max-w-3xl items-center gap-3 lg:max-w-4xl">
+              <button
+                type="button"
+                aria-label="메뉴 열기"
+                className="pm-menu-btn shrink-0 lg:hidden"
+                onClick={() => setSidebarOpen(true)}
+              >
+                <Menu className="h-5 w-5" strokeWidth={2} />
+              </button>
+              <div className="min-w-0 flex-1">
+                <p className="pm-app-header-kicker">Hyper Student Care</p>
+                <p className="pm-app-header-name truncate">{student.name}</p>
+              </div>
+            </div>
+          </header>
+          <main className="parent-main flex-1 px-3 py-4 sm:px-5 sm:py-6 lg:px-8 lg:py-8">
+            <div className="mx-auto max-w-3xl lg:max-w-4xl">
+              <Outlet key={student.id} />
+            </div>
+          </main>
+        </div>
       </div>
-    </div>
+    </ParentStudentProvider>
   )
 }
 

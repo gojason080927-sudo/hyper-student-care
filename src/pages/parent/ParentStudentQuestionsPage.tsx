@@ -13,7 +13,6 @@ import {
 import { Modal } from '../../components/ui/Modal'
 import { useParentStudent } from '../../contexts/ParentStudentContext'
 import { useParentStudentRecords } from '../../hooks/useParentStudentRecords'
-import { useMarkParentCategoryReadOnView } from '../../hooks/useMarkParentCategoryReadOnView'
 import { useData } from '../../hooks/useData'
 import { btnPrimary, btnSecondary } from '../../utils/labels'
 import { requireDate, requireNonEmpty } from '../../utils/validation'
@@ -21,7 +20,6 @@ import { requireDate, requireNonEmpty } from '../../utils/validation'
 export function ParentStudentQuestionsPage() {
   const student = useParentStudent()
   const { questions } = useParentStudentRecords()
-  useMarkParentCategoryReadOnView('questions')
   const { saveQuestionRecord, showToast } = useData()
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState<QuestionFormState>(() => ({

@@ -1,6 +1,5 @@
 import { DailyTestSessionGrid } from '../../components/dailytest/DailyTestSessionGrid'
 import { ParentDailyTestDiagnosisBlock } from '../../components/dailytest/ParentDailyTestDiagnosisBlock'
-import { WrongAnswerBankBlock } from '../../components/dailytest/WrongAnswerBankBlock'
 import {
   ParentEmptyState,
   ParentPageHeader,
@@ -26,13 +25,9 @@ export function ParentStudentDailyTestPage() {
               date={formatKoreanDate(record.date)}
               title={record.subject}
             >
-              <div className="space-y-2.5">
-                {record.testName ? (
-                  <p className="text-sm text-slate-600">{record.testName}</p>
-                ) : null}
+              <div className="space-y-3">
                 <DailyTestSessionGrid record={record} variant="parentReport" readOnly />
                 <ParentDailyTestDiagnosisBlock record={record} />
-                <WrongAnswerBankBlock memo={record.memo} />
               </div>
             </ParentRecordCard>
           ))}
