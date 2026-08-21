@@ -30,6 +30,10 @@ export type DailyLearningDiagnosis = {
   englishVocabResult: EnglishVocabResult | null
   englishGrammarWrongCount: number | null
   englishReadingWrongCount: number | null
+  /** 영어 듣기 평가 점수 0~100 (미입력 null) */
+  englishListeningScore: number | null
+  /** 영어 듣기 평가 합격/불합격 */
+  englishListeningResult: EnglishVocabResult | null
 }
 
 export const EMPTY_DAILY_LEARNING_DIAGNOSIS: DailyLearningDiagnosis = {
@@ -44,6 +48,8 @@ export const EMPTY_DAILY_LEARNING_DIAGNOSIS: DailyLearningDiagnosis = {
   englishVocabResult: null,
   englishGrammarWrongCount: null,
   englishReadingWrongCount: null,
+  englishListeningScore: null,
+  englishListeningResult: null,
 }
 
 export function isMathWrongCause(value: unknown): value is MathWrongCause {
@@ -81,6 +87,18 @@ function toNullableNonNegInt(value: unknown): number | null {
   const n = Number(value)
   if (!Number.isFinite(n) || n < 0) return null
   return Math.floor(n)
+}
+
+/** 듣기 평가 점수: 빈값 null, 그 외 0~100 */
+function toNullableScore100(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null
+  const n = Number(value)
+  if (!Number.isFinite(n)) return null
+  return Math.max(0, Math.min(100, Math.floor(n)))
+}
+
+function toPassFailResult(value: unknown): EnglishVocabResult | null {
+  return value === '합격' || value === '불합격' ? value : null
 }
 
 function toNonNegInt(value: unknown): number {
@@ -128,7 +146,6 @@ export function normalizeDailyLearningDiagnosis(raw: unknown): DailyLearningDiag
     return { ...EMPTY_DAILY_LEARNING_DIAGNOSIS }
   }
   const row = raw as Record<string, unknown>
-  const vocab = row.englishVocabResult
   const conceptLackCount = toNonNegInt(row.conceptLackCount)
   const calculationErrorCount = toNonNegInt(row.calculationErrorCount)
   const applicationLackCount = toNonNegInt(row.applicationLackCount)
@@ -146,9 +163,11 @@ export function normalizeDailyLearningDiagnosis(raw: unknown): DailyLearningDiag
     teacherFeedback: String(row.teacherFeedback ?? '').trim(),
     fridayRetestTotal: toNullableNonNegInt(row.fridayRetestTotal),
     fridayRetestWrong: toNullableNonNegInt(row.fridayRetestWrong),
-    englishVocabResult: vocab === '합격' || vocab === '불합격' ? vocab : null,
+    englishVocabResult: toPassFailResult(row.englishVocabResult),
     englishGrammarWrongCount: toNullableNonNegInt(row.englishGrammarWrongCount),
     englishReadingWrongCount: toNullableNonNegInt(row.englishReadingWrongCount),
+    englishListeningScore: toNullableScore100(row.englishListeningScore),
+    englishListeningResult: toPassFailResult(row.englishListeningResult),
   }
 }
 
@@ -170,6 +189,8 @@ export function hasDailyLearningDiagnosisContent(
   if (d.englishVocabResult !== null) return true
   if (d.englishGrammarWrongCount !== null) return true
   if (d.englishReadingWrongCount !== null) return true
+  if (d.englishListeningScore !== null) return true
+  if (d.englishListeningResult !== null) return true
   return false
 }
 

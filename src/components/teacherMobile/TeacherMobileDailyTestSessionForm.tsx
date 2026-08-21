@@ -19,6 +19,8 @@ import type { TestSessionResult } from '../../types/records'
 type TeacherMobileDailyTestSessionFormProps = {
   sessions: TestSessionResult[]
   errors: Record<string, string>
+  /** 예: 영어 「어휘 시험」 */
+  sectionTitle?: string
 }
 
 export type TeacherMobileDailyTestSessionFormRef = {
@@ -48,7 +50,7 @@ function getMismatchFromRound(round: MobileDailyTestRound): string | null {
 export const TeacherMobileDailyTestSessionForm = forwardRef<
   TeacherMobileDailyTestSessionFormRef,
   TeacherMobileDailyTestSessionFormProps
->(function TeacherMobileDailyTestSessionForm({ sessions, errors }, ref) {
+>(function TeacherMobileDailyTestSessionForm({ sessions, errors, sectionTitle }, ref) {
   const [rounds, setRounds] = useState<MobileDailyTestRound[]>(() =>
     sessionsToMobileDailyTestRounds(sessions),
   )
@@ -87,9 +89,13 @@ export const TeacherMobileDailyTestSessionForm = forwardRef<
   }
 
   const passRound = rounds.find((round) => round.passed)?.round ?? null
+  const title = sectionTitle?.trim()
 
   return (
     <div className="space-y-2">
+      {title ? (
+        <p className="text-xs font-semibold text-[#163A70]">{title}</p>
+      ) : null}
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {rounds.map((round) => {
           const scoreKey = `session-${round.round}-score`

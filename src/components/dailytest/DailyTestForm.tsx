@@ -82,6 +82,7 @@ export function DailyTestForm({
           onChange({ ...form, sessionResults: normalizeSessionResultsForForm(sessionResults) })
         }
         errors={errors}
+        sectionTitle={form.subject.includes('영어') ? '어휘 시험' : undefined}
       />
       <div>
         <label className="mb-1.5 block text-sm font-medium text-slate-700">메모</label>

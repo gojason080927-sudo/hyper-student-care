@@ -344,6 +344,17 @@ export function ClassDailyTestBulkPanel({
               >
                 {student.name}
               </p>
+              {subject.includes('영어') ? (
+                <p
+                  className={
+                    compact
+                      ? 'mb-1 text-[11px] font-semibold text-[#163A70]'
+                      : 'mb-1 text-xs font-semibold text-navy-900'
+                  }
+                >
+                  어휘 시험
+                </p>
+              ) : null}
               <div className="grid grid-cols-2 gap-1.5">
                 {draft.rounds.map((round) => {
                   const isPassSelected = passRound === round.round

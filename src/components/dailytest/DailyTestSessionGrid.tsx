@@ -16,6 +16,8 @@ type DailyTestSessionGridProps = {
   variant?: 'default' | 'parentReport'
   /** 학부모 화면: 표시만, 클릭·수정 불가 */
   readOnly?: boolean
+  /** 예: 영어 「어휘 시험」 */
+  sectionTitle?: string
 }
 
 function SessionStatusIcon({ status }: { status: TestSessionStatus }) {
@@ -30,16 +32,21 @@ export function DailyTestSessionGrid({
   dense = false,
   variant = 'default',
   readOnly = false,
+  sectionTitle,
 }: DailyTestSessionGridProps) {
   const sessions = migrateSessionResults(record)
   const [expandedSession, setExpandedSession] = useState<number | null>(null)
+  const title = sectionTitle?.trim()
 
   if (variant === 'parentReport') {
     return (
-      <div className="grid grid-cols-2 gap-2">
-        {sessions.map((session) => (
-          <ParentReportSessionCard key={session.session} session={session} />
-        ))}
+      <div className="space-y-1.5">
+        {title ? <h4 className="text-sm font-bold text-[#163A70]">{title}</h4> : null}
+        <div className="grid grid-cols-2 gap-2">
+          {sessions.map((session) => (
+            <ParentReportSessionCard key={session.session} session={session} />
+          ))}
+        </div>
       </div>
     )
   }

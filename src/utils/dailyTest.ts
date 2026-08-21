@@ -419,7 +419,9 @@ export function hasDailyTestDisplayData(record?: DailyTestRecord): boolean {
     diagnosis.fridayRetestWrong !== null ||
     diagnosis.englishVocabResult !== null ||
     diagnosis.englishGrammarWrongCount !== null ||
-    diagnosis.englishReadingWrongCount !== null
+    diagnosis.englishReadingWrongCount !== null ||
+    diagnosis.englishListeningScore !== null ||
+    diagnosis.englishListeningResult !== null
   ) {
     return true
   }

@@ -114,6 +114,10 @@ export type DailyLearningDiagnosisData = {
   englishVocabResult: '합격' | '불합격' | null
   englishGrammarWrongCount: number | null
   englishReadingWrongCount: number | null
+  /** 영어 듣기 평가 점수 (0~100, 미입력 null) — learning_diagnosis JSONB */
+  englishListeningScore: number | null
+  /** 영어 듣기 평가 결과 */
+  englishListeningResult: '합격' | '불합격' | null
 }
 
 export type MathWrongCause = '개념 부족' | '계산 실수' | '문제 이해 부족'

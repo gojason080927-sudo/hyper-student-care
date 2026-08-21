@@ -20,6 +20,8 @@ type DailyTestSessionFormSectionProps = {
   errors: Record<string, string>
   compact?: boolean
   showHeader?: boolean
+  /** 예: 영어 「어휘 시험」 — 없으면 기본 「차시별 결과」 */
+  sectionTitle?: string
 }
 
 export function DailyTestPassRuleBadge() {
@@ -36,6 +38,7 @@ export function DailyTestSessionFormSection({
   errors,
   compact = false,
   showHeader = true,
+  sectionTitle,
 }: DailyTestSessionFormSectionProps) {
   const setSession = (sessionNum: 1 | 2 | 3 | 4, patch: Partial<TestSessionResult>) => {
     onChange(updateSessionInForm(sessions, sessionNum, patch))
@@ -50,14 +53,21 @@ export function DailyTestSessionFormSection({
     setSession(sessionNum, updateSessionStatusOnly(current, status))
   }
 
+  const title = sectionTitle?.trim() || '차시별 결과'
+
   return (
     <div className={compact ? 'space-y-2' : 'space-y-3 sm:space-y-4'}>
       {showHeader && (
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm font-semibold text-slate-800">차시별 결과</p>
+          <p className="text-sm font-semibold text-slate-800">{title}</p>
           <DailyTestPassRuleBadge />
         </div>
       )}
+      {!showHeader && sectionTitle?.trim() ? (
+        <p className={`font-semibold text-slate-800 ${compact ? 'text-xs' : 'text-sm'}`}>
+          {sectionTitle.trim()}
+        </p>
+      ) : null}
       <div
         className={
           compact

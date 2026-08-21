@@ -26,7 +26,12 @@ export function ParentStudentDailyTestPage() {
               title={record.subject}
             >
               <div className="space-y-3">
-                <DailyTestSessionGrid record={record} variant="parentReport" readOnly />
+                <DailyTestSessionGrid
+                  record={record}
+                  variant="parentReport"
+                  readOnly
+                  sectionTitle={record.subject.includes('영어') ? '어휘 시험' : undefined}
+                />
                 <ParentDailyTestDiagnosisBlock record={record} />
               </div>
             </ParentRecordCard>

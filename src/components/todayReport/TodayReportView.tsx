@@ -1435,18 +1435,24 @@ function DailyTestParentSection({
   record: DailyTestRecord
   classNote?: ClassNoteRecord
 }) {
+  const isEnglish = record.subject.includes('영어')
   return (
     <div className="space-y-2.5">
       <p className="text-sm text-slate-600">
         <span className="font-medium text-slate-800">{record.subject}</span>
         {record.testName ? <> · {record.testName}</> : null}
       </p>
-      {/* 1~4차시 */}
-      <DailyTestSessionGrid record={record} variant="parentReport" readOnly />
-      {/* 오답 분석 → 강사 피드백 → 격주간/재시험 오답 수 */}
+      {/* 영어: 어휘 시험 1~4차시 / 수학: 기존 차시 그리드 */}
+      <DailyTestSessionGrid
+        record={record}
+        variant="parentReport"
+        readOnly
+        sectionTitle={isEnglish ? '어휘 시험' : undefined}
+      />
+      {/* 영어: 듣기 평가 → 강사 피드백 / 수학: 오답 분석 → 피드백 → 격주간 */}
       <ParentDailyTestDiagnosisBlock record={record} classNote={classNote} />
-      {/* 오답 BANK (항상 마지막) */}
-      <WrongAnswerBankBlock memo={record.memo} />
+      {/* 오답 BANK — 수학만 (영어 구조에는 없음) */}
+      {isEnglish ? null : <WrongAnswerBankBlock memo={record.memo} />}
     </div>
   )
 }
@@ -1614,6 +1620,7 @@ function DailyTestSection({
               ref={mobileDailyTestRef}
               sessions={form.sessionResults}
               errors={errors}
+              sectionTitle={form.subject.includes('영어') ? '어휘 시험' : undefined}
             />
           ) : (
             <DailyTestSessionFormSection
@@ -1627,6 +1634,7 @@ function DailyTestSection({
               errors={errors}
               compact={teacherCompact}
               showHeader={!teacherCompact}
+              sectionTitle={form.subject.includes('영어') ? '어휘 시험' : undefined}
             />
           )}
           <DailyLearningDiagnosisFields
