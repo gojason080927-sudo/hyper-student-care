@@ -716,6 +716,7 @@ export function TodayReportView({
             readOnly={readOnly}
             record={dayDailyTest}
             records={dayDailyTests}
+            classNote={readOnly ? dayClassNote : undefined}
             studentId={student.id}
             date={selectedDate}
             onSave={saveDailyTestRecord}
@@ -727,7 +728,8 @@ export function TodayReportView({
           />
           )}
 
-          {showSection('classNote') && (
+          {/* 학부모: 강사 피드백은 일일테스트 카드 안(오답 분석 다음)으로 이동 — 하단 중복 카드 제거 */}
+          {showSection('classNote') && !readOnly && (
           <ClassNoteSection
             key={`class-note-${selectedDate}`}
             readOnly={readOnly}
@@ -1426,15 +1428,24 @@ function ClassNoteSection({
   )
 }
 
-function DailyTestParentSection({ record }: { record: DailyTestRecord }) {
+function DailyTestParentSection({
+  record,
+  classNote,
+}: {
+  record: DailyTestRecord
+  classNote?: ClassNoteRecord
+}) {
   return (
     <div className="space-y-2.5">
       <p className="text-sm text-slate-600">
         <span className="font-medium text-slate-800">{record.subject}</span>
         {record.testName ? <> · {record.testName}</> : null}
       </p>
+      {/* 1~4차시 */}
       <DailyTestSessionGrid record={record} variant="parentReport" readOnly />
-      <ParentDailyTestDiagnosisBlock record={record} />
+      {/* 오답 분석 → 강사 피드백 → 격주간/재시험 오답 수 */}
+      <ParentDailyTestDiagnosisBlock record={record} classNote={classNote} />
+      {/* 오답 BANK (항상 마지막) */}
       <WrongAnswerBankBlock memo={record.memo} />
     </div>
   )
@@ -1444,6 +1455,7 @@ function DailyTestSection({
   readOnly,
   record,
   records,
+  classNote,
   studentId,
   date,
   onSave,
@@ -1457,6 +1469,7 @@ function DailyTestSection({
   record?: DailyTestRecord
   /** 학부모: 같은 날짜 복수 과목 일일테스트 */
   records?: DailyTestRecord[]
+  classNote?: ClassNoteRecord
   studentId: string
   date: string
   onSave: ReturnType<typeof useData>['saveDailyTestRecord']
@@ -1559,8 +1572,12 @@ function DailyTestSection({
         >
           {() => (
             <div className="space-y-4">
-              {parentRecords.map((item) => (
-                <DailyTestParentSection key={item.id} record={item} />
+              {parentRecords.map((item, index) => (
+                <DailyTestParentSection
+                  key={item.id}
+                  record={item}
+                  classNote={index === 0 ? classNote : undefined}
+                />
               ))}
             </div>
           )}

@@ -1,13 +1,16 @@
-import type { DailyTestRecord } from '../../types/records'
+import type { ClassNoteRecord, DailyTestRecord } from '../../types/records'
 import {
   normalizeDailyLearningDiagnosis,
   sumWrongAnalysisCounts,
 } from '../../utils/learningDiagnosis'
+import { SectionTitleWithHint } from '../ui/SectionTitleWithHint'
 
 const TITLE_EMPHASIS_CLASS = 'text-sm font-bold text-[#DC2626]'
 
 type ParentDailyTestDiagnosisBlockProps = {
   record: DailyTestRecord
+  /** 하단 강사 피드백(class_notes) — 일일테스트 teacherFeedback이 비어 있을 때 보조 표시 */
+  classNote?: ClassNoteRecord
   className?: string
 }
 
@@ -33,16 +36,41 @@ function resolveAnalysisCounts(diagnosis: ReturnType<typeof normalizeDailyLearni
   }
 }
 
-/** 학부모 일일테스트 — 오답 분석 / 강사 피드백 / 격주간 재시험 (읽기 전용) */
+function resolveTeacherFeedbackText(
+  diagnosis: ReturnType<typeof normalizeDailyLearningDiagnosis>,
+  classNote?: ClassNoteRecord,
+): { text: string; explicitNone: boolean } {
+  const fromDaily = diagnosis.teacherFeedback.trim()
+  if (fromDaily) return { text: fromDaily, explicitNone: false }
+
+  if (classNote?.hasClassNote && classNote.note.trim()) {
+    return { text: classNote.note.trim(), explicitNone: false }
+  }
+  if (classNote && !classNote.hasClassNote) {
+    return { text: '', explicitNone: true }
+  }
+  return { text: '', explicitNone: false }
+}
+
+/**
+ * 학부모 일일테스트 부가 정보 (읽기 전용) — /care/{ID}/today-report 전용
+ *
+ * 렌더 순서 (과거·오늘 동일, 저장된 레코드 기준):
+ * 1) 오답 분석
+ * 2) 강사 피드백  ← learning_diagnosis.teacherFeedback (없으면 class_notes)
+ * 3) 격주간 오답 재시험 / 재시험 오답 수
+ * 호출부(DailyTestParentSection)에서 이어서 오답 BANK
+ */
 export function ParentDailyTestDiagnosisBlock({
   record,
+  classNote,
   className = '',
 }: ParentDailyTestDiagnosisBlockProps) {
   const diagnosis = normalizeDailyLearningDiagnosis(record.learningDiagnosis)
   const isMath = record.subject.includes('수학')
   const isEnglish = record.subject.includes('영어')
   const counts = resolveAnalysisCounts(diagnosis)
-  const hasFeedback = Boolean(diagnosis.teacherFeedback.trim())
+  const feedback = resolveTeacherFeedbackText(diagnosis, classNote)
   const hasRetest =
     diagnosis.fridayRetestTotal !== null || diagnosis.fridayRetestWrong !== null
   const hasEnglishExtras =
@@ -51,14 +79,10 @@ export function ParentDailyTestDiagnosisBlock({
       diagnosis.englishGrammarWrongCount !== null ||
       diagnosis.englishReadingWrongCount !== null)
 
-  const showMathAnalysis = isMath
-  if (!showMathAnalysis && !hasFeedback && !hasRetest && !hasEnglishExtras) {
-    return null
-  }
-
   return (
     <div className={`space-y-2.5 ${className}`.trim()}>
-      {showMathAnalysis ? (
+      {/* 1. 오답 분석 */}
+      {isMath ? (
         <div>
           <h4 className={TITLE_EMPHASIS_CLASS}>오답 분석</h4>
           <div className="mt-1.5 grid grid-cols-3 gap-1.5 text-center">
@@ -109,16 +133,30 @@ export function ParentDailyTestDiagnosisBlock({
         </div>
       ) : null}
 
-      {hasFeedback ? (
-        <div>
-          <h4 className={TITLE_EMPHASIS_CLASS}>강사의 피드백</h4>
-          <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
-            {diagnosis.teacherFeedback}
-          </p>
+      {/* 2. 강사 피드백 — 오답 분석 바로 아래 (항상 표시, 날짜 무관) */}
+      <div>
+        <div className={TITLE_EMPHASIS_CLASS}>
+          <SectionTitleWithHint
+            title="강사 피드백"
+            hint="수업을 통해 확인한 학습 상태"
+            hintClassName="text-[11px] font-medium text-slate-500"
+          />
         </div>
-      ) : null}
+        {feedback.explicitNone ? (
+          <p className="mt-1.5 text-sm font-medium text-slate-600">특이사항 없음</p>
+        ) : feedback.text ? (
+          <div className="mt-1.5 min-w-0 max-w-full overflow-hidden rounded-xl border border-amber-100 bg-amber-50/40 px-3.5 py-3.5 sm:px-4 sm:py-4">
+            <p className="max-w-full whitespace-pre-wrap break-anywhere text-[15px] leading-relaxed text-slate-800">
+              {feedback.text}
+            </p>
+          </div>
+        ) : (
+          <p className="mt-1.5 text-sm text-slate-400">등록된 코멘트가 없습니다.</p>
+        )}
+      </div>
 
-      {(hasRetest || showMathAnalysis || hasFeedback) ? (
+      {/* 3. 격주간 오답 재시험 / 재시험 오답 수 */}
+      {hasRetest || isMath ? (
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div>
             <p className="text-xs font-semibold text-slate-600">격주간 오답 재시험</p>
