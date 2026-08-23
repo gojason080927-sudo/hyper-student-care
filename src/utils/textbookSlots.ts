@@ -20,9 +20,13 @@ import {
 import { TEXTBOOK_SLOT_NUMBERS, TEXTBOOK_SUBJECTS } from '../types/records'
 import {
   findClassTodayReportCommonForDisplay,
+  findClassTodayReportCommonForProgressDisplay,
+  findHomeworkPerformanceEntryForDisplay,
   findHomeworkTextbookEntryForDisplay,
   findProgressRecordForDisplay,
+  resolveParentPreviousAssignmentDisplay,
 } from './todayReportDisplayFallback'
+import { resolveSelectedHomeworkStatus } from './homework'
 
 export type HomeworkTextbookDisplay = {
   subject: TextbookSubject
@@ -217,6 +221,7 @@ export function hasHomeworkSlotContent(item: HomeworkTextbookDisplay): boolean {
   return Boolean(
     item.textbookName.trim() ||
       item.todayAssignment.trim() ||
+      item.previousAssignment.trim() ||
       item.status,
   )
 }
@@ -302,22 +307,42 @@ function resolveDisplayTextbookName(
   return getTextbookName(lookupSlots, studentId, subject, slotNumber)
 }
 
+type HomeworkSlotDisplayMode = 'edit' | 'parent' | 'default'
+
+/**
+ * edit/default: status는 해당 날짜 실제 행만 (월간 집계·강사 신규 입력용).
+ * parent: 강사 새 저장 전까지 가장 최근 숙제 수행 결과(상태·지난 과제)를 표시 유지.
+ *         오늘 행에 status가 비어 있어도(과제만 저장된 shell) 이전 수행 상태를 가리지 않음.
+ */
 function buildHomeworkSlotDisplays(
   studentId: string,
   date: string,
   slots: StudentTextbookSlot[],
   entries: HomeworkTextbookEntry[],
   classContext?: TextbookDisplayClassContext,
+  mode: HomeworkSlotDisplayMode = 'default',
 ): HomeworkTextbookDisplay[] {
+  const carryPerformance = mode === 'parent'
+
   return TEXTBOOK_SUBJECTS.flatMap((subject) =>
     TEXTBOOK_SLOT_NUMBERS.map((slotNumber) => {
-      const { entry, isFallback: entryFallback } = findHomeworkTextbookEntryForDisplay(
+      const { entry: contentEntry } = findHomeworkTextbookEntryForDisplay(
         entries,
         studentId,
         date,
         subject,
         slotNumber,
       )
+      const performance = carryPerformance
+        ? findHomeworkPerformanceEntryForDisplay(
+            entries,
+            studentId,
+            date,
+            subject,
+            slotNumber,
+          )
+        : null
+
       let common = classContext
         ? findClassTodayReportCommonForSubject(
             classContext.commonRecords,
@@ -339,6 +364,13 @@ function buildHomeworkSlotDisplays(
         ).record
       }
 
+      const exactSameDate =
+        contentEntry && contentEntry.date === date ? contentEntry : undefined
+
+      const status = carryPerformance
+        ? (resolveSelectedHomeworkStatus(performance?.entry?.status) ?? '')
+        : (resolveSelectedHomeworkStatus(exactSameDate?.status) ?? '')
+
       return {
         subject,
         slotNumber,
@@ -350,11 +382,15 @@ function buildHomeworkSlotDisplays(
           slotNumber,
           slots,
         ),
-        previousAssignment: '',
-        todayAssignment: resolveCommonTodayAssignment(common, entry),
-        // Event status only from actual same-date rows (monthly diagnosis safety).
-        status: entryFallback ? '' : entry?.status ?? '',
-        entryId: entryFallback ? undefined : entry?.id,
+        previousAssignment: carryPerformance
+          ? resolveParentPreviousAssignmentDisplay(
+              performance?.entry,
+              Boolean(performance?.isFallback),
+            )
+          : '',
+        todayAssignment: resolveCommonTodayAssignment(common, contentEntry),
+        status,
+        entryId: exactSameDate?.id,
       }
     }),
   )
@@ -417,7 +453,7 @@ export function buildHomeworkTextbookDisplaysForEdit(
   return buildHomeworkSlotDisplays(studentId, date, slots, entries, classContext)
 }
 
-/** 학부모 readOnly: 레거시 단일 슬롯 fallback 없이 6슬롯 전체 map */
+/** 학부모 readOnly: 레거시 단일 슬롯 fallback 없이 6슬롯 전체 map + 최근 수행결과 유지 */
 export function buildParentHomeworkTextbookDisplays(
   studentId: string,
   date: string,
@@ -425,9 +461,14 @@ export function buildParentHomeworkTextbookDisplays(
   entries: HomeworkTextbookEntry[],
   classContext?: TextbookDisplayClassContext,
 ): HomeworkTextbookDisplay[] {
-  return buildHomeworkSlotDisplays(studentId, date, slots, entries, classContext).filter(
-    hasHomeworkSlotContent,
-  )
+  return buildHomeworkSlotDisplays(
+    studentId,
+    date,
+    slots,
+    entries,
+    classContext,
+    'parent',
+  ).filter(hasHomeworkSlotContent)
 }
 
 function buildProgressSlotDisplays(
@@ -468,30 +509,31 @@ function buildProgressSlotDisplays(
         slotNumber,
         slots,
       )
-      let common = classContext
-        ? findClassTodayReportCommonForSubject(
+      // Prefer progress-aware common lookup so homework-only shells do not wipe 진도.
+      const common = classContext
+        ? findClassTodayReportCommonForProgressDisplay(
             classContext.commonRecords,
             classContext.grade,
             classContext.className,
             date,
             subject,
             slotNumber,
-          )
+          ).record
         : undefined
-      if (!common && classContext) {
-        common = findClassTodayReportCommonForDisplay(
-          classContext.commonRecords,
-          classContext.grade,
-          classContext.className,
-          date,
-          subject,
-          slotNumber,
-        ).record
-      }
       const textbookName = slotName || record?.textbookName.trim() || ''
-      const currentProgress = resolveCommonCurrentProgress(common, record)
-      const currentPage = resolveCommonCurrentPage(common, record)
-      const totalPage = resolveCommonTotalPage(common, record)
+      // Exact-date student progress (incl. sticky empty) wins over common carry-forward.
+      const currentProgress =
+        record && !isFallback
+          ? record.currentProgress.trim()
+          : resolveCommonCurrentProgress(common, record)
+      const currentPage =
+        record && !isFallback
+          ? record.currentPage
+          : resolveCommonCurrentPage(common, record)
+      const totalPage =
+        record && !isFallback
+          ? record.totalPage
+          : resolveCommonTotalPage(common, record)
       return {
         subject,
         slotNumber,

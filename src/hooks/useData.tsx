@@ -250,6 +250,7 @@ export type DataContextValue = {
       currentPage: number
       totalPage: number
       recordId?: string
+      writeEvenIfEmpty?: boolean
     }>,
     options?: { silent?: boolean },
   ) => Promise<boolean>
@@ -925,7 +926,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         date: data.date,
         subject: data.subject,
         slotNumber: data.slotNumber,
-        previousAssignment: existing?.previousAssignment?.trim() ?? '',
+        previousAssignment: (data.previousAssignment ?? existing?.previousAssignment ?? '').trim(),
         todayAssignment: data.todayAssignment.trim(),
         status: data.status ? normalizeHomeworkStatus(data.status) : '',
         createdAt: existing?.createdAt ?? ts.createdAt,
@@ -991,7 +992,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         date: data.date,
         subject: data.subject,
         slotNumber: data.slotNumber,
-        previousAssignment: existing?.previousAssignment?.trim() ?? '',
+        previousAssignment: (data.previousAssignment ?? existing?.previousAssignment ?? '').trim(),
         todayAssignment: data.todayAssignment.trim(),
         status: data.status ? normalizeHomeworkStatus(data.status) : '',
         createdAt: existing?.createdAt ?? ts.createdAt,
@@ -2018,6 +2019,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         currentPage: number
         totalPage: number
         recordId?: string
+        /** Persist empty values so cleared 진도 sticks on this date (no carry-forward). */
+        writeEvenIfEmpty?: boolean
       }>,
       options?: { silent?: boolean },
     ): Promise<boolean> => {
@@ -2054,6 +2057,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const memo = teacherMemo.trim()
       const slotsToSync = slots.filter(
         (slot) =>
+          slot.writeEvenIfEmpty ||
           slot.currentProgress.trim() ||
           slot.currentPage > 0 ||
           slot.totalPage > 0 ||
@@ -2064,6 +2068,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
 
       const peerIdsToSync = classSync.peerStudentIds.filter((id) => id !== anchorStudentId)
+      const studentIdsToWrite = [
+        anchorStudentId,
+        ...peerIdsToSync.filter((id) => id !== anchorStudentId),
+      ]
 
       if (savingRef.current) {
         if (!options?.silent) {
@@ -2107,9 +2115,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
             }),
           )
 
-          for (const peerId of peerIdsToSync) {
+          for (const studentId of studentIdsToWrite) {
             const built = buildSyncedProgressRecordForPeer({
-              peerStudentId: peerId,
+              peerStudentId: studentId,
               anchorStudentId,
               subject: subjectKey,
               slotNumber: slotKeyNum,
@@ -2123,6 +2131,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
               existingRecords: progressRecords,
               timestamps: ts,
               createId,
+              writeEmpty: Boolean(slot.writeEvenIfEmpty),
             })
             if (built) {
               progressToSave.push(built)

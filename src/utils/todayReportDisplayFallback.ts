@@ -14,6 +14,7 @@ import type {
   TodayAssignmentRecord,
 } from '../types/records'
 import { findClassTodayReportCommon } from './classTodayReportCommon'
+import { isHomeworkStatusSelected } from './homework'
 
 function isOnOrBefore(candidate: string, limitDate: string): boolean {
   return candidate <= limitDate
@@ -102,6 +103,68 @@ export function findClassTodayReportCommonForDisplay(
   return { record: latest, isFallback: latest.reportDate !== reportDate }
 }
 
+/** True when class-common row has usable 오늘의 진도 fields. */
+export function hasClassCommonProgressContent(
+  record: ClassTodayReportCommon | undefined,
+): boolean {
+  if (!record) return false
+  return (
+    record.currentProgress.trim().length > 0 ||
+    record.currentPage > 0 ||
+    record.totalPage > 0
+  )
+}
+
+/**
+ * Progress-only display lookup.
+ * Exact-date rows that only exist for homework (empty progress fields) must NOT
+ * block carry-forward of the last saved 진도.
+ * Intentional empty tombstones (exact date, empty progress, no prior content to
+ * show) still render empty.
+ */
+export function findClassTodayReportCommonForProgressDisplay(
+  records: ClassTodayReportCommon[],
+  grade: string,
+  className: string,
+  reportDate: string,
+  subject: TextbookSubject,
+  slotNumber: TextbookSlotNumber,
+): { record?: ClassTodayReportCommon; isFallback: boolean } {
+  const exact = findClassTodayReportCommon(
+    records,
+    grade,
+    className,
+    reportDate,
+    subject,
+    slotNumber,
+  )
+  if (exact && hasClassCommonProgressContent(exact)) {
+    return { record: exact, isFallback: false }
+  }
+
+  const trimmedClass = className.trim()
+  const matches = records.filter(
+    (record) =>
+      record.grade === grade &&
+      record.className === trimmedClass &&
+      record.subject === subject &&
+      record.slotNumber === slotNumber &&
+      isOnOrBefore(record.reportDate, reportDate) &&
+      hasClassCommonProgressContent(record),
+  )
+  const latest = pickLatestByDate(matches, (r) => r.reportDate, reportDate)
+  if (latest) {
+    return {
+      record: latest,
+      isFallback: latest.reportDate !== reportDate,
+    }
+  }
+
+  // Sticky empty: exact row exists but no prior progress content to carry.
+  if (exact) return { record: exact, isFallback: false }
+  return { record: undefined, isFallback: false }
+}
+
 export function findHomeworkTextbookEntryForDisplay(
   entries: HomeworkTextbookEntry[],
   studentId: string,
@@ -133,6 +196,62 @@ export function findHomeworkTextbookEntryForDisplay(
   return { entry: latest, isFallback: true }
 }
 
+/**
+ * Parent performance lookup: never let an exact-date row with empty status
+ * hide the latest prior 완료/부분완료/미완료.
+ * Display-only — do not write to DB / monthly aggregates.
+ */
+export function findHomeworkPerformanceEntryForDisplay(
+  entries: HomeworkTextbookEntry[],
+  studentId: string,
+  date: string,
+  subject: TextbookSubject,
+  slotNumber: TextbookSlotNumber,
+): { entry?: HomeworkTextbookEntry; isFallback: boolean } {
+  const sameSlot = entries.filter(
+    (entry) =>
+      entry.studentId === studentId &&
+      entry.subject === subject &&
+      entry.slotNumber === slotNumber &&
+      isOnOrBefore(entry.date, date),
+  )
+
+  const exact = sameSlot.find((entry) => entry.date === date)
+  if (exact && isHomeworkStatusSelected(exact.status)) {
+    return { entry: exact, isFallback: false }
+  }
+
+  const withStatus = sameSlot.filter((entry) => isHomeworkStatusSelected(entry.status))
+  const latestStatus = pickLatestByDate(withStatus, (e) => e.date, date)
+  if (latestStatus) {
+    return {
+      entry: latestStatus,
+      isFallback: latestStatus.date !== date,
+    }
+  }
+
+  // No status stored yet — keep content fallback for 지난 과제 text only.
+  return findHomeworkTextbookEntryForDisplay(
+    entries,
+    studentId,
+    date,
+    subject,
+    slotNumber,
+  )
+}
+
+/** Past homework text for parent: prefer previousAssignment; if carrying a prior day, use that day's todayAssignment. */
+export function resolveParentPreviousAssignmentDisplay(
+  entry: HomeworkTextbookEntry | undefined,
+  isFallback: boolean,
+): string {
+  if (!entry) return ''
+  const previous = entry.previousAssignment.trim()
+  if (previous) return previous
+  if (isFallback) return entry.todayAssignment.trim()
+  return ''
+}
+
 export function findProgressRecordForDisplay(
   records: ProgressRecord[],
   studentId: string,
@@ -147,6 +266,7 @@ export function findProgressRecordForDisplay(
       record.subject === subject &&
       (record.slotNumber ?? 1) === slotNumber,
   )
+  // Exact-date row wins (including intentional empty tombstone after clear+save).
   if (exact) return { record: exact, isFallback: false }
 
   const matches = records.filter(
@@ -157,8 +277,7 @@ export function findProgressRecordForDisplay(
       isOnOrBefore(record.lastStudyDate, date) &&
       (record.currentProgress.trim() ||
         record.currentPage > 0 ||
-        record.totalPage > 0 ||
-        record.textbookName.trim()),
+        record.totalPage > 0),
   )
   const latest = pickLatestByDate(matches, (r) => r.lastStudyDate, date)
   if (!latest) return { record: undefined, isFallback: false }

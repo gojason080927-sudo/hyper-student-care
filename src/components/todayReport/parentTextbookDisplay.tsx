@@ -41,6 +41,7 @@ const HOMEWORK_FIELD_LABEL_CLASS = PARENT_CARD_FIELD_LABEL_CLASS
 
 export function ParentHomeworkSlotCard({ item }: { item: HomeworkTextbookDisplay }) {
   const title = resolveHomeworkCardTitle(item.slotNumber, item.textbookName)
+  const statusLabel = item.status?.trim() ?? ''
 
   return (
     <li className="pm-slot-card px-2.5 py-2 sm:px-3">
@@ -49,10 +50,10 @@ export function ParentHomeworkSlotCard({ item }: { item: HomeworkTextbookDisplay
         <div className="space-y-0.5">
           <div className="flex flex-wrap items-center gap-2">
             <span className={HOMEWORK_FIELD_LABEL_CLASS}>지난 과제</span>
-            {item.status ? (
+            {statusLabel ? (
               <StatusBadge
-                label={item.status}
-                colorClass={getHomeworkColor(item.status)}
+                label={statusLabel}
+                colorClass={getHomeworkColor(statusLabel)}
                 compact
               />
             ) : null}
