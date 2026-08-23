@@ -250,7 +250,6 @@ export type DataContextValue = {
       currentPage: number
       totalPage: number
       recordId?: string
-      writeEvenIfEmpty?: boolean
     }>,
     options?: { silent?: boolean },
   ) => Promise<boolean>
@@ -2019,8 +2018,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
         currentPage: number
         totalPage: number
         recordId?: string
-        /** Persist empty values so cleared 진도 sticks on this date (no carry-forward). */
-        writeEvenIfEmpty?: boolean
       }>,
       options?: { silent?: boolean },
     ): Promise<boolean> => {
@@ -2057,7 +2054,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       const memo = teacherMemo.trim()
       const slotsToSync = slots.filter(
         (slot) =>
-          slot.writeEvenIfEmpty ||
           slot.currentProgress.trim() ||
           slot.currentPage > 0 ||
           slot.totalPage > 0 ||
@@ -2068,10 +2064,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
 
       const peerIdsToSync = classSync.peerStudentIds.filter((id) => id !== anchorStudentId)
-      const studentIdsToWrite = [
-        anchorStudentId,
-        ...peerIdsToSync.filter((id) => id !== anchorStudentId),
-      ]
 
       if (savingRef.current) {
         if (!options?.silent) {
@@ -2115,9 +2107,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
             }),
           )
 
-          for (const studentId of studentIdsToWrite) {
+          for (const peerId of peerIdsToSync) {
             const built = buildSyncedProgressRecordForPeer({
-              peerStudentId: studentId,
+              peerStudentId: peerId,
               anchorStudentId,
               subject: subjectKey,
               slotNumber: slotKeyNum,
@@ -2131,7 +2123,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
               existingRecords: progressRecords,
               timestamps: ts,
               createId,
-              writeEmpty: Boolean(slot.writeEvenIfEmpty),
             })
             if (built) {
               progressToSave.push(built)
