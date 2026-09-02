@@ -52,6 +52,11 @@ export async function completeTodayReportAndNotify(params: {
   reportDate: string
 }): Promise<CompleteTodayReportResult> {
   try {
+    const { data: sessionData } = await getSupabase().auth.getSession()
+    if (!sessionData.session) {
+      return { status: 'error', message: '강사 로그인이 필요합니다' }
+    }
+
     const { alreadyCompleted } = await markTodayReportCompleted(
       params.studentId,
       params.reportDate,

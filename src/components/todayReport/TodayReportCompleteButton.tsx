@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useData } from '../../hooks/useData'
+import { getSupabase } from '../../lib/supabase'
 import {
   completeTodayReportAndNotify,
   fetchTodayReportCompletion,
@@ -34,6 +35,11 @@ export function TodayReportCompleteButton({
 
   const handleComplete = async () => {
     if (completed || busy) return
+    const { data } = await getSupabase().auth.getSession()
+    if (!data.session) {
+      showToast('강사 로그인이 필요합니다')
+      return
+    }
     setBusy(true)
     const result = await completeTodayReportAndNotify({ studentId, reportDate })
     setBusy(false)

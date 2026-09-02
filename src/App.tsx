@@ -394,11 +394,11 @@ function App() {
 
           <Route path="makeup-plans" element={<MakeupPlanPage />} />
 
-          <Route path="teacher/today-report-bulk" element={<TeacherTodayReportBulkPage />} />
-
-          <Route path="teacher/today-report" element={<RedirectToTodayReportBulk />} />
-
-          <Route path="teacher/class-bulk-input" element={<RedirectToTodayReportBulk />} />
+          <Route element={<ProtectedRoute />}>
+            <Route path="teacher/today-report-bulk" element={<TeacherTodayReportBulkPage />} />
+            <Route path="teacher/today-report" element={<RedirectToTodayReportBulk />} />
+            <Route path="teacher/class-bulk-input" element={<RedirectToTodayReportBulk />} />
+          </Route>
 
           <Route path="teacher/learning-notices" element={<TeacherLearningNoticesPage />} />
 
