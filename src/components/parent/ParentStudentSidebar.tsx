@@ -2,6 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { ClipboardList, Home, X } from 'lucide-react'
 import { BrandMark } from '../brand/BrandMark'
 import { useParentStudent } from '../../contexts/ParentStudentContext'
+import { ParentPushOptIn } from './ParentPushOptIn'
 import { parentCategoryItems, parentTodayReportItem } from './parentNavItems'
 
 type ParentStudentSidebarProps = {
@@ -104,6 +105,7 @@ export function ParentStudentSidebar({ isOpen, onClose }: ParentStudentSidebarPr
             })}
           </ul>
         </nav>
+        <ParentPushOptIn accessKey={student.studentAccessKey} placement="sidebar" />
       </aside>
     </>
   )
