@@ -9,6 +9,7 @@ import { ClassCommonTodayAssignmentPanel } from '../../components/todayReport/Cl
 import { ClassDailyTestBulkPanel } from '../../components/todayReport/ClassDailyTestBulkPanel'
 import { ClassHomeworkStatusBulkPanel } from '../../components/todayReport/ClassHomeworkStatusBulkPanel'
 import { TodayReportView } from '../../components/todayReport/TodayReportView'
+import { TodayReportCompleteButton } from '../../components/todayReport/TodayReportCompleteButton'
 import { StudentKakaoShareAction } from '../../components/students/StudentKakaoShareAction'
 import { useData } from '../../hooks/useData'
 import { formatKoreanDate, getTodayString } from '../../utils/date'
@@ -287,6 +288,30 @@ export function TeacherMobileTodayReportPage() {
                 )}
               </MobileSectionAccordion>
             ))}
+
+            <section className="tm-card px-3 py-3">
+              <p className="mb-2 text-sm font-bold text-[#163A70]">입력 완료</p>
+              <p className="mb-2 text-[11px] text-[#6B7280]">
+                출결·과제·진도·일일테스트를 저장한 뒤, 학생별로 눌러 학부모 알림을 보냅니다. 하루에
+                한 번만 발송됩니다.
+              </p>
+              <ul className="space-y-2">
+                {classStudents.map((student) => (
+                  <li
+                    key={`complete-${student.id}`}
+                    className="flex items-center justify-between gap-2"
+                  >
+                    <span className="text-sm font-semibold text-[#163A70]">{student.name}</span>
+                    <TodayReportCompleteButton
+                      studentId={student.id}
+                      studentName={student.name}
+                      reportDate={date}
+                      compact
+                    />
+                  </li>
+                ))}
+              </ul>
+            </section>
 
             <MobileSectionAccordion
               label={
