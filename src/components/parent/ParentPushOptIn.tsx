@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
-import { getParentPushUiState, subscribeParentPush } from '../../lib/parentPushClient'
+import {
+  ensureParentPushSubscription,
+  getParentPushUiState,
+  subscribeParentPush,
+} from '../../lib/parentPushClient'
 import { getVapidPublicKey } from '../../lib/parentPushSupport'
 
 type Props = {
@@ -39,10 +43,20 @@ export function ParentPushOptIn({ accessKey, placement = 'page' }: Props) {
         setHint('알림이 차단되어 있습니다. 브라우저 설정에서 허용한 뒤 다시 시도해 주세요.')
         return
       }
-      if (state.subscribed && state.permission === 'granted') {
-        setStatusLabel('알림 켜짐')
-        setHint('')
-        setCanRequest(false)
+      if (state.permission === 'granted') {
+        void ensureParentPushSubscription(accessKey)
+          .then(() => {
+            if (cancelled) return
+            setStatusLabel('알림 켜짐')
+            setHint('')
+            setCanRequest(false)
+          })
+          .catch((error) => {
+            if (cancelled) return
+            setStatusLabel('알림 꺼짐')
+            setCanRequest(false)
+            setHint(error instanceof Error ? error.message : '알림 등록에 실패했습니다.')
+          })
         return
       }
       setStatusLabel('알림 꺼짐')

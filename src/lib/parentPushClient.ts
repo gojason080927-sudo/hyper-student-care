@@ -4,12 +4,14 @@ import {
   urlBase64ToUint8Array,
 } from './parentPushSupport'
 import {
+  rpcDeactivateParentPushSubscription,
   rpcGetParentPushSubscriptionStatus,
   rpcUpsertParentPushSubscription,
 } from './db/parentPushRpc'
 
 const PARENT_SW_URL = '/care/sw.js'
 const PARENT_SW_SCOPE = '/care/'
+const inFlightSyncByAccessKey = new Map<string, Promise<void>>()
 
 export async function registerParentServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (!('serviceWorker' in navigator)) return null
@@ -30,7 +32,40 @@ function subscriptionKeys(subscription: PushSubscription): { p256dh: string; aut
   return { p256dh, auth }
 }
 
-export async function subscribeParentPush(accessKey: string): Promise<void> {
+function toUint8Array(buffer: ArrayBuffer | null): Uint8Array | null {
+  return buffer ? new Uint8Array(buffer) : null
+}
+
+function sameBytes(left: Uint8Array | null, right: Uint8Array): boolean {
+  if (!left || left.length !== right.length) return false
+  for (let i = 0; i < left.length; i += 1) {
+    if (left[i] !== right[i]) return false
+  }
+  return true
+}
+
+async function createSubscription(
+  registration: ServiceWorkerRegistration,
+  vapidKey: string,
+): Promise<PushSubscription> {
+  try {
+    return await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(vapidKey) as BufferSource,
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : ''
+    if (/push service not available/i.test(message)) {
+      throw new Error('이 환경에서는 푸시 서비스를 사용할 수 없습니다. 휴대폰 브라우저에서 다시 시도해 주세요.')
+    }
+    throw error instanceof Error ? error : new Error('알림 등록에 실패했습니다.')
+  }
+}
+
+async function syncParentPushSubscription(
+  accessKey: string,
+  options: { allowPermissionPrompt: boolean },
+): Promise<void> {
   const capability = getParentPushCapability()
   if (!capability.supported) {
     throw new Error(
@@ -44,7 +79,10 @@ export async function subscribeParentPush(accessKey: string): Promise<void> {
     throw new Error('알림 설정이 아직 준비되지 않았습니다.')
   }
 
-  const permission = await Notification.requestPermission()
+  let permission = Notification.permission
+  if (permission === 'default' && options.allowPermissionPrompt) {
+    permission = await Notification.requestPermission()
+  }
   if (permission !== 'granted') {
     throw new Error(
       permission === 'denied'
@@ -60,21 +98,31 @@ export async function subscribeParentPush(accessKey: string): Promise<void> {
     throw new Error('알림 서비스를 등록하지 못했습니다.')
   }
 
+  const expectedKey = urlBase64ToUint8Array(vapid)
   const existing = await registration.pushManager.getSubscription()
   let subscription = existing
-  if (!subscription) {
-    try {
-      subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapid) as BufferSource,
-      })
-    } catch (error) {
-      const message = error instanceof Error ? error.message : ''
-      if (/push service not available/i.test(message)) {
-        throw new Error('이 환경에서는 푸시 서비스를 사용할 수 없습니다. 휴대폰 브라우저에서 다시 시도해 주세요.')
+
+  if (existing) {
+    const existingKey = toUint8Array(existing.options.applicationServerKey)
+    const sameKey = sameBytes(existingKey, expectedKey)
+    if (!sameKey) {
+      const oldEndpoint = existing.endpoint
+      const unsubscribed = await existing.unsubscribe()
+      if (!unsubscribed) {
+        throw new Error('기존 알림 구독을 해제하지 못했습니다.')
       }
-      throw error instanceof Error ? error : new Error('알림 등록에 실패했습니다.')
+      subscription = await createSubscription(registration, vapid)
+      if (oldEndpoint !== subscription.endpoint) {
+        await rpcDeactivateParentPushSubscription({
+          accessKey,
+          endpoint: oldEndpoint,
+        })
+      }
     }
+  }
+
+  if (!subscription) {
+    subscription = await createSubscription(registration, vapid)
   }
 
   const keys = subscriptionKeys(subscription)
@@ -85,6 +133,23 @@ export async function subscribeParentPush(accessKey: string): Promise<void> {
     auth: keys.auth,
     userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
   })
+}
+
+export async function subscribeParentPush(accessKey: string): Promise<void> {
+  await syncParentPushSubscription(accessKey, { allowPermissionPrompt: true })
+}
+
+export async function ensureParentPushSubscription(accessKey: string): Promise<void> {
+  const existing = inFlightSyncByAccessKey.get(accessKey)
+  if (existing) return existing
+
+  const promise = syncParentPushSubscription(accessKey, { allowPermissionPrompt: false }).finally(
+    () => {
+      inFlightSyncByAccessKey.delete(accessKey)
+    },
+  )
+  inFlightSyncByAccessKey.set(accessKey, promise)
+  return promise
 }
 
 export async function getParentPushUiState(accessKey: string): Promise<{

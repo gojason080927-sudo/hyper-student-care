@@ -39,3 +39,17 @@ export async function rpcGetParentPushSubscriptionStatus(
   }
   return data === true
 }
+
+export async function rpcDeactivateParentPushSubscription(params: {
+  accessKey: string
+  endpoint: string
+}): Promise<void> {
+  const { error } = await getSupabase().rpc('deactivate_parent_push_subscription', {
+    p_access_key: params.accessKey.trim(),
+    p_endpoint: params.endpoint.trim(),
+  })
+  if (error) {
+    console.error('[ParentPush] deactivate_parent_push_subscription error:', error)
+    throw error
+  }
+}
