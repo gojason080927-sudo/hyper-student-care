@@ -1,77 +1,33 @@
 import { useEffect } from 'react'
+import { rememberParentAccessKey } from '../../lib/parentLastCareRoute'
+import { registerParentServiceWorker } from '../../lib/parentPushClient'
 
-const ICON_VERSION = '6'
+const ICON_VERSION = '2'
+const PARENT_MANIFEST_HREF = `/care/manifest.webmanifest?v=${ICON_VERSION}-installable`
 
 type ParentPwaRegistrarProps = {
-  /** Student access key — used for start_url / scope so each care link installs correctly */
-  studentAccessKey: string
+  studentAccessKey?: string
 }
 
 /**
- * Parent (/care) PWA install icons + per-student manifest.
- * Does not change in-app UI — only document head links.
+ * 학부모 /care PWA — 정적 manifest + /care/sw.js 등록.
+ * start_url은 학생 ID를 하드코딩하지 않고 /care/ 를 사용한다.
  */
-export function ParentPwaRegistrar({ studentAccessKey }: ParentPwaRegistrarProps) {
+export function ParentPwaRegistrar({ studentAccessKey = '' }: ParentPwaRegistrarProps) {
   useEffect(() => {
     const key = studentAccessKey.trim()
-    if (!key) return
-
-    const startUrl = `/care/${key}`
-    const manifest = {
-      id: startUrl,
-      name: 'HYPER STUDENT CARE',
-      short_name: 'HYPER CARE',
-      description: '하이퍼 학생 관리 시스템 — 학부모용',
-      start_url: startUrl,
-      scope: startUrl,
-      display: 'standalone',
-      background_color: '#0B1F4A',
-      theme_color: '#0B1F4A',
-      orientation: 'portrait-primary',
-      lang: 'ko',
-      icons: [
-        {
-          src: `/care/hyper-icon-v${ICON_VERSION}-192.png`,
-          sizes: '192x192',
-          type: 'image/png',
-          purpose: 'any',
-        },
-        {
-          src: `/care/hyper-icon-v${ICON_VERSION}-512.png`,
-          sizes: '512x512',
-          type: 'image/png',
-          purpose: 'any',
-        },
-        {
-          src: `/care/hyper-icon-v${ICON_VERSION}-maskable.png`,
-          sizes: '512x512',
-          type: 'image/png',
-          purpose: 'maskable',
-        },
-        {
-          src: `/care/hyper-icon-v${ICON_VERSION}-splash.png`,
-          sizes: '512x512',
-          type: 'image/png',
-          purpose: 'any',
-        },
-      ],
-    }
-
-    const blob = new Blob([JSON.stringify(manifest)], {
-      type: 'application/manifest+json',
-    })
-    const manifestUrl = URL.createObjectURL(blob)
+    if (key) rememberParentAccessKey(key)
 
     let manifestLink = document.querySelector(
-      'link[rel="manifest"][data-parent-pwa]',
+      'link[rel="manifest"]',
     ) as HTMLLinkElement | null
     if (!manifestLink) {
       manifestLink = document.createElement('link')
       manifestLink.rel = 'manifest'
-      manifestLink.setAttribute('data-parent-pwa', 'true')
+      manifestLink.id = 'app-manifest'
       document.head.appendChild(manifestLink)
     }
-    manifestLink.href = manifestUrl
+    manifestLink.href = PARENT_MANIFEST_HREF
 
     const theme = document.querySelector('meta[name="theme-color"]')
     if (theme) theme.setAttribute('content', '#0B1F4A')
@@ -84,11 +40,11 @@ export function ParentPwaRegistrar({ studentAccessKey }: ParentPwaRegistrarProps
       appleIcon.rel = 'apple-touch-icon'
       document.head.appendChild(appleIcon)
     }
-    appleIcon.href = `/care/hyper-icon-v${ICON_VERSION}-apple-touch.png?v=${ICON_VERSION}`
+    appleIcon.href = `/care/hyper-parent-apple-touch-v${ICON_VERSION}.png?v=${ICON_VERSION}`
 
     let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null
     if (favicon) {
-      favicon.href = `/care/hyper-icon-v${ICON_VERSION}-favicon-32.png?v=${ICON_VERSION}`
+      favicon.href = `/care/hyper-parent-favicon-32-v${ICON_VERSION}.png?v=${ICON_VERSION}`
       favicon.type = 'image/png'
     }
 
@@ -102,10 +58,9 @@ export function ParentPwaRegistrar({ studentAccessKey }: ParentPwaRegistrarProps
     }
     appleTitle.content = 'HYPER STUDENT CARE'
 
-    return () => {
-      URL.revokeObjectURL(manifestUrl)
-      manifestLink?.remove()
-    }
+    void registerParentServiceWorker().catch((error) => {
+      console.warn('[ParentPWA] service worker register failed', error)
+    })
   }, [studentAccessKey])
 
   return null

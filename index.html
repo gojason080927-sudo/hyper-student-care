@@ -26,50 +26,63 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+    <!-- Default teacher manifest is in the raw HTML so Android WebAPK minting
+         can find it at /teacher/mobile without executing later React code.
+         The head script below rewrites or removes this link by path. -->
+    <link rel="manifest" id="app-manifest" href="/teacher/manifest.webmanifest" />
     <script>
       ;(function () {
         var path = window.location.pathname
-        if (!path.startsWith('/teacher/')) return
-        var iconVersion = '3'
-        var manifest = document.createElement('link')
-        manifest.rel = 'manifest'
-        manifest.href = '/teacher/manifest.webmanifest?v=' + iconVersion
-        document.head.appendChild(manifest)
+        var manifest = document.getElementById('app-manifest')
         var theme = document.querySelector('meta[name="theme-color"]')
+        var isTeacher = path.startsWith('/teacher/')
+        var isCare = path === '/care' || path.startsWith('/care/')
+
+        if (!isTeacher && !isCare) {
+          if (manifest) manifest.parentNode.removeChild(manifest)
+          return
+        }
+
         if (theme) theme.setAttribute('content', '#0B1F4A')
-        var icon = document.querySelector('link[rel="icon"]')
-        if (icon) {
-          icon.setAttribute('href', '/teacher/hyper-teacher-v3-192.png')
-          icon.setAttribute('type', 'image/png')
+
+        if (isTeacher) {
+          if (manifest) manifest.href = '/teacher/manifest.webmanifest?v=2-installable'
+          var icon = document.querySelector('link[rel="icon"]')
+          if (icon) {
+            icon.setAttribute('href', '/teacher/hyper-teacher-icon-192-v2.png')
+            icon.setAttribute('type', 'image/png')
+          }
+          var appleIcon = document.querySelector('link[rel="apple-touch-icon"]')
+          if (!appleIcon) {
+            appleIcon = document.createElement('link')
+            appleIcon.rel = 'apple-touch-icon'
+            document.head.appendChild(appleIcon)
+          }
+          appleIcon.href = '/teacher/hyper-teacher-apple-touch-v2.png'
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker
+              .register('/teacher/sw.js', { scope: '/teacher/' })
+              .catch(function () {})
+          }
+          return
         }
-        var icon32 = document.querySelector('link[rel="icon"][sizes="32x32"]')
-        if (!icon32) {
-          icon32 = document.createElement('link')
-          icon32.rel = 'icon'
-          icon32.sizes = '32x32'
-          icon32.type = 'image/png'
-          document.head.appendChild(icon32)
+
+        if (manifest) manifest.href = '/care/manifest.webmanifest?v=2-installable'
+        var careIcon = document.querySelector('link[rel="icon"]')
+        if (careIcon) {
+          careIcon.setAttribute('href', '/care/hyper-parent-icon-192-v2.png')
+          careIcon.setAttribute('type', 'image/png')
         }
-        icon32.href = '/teacher/hyper-teacher-v3-192.png'
-        var icon16 = document.querySelector('link[rel="icon"][sizes="16x16"]')
-        if (!icon16) {
-          icon16 = document.createElement('link')
-          icon16.rel = 'icon'
-          icon16.sizes = '16x16'
-          icon16.type = 'image/png'
-          document.head.appendChild(icon16)
+        var careApple = document.querySelector('link[rel="apple-touch-icon"]')
+        if (!careApple) {
+          careApple = document.createElement('link')
+          careApple.rel = 'apple-touch-icon'
+          document.head.appendChild(careApple)
         }
-        icon16.href = '/teacher/hyper-teacher-v3-192.png'
-        var appleIcon = document.querySelector('link[rel="apple-touch-icon"]')
-        if (!appleIcon) {
-          appleIcon = document.createElement('link')
-          appleIcon.rel = 'apple-touch-icon'
-          document.head.appendChild(appleIcon)
-        }
-        appleIcon.href = '/teacher/hyper-teacher-v3-apple-touch.png'
+        careApple.href = '/care/hyper-parent-apple-touch-v2.png'
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker
-            .register('/teacher/sw.js', { scope: '/teacher/' })
+            .register('/care/sw.js', { scope: '/care/' })
             .catch(function () {})
         }
       })()

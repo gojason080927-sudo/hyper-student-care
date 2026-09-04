@@ -8,6 +8,12 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(self.clients.claim())
 })
 
+// Android Chrome WebAPK("앱 설치") requires a fetch listener.
+// Network-only passthrough — does not cache and does not change push handling.
+self.addEventListener('fetch', (event) => {
+  event.respondWith(fetch(event.request))
+})
+
 self.addEventListener('push', (event) => {
   let payload = { title: 'HYPER Student Care', body: '', url: '/care/' }
   try {
@@ -21,8 +27,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(payload.title || 'HYPER Student Care', {
       body: payload.body || '오늘 학습보고가 등록되었습니다.',
-      icon: '/care/hyper-icon-v6-192.png',
-      badge: '/care/hyper-icon-v6-192.png',
+      icon: '/care/hyper-parent-icon-192-v2.png',
+      badge: '/care/hyper-parent-icon-192-v2.png',
       data: { url: payload.url || '/care/' },
     }),
   )
