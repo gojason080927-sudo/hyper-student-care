@@ -10,7 +10,7 @@ const CRAWLER_UA =
 
 const TEACHER_WEBAPK_UA = /webapk|google-web-apk|google-webapk/i
 
-const TEACHER_STATIC_ASSET =
+const STATIC_ASSET =
   /\.(?:webmanifest|js|mjs|cjs|css|png|ico|svg|webp|json|map|txt|woff2?|ttf|otf|eot|jpg|jpeg|gif|avif)$/i
 
 const NON_DOCUMENT_FETCH_DEST = new Set([
@@ -31,7 +31,7 @@ const NON_DOCUMENT_FETCH_DEST = new Set([
 
 function isTeacherWebApkDocumentRequest(request: Request, pathname: string): boolean {
   if (!pathname.startsWith('/teacher/')) return false
-  if (TEACHER_STATIC_ASSET.test(pathname)) return false
+  if (STATIC_ASSET.test(pathname)) return false
 
   const dest = (request.headers.get('sec-fetch-dest') ?? '').toLowerCase()
   if (dest && NON_DOCUMENT_FETCH_DEST.has(dest)) return false
@@ -88,6 +88,11 @@ function buildCareOgHtml(pageUrl: string): string {
 <meta name="twitter:image" content="${OG_IMAGE}"/>
 <link rel="manifest" href="/care/manifest.webmanifest"/>
 <link rel="canonical" href="${pageUrl}"/>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/care/sw.js', { scope: '/care/' }).catch(function () {});
+}
+</script>
 </head>
 <body>
 <p>HYPER STUDENT CARE — 하이퍼 학생 관리 시스템</p>
@@ -110,6 +115,11 @@ export default function middleware(request: Request) {
   }
 
   if (!url.pathname.startsWith('/care/')) {
+    return
+  }
+
+  // WebAPK / crawler UA must still receive real PNG/JS/manifest bytes.
+  if (STATIC_ASSET.test(url.pathname)) {
     return
   }
 
