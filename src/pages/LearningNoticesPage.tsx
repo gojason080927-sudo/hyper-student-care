@@ -24,9 +24,9 @@ function useLearningNoticePaths() {
   return { listPath: '/learning-notices', detailPathPrefix: '/learning-notices' }
 }
 
-export function LearningNoticesPage() {
+export function LearningNoticesPage({ embedded = false }: { embedded?: boolean }) {
   const student = useParentStudentOptional()
-  useMarkParentCategoryReadOnView('learning-notices', Boolean(student))
+  useMarkParentCategoryReadOnView('learning-notices', Boolean(student) && !embedded)
   const publishedPosts = usePublishedContentPosts(student ?? undefined)
   const { classScheduleGrids } = useData()
   const { detailPathPrefix } = useLearningNoticePaths()
@@ -51,11 +51,13 @@ export function LearningNoticesPage() {
   const showNotices = sectionFilter === '전체' || sectionFilter === '학습 공지사항'
 
   return (
-    <div className="parent-page space-y-5 pb-6">
-      <ParentPageHeader
-        title="수업 시간표 & 학습 공지사항"
-        description="학원 시간표와 학습 관련 공지 사항을 확인합니다."
-      />
+    <div className={embedded ? 'space-y-5' : 'parent-page space-y-5 pb-6'}>
+      {!embedded && (
+        <ParentPageHeader
+          title="수업 시간표 & 학습 공지사항"
+          description="학원 시간표와 학습 관련 공지 사항을 확인합니다."
+        />
+      )}
 
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm pm-card">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

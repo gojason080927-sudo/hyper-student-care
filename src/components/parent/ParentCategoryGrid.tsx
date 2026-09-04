@@ -1,7 +1,11 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useParentStudent } from '../../contexts/ParentStudentContext'
 import { formatKoreanDateLong, getTodayString } from '../../utils/date'
-import { parentCategoryItems, parentTodayReportItem } from './parentNavItems'
+import {
+  isParentCategoryPathActive,
+  parentCategoryItems,
+  parentTodayReportItem,
+} from './parentNavItems'
 
 const todayReportHighlights = ['출결', '오늘의 진도', '과제 수행', '일일 테스트'] as const
 
@@ -46,8 +50,7 @@ export function ParentCategoryGrid() {
       <div className="grid auto-rows-fr grid-cols-2 gap-2.5 sm:gap-3 lg:max-w-2xl">
         {parentCategoryItems.map(({ segment, label, icon: Icon, description }) => {
           const path = `${basePath}/${segment}`
-          const isActive =
-            location.pathname === path || location.pathname.startsWith(`${path}/`)
+          const isActive = isParentCategoryPathActive(segment, location.pathname)
 
           return (
             <Link

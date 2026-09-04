@@ -66,7 +66,13 @@ import { ParentStudentHomePage } from './pages/parent/ParentStudentHomePage'
 
 import { ParentStudentHomeworkPage } from './pages/parent/ParentStudentHomeworkPage'
 
-import { ParentStudentMakeupPlanPage } from './pages/parent/ParentStudentMakeupPlanPage'
+import { ParentStudentAdmissionStrategyPage } from './pages/parent/ParentStudentAdmissionStrategyPage'
+import { TeacherAdmissionStrategyPage } from './pages/teacher/TeacherAdmissionStrategyPage'
+
+import {
+  ParentCareNoticesMakeupRedirect,
+  ParentStudentNoticesMakeupPage,
+} from './pages/parent/ParentStudentNoticesMakeupPage'
 
 import { ParentStudentMonthlyEvaluationPage } from './pages/parent/ParentStudentMonthlyEvaluationPage'
 
@@ -124,9 +130,15 @@ function App() {
             element={<ParentStudentMonthlyLearningReportPage />}
           />
 
-          <Route path="makeup-plans" element={<ParentStudentMakeupPlanPage />} />
+          <Route path="notices-makeup" element={<ParentStudentNoticesMakeupPage />} />
 
-          <Route path="learning-notices" element={<LearningNoticesPage />} />
+          <Route path="admission-strategy" element={<ParentStudentAdmissionStrategyPage />} />
+
+          <Route path="admission-strategy/:postId" element={<ParentStudentAdmissionStrategyPage />} />
+
+          <Route path="makeup-plans" element={<ParentCareNoticesMakeupRedirect tab="makeup" />} />
+
+          <Route path="learning-notices" element={<ParentCareNoticesMakeupRedirect />} />
 
           <Route path="learning-notices/:postId" element={<LearningNoticeDetailPage />} />
 
@@ -343,6 +355,22 @@ function App() {
 
             />
 
+            <Route
+
+              path="admission-strategy"
+
+              element={
+
+                <TeacherMobilePageShell title="고입 · 대입 입시전략">
+
+                  <TeacherAdmissionStrategyPage />
+
+                </TeacherMobilePageShell>
+
+              }
+
+            />
+
             <Route path="more" element={<TeacherMobileMorePage />} />
 
           </Route>
@@ -402,12 +430,12 @@ function App() {
 
           <Route path="teacher/learning-notices" element={<TeacherLearningNoticesPage />} />
 
+          <Route path="teacher/admission-strategy" element={<TeacherAdmissionStrategyPage />} />
+
           <Route
 
             path="teacher/learning-notices/:postId"
-
             element={<TeacherLearningNoticeDetailPage />}
-
           />
 
           <Route path="questions" element={<QuestionsPage />} />

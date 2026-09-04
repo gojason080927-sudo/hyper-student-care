@@ -19,6 +19,7 @@ const links = [
   { to: '/entrance-exam', label: '신입생 평가 및 성향 진단', icon: ClipboardCheck },
   { to: '/teacher/mobile/notices', label: '학습정보 & 공지사항', icon: Megaphone },
   { to: '/teacher/mobile/makeup', label: '보강계획', icon: CalendarCheck },
+  { to: '/teacher/mobile/admission-strategy', label: '고입 · 대입 입시전략', icon: GraduationCap },
   { to: '/teacher/mobile/questions', label: '질문하기', icon: HelpCircle },
   { to: '/teacher/mobile/progress', label: '학습진행 상황 (교재 진도)', icon: TrendingUp },
   { to: '/teacher/mobile/evaluation', label: '월말평가 결과', icon: GraduationCap },

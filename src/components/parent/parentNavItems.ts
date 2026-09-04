@@ -1,9 +1,9 @@
 import type { LucideIcon } from 'lucide-react'
 import {
   CalendarCheck,
-  CalendarClock,
   ClipboardList,
   FileBarChart2,
+  GraduationCap,
   MessageCircleQuestion,
   Newspaper,
 } from 'lucide-react'
@@ -24,12 +24,17 @@ export const parentCategoryItems: ParentCategoryItem[] = [
     description: '확정된 월간 진단 보고서',
   },
   { segment: 'monthly-evaluation', label: '월말평가 결과', icon: CalendarCheck, description: '월말평가 점수' },
-  { segment: 'makeup-plans', label: '보강계획', icon: CalendarClock, description: '보강 일정 확인' },
   {
-    segment: 'learning-notices',
-    label: '학습정보 및 공지사항',
+    segment: 'notices-makeup',
+    label: '공지사항 · 보강계획',
     icon: Newspaper,
-    description: '학습정보·공지',
+    description: '학원 공지 · 보강 일정',
+  },
+  {
+    segment: 'admission-strategy',
+    label: '고입 · 대입\n입시전략',
+    icon: GraduationCap,
+    description: '진학 · 입시 정보',
   },
   { segment: 'questions', label: '질문하기', icon: MessageCircleQuestion, description: '학습 질문·답변' },
 ]
@@ -43,3 +48,15 @@ export const parentTodayReportItem = {
   icon: ClipboardList,
   description: '오늘의 학습 한눈에 보기',
 } as const
+
+/** 홈 카드·사이드바 활성 표시. 구 경로(공지/보강)도 통합 메뉴로 취급한다. */
+export function isParentCategoryPathActive(segment: string, pathname: string): boolean {
+  if (segment === 'notices-makeup') {
+    return (
+      pathname.includes('/notices-makeup') ||
+      pathname.includes('/learning-notices') ||
+      pathname.includes('/makeup-plans')
+    )
+  }
+  return pathname === `/${segment}` || pathname.includes(`/${segment}`)
+}

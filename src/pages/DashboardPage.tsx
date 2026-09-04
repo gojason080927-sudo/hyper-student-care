@@ -5,6 +5,7 @@ import {
   FileBarChart2,
   MessageCircleQuestion,
   Newspaper,
+  GraduationCap,
   Users,
 } from 'lucide-react'
 import { CategoryCard } from '../components/dashboard/CategoryCard'
@@ -44,6 +45,12 @@ const categories = [
     title: '학습정보 & 공지사항',
     description: '학습자료와 학원 공지사항 확인',
     icon: Newspaper,
+  },
+  {
+    to: '/teacher/admission-strategy',
+    title: '고입 · 대입\n입시전략',
+    description: '진학 · 입시 정보 관리',
+    icon: GraduationCap,
   },
   {
     to: '/questions',

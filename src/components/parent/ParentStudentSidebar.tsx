@@ -3,7 +3,11 @@ import { ClipboardList, Home, X } from 'lucide-react'
 import { BrandMark } from '../brand/BrandMark'
 import { useParentStudent } from '../../contexts/ParentStudentContext'
 import { ParentPushOptIn } from './ParentPushOptIn'
-import { parentCategoryItems, parentTodayReportItem } from './parentNavItems'
+import {
+  isParentCategoryPathActive,
+  parentCategoryItems,
+  parentTodayReportItem,
+} from './parentNavItems'
 
 type ParentStudentSidebarProps = {
   isOpen: boolean
@@ -88,8 +92,7 @@ export function ParentStudentSidebar({ isOpen, onClose }: ParentStudentSidebarPr
             </li>
             {parentCategoryItems.map(({ segment, label, icon: Icon }) => {
               const path = `${basePath}/${segment}`
-              const isActive =
-                location.pathname === path || location.pathname.startsWith(`${path}/`)
+              const isActive = isParentCategoryPathActive(segment, location.pathname)
               return (
                 <li key={segment}>
                   <NavLink

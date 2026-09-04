@@ -130,3 +130,41 @@ export function ParentPageHeader({ title, description, action }: ParentPageHeade
     </header>
   )
 }
+
+type ParentSegmentTabsProps<T extends string> = {
+  value: T
+  onChange: (next: T) => void
+  items: { id: T; label: string }[]
+}
+
+/** 학부모 카테고리 내부 2열 탭 (공지/보강, 고입/대입) */
+export function ParentSegmentTabs<T extends string>({
+  value,
+  onChange,
+  items,
+}: ParentSegmentTabsProps<T>) {
+  return (
+    <div
+      className="grid grid-cols-2 gap-1 rounded-xl bg-[rgba(22,58,112,0.06)] p-1"
+      role="tablist"
+    >
+      {items.map((item) => {
+        const active = item.id === value
+        return (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(item.id)}
+            className={`min-h-11 rounded-lg px-3 text-sm font-semibold transition ${
+              active ? 'bg-white text-[#163A70] shadow-sm' : 'text-[#6B7280]'
+            }`}
+          >
+            {item.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}

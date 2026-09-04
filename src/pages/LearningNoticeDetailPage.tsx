@@ -7,8 +7,11 @@ import { useMemo } from 'react'
 function useLearningNoticePaths() {
   const { studentAccessKey } = useParams()
   if (studentAccessKey) {
-    const base = `/care/${studentAccessKey}/learning-notices`
-    return { listPath: base, detailPathPrefix: base }
+    const detailBase = `/care/${studentAccessKey}/learning-notices`
+    return {
+      listPath: `/care/${studentAccessKey}/notices-makeup`,
+      detailPathPrefix: detailBase,
+    }
   }
   return { listPath: '/learning-notices', detailPathPrefix: '/learning-notices' }
 }

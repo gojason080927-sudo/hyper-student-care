@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   MessageCircleQuestion,
   Newspaper,
+  GraduationCap,
   Users,
   X,
 } from 'lucide-react'
@@ -60,6 +61,12 @@ const navItems: NavItem[] = [
     icon: ClipboardCheck,
   },
   { path: '/teacher/learning-notices', label: '학습정보 & 공지사항', icon: Newspaper },
+  {
+    path: '/teacher/admission-strategy',
+    label: '고입 · 대입 입시전략',
+    multilineLabel: ['고입 · 대입', '입시전략'],
+    icon: GraduationCap,
+  },
   { path: '/questions', label: '질문하기', icon: MessageCircleQuestion },
 ]
 

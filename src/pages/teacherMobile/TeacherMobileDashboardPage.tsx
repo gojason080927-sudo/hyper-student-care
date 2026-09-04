@@ -26,7 +26,7 @@ const featured: MenuCard = {
   icon: ClipboardList,
 }
 
-const gridCards: Array<MenuCard | { placeholder: true; title: string }> = [
+const gridCards: Array<MenuCard> = [
   {
     to: '/teacher/mobile/students',
     title: '학생관리',
@@ -52,14 +52,16 @@ const gridCards: Array<MenuCard | { placeholder: true; title: string }> = [
     icon: Megaphone,
   },
   {
+    to: '/teacher/mobile/admission-strategy',
+    title: '고입 · 대입\n입시전략',
+    description: '진학 · 입시 정보',
+    icon: GraduationCap,
+  },
+  {
     to: '/teacher/mobile/questions',
     title: '질문하기',
     description: 'Q&A 답변',
     icon: HelpCircle,
-  },
-  {
-    placeholder: true,
-    title: '향후 기능',
   },
 ]
 
@@ -92,22 +94,7 @@ export function TeacherMobileDashboardPage() {
           </Link>
 
           <div className="grid min-h-0 flex-1 auto-rows-fr grid-cols-2 gap-2.5 sm:gap-3">
-            {gridCards.map((item, index) => {
-              if ('placeholder' in item) {
-                return (
-                  <div
-                    key={`placeholder-${index}`}
-                    className="tm-menu-card pointer-events-none opacity-45"
-                    aria-hidden
-                  >
-                    <span className="tm-menu-icon bg-slate-100" />
-                    <span className="mt-2 min-w-0">
-                      <span className="tm-menu-title text-slate-400">{item.title}</span>
-                      <span className="tm-menu-desc">준비 중</span>
-                    </span>
-                  </div>
-                )
-              }
+            {gridCards.map((item) => {
               const Icon = item.icon
               return (
                 <Link key={item.to} to={item.to} className="tm-menu-card">

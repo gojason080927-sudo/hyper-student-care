@@ -4,6 +4,7 @@ import {
   ParentPageHeader,
   ParentRecordCard,
 } from '../../components/parent/ParentStudentComponents'
+import { useMarkParentCategoryReadOnView } from '../../hooks/useMarkParentCategoryReadOnView'
 import { useParentStudentRecords } from '../../hooks/useParentStudentRecords'
 import { formatKoreanDate } from '../../utils/date'
 import {
@@ -12,12 +13,15 @@ import {
   getMakeupSubjectColor,
 } from '../../utils/labels'
 
-export function ParentStudentMakeupPlanPage() {
+export function ParentStudentMakeupPlanPage({ embedded = false }: { embedded?: boolean }) {
   const { makeupPlans } = useParentStudentRecords()
+  useMarkParentCategoryReadOnView('makeup-plans', !embedded)
 
   return (
-    <div className="parent-page space-y-5 pb-6">
-      <ParentPageHeader title="보강계획" description="보강 예정일과 진행 방식을 확인합니다." />
+    <div className={embedded ? 'space-y-5' : 'parent-page space-y-5 pb-6'}>
+      {!embedded && (
+        <ParentPageHeader title="보강계획" description="보강 예정일과 진행 방식을 확인합니다." />
+      )}
 
       {makeupPlans.length === 0 ? (
         <ParentEmptyState />
