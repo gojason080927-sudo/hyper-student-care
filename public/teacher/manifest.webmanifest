@@ -15,25 +15,25 @@
   "lang": "ko",
   "icons": [
     {
-      "src": "/teacher/hyper-teacher-icon-v9-192.png",
+      "src": "/teacher/hyper-teacher-icon-v10-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/teacher/hyper-teacher-icon-v9-512.png",
+      "src": "/teacher/hyper-teacher-icon-v10-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/teacher/hyper-teacher-icon-maskable-v9-192.png",
+      "src": "/teacher/hyper-teacher-icon-maskable-v10-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/teacher/hyper-teacher-icon-maskable-v9-512.png",
+      "src": "/teacher/hyper-teacher-icon-maskable-v10-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
