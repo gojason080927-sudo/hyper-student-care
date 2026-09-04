@@ -21,11 +21,11 @@ export function TeacherMobileLayout() {
       appleIcon.rel = 'apple-touch-icon'
       document.head.appendChild(appleIcon)
     }
-    appleIcon.href = '/teacher/hyper-teacher-icon-v6-192.png?v=6'
+    appleIcon.href = '/teacher/hyper-teacher-icon-v7-192.png?v=7'
 
     let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null
     if (favicon) {
-      favicon.href = '/teacher/hyper-teacher-icon-v6-192.png?v=6'
+      favicon.href = '/teacher/hyper-teacher-icon-v7-192.png?v=7'
       favicon.type = 'image/png'
     }
 

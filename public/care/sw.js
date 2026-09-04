@@ -27,8 +27,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(payload.title || 'HYPER Student Care', {
       body: payload.body || '오늘 학습보고가 등록되었습니다.',
-      icon: '/care/hyper-parent-icon-v6-192.png',
-      badge: '/care/hyper-parent-icon-v6-192.png',
+      icon: '/care/hyper-parent-icon-v7-192.png',
+      badge: '/care/hyper-parent-icon-v7-192.png',
       data: { url: payload.url || '/care/' },
     }),
   )
