@@ -6,8 +6,6 @@ import { PwaUpdatePrompt } from './PwaUpdatePrompt'
 const TEACHER_MANIFEST_HREF = '/teacher/manifest.webmanifest?v=5-installable'
 const SW_UPDATE_INTERVAL_MS = 60_000
 
-let teacherSwReloadScheduled = false
-
 /**
  * 강사용 PWA manifest 연결 + service worker 등록 (로그인 전 포함).
  * autoUpdate: 새 배포 SW가 설치되면 활성화 후 클라이언트를 최신 번들로 맞춤.
@@ -77,17 +75,6 @@ export function TeacherPwaRegistrar() {
         }
       }
     })
-
-    const onControllerChange = () => {
-      if (teacherSwReloadScheduled) return
-      teacherSwReloadScheduled = true
-      window.location.reload()
-    }
-    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange)
-
-    return () => {
-      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange)
-    }
   }, [])
 
   return (

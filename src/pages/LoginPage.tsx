@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { BrandMark } from '../components/brand/BrandMark'
 import {
+  PwaInstallPrompt,
   RememberLoginCheckbox,
 } from '../components/teacherMobile/PwaInstallPrompt'
 import { TeacherPwaRegistrar } from '../components/teacherMobile/TeacherPwaRegistrar'
@@ -199,6 +200,7 @@ export function LoginPage() {
           </form>
         </div>
       </div>
+      {isMobileTeacherLogin ? <PwaInstallPrompt /> : null}
     </>
   )
 }

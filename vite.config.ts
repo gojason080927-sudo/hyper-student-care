@@ -31,7 +31,6 @@ export default defineConfig({
         ],
         globPatterns: [
           'index.html',
-          'assets/*.js',
           'assets/*.css',
           'teacher/manifest.webmanifest',
           'teacher/hyper-teacher-icon-192-v5.png',

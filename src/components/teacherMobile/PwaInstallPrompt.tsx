@@ -81,9 +81,9 @@ export function PwaInstallPrompt() {
           <div>
             <p className="text-sm font-bold text-navy-900">HYPER TEACHER 앱 설치</p>
             <p className="mt-1 text-xs leading-relaxed text-slate-600">
-              Chrome 우측 상단 <strong>⋮</strong> 메뉴 → <strong>앱 설치</strong> 또는{' '}
-              <strong>홈 화면에 추가</strong>를 선택하세요. Chrome 새 탭의 사이트 바로가기는
-              독립 앱이 아닙니다.
+              Chrome 우측 상단 <strong>⋮</strong> 메뉴에서 <strong>앱 설치</strong>만
+              선택하세요. <strong>홈 화면에 추가</strong>는 Chrome 바로가기라서 아이콘에
+              Chrome 마크가 붙습니다.
             </p>
             <p className="mt-2 text-xs text-slate-500">
               설치 후 앱 서랍에만 보이는 기기는 아이콘을 길게 눌러 홈 화면으로 옮길 수 있습니다.
