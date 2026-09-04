@@ -3,7 +3,7 @@ import { useRegisterSW } from 'virtual:pwa-register/react'
 import { PwaUpdatePrompt } from './PwaUpdatePrompt'
 
 /** Cache-bust query — bump when forcing clients to re-fetch manifest */
-const TEACHER_MANIFEST_HREF = '/teacher/manifest.webmanifest?v=7-installable'
+const TEACHER_MANIFEST_HREF = '/teacher/manifest.webmanifest?v=8-installable'
 const SW_UPDATE_INTERVAL_MS = 60_000
 
 /**
