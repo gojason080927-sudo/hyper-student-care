@@ -46,10 +46,10 @@
         if (theme) theme.setAttribute('content', '#0B1F4A')
 
         if (isTeacher) {
-          if (manifest) manifest.href = '/teacher/manifest.webmanifest?v=2-installable'
+          if (manifest) manifest.href = '/teacher/manifest.webmanifest?v=5-installable'
           var icon = document.querySelector('link[rel="icon"]')
           if (icon) {
-            icon.setAttribute('href', '/teacher/hyper-teacher-icon-192-v2.png')
+            icon.setAttribute('href', '/teacher/hyper-teacher-icon-192-v5.png')
             icon.setAttribute('type', 'image/png')
           }
           var appleIcon = document.querySelector('link[rel="apple-touch-icon"]')
@@ -58,7 +58,7 @@
             appleIcon.rel = 'apple-touch-icon'
             document.head.appendChild(appleIcon)
           }
-          appleIcon.href = '/teacher/hyper-teacher-apple-touch-v2.png'
+          appleIcon.href = '/teacher/hyper-teacher-icon-192-v5.png'
           if ('serviceWorker' in navigator) {
             navigator.serviceWorker
               .register('/teacher/sw.js', { scope: '/teacher/' })
@@ -67,10 +67,10 @@
           return
         }
 
-        if (manifest) manifest.href = '/care/manifest.webmanifest?v=2-installable'
+        if (manifest) manifest.href = '/care/manifest.webmanifest?v=5-installable'
         var careIcon = document.querySelector('link[rel="icon"]')
         if (careIcon) {
-          careIcon.setAttribute('href', '/care/hyper-parent-icon-192-v2.png')
+          careIcon.setAttribute('href', '/care/hyper-parent-icon-192-v5.png')
           careIcon.setAttribute('type', 'image/png')
         }
         var careApple = document.querySelector('link[rel="apple-touch-icon"]')
@@ -79,7 +79,7 @@
           careApple.rel = 'apple-touch-icon'
           document.head.appendChild(careApple)
         }
-        careApple.href = '/care/hyper-parent-apple-touch-v2.png'
+        careApple.href = '/care/hyper-parent-icon-192-v5.png'
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker
             .register('/care/sw.js', { scope: '/care/' })

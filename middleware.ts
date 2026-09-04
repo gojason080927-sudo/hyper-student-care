@@ -51,6 +51,12 @@ function buildTeacherManifestHtml(): string {
 <title>HYPER TEACHER</title>
 <meta name="theme-color" content="#0B1F4A"/>
 <link rel="manifest" href="/teacher/manifest.webmanifest"/>
+<link rel="icon" type="image/png" href="/teacher/hyper-teacher-icon-192-v5.png"/>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/teacher/sw.js', { scope: '/teacher/' }).catch(function () {});
+}
+</script>
 </head>
 <body>
 <p>HYPER TEACHER</p>
