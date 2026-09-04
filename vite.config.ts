@@ -15,16 +15,20 @@ export default defineConfig({
       manifest: false,
       filename: 'teacher/sw.js',
       scope: '/teacher/',
-      includeAssets: [
-        'teacher/hyper-teacher-icon-192-v2.png',
-        'teacher/hyper-teacher-icon-512-v2.png',
-        'teacher/hyper-teacher-maskable-192-v2.png',
-        'teacher/hyper-teacher-maskable-512-v2.png',
-        'teacher/manifest.webmanifest',
-      ],
       workbox: {
         // Keep the teacher SW small so Android can activate it. A failed/huge
         // precache leaves the page uncontrolled and Chrome installs a shortcut.
+        // SW lives at /teacher/sw.js; relative precache URLs would resolve to
+        // /teacher/index.html and /teacher/teacher/... — force origin-absolute.
+        manifestTransforms: [
+          async (entries) => ({
+            manifest: entries.map((entry) => ({
+              ...entry,
+              url: entry.url.startsWith('/') ? entry.url : `/${entry.url}`,
+            })),
+            warnings: [],
+          }),
+        ],
         globPatterns: [
           'index.html',
           'assets/*.js',

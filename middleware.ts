@@ -10,6 +10,38 @@ const CRAWLER_UA =
 
 const TEACHER_WEBAPK_UA = /webapk|google-web-apk|google-webapk/i
 
+const TEACHER_STATIC_ASSET =
+  /\.(?:webmanifest|js|mjs|cjs|css|png|ico|svg|webp|json|map|txt|woff2?|ttf|otf|eot|jpg|jpeg|gif|avif)$/i
+
+const NON_DOCUMENT_FETCH_DEST = new Set([
+  'script',
+  'style',
+  'image',
+  'manifest',
+  'serviceworker',
+  'sharedworker',
+  'worker',
+  'font',
+  'audio',
+  'video',
+  'object',
+  'embed',
+  'report',
+])
+
+function isTeacherWebApkDocumentRequest(request: Request, pathname: string): boolean {
+  if (!pathname.startsWith('/teacher/')) return false
+  if (TEACHER_STATIC_ASSET.test(pathname)) return false
+
+  const dest = (request.headers.get('sec-fetch-dest') ?? '').toLowerCase()
+  if (dest && NON_DOCUMENT_FETCH_DEST.has(dest)) return false
+
+  const accept = request.headers.get('accept') ?? ''
+  if (accept && !accept.includes('text/html') && !accept.includes('*/*')) return false
+
+  return true
+}
+
 function buildTeacherManifestHtml(): string {
   return `<!DOCTYPE html>
 <html lang="ko">
@@ -61,7 +93,7 @@ export default function middleware(request: Request) {
   const url = new URL(request.url)
   const ua = request.headers.get('user-agent') ?? ''
 
-  if (url.pathname.startsWith('/teacher/') && TEACHER_WEBAPK_UA.test(ua)) {
+  if (TEACHER_WEBAPK_UA.test(ua) && isTeacherWebApkDocumentRequest(request, url.pathname)) {
     return new Response(buildTeacherManifestHtml(), {
       status: 200,
       headers: {
