@@ -42,3 +42,20 @@ export function deriveCareerListProgress(input?: {
     percent: 0,
   }
 }
+
+export function missingCareerStudentIds(
+  sessionStudentIds: string[],
+  rosterIds: Iterable<string>,
+): string[] {
+  const known = new Set(rosterIds)
+  return [...new Set(sessionStudentIds.filter((id) => id && !known.has(id)))]
+}
+
+export function mergeStudentsById<T extends { id: string }>(base: T[], extra: T[]): T[] {
+  const map = new Map<string, T>()
+  for (const student of base) map.set(student.id, student)
+  for (const student of extra) {
+    if (!map.has(student.id)) map.set(student.id, student)
+  }
+  return [...map.values()]
+}

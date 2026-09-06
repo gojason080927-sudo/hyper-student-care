@@ -2,7 +2,12 @@
  * 실행: npx tsx src/features/careerAssessment/utils/careerListProgress.test.ts
  */
 import assert from 'node:assert/strict'
-import { deriveCareerListProgress } from './careerListProgress.ts'
+import { filterStudents } from '../../../utils/filters.ts'
+import {
+  deriveCareerListProgress,
+  mergeStudentsById,
+  missingCareerStudentIds,
+} from './careerListProgress.ts'
 
 const none = deriveCareerListProgress()
 assert.equal(none.label, '미시작')
@@ -31,5 +36,43 @@ const done = deriveCareerListProgress({
 assert.equal(done.label, '완료')
 assert.equal(done.answeredCount, 88)
 assert.equal(done.percent, 100)
+
+const missing = missingCareerStudentIds(
+  ['roster-1', '3fcd2905-075a-4a5c-8035-4a44f89a1e93'],
+  ['roster-1'],
+)
+assert.deepEqual(missing, ['3fcd2905-075a-4a5c-8035-4a44f89a1e93'])
+
+const merged = mergeStudentsById(
+  [{ id: 'roster-1', name: '기존' }],
+  [{ id: '3fcd2905-075a-4a5c-8035-4a44f89a1e93', name: '진로검사 테스트학생' }],
+)
+assert.equal(merged.length, 2)
+assert.equal(merged.some((row) => row.name === '진로검사 테스트학생'), true)
+
+const searchable = filterStudents(
+  [
+    {
+      id: '3fcd2905-075a-4a5c-8035-4a44f89a1e93',
+      name: '진로검사 테스트학생',
+      studentAccessKey: 'x',
+      accessKeyActive: true,
+      school: 'HYPER TEST',
+      grade: '고1',
+      studentPhone: '',
+      parentPhone: '',
+      className: 'CAREER-TEST',
+      subjects: [],
+      teacher: '',
+      enrollmentDate: '2026-09-06',
+      status: '재원',
+      memo: '',
+      createdAt: '',
+      updatedAt: '',
+    },
+  ],
+  { search: '진로검사', school: '', grade: '', className: '', status: '', subject: '' },
+)
+assert.equal(searchable.length, 1)
 
 console.log('careerListProgress tests OK')

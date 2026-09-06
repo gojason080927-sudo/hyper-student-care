@@ -1,4 +1,6 @@
+import { studentFromRow, type StudentRow } from '../../../lib/db/mappers'
 import { getSupabase } from '../../../lib/supabase'
+import type { Student } from '../../../types/student'
 import type { CareerAssessmentScores, CareerSessionStatus } from '../types'
 
 export type PublicCareerQuestion = {
@@ -101,6 +103,14 @@ export type TeacherCareerSession = {
   latestResultId: string | null
   completedAt: string | null
   createdAt: string
+}
+
+export async function fetchCareerStudentsByIds(ids: string[]): Promise<Student[]> {
+  const unique = [...new Set(ids.filter(Boolean))]
+  if (unique.length === 0) return []
+  const { data, error } = await getSupabase().from('students').select('*').in('id', unique)
+  if (error) throw error
+  return ((data ?? []) as StudentRow[]).map(studentFromRow)
 }
 
 export async function fetchTeacherCareerSessions(): Promise<TeacherCareerSession[]> {

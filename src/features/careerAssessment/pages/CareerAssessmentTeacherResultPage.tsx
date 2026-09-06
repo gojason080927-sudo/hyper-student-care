@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../../../components/ui/PageHeader'
 import { useData } from '../../../hooks/useData'
+import type { Student } from '../../../types/student'
 import {
   fetchCareerResultsForStudent,
+  fetchCareerStudentsByIds,
   type CareerResultRecord,
 } from '../api/careerAssessmentApi'
 import { CareerResultReport, runCareerResultPrint } from '../components/CareerResultReport'
@@ -16,7 +18,9 @@ export function CareerAssessmentTeacherResultPage() {
   const listPath = location.pathname.startsWith('/teacher/mobile')
     ? '/teacher/mobile/career-assessment'
     : '/career-assessment'
-  const student = students.find((item) => item.id === studentId)
+  const rosterStudent = students.find((item) => item.id === studentId)
+  const [linkedStudent, setLinkedStudent] = useState<Student | null>(null)
+  const student = rosterStudent ?? linkedStudent
   const [results, setResults] = useState<CareerResultRecord[]>([])
   const [error, setError] = useState('')
   const requestedId = searchParams.get('result')
@@ -26,6 +30,24 @@ export function CareerAssessmentTeacherResultPage() {
       .then(setResults)
       .catch(() => setError('결과를 불러오지 못했습니다.'))
   }, [studentId])
+
+  useEffect(() => {
+    if (rosterStudent || !studentId) {
+      setLinkedStudent(null)
+      return
+    }
+    let cancelled = false
+    void fetchCareerStudentsByIds([studentId])
+      .then((rows) => {
+        if (!cancelled) setLinkedStudent(rows[0] ?? null)
+      })
+      .catch(() => {
+        if (!cancelled) setLinkedStudent(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [rosterStudent, studentId])
 
   const current = useMemo(() => {
     if (requestedId) return results.find((row) => row.id === requestedId) ?? results[0]

@@ -3,16 +3,22 @@ import { Link, useLocation } from 'react-router-dom'
 import { PageHeader } from '../../../components/ui/PageHeader'
 import { StudentFilterBar } from '../../../components/students/StudentFilterBar'
 import { useData } from '../../../hooks/useData'
+import type { Student } from '../../../types/student'
 import type { StudentListFilters } from '../../../types/student'
 import { filterStudents } from '../../../utils/filters'
 import {
   createOrGetCareerSessions,
+  fetchCareerStudentsByIds,
   fetchTeacherCareerSessions,
   getCareerTestUrl,
   type TeacherCareerSession,
 } from '../api/careerAssessmentApi'
 import { CareerQrModal } from '../components/CareerQrModal'
-import { deriveCareerListProgress } from '../utils/careerListProgress'
+import {
+  deriveCareerListProgress,
+  mergeStudentsById,
+  missingCareerStudentIds,
+} from '../utils/careerListProgress'
 
 function statusTone(status: ReturnType<typeof deriveCareerListProgress>['status']): string {
   if (status === 'in_progress') return 'bg-amber-100 text-amber-800'
@@ -35,12 +41,17 @@ export function CareerAssessmentTeacherPage() {
     subject: '',
   })
   const [sessions, setSessions] = useState<TeacherCareerSession[]>([])
+  const [linkedStudents, setLinkedStudents] = useState<Student[]>([])
   const [selected, setSelected] = useState<Record<string, boolean>>({})
   const [qr, setQr] = useState<{ token: string; name: string } | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [error, setError] = useState('')
 
-  const filtered = useMemo(() => filterStudents(students, filters), [filters, students])
+  const listStudents = useMemo(
+    () => mergeStudentsById(students, linkedStudents),
+    [linkedStudents, students],
+  )
+  const filtered = useMemo(() => filterStudents(listStudents, filters), [filters, listStudents])
   const sessionByStudent = useMemo(() => {
     const map = new Map<string, TeacherCareerSession>()
     for (const session of sessions) {
@@ -50,14 +61,19 @@ export function CareerAssessmentTeacherPage() {
     return map
   }, [sessions])
 
-  const reload = async () => {
+  const reload = async (roster: Student[] = students) => {
     const rows = await fetchTeacherCareerSessions()
     setSessions(rows)
+    const missing = missingCareerStudentIds(
+      rows.map((row) => row.studentId),
+      roster.map((student) => student.id),
+    )
+    setLinkedStudents(missing.length > 0 ? await fetchCareerStudentsByIds(missing) : [])
   }
 
   useEffect(() => {
     const load = () => {
-      void reload().catch(() =>
+      void reload(students).catch(() =>
         setError('검사 현황을 불러오지 못했습니다. 강사 로그인 후 다시 시도해 주세요.'),
       )
     }
@@ -71,7 +87,7 @@ export function CareerAssessmentTeacherPage() {
       window.removeEventListener('focus', load)
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [])
+  }, [students])
 
   const prepareLinks = async (studentIds: string[]) => {
     setError('')
@@ -100,10 +116,10 @@ export function CareerAssessmentTeacherPage() {
       />
 
       <StudentFilterBar
-        students={students}
+        students={listStudents}
         filters={filters}
-        totalCount={students.length}
-        enrolledCount={students.filter((s) => s.status === '재원').length}
+        totalCount={listStudents.length}
+        enrolledCount={listStudents.filter((s) => s.status === '재원').length}
         onChange={setFilters}
       />
 
