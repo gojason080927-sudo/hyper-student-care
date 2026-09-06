@@ -122,7 +122,47 @@ try {
 
     const page = await browser.newPage()
     await page.goto(pathToFileURL(htmlPath).href, { waitUntil: 'load' })
+    await page.emulateMedia({ media: 'print' })
     const pageCount = await page.locator('.career-print-page').count()
+    const layout = await page.evaluate(() => {
+      const pxPerMm = 96 / 25.4
+      return [...document.querySelectorAll<HTMLElement>('.career-print-page')].map((el, i) => {
+        const style = getComputedStyle(el)
+        const frame = el.querySelector<HTMLElement>('.career-print-frame')
+        const footer = el.querySelector<HTMLElement>('.career-print-footer')
+        const frameStyle = frame ? getComputedStyle(frame) : null
+        const pageBox = el.getBoundingClientRect()
+        const footerBox = footer?.getBoundingClientRect()
+        return {
+          page: i + 1,
+          overflowX: el.scrollWidth - el.clientWidth,
+          overflowY: el.scrollHeight - el.clientHeight,
+          padLeftMm: parseFloat(style.paddingLeft) / pxPerMm,
+          padRightMm: parseFloat(style.paddingRight) / pxPerMm,
+          padTopMm: parseFloat(style.paddingTop) / pxPerMm,
+          padBottomMm: parseFloat(style.paddingBottom) / pxPerMm,
+          widthMm: pageBox.width / pxPerMm,
+          heightMm: pageBox.height / pxPerMm,
+          frameBorder: frameStyle?.borderTopWidth ?? '0',
+          framePadLeftMm: frameStyle ? parseFloat(frameStyle.paddingLeft) / pxPerMm : 0,
+          framePadRightMm: frameStyle ? parseFloat(frameStyle.paddingRight) / pxPerMm : 0,
+          contentInsetLeftMm:
+            (parseFloat(style.paddingLeft) + (frameStyle ? parseFloat(frameStyle.paddingLeft) : 0)) / pxPerMm,
+          contentInsetRightMm:
+            (parseFloat(style.paddingRight) + (frameStyle ? parseFloat(frameStyle.paddingRight) : 0)) / pxPerMm,
+          footerFromBottomMm: footerBox ? (pageBox.bottom - footerBox.bottom) / pxPerMm : null,
+          footerHeightMm: footerBox ? footerBox.height / pxPerMm : null,
+        }
+      })
+    })
+    const overflowPages = layout.filter((row) => row.overflowX > 0.5)
+    if (overflowPages.length > 0) {
+      throw new Error(`${row.id} horizontal overflow ${JSON.stringify(overflowPages)}`)
+    }
+    const clipped = layout.filter((row) => row.overflowY > 2)
+    if (clipped.length > 0) {
+      throw new Error(`${row.id} vertical clip ${JSON.stringify(clipped)}`)
+    }
     const pdf = await page.pdf({
       width: '210mm',
       height: '297mm',
@@ -135,6 +175,7 @@ try {
     const rawPagesMarks = pdfBuf.toString('latin1').match(/\/Type\s*\/Pages\b/g)?.length ?? 0
     const pdfPages = countPdfPages(pdfBuf)
     console.log(`${row.id} pageCount=${pageCount} pdfPages=${pdfPages} rawPage=${rawPageMarks} rawPages=${rawPagesMarks} bytes=${pdfBuf.length}`)
+    console.log(`${row.id} layout ${JSON.stringify(layout, null, 2)}`)
     writeFileSync(`supabase/.temp-career-report/${row.id}.pdf`, pdf)
     await page.close()
 
@@ -145,6 +186,7 @@ try {
       topMajor: scores.majorGroupScores[0]?.name ?? '',
       pdfPages,
       pageCount,
+      layout,
     })
 
     if (pageCount !== 5) throw new Error(`${row.id} screen pages=${pageCount}`)

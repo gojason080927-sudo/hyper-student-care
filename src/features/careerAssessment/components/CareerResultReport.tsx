@@ -72,11 +72,13 @@ function PrintPage({
   return (
     <>
       <section className={`career-print-page career-print-page--${density}`}>
-        <div className="career-print-page-body">{children}</div>
-        <footer className="career-print-footer">
-          <span>{CAREER_PRINT_FOOTER}</span>
-          <span className="career-print-pageno">- {page} -</span>
-        </footer>
+        <div className="career-print-frame">
+          <div className="career-print-page-body">{children}</div>
+          <footer className="career-print-footer">
+            <span>{CAREER_PRINT_FOOTER}</span>
+            <span className="career-print-pageno">- {page} -</span>
+          </footer>
+        </div>
       </section>
       {page < 5 ? <div className="career-print-break" aria-hidden="true" /> : null}
     </>
