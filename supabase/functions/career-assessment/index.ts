@@ -9,6 +9,7 @@ const corsHeaders = {
 type Action =
   | 'create_or_get'
   | 'create_or_get_bulk'
+  | 'list'
   | 'load'
   | 'save_answers'
   | 'submit'
@@ -151,6 +152,15 @@ Deno.serve(async (req) => {
     }
 
     return jsonResponse({ sessions })
+  }
+
+  if (action === 'list') {
+    const user = await requireTeacher()
+    if (!user) return jsonResponse({ error: 'not_authenticated' }, 401)
+
+    const { data, error } = await admin.rpc('get_career_assessment_session_summaries')
+    if (error) return jsonResponse({ error: error.message }, 500)
+    return jsonResponse({ sessions: data ?? [] })
   }
 
   if (action === 'load' || action === 'save_answers' || action === 'submit') {

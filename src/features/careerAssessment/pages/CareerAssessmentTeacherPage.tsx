@@ -12,15 +12,12 @@ import {
   type TeacherCareerSession,
 } from '../api/careerAssessmentApi'
 import { CareerQrModal } from '../components/CareerQrModal'
+import { deriveCareerListProgress } from '../utils/careerListProgress'
 
-function statusLabel(session?: TeacherCareerSession): { text: string; className: string } {
-  if (!session || session.status === 'not_started') {
-    return { text: '미시작', className: 'bg-slate-100 text-slate-700' }
-  }
-  if (session.status === 'in_progress') {
-    return { text: '검사중', className: 'bg-amber-100 text-amber-800' }
-  }
-  return { text: '완료', className: 'bg-emerald-100 text-emerald-800' }
+function statusTone(status: ReturnType<typeof deriveCareerListProgress>['status']): string {
+  if (status === 'in_progress') return 'bg-amber-100 text-amber-800'
+  if (status === 'completed') return 'bg-emerald-100 text-emerald-800'
+  return 'bg-slate-100 text-slate-700'
 }
 
 export function CareerAssessmentTeacherPage() {
@@ -59,7 +56,21 @@ export function CareerAssessmentTeacherPage() {
   }
 
   useEffect(() => {
-    void reload().catch(() => setError('검사 현황을 불러오지 못했습니다. 강사 로그인 후 다시 시도해 주세요.'))
+    const load = () => {
+      void reload().catch(() =>
+        setError('검사 현황을 불러오지 못했습니다. 강사 로그인 후 다시 시도해 주세요.'),
+      )
+    }
+    load()
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') load()
+    }
+    window.addEventListener('focus', load)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.removeEventListener('focus', load)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [])
 
   const prepareLinks = async (studentIds: string[]) => {
@@ -132,8 +143,7 @@ export function CareerAssessmentTeacherPage() {
           <tbody>
             {filtered.map((student) => {
               const session = sessionByStudent.get(student.id)
-              const status = statusLabel(session)
-              const percent = session ? Math.round((session.answeredCount / 88) * 100) : 0
+              const progress = deriveCareerListProgress(session)
               return (
                 <tr key={student.id} className="border-t border-slate-100">
                   <td className="px-3 py-3">
@@ -152,16 +162,12 @@ export function CareerAssessmentTeacherPage() {
                     </div>
                   </td>
                   <td className="px-3 py-3">
-                    <span className={`rounded-full px-2 py-1 text-xs font-semibold ${status.className}`}>
-                      {status.text}
+                    <span className={`rounded-full px-2 py-1 text-xs font-semibold ${statusTone(progress.status)}`}>
+                      {progress.label}
                     </span>
                   </td>
                   <td className="px-3 py-3 text-slate-600">
-                    {session && session.status === 'in_progress'
-                      ? `${session.answeredCount} / 88 · ${percent}%`
-                      : session?.status === 'completed'
-                        ? '88 / 88'
-                        : '-'}
+                    {progress.answeredCount} / 88 · {progress.percent}%
                   </td>
                   <td className="px-3 py-3">
                     <div className="flex flex-wrap gap-2">
@@ -191,7 +197,7 @@ export function CareerAssessmentTeacherPage() {
                           </button>
                         </>
                       ) : null}
-                      {session?.status === 'completed' && session.latestResultId ? (
+                      {progress.status === 'completed' && session?.latestResultId ? (
                         <>
                           <Link
                             to={`${listBase}/${student.id}?result=${session.latestResultId}`}

@@ -29,12 +29,12 @@ type SessionRow = {
   student_id: string
   access_token: string
   status: CareerSessionStatus
-  started_at: string | null
+  started_at?: string | null
   completed_at: string | null
   created_at: string
-  updated_at: string
-  career_assessment_responses?: Array<{ count: number }> | { count: number }[]
-  career_assessment_results?: Array<{ id: string; created_at: string }> | { id: string; created_at: string }[]
+  updated_at?: string
+  answered_count?: number
+  latest_result_id?: string | null
 }
 
 async function invokeCareer(body: Record<string, unknown>) {
@@ -103,36 +103,19 @@ export type TeacherCareerSession = {
   createdAt: string
 }
 
-function asArray<T>(value: T[] | T | undefined): T[] {
-  if (!value) return []
-  return Array.isArray(value) ? value : [value]
-}
-
 export async function fetchTeacherCareerSessions(): Promise<TeacherCareerSession[]> {
-  const { data, error } = await getSupabase()
-    .from('career_assessment_sessions')
-    .select(
-      'id, student_id, access_token, status, started_at, completed_at, created_at, updated_at, career_assessment_responses(count), career_assessment_results(id, created_at)',
-    )
-    .order('created_at', { ascending: false })
-  if (error) throw error
-
-  return ((data ?? []) as SessionRow[]).map((row) => {
-    const responses = asArray(row.career_assessment_responses)
-    const results = asArray(row.career_assessment_results).sort((a, b) =>
-      b.created_at.localeCompare(a.created_at),
-    )
-    return {
-      id: row.id,
-      studentId: row.student_id,
-      accessToken: row.access_token,
-      status: row.status,
-      answeredCount: Number(responses[0]?.count ?? 0),
-      latestResultId: results[0]?.id ?? null,
-      completedAt: row.completed_at,
-      createdAt: row.created_at,
-    }
-  })
+  const data = await invokeCareer({ action: 'list' })
+  const rows = (Array.isArray(data.sessions) ? data.sessions : []) as SessionRow[]
+  return rows.map((row) => ({
+    id: row.id,
+    studentId: row.student_id,
+    accessToken: row.access_token,
+    status: row.status,
+    answeredCount: Number(row.answered_count ?? 0),
+    latestResultId: row.latest_result_id ?? null,
+    completedAt: row.completed_at,
+    createdAt: row.created_at,
+  }))
 }
 
 export type CareerResultRecord = {
