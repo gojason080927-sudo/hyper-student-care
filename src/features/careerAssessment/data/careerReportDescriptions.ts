@@ -1,9 +1,3 @@
-import {
-  HIGH_SCHOOL_2022_KOREAN,
-  HIGH_SCHOOL_2022_MATH,
-  HIGH_SCHOOL_2022_SCIENCE,
-  HIGH_SCHOOL_2022_SOCIAL,
-} from '../../../data/curriculum/highSchool2022Subjects'
 import type {
   BehaviorCode,
   ProblemSolvingCode,
@@ -157,11 +151,6 @@ export type CreditSubjectCluster = {
   examples: readonly string[]
 }
 
-const S = HIGH_SCHOOL_2022_SCIENCE
-const M = HIGH_SCHOOL_2022_MATH
-const SO = HIGH_SCHOOL_2022_SOCIAL
-const K = HIGH_SCHOOL_2022_KOREAN
-
 /** 전공군 → 2022 개정 교육과정 공식 과목/영역 예시 */
 export const CREDIT_SUBJECT_CLUSTERS: readonly CreditSubjectCluster[] = [
   {
@@ -169,12 +158,12 @@ export const CREDIT_SUBJECT_CLUSTERS: readonly CreditSubjectCluster[] = [
     title: '의학·생명 계열',
     groupIds: ['MED', 'DEN', 'KMD', 'PHA', 'VET', 'NUR', 'HEALTH', 'BIO', 'FOOD'],
     examples: [
-      S.일반선택[2],
-      S.일반선택[1],
-      S.진로선택[4],
-      S.진로선택[5],
-      S.공통과목[2],
-      M.일반선택[0],
+      '생명과학',
+      '화학',
+      '세포와 물질대사',
+      '생물의 유전',
+      '과학탐구실험1',
+      '대수',
       '보건 관련 과목(학교 편제표 확인)',
     ],
   },
@@ -183,12 +172,12 @@ export const CREDIT_SUBJECT_CLUSTERS: readonly CreditSubjectCluster[] = [
     title: '공학·컴퓨터 계열',
     groupIds: ['CS', 'EE', 'ME', 'MAT', 'CIV', 'ARCH', 'PHY', 'CHEM'],
     examples: [
-      M.일반선택[0],
-      M.일반선택[1],
-      M.진로선택[0],
-      S.일반선택[0],
-      M.진로선택[3],
-      S.융합선택[2],
+      '대수',
+      '미적분Ⅰ',
+      '기하',
+      '물리학',
+      '인공지능 수학',
+      '융합과학 탐구',
       '정보·인공지능 관련 과목(학교 편제표 확인)',
     ],
   },
@@ -197,12 +186,12 @@ export const CREDIT_SUBJECT_CLUSTERS: readonly CreditSubjectCluster[] = [
     title: '환경·지구 계열',
     groupIds: ['ENV', 'EARTH'],
     examples: [
-      S.일반선택[3],
-      S.일반선택[1],
-      S.일반선택[0],
-      S.융합선택[1],
-      SO.융합선택[5],
-      M.일반선택[0],
+      '지구과학',
+      '화학',
+      '물리학',
+      '기후변화와 환경생태',
+      '기후변화와 지속가능한 세계',
+      '대수',
     ],
   },
   {
@@ -210,13 +199,13 @@ export const CREDIT_SUBJECT_CLUSTERS: readonly CreditSubjectCluster[] = [
     title: '사회·경영 계열',
     groupIds: ['BUS', 'ECON', 'ACC', 'LAW', 'SOC', 'SW', 'TOUR'],
     examples: [
-      SO.일반선택[2],
-      SO.진로선택[5],
-      SO.진로선택[3],
-      SO.진로선택[4],
-      SO.융합선택[2],
-      M.일반선택[2],
-      M.진로선택[2],
+      '사회와 문화',
+      '경제',
+      '정치',
+      '법과 사회',
+      '사회문제 탐구',
+      '확률과 통계',
+      '경제 수학',
     ],
   },
   {
@@ -224,12 +213,12 @@ export const CREDIT_SUBJECT_CLUSTERS: readonly CreditSubjectCluster[] = [
     title: '인문·언어·교육 계열',
     groupIds: ['LANG', 'HIST', 'PSY', 'EDU', 'CHILD'],
     examples: [
-      K.일반선택[2],
-      K.일반선택[1],
-      K.일반선택[0],
-      SO.일반선택[1],
-      SO.일반선택[2],
-      SO.진로선택[7],
+      '문학',
+      '독서와 작문',
+      '화법과 언어',
+      '세계사',
+      '사회와 문화',
+      '인문학과 윤리',
     ],
   },
   {
@@ -237,9 +226,9 @@ export const CREDIT_SUBJECT_CLUSTERS: readonly CreditSubjectCluster[] = [
     title: '예술·디자인·미디어 계열',
     groupIds: ['DESIGN', 'ART', 'MEDIA'],
     examples: [
-      K.진로선택[1],
-      K.융합선택[1],
-      K.일반선택[0],
+      '문학과 영상',
+      '매체 의사소통',
+      '화법과 언어',
       '미술·디자인 관련 과목(학교 편제표 확인)',
       '영상·콘텐츠 관련 과목(학교 편제표 확인)',
     ],
@@ -249,8 +238,8 @@ export const CREDIT_SUBJECT_CLUSTERS: readonly CreditSubjectCluster[] = [
     title: '스포츠 계열',
     groupIds: ['SPORT'],
     examples: [
-      S.일반선택[2],
-      S.공통과목[0],
+      '생명과학',
+      '통합과학1',
       '체육 관련 과목(학교 편제표 확인)',
     ],
   },
