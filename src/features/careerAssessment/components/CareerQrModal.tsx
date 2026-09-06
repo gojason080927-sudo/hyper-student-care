@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Modal } from '../../../components/ui/Modal'
 import { getCareerTestUrl } from '../api/careerAssessmentApi'
+import { copyCareerLink } from '../utils/copyCareerLink'
 
 type CareerQrModalProps = {
   open: boolean
@@ -28,7 +29,8 @@ export function CareerQrModal({ open, token, studentName, onClose }: CareerQrMod
   }, [open, url])
 
   const copy = async () => {
-    await navigator.clipboard.writeText(url)
+    const ok = await copyCareerLink(url)
+    if (!ok) return
     setCopied(true)
     window.setTimeout(() => setCopied(false), 1500)
   }

@@ -9,10 +9,15 @@ const corsHeaders = {
 type Action =
   | 'create_or_get'
   | 'create_or_get_bulk'
+  | 'create_guest'
+  | 'link_guest'
+  | 'delete_guest'
   | 'list'
   | 'load'
   | 'save_answers'
   | 'submit'
+
+const GUEST_GRADES = ['초5', '초6', '중1', '중2', '중3', '고1', '고2', '고3', '기타'] as const
 
 function jsonResponse(body: Record<string, unknown>, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -72,6 +77,12 @@ Deno.serve(async (req) => {
     token?: string
     student_id?: string
     student_ids?: string[]
+    guest_id?: string
+    name?: string
+    school?: string
+    grade?: string
+    memo?: string
+    consultation_date?: string
     answers?: Array<{ questionId: string; answer: number }>
   }
   try {
@@ -154,6 +165,94 @@ Deno.serve(async (req) => {
     return jsonResponse({ sessions })
   }
 
+  if (action === 'create_guest') {
+    const user = await requireTeacher()
+    if (!user) return jsonResponse({ error: 'not_authenticated' }, 401)
+
+    const name = body.name?.trim() ?? ''
+    const school = body.school?.trim() ?? ''
+    const grade = body.grade?.trim() ?? ''
+    const memo = body.memo?.trim() || null
+    const consultationDate = body.consultation_date?.trim() || new Date().toISOString().slice(0, 10)
+    if (!name || !school || !grade) return jsonResponse({ error: 'missing_guest_fields' }, 400)
+    if (!GUEST_GRADES.includes(grade as (typeof GUEST_GRADES)[number])) {
+      return jsonResponse({ error: 'invalid_grade' }, 400)
+    }
+
+    const { data: guest, error: guestError } = await admin
+      .from('career_assessment_guests')
+      .insert({
+        name,
+        school,
+        grade,
+        memo,
+        consultation_date: consultationDate,
+        created_by: user.id,
+      })
+      .select('*')
+      .single()
+    if (guestError || !guest) {
+      return jsonResponse({ error: guestError?.message ?? 'guest_create_failed' }, 500)
+    }
+
+    const token = createSecureToken()
+    const tokenHash = await sha256Hex(token)
+    const { data: session, error: sessionError } = await admin
+      .from('career_assessment_sessions')
+      .insert({
+        student_id: null,
+        guest_id: guest.id,
+        access_token: token,
+        token_hash: tokenHash,
+        status: 'not_started',
+      })
+      .select('*')
+      .single()
+    if (sessionError || !session) {
+      return jsonResponse({ error: sessionError?.message ?? 'session_create_failed' }, 500)
+    }
+
+    return jsonResponse({ guest, session })
+  }
+
+  if (action === 'link_guest') {
+    const user = await requireTeacher()
+    if (!user) return jsonResponse({ error: 'not_authenticated' }, 401)
+    const guestId = body.guest_id?.trim() ?? ''
+    const studentId = body.student_id?.trim() ?? ''
+    if (!guestId || !studentId) return jsonResponse({ error: 'missing_link' }, 400)
+
+    const { data: student } = await admin.from('students').select('id').eq('id', studentId).maybeSingle()
+    if (!student) return jsonResponse({ error: 'student_not_found' }, 404)
+
+    const { data: guest, error } = await admin
+      .from('career_assessment_guests')
+      .update({ linked_student_id: studentId, updated_at: new Date().toISOString() })
+      .eq('id', guestId)
+      .select('*')
+      .maybeSingle()
+    if (error || !guest) return jsonResponse({ error: error?.message ?? 'guest_link_failed' }, 500)
+    return jsonResponse({ guest })
+  }
+
+  if (action === 'delete_guest') {
+    const user = await requireTeacher()
+    if (!user) return jsonResponse({ error: 'not_authenticated' }, 401)
+    const guestId = body.guest_id?.trim() ?? ''
+    if (!guestId) return jsonResponse({ error: 'missing_guest' }, 400)
+
+    const { data: guest } = await admin
+      .from('career_assessment_guests')
+      .select('id')
+      .eq('id', guestId)
+      .maybeSingle()
+    if (!guest) return jsonResponse({ error: 'guest_not_found' }, 404)
+
+    const { error } = await admin.from('career_assessment_guests').delete().eq('id', guestId)
+    if (error) return jsonResponse({ error: error.message }, 500)
+    return jsonResponse({ deleted: true, guest_id: guestId })
+  }
+
   if (action === 'list') {
     const user = await requireTeacher()
     if (!user) return jsonResponse({ error: 'not_authenticated' }, 401)
@@ -177,12 +276,23 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'invalid_token' }, 404)
     }
 
-    const { data: student } = await admin
-      .from('students')
-      .select('id, name, school, grade')
-      .eq('id', session.student_id)
-      .maybeSingle()
-    if (!student) return jsonResponse({ error: 'student_not_found' }, 404)
+    let subject: { name: string; school: string; grade: string } | null = null
+    if (session.student_id) {
+      const { data: student } = await admin
+        .from('students')
+        .select('id, name, school, grade')
+        .eq('id', session.student_id)
+        .maybeSingle()
+      if (student) subject = { name: student.name, school: student.school, grade: student.grade }
+    } else if (session.guest_id) {
+      const { data: guest } = await admin
+        .from('career_assessment_guests')
+        .select('id, name, school, grade')
+        .eq('id', session.guest_id)
+        .maybeSingle()
+      if (guest) subject = { name: guest.name, school: guest.school, grade: guest.grade }
+    }
+    if (!subject) return jsonResponse({ error: 'subject_not_found' }, 404)
 
     const questions = await loadQuestions()
 
@@ -198,11 +308,7 @@ Deno.serve(async (req) => {
           status: session.status,
           completedAt: session.completed_at,
         },
-        student: {
-          name: student.name,
-          school: student.school,
-          grade: student.grade,
-        },
+        student: subject,
         questions: questions.map(publicQuestion),
         answers: responses ?? [],
         answeredCount: responses?.length ?? 0,

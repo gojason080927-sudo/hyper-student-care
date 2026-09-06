@@ -28,7 +28,8 @@ export type PublicCareerLoad = {
 
 type SessionRow = {
   id: string
-  student_id: string
+  student_id?: string | null
+  guest_id?: string | null
   access_token: string
   status: CareerSessionStatus
   started_at?: string | null
@@ -37,6 +38,12 @@ type SessionRow = {
   updated_at?: string
   answered_count?: number
   latest_result_id?: string | null
+  guest_name?: string | null
+  guest_school?: string | null
+  guest_grade?: string | null
+  consultation_date?: string | null
+  guest_memo?: string | null
+  linked_student_id?: string | null
 }
 
 async function invokeCareer(body: Record<string, unknown>) {
@@ -96,13 +103,28 @@ export async function submitCareerTest(token: string): Promise<{ status: string;
 
 export type TeacherCareerSession = {
   id: string
-  studentId: string
+  studentId: string | null
+  guestId: string | null
+  guestName: string | null
+  guestSchool: string | null
+  guestGrade: string | null
+  linkedStudentId: string | null
   accessToken: string
   status: CareerSessionStatus
   answeredCount: number
   latestResultId: string | null
   completedAt: string | null
   createdAt: string
+}
+
+export type CareerGuestRecord = {
+  id: string
+  name: string
+  school: string
+  grade: string
+  consultationDate: string | null
+  memo: string | null
+  linkedStudentId: string | null
 }
 
 export async function fetchCareerStudentsByIds(ids: string[]): Promise<Student[]> {
@@ -118,7 +140,12 @@ export async function fetchTeacherCareerSessions(): Promise<TeacherCareerSession
   const rows = (Array.isArray(data.sessions) ? data.sessions : []) as SessionRow[]
   return rows.map((row) => ({
     id: row.id,
-    studentId: row.student_id,
+    studentId: row.student_id ?? null,
+    guestId: row.guest_id ?? null,
+    guestName: row.guest_name ?? null,
+    guestSchool: row.guest_school ?? null,
+    guestGrade: row.guest_grade ?? null,
+    linkedStudentId: row.linked_student_id ?? null,
     accessToken: row.access_token,
     status: row.status,
     answeredCount: Number(row.answered_count ?? 0),
@@ -128,10 +155,63 @@ export async function fetchTeacherCareerSessions(): Promise<TeacherCareerSession
   }))
 }
 
+export async function createCareerGuest(input: {
+  name: string
+  school: string
+  grade: string
+  memo?: string
+  consultationDate?: string
+}): Promise<{ guest: CareerGuestRecord; session: TeacherCareerSession }> {
+  const data = await invokeCareer({
+    action: 'create_guest',
+    name: input.name,
+    school: input.school,
+    grade: input.grade,
+    memo: input.memo,
+    consultation_date: input.consultationDate,
+  })
+  const guest = data.guest as { id: string; name: string; school: string; grade: string; consultation_date?: string | null; memo?: string | null; linked_student_id?: string | null }
+  const session = data.session as SessionRow
+  return {
+    guest: {
+      id: guest.id,
+      name: guest.name,
+      school: guest.school,
+      grade: guest.grade,
+      consultationDate: guest.consultation_date ?? null,
+      memo: guest.memo ?? null,
+      linkedStudentId: guest.linked_student_id ?? null,
+    },
+    session: {
+      id: session.id,
+      studentId: null,
+      guestId: guest.id,
+      guestName: guest.name,
+      guestSchool: guest.school,
+      guestGrade: guest.grade,
+      linkedStudentId: null,
+      accessToken: session.access_token,
+      status: session.status,
+      answeredCount: 0,
+      latestResultId: null,
+      completedAt: session.completed_at,
+      createdAt: session.created_at,
+    },
+  }
+}
+
+export async function linkCareerGuest(guestId: string, studentId: string): Promise<void> {
+  await invokeCareer({ action: 'link_guest', guest_id: guestId, student_id: studentId })
+}
+
+export async function deleteCareerGuest(guestId: string): Promise<void> {
+  await invokeCareer({ action: 'delete_guest', guest_id: guestId })
+}
+
 export type CareerResultRecord = {
   id: string
   sessionId: string
-  studentId: string
+  studentId: string | null
   createdAt: string
   resultVersion: string
   scores: CareerAssessmentScores
@@ -153,6 +233,16 @@ export async function fetchCareerResultsForStudent(studentId: string): Promise<C
     .from('career_assessment_results')
     .select('*')
     .eq('student_id', studentId)
+    .order('created_at', { ascending: false })
+  if (error) throw error
+  return (data ?? []).map((row) => mapResultRow(row))
+}
+
+export async function fetchCareerResultsForGuest(guestId: string): Promise<CareerResultRecord[]> {
+  const { data, error } = await getSupabase()
+    .from('career_assessment_results')
+    .select('*')
+    .eq('guest_id', guestId)
     .order('created_at', { ascending: false })
   if (error) throw error
   return (data ?? []).map((row) => mapResultRow(row))
@@ -204,7 +294,7 @@ function mapResultRow(row: Record<string, unknown>): CareerResultRecord {
   return {
     id: String(row.id),
     sessionId: String(row.session_id),
-    studentId: String(row.student_id),
+    studentId: row.student_id ? String(row.student_id) : null,
     createdAt: String(row.created_at),
     resultVersion: String(row.result_version ?? payload.resultVersion),
     scores: payload,

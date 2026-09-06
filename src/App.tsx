@@ -388,6 +388,14 @@ function App() {
               }
             />
             <Route
+              path="career-assessment/guest/:guestId"
+              element={
+                <TeacherMobilePageShell title="진로검사 결과">
+                  <CareerAssessmentTeacherResultPage />
+                </TeacherMobilePageShell>
+              }
+            />
+            <Route
               path="career-assessment/:studentId"
               element={
                 <TeacherMobilePageShell title="진로검사 결과">
@@ -437,6 +445,7 @@ function App() {
               <Route path="integrated-report" element={<EntranceExamIntegratedReportPage />} />
             </Route>
             <Route path="career-assessment" element={<CareerAssessmentTeacherPage />} />
+            <Route path="career-assessment/guest/:guestId" element={<CareerAssessmentTeacherResultPage />} />
             <Route path="career-assessment/:studentId" element={<CareerAssessmentTeacherResultPage />} />
           </Route>
 
