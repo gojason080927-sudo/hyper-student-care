@@ -6,19 +6,435 @@
   print-color-adjust: exact;
 }
 
+.career-report-wrap {
+  width: 100%;
+}
+
+.career-report-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.career-print-root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.career-print-page {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  padding: 11mm 12mm 12mm;
+  background: #ffffff;
+  border: 1px solid #d4d4d8;
+}
+
+.career-print-page-body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+
+.career-print-page--air .career-print-page-body {
+  gap: 12px;
+}
+
+.career-print-page--normal .career-print-page-body {
+  gap: 10px;
+}
+
+.career-print-page--dense .career-print-page-body {
+  gap: 6px;
+}
+
+.career-print-footer {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid #e4e4e7;
+  color: #52525b;
+  font-size: 10px;
+  letter-spacing: 0.01em;
+}
+
+.career-print-pageno {
+  font-weight: 600;
+  color: #3f3f46;
+}
+
+.career-print-break {
+  display: none;
+}
+
 .career-print-hero {
   background: #163a70;
   color: #ffffff;
+  border: 1px solid #122f5c;
+  padding: 14px 16px;
+}
+
+.career-print-kicker {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+}
+
+.career-print-title {
+  margin: 4px 0 0;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.career-print-meta {
+  margin: 8px 0 0;
+  font-size: 12px;
+  opacity: 0.95;
+}
+
+.career-print-card {
+  border: 1px solid #d4d4d8;
+  background: #ffffff;
+  padding: 10px 12px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.career-print-page--air .career-print-card {
+  padding: 14px 16px;
+}
+
+.career-print-h2,
+.career-print-h3,
+.career-print-page5-title h2 {
+  margin: 0;
+  color: #163a70;
+  font-weight: 800;
+}
+
+.career-print-h2 {
+  font-size: 14px;
+}
+
+.career-print-h3 {
+  font-size: 13px;
+}
+
+.career-print-page5-title h2 {
+  font-size: 16px;
+}
+
+.career-print-dna-pair {
+  margin: 8px 0 0;
+  color: #163a70;
+  font-size: 20px;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.career-print-dna-body,
+.career-print-body {
+  margin: 8px 0 0;
+  color: #3f3f46;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.career-print-explained-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.career-print-explained-list--compact {
+  gap: 6px;
+}
+
+.career-print-explained-head,
+.career-print-riasec-head,
+.career-print-mini-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  color: #18181b;
+  font-size: 12px;
+}
+
+.career-print-explained-list p,
+.career-print-riasec-row p,
+.career-print-value-row p {
+  margin: 3px 0 0;
+  color: #52525b;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.career-print-major-top5 {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.career-print-major-top5 li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid #f4f4f5;
+}
+
+.career-print-major-name {
+  color: #163a70;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.career-print-major-fit {
+  color: #3f3f46;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.career-print-bar-track {
+  height: 6px;
+  overflow: hidden;
+  margin-top: 3px;
+  background: #e4e4e7;
+}
+
+.career-print-bar-track--tall {
+  height: 9px;
 }
 
 .career-print-bar {
-  background: #28c7b7;
+  height: 100%;
+  background: #163a70;
+}
+
+.career-print-riasec-list,
+.career-print-strength-grid,
+.career-print-behavior-grid {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.career-print-strength-grid,
+.career-print-behavior-grid {
+  grid-template-columns: 1fr 1fr;
+}
+
+.career-print-riasec-row,
+.career-print-value-row {
+  min-width: 0;
+}
+
+.career-print-mini-row {
+  min-width: 0;
+}
+
+.career-print-scale-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.career-print-scale-number {
+  margin: 6px 0 4px;
+  color: #163a70;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.career-print-scale-desc,
+.career-print-scale-comment,
+.career-print-note {
+  margin: 6px 0 0;
+  color: #52525b;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.career-print-scale-comment {
+  color: #3f3f46;
+}
+
+.career-print-guide-steps {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.career-print-guide-steps strong {
+  display: block;
+  color: #163a70;
+  font-size: 12.5px;
+}
+
+.career-print-guide-steps p {
+  margin: 4px 0 0;
+  color: #3f3f46;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.career-print-table {
+  width: 100%;
+  margin-top: 6px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 10.5px;
+  line-height: 1.35;
+}
+
+.career-print-table th,
+.career-print-table td {
+  padding: 4px 4px;
+  border-bottom: 1px solid #e4e4e7;
+  vertical-align: top;
+  text-align: left;
+}
+
+.career-print-table th {
+  color: #71717a;
+  font-weight: 700;
+}
+
+.career-print-col-rank {
+  width: 32px;
+}
+
+.career-print-col-name {
+  width: 72px;
+}
+
+.career-print-col-fit {
+  width: 78px;
+}
+
+.career-print-fit-label {
+  color: #71717a;
+  font-size: 9.5px;
+}
+
+.career-print-detail-majors {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px 10px;
+}
+
+.career-print-detail-majors li {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 10.5px;
+  line-height: 1.35;
+}
+
+.career-print-detail-majors strong {
+  color: #163a70;
+}
+
+.career-print-detail-majors span {
+  color: #3f3f46;
+}
+
+.career-print-cluster-grid {
+  display: grid;
+  gap: 7px;
+  margin-top: 6px;
+}
+
+.career-print-cluster-grid strong {
+  display: block;
+  color: #163a70;
+  font-size: 12px;
+}
+
+.career-print-cluster-grid p {
+  margin: 3px 0 0;
+  color: #3f3f46;
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+
+.career-print-checklist,
+.career-print-watch {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 3px;
+  color: #3f3f46;
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.career-print-watch li::before {
+  content: '· ';
+  font-weight: 700;
+}
+
+.career-print-disclaimer {
+  margin: 8px 0 0;
+  color: #71717a;
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+@media (max-width: 820px) {
+  .career-print-page {
+    min-height: 0;
+    max-width: 100%;
+    padding: 14px;
+  }
+
+  .career-print-strength-grid,
+  .career-print-behavior-grid,
+  .career-print-scale-grid,
+  .career-print-guide-steps,
+  .career-print-detail-majors {
+    grid-template-columns: 1fr;
+  }
+
+  .career-print-major-top5 li {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
 @media print {
   @page {
     size: A4 portrait;
-    margin: 10mm 12mm 14mm;
+    margin: 0;
   }
 
   html:has(.career-print-root) *,
@@ -49,7 +465,9 @@
   html:has(.career-print-root) .career-print-root {
     position: absolute;
     inset: 0;
-    width: 100%;
+    display: block !important;
+    width: 210mm;
+    gap: 0;
   }
 
   .career-no-print {
@@ -57,24 +475,52 @@
   }
 
   .career-print-page {
+    display: flex;
+    width: 210mm;
+    height: 297mm;
+    max-width: 210mm;
+    min-height: 297mm;
+    margin: 0;
+    border: 0;
+    box-shadow: none;
+    overflow: hidden;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .career-print-page + .career-print-page {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  .career-print-break {
+    display: block;
+    height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
     break-after: page;
-    break-inside: avoid;
     page-break-after: always;
-    page-break-inside: avoid;
   }
 
-  .career-print-page:last-child {
-    break-after: auto;
-    page-break-after: auto;
-  }
-
-  .career-print-card {
+  .career-print-card,
+  .career-print-footer,
+  .career-print-hero,
+  .career-print-table,
+  .career-print-table tr {
     break-inside: avoid;
     page-break-inside: avoid;
   }
 
-  .career-print-footer {
-    break-inside: avoid;
-    page-break-inside: avoid;
+  .career-print-strength-grid,
+  .career-print-behavior-grid,
+  .career-print-scale-grid,
+  .career-print-guide-steps,
+  .career-print-detail-majors {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .career-print-guide-steps {
+    grid-template-columns: 1fr 1fr 1fr;
   }
 }

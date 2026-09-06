@@ -1,17 +1,38 @@
+import type { ReactNode } from 'react'
+import {
+  CREDIT_SUBJECT_DISCLAIMER,
+  CREDIT_SYSTEM_INTRO,
+  CREDIT_WATCH_ITEMS,
+  EXPLORATION_GUIDE_STEPS,
+  IN_SCHOOL_PREP_CHECKLIST,
+  OUT_OF_SCHOOL_NOTE,
+  OUT_OF_SCHOOL_OPTIONS,
+  RIASEC_TRAIT_DESCRIPTIONS,
+  STRENGTH_DESCRIPTIONS,
+  VALUE_DESCRIPTIONS,
+} from '../data/careerReportDescriptions'
 import {
   BEHAVIOR_LABELS,
   BEHAVIOR_ORDER,
   CAREER_DISCLAIMER,
   CAREER_PRINT_FOOTER,
-  PROBLEM_SOLVING_LABELS,
-  PROBLEM_SOLVING_ORDER,
   RIASEC_LABELS,
   RIASEC_ORDER,
   STRENGTH_LABELS,
+  STRENGTH_ORDER,
   VALUE_ORDER,
 } from '../data/labels'
 import { formatRiasecPair, formatScore, topEntries } from '../engine/scoring'
 import type { CareerAssessmentScores } from '../types'
+import {
+  buildReportDnaExplanation,
+  commentForEfficacy,
+  commentForReadiness,
+  creditClustersForMajors,
+  detailedMajorsByTopGroups,
+  reasonForMajorGroup,
+  scaleCaption,
+} from '../utils/careerReportContent'
 import '../styles/careerResultPrint.css'
 
 type StudentInfo = {
@@ -28,23 +49,37 @@ type CareerResultReportProps = {
   onPrint?: () => void
 }
 
-function Bar({ value }: { value: number }) {
+function Bar({ value, tall = false }: { value: number; tall?: boolean }) {
   return (
-    <div className="h-2 overflow-hidden rounded-full bg-slate-200">
-      <div className="career-print-bar h-2 rounded-full" style={{ width: `${Math.max(0, Math.min(100, value))}%` }} />
+    <div className={`career-print-bar-track ${tall ? 'career-print-bar-track--tall' : ''}`}>
+      <div
+        className="career-print-bar"
+        style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
+      />
     </div>
   )
 }
 
-function ScoreRow({ label, value }: { label: string; value: number }) {
+function PrintPage({
+  page,
+  density = 'normal',
+  children,
+}: {
+  page: 1 | 2 | 3 | 4 | 5
+  density?: 'air' | 'normal' | 'dense'
+  children: ReactNode
+}) {
   return (
-    <div className="career-print-card space-y-1">
-      <div className="flex items-center justify-between text-sm">
-        <span className="font-medium text-slate-700">{label}</span>
-        <span className="font-semibold text-navy-900">{formatScore(value)}</span>
-      </div>
-      <Bar value={value} />
-    </div>
+    <>
+      <section className={`career-print-page career-print-page--${density}`}>
+        <div className="career-print-page-body">{children}</div>
+        <footer className="career-print-footer">
+          <span>{CAREER_PRINT_FOOTER}</span>
+          <span className="career-print-pageno">- {page} -</span>
+        </footer>
+      </section>
+      {page < 5 ? <div className="career-print-break" aria-hidden="true" /> : null}
+    </>
   )
 }
 
@@ -71,16 +106,18 @@ export function CareerResultReport({
   onPrint,
 }: CareerResultReportProps) {
   const dateLabel = testedAt.slice(0, 10)
-  const strengthTop5 = topEntries(scores.strengthScores, 5, Object.keys(STRENGTH_LABELS) as Array<keyof typeof STRENGTH_LABELS>)
+  const strengthTop5 = topEntries(scores.strengthScores, 5, STRENGTH_ORDER)
   const valueTop5 = topEntries(scores.valueScores, 5, VALUE_ORDER)
   const majorsTop10 = scores.majorGroupScores.slice(0, 10)
   const majorsTop5 = majorsTop10.slice(0, 5)
-  const detailedTop = scores.detailedMajorScores.slice(0, 10)
+  const dna = buildReportDnaExplanation(scores.riasecTop2)
+  const detailedGroups = detailedMajorsByTopGroups(majorsTop10, scores.detailedMajorScores)
+  const creditClusters = creditClustersForMajors(majorsTop5)
 
   return (
-    <div className="space-y-4">
+    <div className="career-report-wrap">
       {showActions && (
-        <div className="career-no-print flex justify-end">
+        <div className="career-no-print career-report-actions">
           <button
             type="button"
             onClick={onPrint ?? runCareerResultPrint}
@@ -91,196 +128,260 @@ export function CareerResultReport({
         </div>
       )}
 
-      <div className="career-print-root space-y-6">
-        <section className="career-print-page space-y-4">
-          <header className="career-print-hero career-print-card rounded-2xl p-5">
-            <p className="text-xs font-semibold tracking-[0.2em]">HYPER ACADEMY</p>
-            <h1 className="mt-1 text-2xl font-bold">진로·학과 적성검사 REPORT</h1>
-            <p className="mt-3 text-sm">
+      <div className="career-print-root">
+        <PrintPage page={1} density="air">
+          <header className="career-print-hero">
+            <p className="career-print-kicker">HYPER ACADEMY</p>
+            <h1 className="career-print-title">진로·학과 적성검사 REPORT</h1>
+            <p className="career-print-meta">
               {student.name} · {student.school} · {student.grade} · 검사일 {dateLabel}
             </p>
           </header>
 
-          <div className="career-print-card rounded-2xl border border-slate-200 bg-white p-5">
-            <h2 className="text-lg font-bold text-navy-900">진로 DNA</h2>
-            <p className="mt-2 text-xl font-semibold text-[#163A70]">{formatRiasecPair(scores.riasecTop2)}</p>
-            <p className="mt-2 text-sm leading-relaxed text-slate-600">{scores.dnaExplanation}</p>
-          </div>
+          <article className="career-print-card career-print-card--dna">
+            <h2 className="career-print-h2">진로 DNA</h2>
+            <p className="career-print-dna-pair">{formatRiasecPair(scores.riasecTop2)}</p>
+            <p className="career-print-dna-body">{dna}</p>
+          </article>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="career-print-card rounded-2xl border border-slate-200 bg-white p-5">
-              <h3 className="font-bold text-navy-900">핵심 강점 TOP5</h3>
-              <ol className="mt-3 space-y-2">
-                {strengthTop5.map((item, index) => (
-                  <li key={item.code} className="flex justify-between text-sm">
-                    <span>
+          <article className="career-print-card">
+            <h2 className="career-print-h2">핵심 강점 TOP5</h2>
+            <ol className="career-print-explained-list">
+              {strengthTop5.map((item, index) => (
+                <li key={item.code}>
+                  <div className="career-print-explained-head">
+                    <strong>
                       {index + 1}. {item.label}
-                    </span>
-                    <span className="font-semibold">{formatScore(item.score)}</span>
-                  </li>
-                ))}
-              </ol>
-            </div>
-            <div className="career-print-card rounded-2xl border border-slate-200 bg-white p-5">
-              <h3 className="font-bold text-navy-900">추천 전공 TOP5</h3>
-              <ol className="mt-3 space-y-2">
-                {majorsTop5.map((item, index) => (
-                  <li key={item.id} className="flex justify-between text-sm">
-                    <span>
-                      {index + 1}. {item.name}
-                    </span>
-                    <span className="font-semibold">
-                      {formatScore(item.score)} · {item.label}
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          </div>
-          <p className="career-print-footer text-xs text-slate-500">{CAREER_PRINT_FOOTER}</p>
-        </section>
+                    </strong>
+                    <span>{formatScore(item.score)}</span>
+                  </div>
+                  <p>{STRENGTH_DESCRIPTIONS[item.code]}</p>
+                </li>
+              ))}
+            </ol>
+          </article>
 
-        <section className="career-print-page space-y-4">
-          <div className="career-print-card rounded-2xl border border-slate-200 bg-white p-5">
-            <h2 className="font-bold text-navy-900">RIASEC 전체 결과</h2>
-            <div className="mt-3 space-y-2">
-              {RIASEC_ORDER.map((code) => (
-                <ScoreRow
-                  key={code}
-                  label={`${RIASEC_LABELS[code]} ${code}`}
-                  value={scores.riasecScores[code]}
-                />
-              ))}
-            </div>
-          </div>
-          <div className="career-print-card rounded-2xl border border-slate-200 bg-white p-5">
-            <h2 className="font-bold text-navy-900">강점 8영역</h2>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              {(Object.keys(STRENGTH_LABELS) as Array<keyof typeof STRENGTH_LABELS>).map((code) => (
-                <ScoreRow key={code} label={STRENGTH_LABELS[code]} value={scores.strengthScores[code]} />
-              ))}
-            </div>
-          </div>
-          <div className="career-print-card rounded-2xl border border-slate-200 bg-white p-5">
-            <h2 className="font-bold text-navy-900">직업가치 TOP5</h2>
-            <div className="mt-3 space-y-2">
-              {valueTop5.map((item) => (
-                <ScoreRow key={item.code} label={item.label} value={item.score} />
-              ))}
-            </div>
-          </div>
-          <div className="career-print-card rounded-2xl border border-slate-200 bg-white p-5">
-            <h2 className="font-bold text-navy-900">행동 특성</h2>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              {BEHAVIOR_ORDER.map((code) => (
-                <ScoreRow key={code} label={BEHAVIOR_LABELS[code]} value={scores.behaviorScores[code]} />
-              ))}
-            </div>
-          </div>
-          <p className="career-print-footer text-xs text-slate-500">{CAREER_PRINT_FOOTER}</p>
-        </section>
-
-        <section className="career-print-page space-y-4">
-          <div className="career-print-card rounded-2xl border border-slate-200 bg-white p-5">
-            <h2 className="font-bold text-navy-900">추천 전공 TOP10</h2>
-            <table className="mt-3 w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-500">
-                  <th className="py-2">순위</th>
-                  <th>전공군</th>
-                  <th>적합도</th>
-                  <th>주요 근거</th>
-                </tr>
-              </thead>
-              <tbody>
-                {majorsTop10.map((item, index) => (
-                  <tr key={item.id} className="border-b border-slate-100 align-top">
-                    <td className="py-2">{index + 1}</td>
-                    <td>{item.name}</td>
-                    <td>
-                      {formatScore(item.score)}
-                      <div className="text-xs text-slate-500">{item.label}</div>
-                    </td>
-                    <td className="text-xs text-slate-600">{item.reasons[0] ?? scores.overallExplanation}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="career-print-card rounded-2xl border border-slate-200 bg-white p-5">
-            <h2 className="font-bold text-navy-900">세부 추천학과</h2>
-            <ol className="mt-3 space-y-2 text-sm">
-              {detailedTop.map((item, index) => (
-                <li key={item.id} className="flex justify-between gap-3">
-                  <span>
+          <article className="career-print-card">
+            <h2 className="career-print-h2">추천 전공 TOP5</h2>
+            <ol className="career-print-major-top5">
+              {majorsTop5.map((item, index) => (
+                <li key={item.id}>
+                  <span className="career-print-major-name">
                     {index + 1}. {item.name}
                   </span>
-                  <span className="shrink-0 font-semibold">
+                  <span className="career-print-major-fit">
                     {formatScore(item.score)} · {item.label}
                   </span>
                 </li>
               ))}
             </ol>
-          </div>
-          <div className="career-print-card rounded-2xl border border-slate-200 bg-white p-5">
-            <h2 className="font-bold text-navy-900">왜 추천됐나요?</h2>
-            <p className="mt-2 text-sm leading-relaxed text-slate-700">{scores.overallExplanation}</p>
-          </div>
-          <p className="career-print-footer text-xs text-slate-500">{CAREER_PRINT_FOOTER}</p>
-        </section>
+          </article>
+        </PrintPage>
 
-        <section className="career-print-page space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="career-print-card rounded-2xl border border-slate-200 bg-white p-5">
-              <h2 className="font-bold text-navy-900">진로 실행역량</h2>
-              <p className="mt-2 text-3xl font-bold text-navy-900">{formatScore(scores.careerEfficacy)}</p>
-              <Bar value={scores.careerEfficacy} />
-            </div>
-            <div className="career-print-card rounded-2xl border border-slate-200 bg-white p-5">
-              <h2 className="font-bold text-navy-900">진로 준비도</h2>
-              <p className="mt-2 text-3xl font-bold text-navy-900">{formatScore(scores.careerReadiness)}</p>
-              <Bar value={scores.careerReadiness} />
-            </div>
-          </div>
-          <div className="career-print-card rounded-2xl border border-slate-200 bg-white p-5">
-            <h2 className="font-bold text-navy-900">강점 활용 방법</h2>
-            <p className="mt-2 text-sm leading-relaxed text-slate-700">
-              상위 강점인 {strengthTop5.map((item) => item.label).join(', ')}을 실제 탐구·과제·동아리 활동에
-              연결해 보면 전공 탐색이 더 구체해집니다.
-            </p>
-          </div>
-          <div className="career-print-card rounded-2xl border border-slate-200 bg-white p-5">
-            <h2 className="font-bold text-navy-900">확인할 부분</h2>
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700">
-              {(majorsTop5[0]?.watchItems ?? []).length > 0 ? (
-                majorsTop5[0]?.watchItems.map((item) => <li key={item}>{item}</li>)
-              ) : (
-                <li>상위 추천 전공의 실제 수업·실습 경험을 통해 적합성을 추가로 확인해 보는 것이 좋습니다.</li>
-              )}
-            </ul>
-          </div>
-          <div className="career-print-card rounded-2xl border border-slate-200 bg-white p-5">
-            <h2 className="font-bold text-navy-900">추천 진로탐색 방향</h2>
-            <p className="mt-2 text-sm leading-relaxed text-slate-700">
-              {majorsTop5.map((item) => item.name).join(', ')} 계열 자료·체험·학과 소개를 먼저 살펴보고, 현재
-              흥미와 강점이 실제로 맞는지 확인하는 것을 권합니다.
-            </p>
-          </div>
-          <div className="career-print-card rounded-2xl border border-slate-200 bg-white p-5">
-            <h2 className="font-bold text-navy-900">문제해결</h2>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              {PROBLEM_SOLVING_ORDER.map((code) => (
-                <ScoreRow
-                  key={code}
-                  label={PROBLEM_SOLVING_LABELS[code]}
-                  value={scores.problemSolvingScores[code]}
-                />
+        <PrintPage page={2} density="dense">
+          <article className="career-print-card">
+            <h2 className="career-print-h2">RIASEC 전체 결과</h2>
+            <div className="career-print-riasec-list">
+              {RIASEC_ORDER.map((code) => (
+                <div key={code} className="career-print-riasec-row">
+                  <div className="career-print-riasec-head">
+                    <strong>
+                      {code} {RIASEC_LABELS[code]}
+                    </strong>
+                    <span>{formatScore(scores.riasecScores[code])}</span>
+                  </div>
+                  <Bar value={scores.riasecScores[code]} />
+                  <p>{RIASEC_TRAIT_DESCRIPTIONS[code]}</p>
+                </div>
               ))}
             </div>
+          </article>
+
+          <article className="career-print-card">
+            <h2 className="career-print-h2">강점 8영역</h2>
+            <div className="career-print-strength-grid">
+              {STRENGTH_ORDER.map((code) => (
+                <div key={code} className="career-print-mini-row">
+                  <div className="career-print-mini-head">
+                    <span>{STRENGTH_LABELS[code]}</span>
+                    <strong>{formatScore(scores.strengthScores[code])}</strong>
+                  </div>
+                  <Bar value={scores.strengthScores[code]} />
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className="career-print-card">
+            <h2 className="career-print-h2">직업가치 TOP5</h2>
+            <div className="career-print-explained-list career-print-explained-list--compact">
+              {valueTop5.map((item) => (
+                <div key={item.code} className="career-print-value-row">
+                  <div className="career-print-explained-head">
+                    <strong>{item.label}</strong>
+                    <span>{formatScore(item.score)}</span>
+                  </div>
+                  <Bar value={item.score} />
+                  <p>{VALUE_DESCRIPTIONS[item.code]}</p>
+                </div>
+              ))}
+            </div>
+          </article>
+        </PrintPage>
+
+        <PrintPage page={3} density="normal">
+          <article className="career-print-card">
+            <h2 className="career-print-h2">행동 특성</h2>
+            <div className="career-print-behavior-grid">
+              {BEHAVIOR_ORDER.map((code) => (
+                <div key={code} className="career-print-mini-row">
+                  <div className="career-print-mini-head">
+                    <span>{BEHAVIOR_LABELS[code]}</span>
+                    <strong>{formatScore(scores.behaviorScores[code])}</strong>
+                  </div>
+                  <Bar value={scores.behaviorScores[code]} />
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <div className="career-print-scale-grid">
+            <article className="career-print-card career-print-scale-card">
+              <h2 className="career-print-h2">진로 실행역량</h2>
+              <p className="career-print-scale-number">{formatScore(scores.careerEfficacy)}</p>
+              <Bar value={scores.careerEfficacy} tall />
+              <p className="career-print-scale-desc">{scaleCaption('efficacy')}</p>
+              <p className="career-print-scale-comment">{commentForEfficacy(scores.careerEfficacy)}</p>
+            </article>
+            <article className="career-print-card career-print-scale-card">
+              <h2 className="career-print-h2">진로 준비도</h2>
+              <p className="career-print-scale-number">{formatScore(scores.careerReadiness)}</p>
+              <Bar value={scores.careerReadiness} tall />
+              <p className="career-print-scale-desc">{scaleCaption('readiness')}</p>
+              <p className="career-print-scale-comment">{commentForReadiness(scores.careerReadiness)}</p>
+            </article>
           </div>
-          <p className="text-xs leading-relaxed text-slate-500">{CAREER_DISCLAIMER}</p>
-          <p className="career-print-footer text-xs text-slate-500">{CAREER_PRINT_FOOTER}</p>
-        </section>
+
+          <article className="career-print-card">
+            <h2 className="career-print-h2">진로 탐색·준비 가이드</h2>
+            <ol className="career-print-guide-steps">
+              {EXPLORATION_GUIDE_STEPS.map((step) => (
+                <li key={step.title}>
+                  <strong>{step.title}</strong>
+                  <p>{step.body}</p>
+                </li>
+              ))}
+            </ol>
+            <p className="career-print-note">
+              현재 결과에서는 {majorsTop5.slice(0, 3).map((item) => item.name).join(', ')} 계열을
+              중심으로 위 단계를 적용해 보면 좋습니다. 구체적인 과목 선택은 5페이지 고교학점제
+              가이드를 참고하세요.
+            </p>
+          </article>
+        </PrintPage>
+
+        <PrintPage page={4} density="dense">
+          <article className="career-print-card">
+            <h2 className="career-print-h2">추천 전공 TOP10</h2>
+            <table className="career-print-table">
+              <thead>
+                <tr>
+                  <th className="career-print-col-rank">순위</th>
+                  <th className="career-print-col-name">전공군</th>
+                  <th className="career-print-col-fit">적합도</th>
+                  <th>주요 근거</th>
+                </tr>
+              </thead>
+              <tbody>
+                {majorsTop10.map((item, index) => (
+                  <tr key={item.id}>
+                    <td>{index + 1}</td>
+                    <td>{item.name}</td>
+                    <td>
+                      {formatScore(item.score)}
+                      <div className="career-print-fit-label">{item.label}</div>
+                    </td>
+                    <td>
+                      {reasonForMajorGroup(item, scores.riasecScores, scores.strengthScores)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </article>
+
+          <article className="career-print-card">
+            <h2 className="career-print-h2">세부 추천학과</h2>
+            <ol className="career-print-detail-majors">
+              {detailedGroups.map((row, index) => (
+                <li key={row.group.id}>
+                  <strong>
+                    {index + 1}. {row.group.name}
+                  </strong>
+                  <span>{row.majors.join(' · ')}</span>
+                </li>
+              ))}
+            </ol>
+          </article>
+        </PrintPage>
+
+        <PrintPage page={5} density="normal">
+          <header className="career-print-page5-title">
+            <h2>고교학점제 기반 진로 설계 가이드</h2>
+          </header>
+
+          <article className="career-print-card">
+            <h3 className="career-print-h3">1. 고교학점제란?</h3>
+            <p className="career-print-body">{CREDIT_SYSTEM_INTRO}</p>
+          </article>
+
+          <article className="career-print-card">
+            <h3 className="career-print-h3">2. 나의 진로와 연결된 선택과목 예시</h3>
+            <p className="career-print-note">{CREDIT_SUBJECT_DISCLAIMER}</p>
+            <div className="career-print-cluster-grid">
+              {creditClusters.map((cluster) => (
+                <div key={cluster.id}>
+                  <strong>
+                    {cluster.title}
+                    {majorsTop5.some((item) => cluster.groupIds.includes(item.id))
+                      ? ` · ${majorsTop5
+                          .filter((item) => cluster.groupIds.includes(item.id))
+                          .slice(0, 2)
+                          .map((item) => item.name)
+                          .join(', ')}`
+                      : ''}
+                  </strong>
+                  <p>{cluster.examples.join(' · ')}</p>
+                </div>
+              ))}
+            </div>
+          </article>
+
+          <article className="career-print-card">
+            <h3 className="career-print-h3">3. 학교 안에서 할 수 있는 준비</h3>
+            <ul className="career-print-checklist">
+              {IN_SCHOOL_PREP_CHECKLIST.map((item) => (
+                <li key={item}>□ {item}</li>
+              ))}
+            </ul>
+          </article>
+
+          <article className="career-print-card">
+            <h3 className="career-print-h3">4. 학교 밖에서 확장할 수 있는 방법</h3>
+            <p className="career-print-body">{OUT_OF_SCHOOL_OPTIONS.join(' · ')}</p>
+            <p className="career-print-note">{OUT_OF_SCHOOL_NOTE}</p>
+          </article>
+
+          <article className="career-print-card">
+            <h3 className="career-print-h3">5. 확인할 부분</h3>
+            <ul className="career-print-watch">
+              {CREDIT_WATCH_ITEMS.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+            <p className="career-print-disclaimer">{CAREER_DISCLAIMER}</p>
+          </article>
+        </PrintPage>
       </div>
     </div>
   )
