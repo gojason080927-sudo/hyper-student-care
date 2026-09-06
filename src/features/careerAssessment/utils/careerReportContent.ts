@@ -1,3 +1,4 @@
+import { MAJOR_CAREER_PATHS } from '../data/careerMajorCareerPaths'
 import {
   CAREER_MAJOR_REPORT_SEED,
   CREDIT_SUBJECT_CLUSTERS,
@@ -132,13 +133,18 @@ export function collectDetailedMajorsForGroup(
   return unique
 }
 
+export function careersForMajorGroup(groupId: string): string[] {
+  return [...(MAJOR_CAREER_PATHS[groupId] ?? [])]
+}
+
 export function detailedMajorsByTopGroups(
   majorsTop10: RankedItem[],
   detailedScores: RankedItem[],
-): Array<{ group: RankedItem; majors: string[] }> {
+): Array<{ group: RankedItem; majors: string[]; careers: string[] }> {
   return majorsTop10.map((group) => ({
     group,
     majors: collectDetailedMajorsForGroup(group.id, detailedScores),
+    careers: careersForMajorGroup(group.id),
   }))
 }
 

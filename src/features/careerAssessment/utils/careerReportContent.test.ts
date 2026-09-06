@@ -3,6 +3,11 @@
  */
 import assert from 'node:assert/strict'
 import {
+  MAJOR_CAREER_LICENSE_NOTE,
+  MAJOR_CAREER_PATHS,
+  MAJOR_FAMILY_DEPARTMENTS,
+} from '../data/careerMajorCareerPaths.ts'
+import {
   BEHAVIOR_DESCRIPTIONS,
   CAREER_MAJOR_REPORT_SEED,
   CREDIT_SUBJECT_CLUSTERS,
@@ -23,6 +28,7 @@ import { scoreCareerAssessment } from '../engine/scoring.ts'
 import {
   buildCombinedMajorReason,
   buildReportDnaExplanation,
+  careersForMajorGroup,
   collectDetailedMajorsForGroup,
   commentForEfficacy,
   commentForReadiness,
@@ -111,6 +117,7 @@ assert.equal(grouped.length, 10)
 for (const row of grouped) {
   assert.ok(row.majors.length >= 1)
   assert.ok(row.majors.length <= 3)
+  assert.ok(row.careers.length >= 3)
 }
 const medRow = grouped.find((row) => row.group.id === 'MED')
 if (medRow) {
@@ -118,10 +125,30 @@ if (medRow) {
   assert.ok(medRow.majors.length >= 2)
 }
 
+assert.equal(CAREER_MAJOR_PROFILES.length, 36)
+assert.equal(Object.keys(MAJOR_CAREER_PATHS).length, 36)
+assert.match(MAJOR_CAREER_LICENSE_NOTE, /국가시험·면허/)
+
 for (const profile of CAREER_MAJOR_PROFILES) {
   const names = collectDetailedMajorsForGroup(profile.id, inquiry.detailedMajorScores)
   assert.ok(names.length >= 1 && names.length <= 3, profile.id)
+  const careers = careersForMajorGroup(profile.id)
+  assert.ok(careers.length >= 3 && careers.length <= 4, `careers ${profile.id}`)
+
+  for (const [familyId, familyNames] of Object.entries(MAJOR_FAMILY_DEPARTMENTS)) {
+    if (familyId === profile.id) continue
+    const leaked = names.filter((name) => familyNames.includes(name))
+    assert.equal(leaked.length, 0, `${profile.id} leaked ${familyId} majors: ${leaked.join(', ')}`)
+  }
 }
+
+const mathMajors = collectDetailedMajorsForGroup('MATH', inquiry.detailedMajorScores)
+const vetMajors = collectDetailedMajorsForGroup('VET', inquiry.detailedMajorScores)
+assert.ok(mathMajors.includes('수학과') && mathMajors.includes('통계학과'))
+assert.ok(vetMajors.includes('수의학과'))
+assert.ok(vetMajors.includes('수의예과') || vetMajors.includes('동물보건복지학과'))
+assert.ok(!mathMajors.some((name) => name.includes('수의')))
+assert.ok(!vetMajors.includes('수학과'))
 
 assert.ok(CAREER_MAJOR_REPORT_SEED.every((row) => row.name.endsWith('과') || row.name.endsWith('학') || row.name.includes('과')))
 assert.ok(!CREDIT_WATCH_ITEMS.some((item) => item.includes('수업·실습')))

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { MAJOR_CAREER_LICENSE_NOTE } from '../data/careerMajorCareerPaths'
 import {
   CREDIT_SUBJECT_DISCLAIMER,
   CREDIT_SYSTEM_INTRO,
@@ -321,9 +322,15 @@ export function CareerResultReport({
                     {index + 1}. {row.group.name}
                   </strong>
                   <span>{row.majors.join(' · ')}</span>
+                  {row.careers.length > 0 ? (
+                    <span className="career-print-careers">
+                      대표 진출 직업: {row.careers.join(' · ')}
+                    </span>
+                  ) : null}
                 </li>
               ))}
             </ol>
+            <p className="career-print-license-note">{MAJOR_CAREER_LICENSE_NOTE}</p>
           </article>
         </PrintPage>
 
