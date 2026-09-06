@@ -160,6 +160,11 @@ export type NoticeRow = {
   is_pinned: boolean
   is_published: boolean
   published_at: string | null
+  audience_type?: string | null
+  target_grade?: string | null
+  target_class_name?: string | null
+  target_student_id?: string | null
+  career_assessment_result_id?: string | null
   created_at: string
   updated_at: string
 }
@@ -672,6 +677,11 @@ export function noticeFromRow(row: NoticeRow): ContentPost {
     isPinned: row.is_pinned,
     isPublished: row.is_published,
     publishedAt: row.published_at ?? row.created_at.slice(0, 10),
+    audienceType: (row.audience_type as ContentPost['audienceType']) ?? 'all',
+    targetGrade: row.target_grade ?? '',
+    targetClassName: row.target_class_name ?? '',
+    targetStudentId: row.target_student_id ?? '',
+    careerAssessmentResultId: row.career_assessment_result_id ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }

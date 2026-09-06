@@ -1,0 +1,80 @@
+.career-print-root,
+.career-print-hero,
+.career-print-bar,
+.career-print-page {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.career-print-hero {
+  background: #163a70;
+  color: #ffffff;
+}
+
+.career-print-bar {
+  background: #28c7b7;
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm 14mm;
+  }
+
+  html:has(.career-print-root) *,
+  html:has(.career-print-root) *::before,
+  html:has(.career-print-root) *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  html:has(.career-print-root),
+  html:has(.career-print-root) body,
+  html:has(.career-print-root) #root,
+  html:has(.career-print-root) main {
+    background: #fff !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  html:has(.career-print-root) body * {
+    visibility: hidden !important;
+  }
+
+  html:has(.career-print-root) .career-print-root,
+  html:has(.career-print-root) .career-print-root * {
+    visibility: visible !important;
+  }
+
+  html:has(.career-print-root) .career-print-root {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+  }
+
+  .career-no-print {
+    display: none !important;
+  }
+
+  .career-print-page {
+    break-after: page;
+    break-inside: avoid;
+    page-break-after: always;
+    page-break-inside: avoid;
+  }
+
+  .career-print-page:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .career-print-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .career-print-footer {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

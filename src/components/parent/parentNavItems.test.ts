@@ -27,6 +27,10 @@ assert.equal(
   true,
 )
 assert.equal(isParentCategoryPathActive('notices-makeup', '/care/abc/makeup-plans'), true)
+assert.equal(
+  isParentCategoryPathActive('notices-makeup', '/care/abc/career-result/result-1'),
+  true,
+)
 assert.equal(isParentCategoryPathActive('notices-makeup', '/care/abc/questions'), false)
 assert.equal(
   isParentCategoryPathActive('admission-strategy', '/care/abc/admission-strategy'),

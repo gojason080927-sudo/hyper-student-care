@@ -96,6 +96,10 @@ import { EntranceExamQuestionBankPage } from './features/entranceExam/EntranceEx
 import { EntranceExamReportPage } from './features/entranceExam/EntranceExamReportPage'
 import { EntranceExamResultsPage } from './features/entranceExam/EntranceExamResultsPage'
 import { EntranceExamSurveyPage } from './features/entranceExam/EntranceExamSurveyPage'
+import { CareerAssessmentTeacherPage } from './features/careerAssessment/pages/CareerAssessmentTeacherPage'
+import { CareerAssessmentTeacherResultPage } from './features/careerAssessment/pages/CareerAssessmentTeacherResultPage'
+import { CareerTestStudentPage } from './features/careerAssessment/pages/CareerTestStudentPage'
+import { ParentCareerResultPage } from './features/careerAssessment/pages/ParentCareerResultPage'
 
 
 
@@ -108,6 +112,8 @@ function App() {
       <Routes>
 
         {/* 학부모·학생: 로그인 없이 student_access_key 링크로 접근 */}
+
+        <Route path="/career-test/:token" element={<CareerTestStudentPage />} />
 
         <Route path="/care/:studentAccessKey" element={<ParentStudentLayout />}>
 
@@ -143,6 +149,8 @@ function App() {
           <Route path="learning-notices/:postId" element={<LearningNoticeDetailPage />} />
 
           <Route path="questions" element={<ParentStudentQuestionsPage />} />
+
+          <Route path="career-result/:resultId" element={<ParentCareerResultPage />} />
 
         </Route>
 
@@ -371,6 +379,23 @@ function App() {
 
             />
 
+            <Route
+              path="career-assessment"
+              element={
+                <TeacherMobilePageShell title="진로·학과 적성검사">
+                  <CareerAssessmentTeacherPage />
+                </TeacherMobilePageShell>
+              }
+            />
+            <Route
+              path="career-assessment/:studentId"
+              element={
+                <TeacherMobilePageShell title="진로검사 결과">
+                  <CareerAssessmentTeacherResultPage />
+                </TeacherMobilePageShell>
+              }
+            />
+
             <Route path="more" element={<TeacherMobileMorePage />} />
 
           </Route>
@@ -411,6 +436,8 @@ function App() {
               <Route path="integrated" element={<EntranceExamIntegratedSessionsPage />} />
               <Route path="integrated-report" element={<EntranceExamIntegratedReportPage />} />
             </Route>
+            <Route path="career-assessment" element={<CareerAssessmentTeacherPage />} />
+            <Route path="career-assessment/:studentId" element={<CareerAssessmentTeacherResultPage />} />
           </Route>
 
           <Route path="monthly-learning-reports" element={<MonthlyLearningReportSelectPage />} />

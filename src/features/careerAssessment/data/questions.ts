@@ -1,0 +1,151 @@
+import type { CareerQuestion } from '../types'
+
+/**
+ * HYPER 진로·학과 적성검사 MASTER v1 — 88문항.
+ * question_number(1~88)가 canonical id이다. 문구와 scoring_code를 임의 변경하지 않는다.
+ */
+const RAW_QUESTIONS: Array<Omit<CareerQuestion, 'displayOrder'>> = [
+  { questionNumber: 1, domain: 'riasec', scoringCode: 'R', text: '기계나 전자제품이 어떤 원리로 작동하는지 직접 살펴보는 것이 재미있다.' },
+  { questionNumber: 2, domain: 'riasec', scoringCode: 'R', text: '말로만 설명을 듣는 것보다 직접 만들거나 조립하면서 배우는 것이 좋다.' },
+  { questionNumber: 3, domain: 'riasec', scoringCode: 'R', text: '도구나 장비를 이용해 무언가를 고치거나 만들어 보고 싶다.' },
+  { questionNumber: 4, domain: 'riasec', scoringCode: 'R', text: '책상에 오래 앉아 있는 활동보다 몸을 움직이며 직접 해보는 활동이 좋다.' },
+  { questionNumber: 5, domain: 'riasec', scoringCode: 'R', text: '눈에 보이는 결과물이 만들어지는 활동에서 성취감을 느낀다.' },
+  { questionNumber: 6, domain: 'riasec', scoringCode: 'I', text: '어떤 현상이 왜 일어나는지 원인을 알아내는 과정이 재미있다.' },
+  { questionNumber: 7, domain: 'riasec', scoringCode: 'I', text: '어려운 문제라도 원리를 이해할 때까지 생각해 보는 편이다.' },
+  { questionNumber: 8, domain: 'riasec', scoringCode: 'I', text: '자료나 정보를 분석하여 규칙이나 공통점을 찾아내는 것을 좋아한다.' },
+  { questionNumber: 9, domain: 'riasec', scoringCode: 'I', text: '과학적 현상이나 새로운 기술에 관한 내용을 찾아보는 것이 흥미롭다.' },
+  { questionNumber: 10, domain: 'riasec', scoringCode: 'I', text: '정답을 외우는 것보다 그 답이 나오는 이유를 이해하는 것이 중요하다.' },
+  { questionNumber: 11, domain: 'riasec', scoringCode: 'A', text: '그림·영상·음악·글 등을 통해 내 생각이나 느낌을 표현하는 것을 좋아한다.' },
+  { questionNumber: 12, domain: 'riasec', scoringCode: 'A', text: '정해진 방식보다 나만의 방식으로 과제를 해보고 싶을 때가 많다.' },
+  { questionNumber: 13, domain: 'riasec', scoringCode: 'A', text: '새로운 아이디어를 떠올리고 그것을 구체적인 결과물로 만드는 것이 재미있다.' },
+  { questionNumber: 14, domain: 'riasec', scoringCode: 'A', text: '디자인이나 색상·구성·표현 방식의 차이를 비교해 보는 것이 흥미롭다.' },
+  { questionNumber: 15, domain: 'riasec', scoringCode: 'A', text: '이야기나 콘텐츠를 직접 기획하거나 만들어 보고 싶다.' },
+  { questionNumber: 16, domain: 'riasec', scoringCode: 'S', text: '다른 사람이 어려워하는 내용을 이해하도록 설명해 주는 것이 좋다.' },
+  { questionNumber: 17, domain: 'riasec', scoringCode: 'S', text: '친구가 고민할 때 이야기를 듣고 해결 방법을 함께 찾아주는 편이다.' },
+  { questionNumber: 18, domain: 'riasec', scoringCode: 'S', text: '다른 사람의 성장이나 발전에 도움을 주는 활동에서 보람을 느낀다.' },
+  { questionNumber: 19, domain: 'riasec', scoringCode: 'S', text: '여러 사람과 협력해서 공동의 목표를 이루는 활동을 좋아한다.' },
+  { questionNumber: 20, domain: 'riasec', scoringCode: 'S', text: '사람들의 생각이나 감정을 이해하는 것에 관심이 많다.' },
+  { questionNumber: 21, domain: 'riasec', scoringCode: 'E', text: '여러 사람 앞에서 내 의견을 제시하고 설득하는 것을 해보고 싶다.' },
+  { questionNumber: 22, domain: 'riasec', scoringCode: 'E', text: '내가 아이디어를 내고 사람들을 이끌어 결과를 만들어 내는 활동이 좋다.' },
+  { questionNumber: 23, domain: 'riasec', scoringCode: 'E', text: '새로운 사업이나 서비스를 기획하는 일에 흥미를 느낀다.' },
+  { questionNumber: 24, domain: 'riasec', scoringCode: 'E', text: '경쟁이 있는 상황에서 좋은 결과를 얻기 위해 노력하는 것이 싫지 않다.' },
+  { questionNumber: 25, domain: 'riasec', scoringCode: 'E', text: '사람들과 협상하거나 의견을 조정하여 원하는 결과를 만드는 일에 관심이 있다.' },
+  { questionNumber: 26, domain: 'riasec', scoringCode: 'C', text: '자료나 정보를 일정한 기준에 따라 정확하게 정리하는 것을 좋아한다.' },
+  { questionNumber: 27, domain: 'riasec', scoringCode: 'C', text: '해야 할 일을 순서대로 계획하고 하나씩 처리하는 편이다.' },
+  { questionNumber: 28, domain: 'riasec', scoringCode: 'C', text: '숫자나 기록에서 잘못된 부분을 찾아내는 작업을 비교적 잘 견딘다.' },
+  { questionNumber: 29, domain: 'riasec', scoringCode: 'C', text: '규칙과 기준이 명확한 일을 할 때 편안함을 느낀다.' },
+  { questionNumber: 30, domain: 'riasec', scoringCode: 'C', text: '중요한 자료를 체계적으로 관리하고 정리하는 역할을 맡아도 괜찮다.' },
+  { questionNumber: 31, domain: 'strength', scoringCode: 'VER', text: '글을 읽고 핵심 내용을 비교적 빠르게 파악하는 편이다.' },
+  { questionNumber: 32, domain: 'strength', scoringCode: 'VER', text: '내 생각을 말이나 글로 논리적으로 설명하는 편이다.' },
+  { questionNumber: 33, domain: 'strength', scoringCode: 'NUM', text: '숫자나 수량의 관계를 이해하는 것이 비교적 빠르다.' },
+  { questionNumber: 34, domain: 'strength', scoringCode: 'NUM', text: '계산이나 수학적 정보를 다룰 때 실수를 잘 찾아내는 편이다.' },
+  { questionNumber: 35, domain: 'strength', scoringCode: 'LOG', text: '복잡한 문제를 여러 단계로 나누어 생각하는 편이다.' },
+  { questionNumber: 36, domain: 'strength', scoringCode: 'LOG', text: '여러 정보 사이의 원인과 결과 관계를 잘 찾아내는 편이다.' },
+  { questionNumber: 37, domain: 'strength', scoringCode: 'SPA', text: '도형이나 물체의 모양을 머릿속에서 돌려 생각하는 것이 어렵지 않다.' },
+  { questionNumber: 38, domain: 'strength', scoringCode: 'SPA', text: '지도·도면·그래프처럼 시각적으로 표현된 정보를 잘 이해하는 편이다.' },
+  { questionNumber: 39, domain: 'strength', scoringCode: 'CRE', text: '새로운 아이디어나 남들과 다른 해결 방법을 자주 생각해 낸다.' },
+  { questionNumber: 40, domain: 'strength', scoringCode: 'CRE', text: '하나의 문제에 대해 여러 가지 가능성을 생각해 보는 편이다.' },
+  { questionNumber: 41, domain: 'strength', scoringCode: 'INT', text: '상대방의 표정이나 말투를 보고 기분이나 의도를 비교적 잘 알아차린다.' },
+  { questionNumber: 42, domain: 'strength', scoringCode: 'INT', text: '사람마다 다른 의견을 조정하는 역할을 비교적 잘한다.' },
+  { questionNumber: 43, domain: 'strength', scoringCode: 'OBS', text: '관찰한 내용을 세부적인 부분까지 기억하는 편이다.' },
+  { questionNumber: 44, domain: 'strength', scoringCode: 'OBS', text: '작은 차이나 변화도 비교적 잘 발견하는 편이다.' },
+  { questionNumber: 45, domain: 'strength', scoringCode: 'PRA', text: '새로운 사용법이나 작업 방법을 직접 해보면서 빨리 익히는 편이다.' },
+  { questionNumber: 46, domain: 'strength', scoringCode: 'PRA', text: '배운 내용을 실제 상황에 적용하는 방법을 비교적 잘 찾아낸다.' },
+  { questionNumber: 47, domain: 'value', scoringCode: 'STABILITY', text: '직업을 선택할 때 안정적으로 오래 일할 수 있는지가 중요하다.' },
+  { questionNumber: 48, domain: 'value', scoringCode: 'REWARD', text: '노력과 성과에 따라 높은 보상을 받을 수 있는 직업에 끌린다.' },
+  { questionNumber: 49, domain: 'value', scoringCode: 'ACHIEVEMENT', text: '어려운 목표에 도전하여 큰 성취를 이루는 것이 중요하다.' },
+  { questionNumber: 50, domain: 'value', scoringCode: 'CONTRIBUTION', text: '다른 사람이나 사회에 도움이 되는 일을 하고 싶다.' },
+  { questionNumber: 51, domain: 'value', scoringCode: 'AUTONOMY', text: '내가 원하는 방식으로 판단하고 결정할 수 있는 일이 좋다.' },
+  { questionNumber: 52, domain: 'value', scoringCode: 'GROWTH', text: '새로운 것을 배우면서 계속 성장할 수 있는 직업을 원한다.' },
+  { questionNumber: 53, domain: 'value', scoringCode: 'RECOGNITION', text: '사회적으로 전문성을 인정받을 수 있는 일을 하고 싶다.' },
+  { questionNumber: 54, domain: 'value', scoringCode: 'BALANCE', text: '일뿐 아니라 개인 생활을 충분히 가질 수 있는 것이 중요하다.' },
+  { questionNumber: 55, domain: 'value', scoringCode: 'CREATIVITY', text: '새로운 아이디어를 자유롭게 시도할 수 있는 환경에서 일하고 싶다.' },
+  { questionNumber: 56, domain: 'value', scoringCode: 'RELATIONSHIP', text: '다양한 사람과 함께 일하고 교류할 수 있는 직업이 좋다.' },
+  { questionNumber: 57, domain: 'value', scoringCode: 'INFLUENCE', text: '책임과 권한을 가지고 중요한 결정을 내리는 역할을 맡고 싶다.' },
+  { questionNumber: 58, domain: 'value', scoringCode: 'EXPERTISE', text: '사회가 변화하더라도 꾸준히 필요로 하는 전문성을 갖고 싶다.' },
+  { questionNumber: 59, domain: 'behavior', scoringCode: 'PLANNING', text: '해야 할 일이 생기면 먼저 순서와 방법을 정하는 편이다.' },
+  { questionNumber: 60, domain: 'behavior', scoringCode: 'PERSISTENCE', text: '한번 시작한 일은 어려움이 있어도 끝까지 해보려고 한다.' },
+  { questionNumber: 61, domain: 'behavior', scoringCode: 'CAREFULNESS', text: '중요한 일을 마치기 전에 빠뜨린 것이 없는지 확인하는 편이다.' },
+  { questionNumber: 62, domain: 'behavior', scoringCode: 'SOCIABILITY', text: '처음 만나는 사람과도 필요하면 먼저 대화를 시작할 수 있다.' },
+  { questionNumber: 63, domain: 'behavior', scoringCode: 'COOPERATION', text: '여러 사람이 함께 일할 때 내 역할을 책임지고 수행한다.' },
+  { questionNumber: 64, domain: 'behavior', scoringCode: 'ADAPTABILITY', text: '예상하지 못한 변화가 생겨도 새로운 방법을 찾아 적응하는 편이다.' },
+  { questionNumber: 65, domain: 'behavior', scoringCode: 'INITIATIVE', text: '필요한 상황에서는 다른 사람보다 먼저 나서서 일을 시작한다.' },
+  { questionNumber: 66, domain: 'behavior', scoringCode: 'SELF_CONTROL', text: '감정이 상하는 일이 있어도 해야 할 일에 다시 집중하려고 한다.' },
+  { questionNumber: 67, domain: 'behavior', scoringCode: 'DELIBERATION', text: '중요한 결정을 내리기 전에 여러 가능성을 생각해 보는 편이다.' },
+  { questionNumber: 68, domain: 'behavior', scoringCode: 'EXECUTION', text: '목표를 정하면 실제 행동으로 옮기려고 노력한다.' },
+  { questionNumber: 69, domain: 'efficacy', scoringCode: 'SE', text: '처음 접하는 과제라도 방법을 찾으면 해낼 수 있다고 생각한다.' },
+  { questionNumber: 70, domain: 'efficacy', scoringCode: 'SE', text: '어려운 문제가 생겨도 해결 방법을 찾아볼 자신이 있다.' },
+  { questionNumber: 71, domain: 'efficacy', scoringCode: 'SE', text: '처음에는 잘하지 못하더라도 연습하면 실력이 좋아질 수 있다고 생각한다.' },
+  { questionNumber: 72, domain: 'efficacy', scoringCode: 'SE', text: '새로운 분야를 배워야 할 때도 충분히 따라갈 수 있다고 생각한다.' },
+  { questionNumber: 73, domain: 'efficacy', scoringCode: 'SE', text: '실패하더라도 원인을 찾아 다시 시도할 수 있다.' },
+  { questionNumber: 74, domain: 'efficacy', scoringCode: 'SE', text: '목표가 생기면 필요한 방법을 찾아 실행할 수 있다고 생각한다.' },
+  { questionNumber: 75, domain: 'efficacy', scoringCode: 'SE', text: '다른 사람의 도움 없이도 내가 할 수 있는 부분부터 시작할 수 있다.' },
+  { questionNumber: 76, domain: 'efficacy', scoringCode: 'SE', text: '예상보다 어려운 일이 생겨도 쉽게 포기하지 않을 자신이 있다.' },
+  { questionNumber: 77, domain: 'problem_solving', scoringCode: 'ANALYSIS', text: '어려운 문제를 만나면 먼저 무엇을 묻는 문제인지 정리한다.' },
+  { questionNumber: 78, domain: 'problem_solving', scoringCode: 'FLEXIBILITY', text: '한 가지 방법으로 해결되지 않으면 다른 방법을 찾아본다.' },
+  { questionNumber: 79, domain: 'problem_solving', scoringCode: 'CONNECTION', text: '새로운 내용을 배울 때 기존에 알고 있던 내용과 연결해 생각한다.' },
+  { questionNumber: 80, domain: 'problem_solving', scoringCode: 'REFLECTION', text: '문제를 해결한 뒤 내가 사용한 방법이 적절했는지 돌아보는 편이다.' },
+  { questionNumber: 81, domain: 'problem_solving', scoringCode: 'EXPLORATION', text: '필요한 정보가 부족하면 책이나 인터넷 등에서 추가 정보를 찾아본다.' },
+  { questionNumber: 82, domain: 'problem_solving', scoringCode: 'STRUCTURING', text: '복잡한 과제는 작은 단계로 나누어 해결하는 편이다.' },
+  { questionNumber: 83, domain: 'problem_solving', scoringCode: 'COMPARISON', text: '여러 해결 방법이 있다면 각각의 장단점을 비교해 본다.' },
+  { questionNumber: 84, domain: 'problem_solving', scoringCode: 'ERROR_ANALYSIS', text: '틀린 문제는 정답만 확인하기보다 왜 틀렸는지 알아보려고 한다.' },
+  { questionNumber: 85, domain: 'career_readiness', scoringCode: 'SELF_UNDERSTANDING', text: '내가 좋아하는 것과 잘하는 것이 무엇인지 어느 정도 알고 있다.' },
+  { questionNumber: 86, domain: 'career_readiness', scoringCode: 'CAREER_EXPLORATION', text: '관심 있는 학과나 직업에 대해 스스로 정보를 찾아본 경험이 있다.' },
+  { questionNumber: 87, domain: 'career_readiness', scoringCode: 'DECISION_CRITERIA', text: '진로를 선택할 때 무엇을 중요하게 생각해야 하는지 어느 정도 알고 있다.' },
+  { questionNumber: 88, domain: 'career_readiness', scoringCode: 'EXPLORATION_READINESS', text: '아직 진로가 확실하지 않더라도 앞으로 어떻게 탐색해야 할지 알고 있다.' },
+]
+
+/** 영역이 몰려 보이지 않도록 고정 혼합 순서. 재접속 시에도 변경되지 않는다. */
+export function buildMixedDisplayOrder(questionNumbers: number[]): number[] {
+  const riasec: number[] = []
+  const strength: number[] = []
+  const value: number[] = []
+  const behavior: number[] = []
+  const efficacy: number[] = []
+  const problem: number[] = []
+  const career: number[] = []
+
+  for (const n of questionNumbers) {
+    if (n >= 1 && n <= 30) riasec.push(n)
+    else if (n >= 31 && n <= 46) strength.push(n)
+    else if (n >= 47 && n <= 58) value.push(n)
+    else if (n >= 59 && n <= 68) behavior.push(n)
+    else if (n >= 69 && n <= 76) efficacy.push(n)
+    else if (n >= 77 && n <= 84) problem.push(n)
+    else career.push(n)
+  }
+
+  const groups = [riasec, strength, value, behavior, efficacy, problem, career]
+  const order: number[] = []
+  let added = true
+  while (added) {
+    added = false
+    for (const group of groups) {
+      const next = group.shift()
+      if (next !== undefined) {
+        order.push(next)
+        added = true
+      }
+    }
+  }
+  return order
+}
+
+const displayOrderByNumber = new Map(
+  buildMixedDisplayOrder(RAW_QUESTIONS.map((q) => q.questionNumber)).map((n, index) => [n, index + 1]),
+)
+
+export const CAREER_QUESTIONS: CareerQuestion[] = RAW_QUESTIONS.map((q) => ({
+  ...q,
+  displayOrder: displayOrderByNumber.get(q.questionNumber) ?? q.questionNumber,
+}))
+
+export const CAREER_QUESTIONS_BY_NUMBER = new Map(
+  CAREER_QUESTIONS.map((q) => [q.questionNumber, q]),
+)
+
+export function getQuestionsInDisplayOrder(
+  questions: CareerQuestion[] = CAREER_QUESTIONS,
+): CareerQuestion[] {
+  return [...questions].sort((a, b) => a.displayOrder - b.displayOrder)
+}

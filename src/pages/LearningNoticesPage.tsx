@@ -19,9 +19,17 @@ function useLearningNoticePaths() {
   const { studentAccessKey } = useParams()
   if (studentAccessKey) {
     const base = `/care/${studentAccessKey}/learning-notices`
-    return { listPath: base, detailPathPrefix: base }
+    return {
+      listPath: base,
+      detailPathPrefix: base,
+      careerResultPathPrefix: `/care/${studentAccessKey}/career-result`,
+    }
   }
-  return { listPath: '/learning-notices', detailPathPrefix: '/learning-notices' }
+  return {
+    listPath: '/learning-notices',
+    detailPathPrefix: '/learning-notices',
+    careerResultPathPrefix: '',
+  }
 }
 
 export function LearningNoticesPage({ embedded = false }: { embedded?: boolean }) {
@@ -29,7 +37,7 @@ export function LearningNoticesPage({ embedded = false }: { embedded?: boolean }
   useMarkParentCategoryReadOnView('learning-notices', Boolean(student) && !embedded)
   const publishedPosts = usePublishedContentPosts(student ?? undefined)
   const { classScheduleGrids } = useData()
-  const { detailPathPrefix } = useLearningNoticePaths()
+  const { detailPathPrefix, careerResultPathPrefix } = useLearningNoticePaths()
   const [sectionFilter, setSectionFilter] = useState<SectionFilter>('전체')
   const [titleSearch, setTitleSearch] = useState('')
 
@@ -105,7 +113,11 @@ export function LearningNoticesPage({ embedded = false }: { embedded?: boolean }
                 <ContentPostListCard
                   key={post.id}
                   post={post}
-                  detailPath={`${detailPathPrefix}/${post.id}`}
+                  detailPath={
+                    post.careerAssessmentResultId && careerResultPathPrefix
+                      ? `${careerResultPathPrefix}/${post.careerAssessmentResultId}`
+                      : `${detailPathPrefix}/${post.id}`
+                  }
                 />
               ))}
             </div>

@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   MessageCircleQuestion,
   Newspaper,
+  Compass,
   GraduationCap,
   Users,
   X,
@@ -59,6 +60,12 @@ const navItems: NavItem[] = [
     label: '신입생 평가 및 성향 진단',
     multilineLabel: ['신입생 평가 및', '성향 진단'],
     icon: ClipboardCheck,
+  },
+  {
+    path: '/career-assessment',
+    label: '진로·학과 적성검사',
+    multilineLabel: ['진로·학과', '적성검사'],
+    icon: Compass,
   },
   { path: '/teacher/learning-notices', label: '학습정보 & 공지사항', icon: Newspaper },
   {

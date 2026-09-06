@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router-dom'
+import { Link, Navigate, useParams } from 'react-router-dom'
 import { ContentPostDetailBody } from '../components/contentPost/ContentPostDetailBody'
 import { usePublishedContentPosts } from '../hooks/usePublishedContentPosts'
 import { getAdjacentPosts } from '../utils/contentPost'
@@ -22,10 +22,20 @@ export function LearningNoticeDetailPage() {
   const publishedPosts = usePublishedContentPosts()
 
   const post = publishedPosts.find((item) => item.id === postId)
+  const { studentAccessKey } = useParams()
   const { prev, next } = useMemo(
     () => getAdjacentPosts(publishedPosts, postId),
     [postId, publishedPosts],
   )
+
+  if (post?.careerAssessmentResultId && studentAccessKey) {
+    return (
+      <Navigate
+        to={`/care/${studentAccessKey}/career-result/${post.careerAssessmentResultId}`}
+        replace
+      />
+    )
+  }
 
   if (!post) {
     return (

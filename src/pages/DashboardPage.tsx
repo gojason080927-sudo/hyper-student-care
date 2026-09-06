@@ -5,6 +5,7 @@ import {
   FileBarChart2,
   MessageCircleQuestion,
   Newspaper,
+  Compass,
   GraduationCap,
   Users,
 } from 'lucide-react'
@@ -39,6 +40,12 @@ const categories = [
     title: '신입생 평가 및\n성향 진단',
     description: '문제은행 · 시험지 · 응시 · 종합진단 REPORT',
     icon: ClipboardCheck,
+  },
+  {
+    to: '/career-assessment',
+    title: '진로·학과\n적성검사',
+    description: '학생 링크·QR · 결과 확인 · A4 결과지',
+    icon: Compass,
   },
   {
     to: '/teacher/learning-notices',

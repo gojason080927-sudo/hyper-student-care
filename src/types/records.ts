@@ -52,6 +52,7 @@ export type ContentPost = {
   publishStartDate?: string
   publishEndDate?: string
   isImportant?: boolean
+  careerAssessmentResultId?: string
   createdAt: string
   updatedAt: string
 }

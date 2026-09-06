@@ -55,7 +55,8 @@ export function isParentCategoryPathActive(segment: string, pathname: string): b
     return (
       pathname.includes('/notices-makeup') ||
       pathname.includes('/learning-notices') ||
-      pathname.includes('/makeup-plans')
+      pathname.includes('/makeup-plans') ||
+      pathname.includes('/career-result')
     )
   }
   return pathname === `/${segment}` || pathname.includes(`/${segment}`)
