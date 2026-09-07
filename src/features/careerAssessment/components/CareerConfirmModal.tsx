@@ -22,7 +22,7 @@ export function CareerConfirmModal({
   return (
     <Modal open={open} title={title} onClose={onClose}>
       <div className="space-y-4">
-        <p className="text-sm leading-relaxed text-slate-600">{message}</p>
+        <p className="whitespace-pre-line text-sm leading-relaxed text-slate-600">{message}</p>
         <div className="flex gap-2">
           <button
             type="button"

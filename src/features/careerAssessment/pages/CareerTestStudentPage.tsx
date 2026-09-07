@@ -8,6 +8,7 @@ import {
   type PublicCareerLoad,
   type PublicCareerQuestion,
 } from '../api/careerAssessmentApi'
+import { CAREER_ENDED_LINK_MESSAGE, isCareerLinkEndedError } from '../utils/careerSessionDelete'
 
 const PAGE_SIZE = 5
 const SAVE_DEBOUNCE_MS = 350
@@ -59,7 +60,7 @@ export function CareerTestStudentPage() {
         setPage(Math.floor(start / PAGE_SIZE))
       })
       .catch(() => {
-        if (!cancelled) setError('유효하지 않은 검사 링크입니다.')
+        if (!cancelled) setError(CAREER_ENDED_LINK_MESSAGE)
       })
     return () => {
       cancelled = true
@@ -78,7 +79,12 @@ export function CareerTestStudentPage() {
         entries.map(([questionId, answer]) => ({ questionId, answer })),
       )
       setSaveState('saved')
-    } catch {
+    } catch (saveError) {
+      if (isCareerLinkEndedError(saveError)) {
+        setLoad(null)
+        setError(CAREER_ENDED_LINK_MESSAGE)
+        return
+      }
       setSaveState('error')
     }
   }
@@ -127,6 +133,9 @@ export function CareerTestStudentPage() {
         goMissing()
       } else if ((submitError as { error?: string }).error === 'already_completed') {
         setCompleted(true)
+      } else if (isCareerLinkEndedError(submitError)) {
+        setLoad(null)
+        setError(CAREER_ENDED_LINK_MESSAGE)
       } else {
         setError('제출에 실패했습니다. 잠시 후 다시 시도해 주세요.')
       }

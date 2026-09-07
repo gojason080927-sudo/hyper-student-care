@@ -12,6 +12,7 @@ type Action =
   | 'create_guest'
   | 'link_guest'
   | 'delete_guest'
+  | 'delete_session'
   | 'list'
   | 'load'
   | 'save_answers'
@@ -78,6 +79,7 @@ Deno.serve(async (req) => {
     student_id?: string
     student_ids?: string[]
     guest_id?: string
+    session_id?: string
     name?: string
     school?: string
     grade?: string
@@ -251,6 +253,61 @@ Deno.serve(async (req) => {
     const { error } = await admin.from('career_assessment_guests').delete().eq('id', guestId)
     if (error) return jsonResponse({ error: error.message }, 500)
     return jsonResponse({ deleted: true, guest_id: guestId })
+  }
+
+  if (action === 'delete_session') {
+    const user = await requireTeacher()
+    if (!user) return jsonResponse({ error: 'not_authenticated' }, 401)
+    const sessionId = body.session_id?.trim() ?? ''
+    if (!sessionId) return jsonResponse({ error: 'missing_session' }, 400)
+
+    const { data: session } = await admin
+      .from('career_assessment_sessions')
+      .select('id, student_id, guest_id')
+      .eq('id', sessionId)
+      .maybeSingle()
+    if (!session) return jsonResponse({ error: 'session_not_found' }, 404)
+
+    const studentId = typeof session.student_id === 'string' ? session.student_id : null
+    const guestId = typeof session.guest_id === 'string' ? session.guest_id : null
+
+    const { data: noticeLinks } = await admin
+      .from('career_assessment_result_notices')
+      .select('notice_id')
+      .eq('session_id', sessionId)
+
+    const { error } = await admin.from('career_assessment_sessions').delete().eq('id', sessionId)
+    if (error) return jsonResponse({ error: error.message }, 500)
+
+    const noticeIds = [...new Set((noticeLinks ?? []).map((row) => String(row.notice_id)).filter(Boolean))]
+    if (noticeIds.length > 0) {
+      await admin.from('notices').delete().in('id', noticeIds)
+    }
+
+    let guestCleaned = false
+    if (guestId) {
+      const { count } = await admin
+        .from('career_assessment_sessions')
+        .select('id', { count: 'exact', head: true })
+        .eq('guest_id', guestId)
+      if ((count ?? 0) === 0) {
+        const { error: guestError } = await admin.from('career_assessment_guests').delete().eq('id', guestId)
+        if (guestError) return jsonResponse({ error: guestError.message }, 500)
+        guestCleaned = true
+      }
+    }
+
+    if (studentId) {
+      const { data: student } = await admin.from('students').select('id').eq('id', studentId).maybeSingle()
+      if (!student) return jsonResponse({ error: 'student_missing_after_delete' }, 500)
+    }
+
+    return jsonResponse({
+      deleted: true,
+      session_id: sessionId,
+      student_preserved: Boolean(studentId),
+      guest_cleaned: guestCleaned,
+    })
   }
 
   if (action === 'list') {

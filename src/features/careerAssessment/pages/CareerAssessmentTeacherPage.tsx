@@ -8,7 +8,7 @@ import type { StudentListFilters } from '../../../types/student'
 import {
   createCareerGuest,
   createOrGetCareerSessions,
-  deleteCareerGuest,
+  deleteCareerSession,
   fetchCareerStudentsByIds,
   fetchTeacherCareerSessions,
   getCareerTestUrl,
@@ -28,8 +28,10 @@ import {
   buildCareerListRows,
   filterCareerListRows,
   type CareerKindFilter,
+  type CareerListRow,
 } from '../utils/careerListRows'
 import { copyCareerLink } from '../utils/copyCareerLink'
+import { careerSessionDeleteCopy } from '../utils/careerSessionDelete'
 
 function statusTone(status: ReturnType<typeof deriveCareerListProgress>['status']): string {
   if (status === 'in_progress') return 'bg-amber-100 text-amber-800'
@@ -61,7 +63,7 @@ export function CareerAssessmentTeacherPage() {
   const [copiedId, setCopiedId] = useState('')
   const [guestOpen, setGuestOpen] = useState(false)
   const [linkGuestId, setLinkGuestId] = useState<string | null>(null)
-  const [deleteGuestId, setDeleteGuestId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<CareerListRow | null>(null)
 
   const listStudents = useMemo(
     () => mergeStudentsById(students, linkedStudents),
@@ -315,10 +317,10 @@ export function CareerAssessmentTeacherPage() {
                           재원생으로 연결
                         </button>
                       ) : null}
-                      {row.kind === 'guest' ? (
+                      {session ? (
                         <button
                           type="button"
-                          onClick={() => setDeleteGuestId(row.id)}
+                          onClick={() => setDeleteTarget(row)}
                           className="rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-semibold text-rose-700"
                         >
                           삭제
@@ -379,19 +381,38 @@ export function CareerAssessmentTeacherPage() {
         }}
       />
       <CareerConfirmModal
-        open={Boolean(deleteGuestId)}
-        title="상담생 검사 삭제"
-        message="이 상담생 검사 기록과 결과를 삭제합니다."
-        confirmLabel="삭제"
-        busy={busyId === 'guest-delete'}
-        onClose={() => setDeleteGuestId(null)}
+        open={Boolean(deleteTarget?.session)}
+        title={
+          deleteTarget
+            ? careerSessionDeleteCopy({
+                name: deleteTarget.name,
+                status: deleteTarget.session?.status,
+                answeredCount: deleteTarget.session?.answeredCount,
+                latestResultId: deleteTarget.session?.latestResultId,
+              }).title
+            : '검사 삭제'
+        }
+        message={
+          deleteTarget
+            ? careerSessionDeleteCopy({
+                name: deleteTarget.name,
+                status: deleteTarget.session?.status,
+                answeredCount: deleteTarget.session?.answeredCount,
+                latestResultId: deleteTarget.session?.latestResultId,
+              }).message
+            : ''
+        }
+        confirmLabel="검사 삭제"
+        busy={busyId === 'session-delete'}
+        onClose={() => setDeleteTarget(null)}
         onConfirm={() => {
-          if (!deleteGuestId) return
-          setBusyId('guest-delete')
-          void deleteCareerGuest(deleteGuestId)
+          const sessionId = deleteTarget?.session?.id
+          if (!sessionId) return
+          setBusyId('session-delete')
+          void deleteCareerSession(sessionId)
             .then(() => reload())
-            .then(() => setDeleteGuestId(null))
-            .catch(() => setError('상담생 삭제에 실패했습니다.'))
+            .then(() => setDeleteTarget(null))
+            .catch(() => setError('검사 삭제에 실패했습니다.'))
             .finally(() => setBusyId(null))
         }}
       />

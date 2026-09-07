@@ -208,6 +208,10 @@ export async function deleteCareerGuest(guestId: string): Promise<void> {
   await invokeCareer({ action: 'delete_guest', guest_id: guestId })
 }
 
+export async function deleteCareerSession(sessionId: string): Promise<void> {
+  await invokeCareer({ action: 'delete_session', session_id: sessionId })
+}
+
 export type CareerResultRecord = {
   id: string
   sessionId: string

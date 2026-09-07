@@ -64,4 +64,26 @@ const enrolledDefault = filterCareerListRows(rows, {
 })
 assert.equal(enrolledDefault.length, 2)
 
+const studentSession: TeacherCareerSession = {
+  id: 'ss1',
+  studentId: 's1',
+  guestId: null,
+  guestName: null,
+  guestSchool: null,
+  guestGrade: null,
+  linkedStudentId: null,
+  accessToken: 'stok',
+  status: 'in_progress',
+  answeredCount: 10,
+  latestResultId: null,
+  completedAt: null,
+  createdAt: '2026-09-07',
+}
+const withSession = buildCareerListRows({ students: [student], sessions: [studentSession] })
+assert.equal(withSession.find((row) => row.kind === 'student')?.session?.id, 'ss1')
+const afterDelete = buildCareerListRows({ students: [student], sessions: [] })
+assert.equal(afterDelete.find((row) => row.kind === 'student')?.id, 's1')
+assert.equal(afterDelete.find((row) => row.kind === 'student')?.session, undefined)
+assert.equal(afterDelete.some((row) => row.kind === 'guest'), false)
+
 console.log('careerListRows tests OK')
