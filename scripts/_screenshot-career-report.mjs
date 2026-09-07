@@ -15,7 +15,7 @@ const metrics = await pages.evaluateAll((els) => {
     const pageBox = el.getBoundingClientRect()
     const frame = el.querySelector('.career-print-frame')
     const footer = el.querySelector('.career-print-footer')
-    const cards = [...el.querySelectorAll('.career-print-card, .career-print-hero, .career-print-scale-grid, .career-print-page5-title')]
+    const cards = [...el.querySelectorAll('.career-print-card, .career-print-hero, .career-print-scale-grid, .career-print-page4-title, .career-print-page5-title, .career-print-deep-grid')]
     return {
       page: i + 1,
       overflowX: el.scrollWidth - el.clientWidth,

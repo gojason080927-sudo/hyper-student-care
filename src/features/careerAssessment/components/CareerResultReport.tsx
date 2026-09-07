@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { MAJOR_CAREER_LICENSE_NOTE } from '../data/careerMajorCareerPaths'
+import { PAGE4_EXPLORATION_NOTE } from '../data/careerMajorDetails'
 import {
   CREDIT_SUBJECT_DISCLAIMER,
   CREDIT_SYSTEM_INTRO,
@@ -26,12 +27,16 @@ import {
 import { formatRiasecPair, formatScore, topEntries } from '../engine/scoring'
 import type { CareerAssessmentScores } from '../types'
 import {
+  buildDistinctMajorReason,
+  buildSelectionPoints,
+  buildTop3DeepCards,
+} from '../utils/careerMajorDeepAnalysis'
+import {
   buildReportDnaExplanation,
   commentForEfficacy,
   commentForReadiness,
   creditClustersForMajors,
   detailedMajorsByTopGroups,
-  reasonForMajorGroup,
   scaleCaption,
 } from '../utils/careerReportContent'
 import '../styles/careerResultPrint.css'
@@ -72,7 +77,7 @@ function PrintPage({
 }) {
   return (
     <>
-      <section className={`career-print-page career-print-page--${density}`}>
+      <section className={`career-print-page career-print-page--${density} career-print-page--p${page}`}>
         <div className="career-print-frame">
           <div className="career-print-page-body">{children}</div>
           <footer className="career-print-footer">
@@ -116,6 +121,8 @@ export function CareerResultReport({
   const dna = buildReportDnaExplanation(scores.riasecTop2)
   const detailedGroups = detailedMajorsByTopGroups(majorsTop10, scores.detailedMajorScores)
   const creditClusters = creditClustersForMajors(majorsTop5)
+  const top3Cards = buildTop3DeepCards(scores)
+  const selectionPoints = buildSelectionPoints(scores)
 
   return (
     <div className="career-report-wrap">
@@ -232,7 +239,7 @@ export function CareerResultReport({
           </article>
         </PrintPage>
 
-        <PrintPage page={3} density="normal">
+        <PrintPage page={3} density="dense">
           <article className="career-print-card">
             <h2 className="career-print-h2">행동 특성</h2>
             <div className="career-print-behavior-grid">
@@ -266,25 +273,6 @@ export function CareerResultReport({
           </div>
 
           <article className="career-print-card">
-            <h2 className="career-print-h2">진로 탐색·준비 가이드</h2>
-            <ol className="career-print-guide-steps">
-              {EXPLORATION_GUIDE_STEPS.map((step) => (
-                <li key={step.title}>
-                  <strong>{step.title}</strong>
-                  <p>{step.body}</p>
-                </li>
-              ))}
-            </ol>
-            <p className="career-print-note">
-              현재 결과에서는 {majorsTop5.slice(0, 3).map((item) => item.name).join(', ')} 계열을
-              중심으로 위 단계를 적용해 보면 좋습니다. 구체적인 과목 선택은 5페이지 고교학점제
-              가이드를 참고하세요.
-            </p>
-          </article>
-        </PrintPage>
-
-        <PrintPage page={4} density="dense">
-          <article className="career-print-card">
             <h2 className="career-print-h2">추천 전공 TOP10</h2>
             <table className="career-print-table">
               <thead>
@@ -305,23 +293,29 @@ export function CareerResultReport({
                       <div className="career-print-fit-label">{item.label}</div>
                     </td>
                     <td>
-                      {reasonForMajorGroup(item, scores.riasecScores, scores.strengthScores)}
+                      {buildDistinctMajorReason(item, scores)}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </article>
+        </PrintPage>
+
+        <PrintPage page={4} density="dense">
+          <header className="career-print-page4-title">
+            <h2>추천 전공 상세 분석</h2>
+          </header>
 
           <article className="career-print-card">
-            <h2 className="career-print-h2">세부 추천학과</h2>
+            <h3 className="career-print-h3">세부 추천학과</h3>
             <ol className="career-print-detail-majors">
               {detailedGroups.map((row, index) => (
                 <li key={row.group.id}>
                   <strong>
                     {index + 1}. {row.group.name}
                   </strong>
-                  <span>{row.majors.join(' · ')}</span>
+                  <span>관련 학과: {row.majors.join(' · ')}</span>
                   {row.careers.length > 0 ? (
                     <span className="career-print-careers">
                       대표 진출 직업: {row.careers.join(' · ')}
@@ -330,11 +324,78 @@ export function CareerResultReport({
                 </li>
               ))}
             </ol>
+          </article>
+
+          <h3 className="career-print-h3 career-print-deep-title">TOP3 전공 심층 분석</h3>
+          <div className="career-print-deep-grid">
+            {top3Cards.map((card) => (
+              <article key={card.group.id} className="career-print-card career-print-deep-card">
+                <h3 className="career-print-deep-head">
+                  <span>
+                    {card.rank}위 {card.group.name}
+                  </span>
+                  <span>
+                    적합도 {formatScore(card.group.score)}
+                    <em>{card.fitLabel}</em>
+                  </span>
+                </h3>
+                <p className="career-print-deep-why">
+                  <strong>왜 잘 맞을까?</strong>
+                  {card.whyFit}
+                </p>
+                <p className="career-print-deep-line">
+                  <strong>관련 학과</strong>
+                  {card.relatedMajors.join(' · ')}
+                </p>
+                <p className="career-print-deep-line">
+                  <strong>추천 탐색 교과</strong>
+                  {card.exploratorySubjects.join(' · ')}
+                </p>
+                <p className="career-print-deep-line">
+                  <strong>추천 탐구 주제</strong>
+                  {card.explorationTopics.join(' · ')}
+                </p>
+                <p className="career-print-deep-careers">
+                  <strong>대표 진출 직업</strong>
+                  {card.careers.join(' · ')}
+                </p>
+              </article>
+            ))}
+          </div>
+
+          <article className="career-print-card career-print-points">
+            <h3 className="career-print-h3">나의 전공 선택 포인트</h3>
+            <ul>
+              {selectionPoints.map((item) => (
+                <li key={item.id}>
+                  <strong>{item.title}</strong>
+                  <span>{item.body}</span>
+                </li>
+              ))}
+            </ul>
             <p className="career-print-license-note">{MAJOR_CAREER_LICENSE_NOTE}</p>
+            <p className="career-print-explore-note">{PAGE4_EXPLORATION_NOTE}</p>
           </article>
         </PrintPage>
 
-        <PrintPage page={5} density="normal">
+        <PrintPage page={5} density="dense">
+          <article className="career-print-card career-print-guide">
+            <h2 className="career-print-h2 career-print-guide-title">진로 탐색·준비 가이드</h2>
+            <ol className="career-print-guide-steps">
+              {EXPLORATION_GUIDE_STEPS.map((step) => (
+                <li key={step.title}>
+                  <strong>{step.title}</strong>
+                  <p>{step.body}</p>
+                </li>
+              ))}
+            </ol>
+            <p className="career-print-note career-print-guide-note">
+              현재 결과에서는 {majorsTop5.slice(0, 3).map((item) => item.name).join(', ')} 계열을
+              중심으로 위 단계를 적용해 보면 좋습니다. 구체적인 과목 선택은 아래 고교학점제
+              가이드를 참고하세요.
+            </p>
+          </article>
+
           <header className="career-print-page5-title">
             <h2>고교학점제 기반 진로 설계 가이드</h2>
           </header>

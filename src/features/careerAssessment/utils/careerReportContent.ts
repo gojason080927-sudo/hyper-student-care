@@ -1,4 +1,5 @@
 import { MAJOR_CAREER_PATHS } from '../data/careerMajorCareerPaths'
+import { CAREER_MAJOR_DETAIL_MAP } from '../data/careerMajorDetails'
 import {
   CAREER_MAJOR_REPORT_SEED,
   CREDIT_SUBJECT_CLUSTERS,
@@ -21,6 +22,7 @@ import type {
 } from '../types'
 
 const DETAILED_PER_GROUP = 3
+const SUMMARY_CAREER_LIMIT = 4
 
 export function buildReportDnaExplanation(top2: [RiasecCode, RiasecCode]): string {
   const [first, second] = top2
@@ -80,17 +82,19 @@ export function buildCombinedMajorReason(
     .slice(0, 2)
 
   const interest = `${RIASEC_LABELS[topRiasec]} 흥미`
+  const focus =
+    CAREER_MAJOR_DETAIL_MAP[profile.id]?.learningFocus ?? `${profile.name}에서 다루는 학습`
   if (strengthHits.length >= 2) {
-    return `${interest}와 ${STRENGTH_LABELS[strengthHits[0]]}·${STRENGTH_LABELS[strengthHits[1]]} 강점이 ${profile.name} 계열의 학습 특성과 잘 맞습니다.`
+    return `${interest}와 ${STRENGTH_LABELS[strengthHits[0]]}·${STRENGTH_LABELS[strengthHits[1]]} 강점은 ${focus}과 잘 연결됩니다.`
   }
   if (strengthHits.length === 1) {
-    return `${interest}와 ${STRENGTH_LABELS[strengthHits[0]]} 강점이 ${profile.name} 계열의 학습 특성과 잘 맞습니다.`
+    return `${interest}와 ${STRENGTH_LABELS[strengthHits[0]]} 강점은 ${focus}과 잘 연결됩니다.`
   }
   const second = riasecHits[1]
   if (second) {
-    return `${interest}와 ${RIASEC_LABELS[second]} 흥미가 ${profile.name} 계열과 잘 맞습니다.`
+    return `${interest}와 ${RIASEC_LABELS[second]} 흥미는 ${focus}과 잘 연결됩니다.`
   }
-  return `${interest}가 ${profile.name} 계열의 학습 특성과 잘 맞습니다.`
+  return `${interest}는 ${focus}과 잘 연결됩니다.`
 }
 
 export function reasonForMajorGroup(
@@ -112,6 +116,7 @@ export function collectDetailedMajorsForGroup(
   detailedScores: RankedItem[],
   dictionary: DetailedMajorDef[] = CAREER_MAJOR_DICTIONARY,
   seed: ReadonlyArray<{ groupId: string; name: string }> = CAREER_MAJOR_REPORT_SEED,
+  limit = DETAILED_PER_GROUP,
 ): string[] {
   const byId = dictionaryById(dictionary)
   const scored = detailedScores
@@ -128,13 +133,24 @@ export function collectDetailedMajorsForGroup(
   const unique: string[] = []
   for (const name of [...scored, ...fromDict, ...fromSeed]) {
     if (!unique.includes(name)) unique.push(name)
-    if (unique.length >= DETAILED_PER_GROUP) break
+    if (unique.length >= limit) break
   }
   return unique
 }
 
 export function careersForMajorGroup(groupId: string): string[] {
   return [...(MAJOR_CAREER_PATHS[groupId] ?? [])]
+}
+
+function uniqueLimited(values: readonly string[], limit: number): string[] {
+  const out: string[] = []
+  for (const value of values) {
+    const text = value.trim()
+    if (!text || out.includes(text)) continue
+    out.push(text)
+    if (out.length >= limit) break
+  }
+  return out
 }
 
 export function detailedMajorsByTopGroups(
@@ -144,7 +160,10 @@ export function detailedMajorsByTopGroups(
   return majorsTop10.map((group) => ({
     group,
     majors: collectDetailedMajorsForGroup(group.id, detailedScores),
-    careers: careersForMajorGroup(group.id),
+    careers: uniqueLimited(
+      [...(MAJOR_CAREER_PATHS[group.id] ?? []), ...(CAREER_MAJOR_DETAIL_MAP[group.id]?.extraCareers ?? [])],
+      SUMMARY_CAREER_LIMIT,
+    ),
   }))
 }
 

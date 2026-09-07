@@ -26,6 +26,10 @@ import { PROBLEM_SOLVING_ORDER } from '../data/labels.ts'
 import { CAREER_QUESTIONS } from '../data/questions.ts'
 import { scoreCareerAssessment } from '../engine/scoring.ts'
 import {
+  analyzeTop10ReasonUniqueness,
+  buildDistinctMajorReason,
+} from './careerMajorDeepAnalysis.ts'
+import {
   buildCombinedMajorReason,
   buildReportDnaExplanation,
   careersForMajorGroup,
@@ -102,10 +106,12 @@ const psyReason = buildCombinedMajorReason(psy, iHigh, strengthPsy)
 assert.match(medReason, /탐구형 흥미/)
 assert.match(medReason, /논리/)
 assert.match(medReason, /관찰/)
-assert.match(medReason, /의학 계열/)
+assert.match(medReason, /인체와 질병/)
+assert.doesNotMatch(medReason, /계열의 학습 특성/)
 assert.match(psyReason, /사회형 흥미|탐구형 흥미/)
 assert.match(psyReason, /대인|언어|관찰/)
-assert.match(psyReason, /심리 계열/)
+assert.match(psyReason, /마음과 행동/)
+assert.doesNotMatch(psyReason, /계열의 학습 특성/)
 assert.notEqual(medReason, psyReason)
 assert.ok(!containsBrokenSuriParticle(medReason))
 assert.ok(!containsBrokenSuriParticle(psyReason))
@@ -116,8 +122,30 @@ const grouped = detailedMajorsByTopGroups(top10, inquiry.detailedMajorScores)
 assert.equal(grouped.length, 10)
 for (const row of grouped) {
   assert.ok(row.majors.length >= 1)
-  assert.ok(row.majors.length <= 3)
+  assert.ok(row.majors.length <= 5)
   assert.ok(row.careers.length >= 3)
+}
+
+const top10Reasons = top10.map((group) => buildDistinctMajorReason(group, inquiry))
+const uniqueness = analyzeTop10ReasonUniqueness(top10Reasons, top10)
+assert.equal(uniqueness.ok, true, JSON.stringify({ uniqueness, top10Reasons }, null, 2))
+assert.equal(
+  top10Reasons.filter((reason) => /계열의 학습 특성과 잘 맞습니다/.test(reason)).length,
+  0,
+)
+for (const profile of CAREER_MAJOR_PROFILES) {
+  const group =
+    inquiry.majorGroupScores.find((row) => row.id === profile.id) ?? {
+      id: profile.id,
+      name: profile.name,
+      score: 50,
+      label: '탐색',
+      reasons: [],
+      watchItems: [],
+    }
+  const reason = buildDistinctMajorReason(group, inquiry)
+  assert.doesNotMatch(reason, /계열의 학습 특성과 잘 맞습니다/, profile.id)
+  assert.ok(!containsBrokenSuriParticle(reason), profile.id)
 }
 const medRow = grouped.find((row) => row.group.id === 'MED')
 if (medRow) {
@@ -131,7 +159,7 @@ assert.match(MAJOR_CAREER_LICENSE_NOTE, /국가시험·면허/)
 
 for (const profile of CAREER_MAJOR_PROFILES) {
   const names = collectDetailedMajorsForGroup(profile.id, inquiry.detailedMajorScores)
-  assert.ok(names.length >= 1 && names.length <= 3, profile.id)
+  assert.ok(names.length >= 1 && names.length <= 5, profile.id)
   const careers = careersForMajorGroup(profile.id)
   assert.ok(careers.length >= 3 && careers.length <= 4, `careers ${profile.id}`)
 

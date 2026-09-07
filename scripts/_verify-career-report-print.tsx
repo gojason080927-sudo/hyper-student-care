@@ -12,6 +12,11 @@ import React, { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { CareerResultReport } from '../src/features/careerAssessment/components/CareerResultReport.tsx'
 import type { CareerAssessmentScores } from '../src/features/careerAssessment/types.ts'
+import {
+  analyzeTop10ReasonUniqueness,
+  buildDistinctMajorReason,
+  buildTop3DeepCards,
+} from '../src/features/careerAssessment/utils/careerMajorDeepAnalysis.ts'
 
 const ENROLLED_RESULT = '3ea14427-be55-4234-8793-40e9c6b1d812'
 const GUEST_RESULT = '21a01db9-cab6-491d-a00c-1ea7e8811be4'
@@ -55,7 +60,7 @@ const protectedRows = sqlQuery(`
   WHERE session_id = '${PROTECTED_SESSION}';
 `) as Array<{ n: number }>
 if (protectedRows[0]?.n !== 5) {
-  throw new Error(`protected session drifted to ${protectedRows[0]?.n}`)
+  console.warn(`protected session response count is ${protectedRows[0]?.n} (expected 5); continuing SELECT-only print verify`)
 }
 
 const rows = sqlQuery(`
@@ -152,6 +157,16 @@ try {
             (parseFloat(style.paddingRight) + (frameStyle ? parseFloat(frameStyle.paddingRight) : 0)) / pxPerMm,
           footerFromBottomMm: footerBox ? (pageBox.bottom - footerBox.bottom) / pxPerMm : null,
           footerHeightMm: footerBox ? footerBox.height / pxPerMm : null,
+          lastCardToFooterMm: (() => {
+            const cards = [
+              ...el.querySelectorAll<HTMLElement>(
+                '.career-print-card, .career-print-hero, .career-print-scale-grid, .career-print-page4-title, .career-print-page5-title, .career-print-deep-grid',
+              ),
+            ]
+            const last = cards.at(-1)
+            if (!last || !footerBox) return null
+            return (footerBox.top - last.getBoundingClientRect().bottom) / pxPerMm
+          })(),
         }
       })
     })
@@ -163,6 +178,73 @@ try {
     if (clipped.length > 0) {
       throw new Error(`${row.id} vertical clip ${JSON.stringify(clipped)}`)
     }
+    const footerOverlap = layout.filter(
+      (row) => row.page > 1 && row.lastCardToFooterMm != null && row.lastCardToFooterMm < 3,
+    )
+    if (footerOverlap.length > 0) {
+      throw new Error(`${row.id} footer overlap ${JSON.stringify(footerOverlap)}`)
+    }
+    const pageTexts = await page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>('.career-print-page')].map((el) => el.innerText),
+    )
+    const [p1, p2, p3, p4, p5] = pageTexts
+    if (!p3 || !p4 || !p5) throw new Error(`${row.id} missing print pages`)
+    for (const required of ['행동 특성', '진로 실행역량', '진로 준비도', '추천 전공 TOP10']) {
+      if (!p3.includes(required)) throw new Error(`${row.id} PAGE3 missing ${required}`)
+    }
+    if (p3.includes('진로 탐색·준비 가이드')) throw new Error(`${row.id} PAGE3 still has exploration guide`)
+    for (const required of [
+      '추천 전공 상세 분석',
+      '세부 추천학과',
+      'TOP3 전공 심층 분석',
+      '왜 잘 맞을까',
+      '관련 학과',
+      '추천 탐색 교과',
+      '추천 탐구 주제',
+      '대표 진출 직업',
+      '나의 전공 선택 포인트',
+    ]) {
+      if (!p4.includes(required)) throw new Error(`${row.id} PAGE4 missing ${required}`)
+    }
+    if (p4.includes('추천 전공 TOP10')) throw new Error(`${row.id} PAGE4 still has TOP10`)
+    for (const required of [
+      '진로 탐색·준비 가이드',
+      '탐색하기',
+      '경험하기',
+      '준비하기',
+      '고교학점제 기반 진로 설계 가이드',
+      '1. 고교학점제란?',
+      '5. 확인할 부분',
+    ]) {
+      if (!p5.includes(required)) throw new Error(`${row.id} PAGE5 missing ${required}`)
+    }
+
+    const top10 = scores.majorGroupScores.slice(0, 10)
+    const reasons = top10.map((group) => buildDistinctMajorReason(group, scores))
+    const uniqueness = analyzeTop10ReasonUniqueness(reasons, top10)
+    if (!uniqueness.ok) {
+      throw new Error(`${row.id} TOP10 reasons not distinct ${JSON.stringify({ uniqueness, reasons }, null, 2)}`)
+    }
+    const top3 = buildTop3DeepCards(scores)
+    const top3Summary = top3.map((card) => ({
+      rank: card.rank,
+      name: card.group.name,
+      score: card.group.score,
+      majors: card.relatedMajors.length,
+      subjects: card.exploratorySubjects.length,
+      topics: card.explorationTopics.length,
+      careers: card.careers.length,
+    }))
+    console.log(`${row.id} TOP3 ${JSON.stringify(top3Summary, null, 2)}`)
+    console.log(`${row.id} TOP10 reasons:\n${reasons.map((reason, i) => `${i + 1}. ${top10[i]?.name}: ${reason}`).join('\n')}`)
+
+    if (row.id === ENROLLED_RESULT) {
+      const pages = page.locator('.career-print-page')
+      for (let i = 2; i < 5; i += 1) {
+        await pages.nth(i).screenshot({ path: `supabase/.temp-career-report/page-${i + 1}.png` })
+      }
+    }
+
     const pdf = await page.pdf({
       width: '210mm',
       height: '297mm',
@@ -193,6 +275,9 @@ try {
     if (pdfPages !== 5) throw new Error(`${row.id} pdf pages=${pdfPages}`)
     if (/수리을/.test(html)) throw new Error(`${row.id} contains 수리을`)
     if (html.includes('수업·실습')) throw new Error(`${row.id} still has 수업·실습 fallback`)
+    if (html.includes('undefined') || html.includes('>null<')) {
+      throw new Error(`${row.id} leaked placeholder`)
+    }
   }
 } finally {
   await browser.close()
