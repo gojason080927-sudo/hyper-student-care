@@ -1,10 +1,11 @@
-import { CAREER_QUESTION_COUNT } from '../types'
+import { resolveExpectedQuestionCount } from '../types'
 import type { CareerSessionStatus } from '../types'
 
 export type CareerListProgress = {
   status: CareerSessionStatus
   label: string
   answeredCount: number
+  expectedQuestionCount: number
   percent: number
 }
 
@@ -13,15 +14,19 @@ export function deriveCareerListProgress(input?: {
   status?: string | null
   answeredCount?: number | null
   latestResultId?: string | null
+  expectedQuestionCount?: number | null
+  assessmentVersion?: string | null
 }): CareerListProgress {
   const answeredCount = Math.max(0, Number(input?.answeredCount ?? 0) || 0)
+  const expectedQuestionCount = resolveExpectedQuestionCount(input)
   const completed = input?.status === 'completed' || Boolean(input?.latestResultId)
 
   if (completed) {
     return {
       status: 'completed',
       label: '완료',
-      answeredCount: Math.max(answeredCount, CAREER_QUESTION_COUNT),
+      answeredCount: Math.max(answeredCount, expectedQuestionCount),
+      expectedQuestionCount,
       percent: 100,
     }
   }
@@ -31,7 +36,8 @@ export function deriveCareerListProgress(input?: {
       status: 'in_progress',
       label: '검사중',
       answeredCount,
-      percent: Math.round((answeredCount / CAREER_QUESTION_COUNT) * 100),
+      expectedQuestionCount,
+      percent: Math.round((answeredCount / expectedQuestionCount) * 100),
     }
   }
 
@@ -39,6 +45,7 @@ export function deriveCareerListProgress(input?: {
     status: 'not_started',
     label: '미시작',
     answeredCount: 0,
+    expectedQuestionCount,
     percent: 0,
   }
 }

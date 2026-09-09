@@ -10,7 +10,13 @@ import type {
   RiasecVector,
   ScoreMap,
 } from '../types'
-import { CAREER_RESULT_VERSION, MAJOR_FIT_WEIGHTS } from '../types'
+import {
+  CAREER_ASSESSMENT_V1,
+  CAREER_ASSESSMENT_V2,
+  CAREER_QUESTION_COUNT_V1,
+  CAREER_QUESTION_COUNT_V2,
+  MAJOR_FIT_WEIGHTS,
+} from '../types'
 import { buildDnaExplanation, buildMajorReasons, buildOverallExplanation, buildWatchItems } from './explanation'
 
 export class CareerScoringError extends Error {
@@ -165,10 +171,17 @@ export function scoreCareerAssessment(input: ScoreCareerAssessmentInput): Career
     Object.entries(input.answers).map(([key, value]) => [Number(key), value]),
   )
 
-  if (input.questions.length !== 88) {
+  const questionCount = input.questions.length
+  const resultVersion =
+    questionCount === CAREER_QUESTION_COUNT_V2
+      ? CAREER_ASSESSMENT_V2
+      : questionCount === CAREER_QUESTION_COUNT_V1
+        ? CAREER_ASSESSMENT_V1
+        : null
+  if (!resultVersion) {
     throw new CareerScoringError('question_count')
   }
-  if (answers.size !== 88) {
+  if (answers.size !== questionCount) {
     throw new CareerScoringError('answer_count')
   }
 
@@ -347,7 +360,7 @@ export function scoreCareerAssessment(input: ScoreCareerAssessmentInput): Career
     .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, 'ko'))
 
   return {
-    resultVersion: CAREER_RESULT_VERSION,
+    resultVersion,
     riasecScores,
     riasecTop2: top2,
     riasecCodeLabel: `${top2[0]}-${top2[1]}형`,

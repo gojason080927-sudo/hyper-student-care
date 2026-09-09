@@ -5,7 +5,7 @@ import assert from 'node:assert/strict'
 import { CAREER_MAJOR_DETAIL_MAP } from '../data/careerMajorDetails.ts'
 import { CAREER_MAJOR_DICTIONARY } from '../data/majorDictionary.ts'
 import { CAREER_MAJOR_PROFILES } from '../data/majorProfiles.ts'
-import { CAREER_QUESTIONS } from '../data/questions.ts'
+import { CAREER_QUESTIONS_V1 } from '../data/questions.ts'
 import { scoreCareerAssessment } from '../engine/scoring.ts'
 import {
   analyzeTop10ReasonUniqueness,
@@ -19,7 +19,7 @@ import {
 
 function answersWithCodes(highCodes: string[], high = 5, low = 2): Record<number, number> {
   const answers: Record<number, number> = {}
-  for (const question of CAREER_QUESTIONS) {
+  for (const question of CAREER_QUESTIONS_V1) {
     answers[question.questionNumber] = highCodes.includes(question.scoringCode) ? high : low
   }
   return answers
@@ -28,7 +28,7 @@ function answersWithCodes(highCodes: string[], high = 5, low = 2): Record<number
 function score(highCodes: string[]) {
   return scoreCareerAssessment({
     answers: answersWithCodes(highCodes),
-    questions: CAREER_QUESTIONS,
+    questions: CAREER_QUESTIONS_V1,
     profiles: CAREER_MAJOR_PROFILES,
     dictionary: CAREER_MAJOR_DICTIONARY,
   })

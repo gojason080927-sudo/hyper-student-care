@@ -35,7 +35,29 @@ const done = deriveCareerListProgress({
 })
 assert.equal(done.label, '완료')
 assert.equal(done.answeredCount, 88)
+assert.equal(done.expectedQuestionCount, 88)
 assert.equal(done.percent, 100)
+
+const fiveV2 = deriveCareerListProgress({
+  status: 'in_progress',
+  answeredCount: 5,
+  expectedQuestionCount: 140,
+  assessmentVersion: 'HYPER_CAREER_V2',
+})
+assert.equal(fiveV2.label, '검사중')
+assert.equal(fiveV2.answeredCount, 5)
+assert.equal(fiveV2.expectedQuestionCount, 140)
+assert.equal(fiveV2.percent, 4)
+
+const doneV2 = deriveCareerListProgress({
+  status: 'completed',
+  answeredCount: 140,
+  expectedQuestionCount: 140,
+  assessmentVersion: 'HYPER_CAREER_V2',
+  latestResultId: 'r2',
+})
+assert.equal(doneV2.answeredCount, 140)
+assert.equal(doneV2.percent, 100)
 
 const missing = missingCareerStudentIds(
   ['roster-1', '3fcd2905-075a-4a5c-8035-4a44f89a1e93'],

@@ -8,6 +8,7 @@ import {
   type PublicCareerLoad,
   type PublicCareerQuestion,
 } from '../api/careerAssessmentApi'
+import { timeEstimateForVersion } from '../types'
 import { CAREER_ENDED_LINK_MESSAGE, isCareerLinkEndedError } from '../utils/careerSessionDelete'
 
 const PAGE_SIZE = 5
@@ -40,8 +41,10 @@ export function CareerTestStudentPage() {
   )
   const totalPages = Math.max(1, Math.ceil(questions.length / PAGE_SIZE))
   const pageQuestions = questions.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE)
+  const totalQuestions = load?.session.expectedQuestionCount || questions.length
   const answeredCount = questions.filter((q) => answers[q.id] != null).length
-  const progress = questions.length ? Math.round((answeredCount / questions.length) * 100) : 0
+  const progress = totalQuestions ? Math.round((answeredCount / totalQuestions) * 100) : 0
+  const showEncouragement = totalQuestions === 140 && [7, 14, 21].includes(page)
 
   useEffect(() => {
     let cancelled = false
@@ -182,10 +185,12 @@ export function CareerTestStudentPage() {
         <p className="mt-1 text-sm text-slate-600">
           {load.student.name} · {load.student.school} · {load.student.grade}
         </p>
-        <p className="text-xs text-slate-500">총 88문항 · 예상 소요시간 약 12~15분</p>
+        <p className="text-xs text-slate-500">
+          총 {totalQuestions}문항 · 예상 소요시간 {timeEstimateForVersion(load.session.assessmentVersion)}
+        </p>
         <div className="mt-2 flex items-center justify-between text-sm font-semibold text-navy-900">
           <span>
-            {answeredCount} / 88 · {progress}%
+            {answeredCount} / {totalQuestions} · {progress}%
           </span>
           <span className="text-xs font-medium text-slate-500">
             {saveState === 'saved' ? '저장됨' : saveState === 'saving' ? '저장 중' : saveState === 'error' ? '저장 실패' : ''}
@@ -197,6 +202,11 @@ export function CareerTestStudentPage() {
       </header>
 
       <main className="mx-auto max-w-xl space-y-4 px-4 py-4 pb-28">
+        {showEncouragement ? (
+          <p className="rounded-xl bg-white px-4 py-2 text-center text-sm text-slate-600 shadow-sm">
+            여기까지 잘 진행하고 있어요.
+          </p>
+        ) : null}
         {pageQuestions.map((question, index) => (
           <section
             key={question.id}
@@ -206,7 +216,7 @@ export function CareerTestStudentPage() {
             className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
           >
             <p className="text-xs font-semibold text-slate-500">
-              {page * PAGE_SIZE + index + 1} / 88
+              {page * PAGE_SIZE + index + 1} / {totalQuestions}
             </p>
             <p className="mt-1 text-[15px] font-medium leading-relaxed text-navy-900">{question.text}</p>
             <div className="mt-3 grid grid-cols-5 gap-1.5">

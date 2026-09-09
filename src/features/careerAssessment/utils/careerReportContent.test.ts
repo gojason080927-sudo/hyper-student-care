@@ -23,7 +23,7 @@ import { BEHAVIOR_ORDER, RIASEC_ORDER, STRENGTH_ORDER, VALUE_ORDER } from '../da
 import { CAREER_MAJOR_DICTIONARY } from '../data/majorDictionary.ts'
 import { CAREER_MAJOR_PROFILES } from '../data/majorProfiles.ts'
 import { PROBLEM_SOLVING_ORDER } from '../data/labels.ts'
-import { CAREER_QUESTIONS } from '../data/questions.ts'
+import { CAREER_QUESTIONS_V1 } from '../data/questions.ts'
 import { scoreCareerAssessment } from '../engine/scoring.ts'
 import {
   analyzeTop10ReasonUniqueness,
@@ -43,13 +43,13 @@ import {
 
 function answersAll(value: number): Record<number, number> {
   const answers: Record<number, number> = {}
-  for (let i = 1; i <= 88; i += 1) answers[i] = value
+  for (const question of CAREER_QUESTIONS_V1) answers[question.questionNumber] = value
   return answers
 }
 
 function answersWithCodes(highCodes: string[], high = 5, low = 1): Record<number, number> {
   const answers: Record<number, number> = {}
-  for (const question of CAREER_QUESTIONS) {
+  for (const question of CAREER_QUESTIONS_V1) {
     answers[question.questionNumber] = highCodes.includes(question.scoringCode) ? high : low
   }
   return answers
@@ -58,7 +58,7 @@ function answersWithCodes(highCodes: string[], high = 5, low = 1): Record<number
 function score(answers: Record<number, number>) {
   return scoreCareerAssessment({
     answers,
-    questions: CAREER_QUESTIONS,
+    questions: CAREER_QUESTIONS_V1,
     profiles: CAREER_MAJOR_PROFILES,
     dictionary: CAREER_MAJOR_DICTIONARY,
   })

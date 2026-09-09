@@ -1,7 +1,8 @@
 import { studentFromRow, type StudentRow } from '../../../lib/db/mappers'
 import { getSupabase } from '../../../lib/supabase'
 import type { Student } from '../../../types/student'
-import type { CareerAssessmentScores, CareerSessionStatus } from '../types'
+import type { CareerAssessmentScores, CareerAssessmentVersion, CareerSessionStatus } from '../types'
+import { CAREER_ASSESSMENT_V1, CAREER_ASSESSMENT_V2, resolveExpectedQuestionCount } from '../types'
 
 export type PublicCareerQuestion = {
   id: string
@@ -15,6 +16,8 @@ export type PublicCareerLoad = {
     id: string
     status: CareerSessionStatus
     completedAt: string | null
+    assessmentVersion: CareerAssessmentVersion
+    expectedQuestionCount: number
   }
   student: {
     name: string
@@ -37,6 +40,8 @@ type SessionRow = {
   created_at: string
   updated_at?: string
   answered_count?: number
+  expected_question_count?: number
+  assessment_version?: string
   latest_result_id?: string | null
   guest_name?: string | null
   guest_school?: string | null
@@ -82,7 +87,20 @@ export async function createOrGetCareerSessions(studentIds: string[]): Promise<S
 
 export async function loadCareerTest(token: string): Promise<PublicCareerLoad> {
   const data = await invokeCareer({ action: 'load', token })
-  return data as unknown as PublicCareerLoad
+  const raw = data as unknown as PublicCareerLoad
+  const assessmentVersion = (raw.session?.assessmentVersion ?? CAREER_ASSESSMENT_V1) as CareerAssessmentVersion
+  const expectedQuestionCount = resolveExpectedQuestionCount({
+    expectedQuestionCount: raw.session?.expectedQuestionCount,
+    assessmentVersion,
+  })
+  return {
+    ...raw,
+    session: {
+      ...raw.session,
+      assessmentVersion,
+      expectedQuestionCount,
+    },
+  }
 }
 
 export async function saveCareerAnswers(
@@ -112,6 +130,8 @@ export type TeacherCareerSession = {
   accessToken: string
   status: CareerSessionStatus
   answeredCount: number
+  expectedQuestionCount: number
+  assessmentVersion: CareerAssessmentVersion
   latestResultId: string | null
   completedAt: string | null
   createdAt: string
@@ -149,6 +169,13 @@ export async function fetchTeacherCareerSessions(): Promise<TeacherCareerSession
     accessToken: row.access_token,
     status: row.status,
     answeredCount: Number(row.answered_count ?? 0),
+    expectedQuestionCount: resolveExpectedQuestionCount({
+      expectedQuestionCount: row.expected_question_count,
+      assessmentVersion: row.assessment_version,
+    }),
+    assessmentVersion: (row.assessment_version === CAREER_ASSESSMENT_V2
+      ? CAREER_ASSESSMENT_V2
+      : CAREER_ASSESSMENT_V1),
     latestResultId: row.latest_result_id ?? null,
     completedAt: row.completed_at,
     createdAt: row.created_at,
@@ -193,6 +220,13 @@ export async function createCareerGuest(input: {
       accessToken: session.access_token,
       status: session.status,
       answeredCount: 0,
+      expectedQuestionCount: resolveExpectedQuestionCount({
+        expectedQuestionCount: session.expected_question_count,
+        assessmentVersion: session.assessment_version ?? CAREER_ASSESSMENT_V2,
+      }),
+      assessmentVersion: (session.assessment_version === CAREER_ASSESSMENT_V1
+        ? CAREER_ASSESSMENT_V1
+        : CAREER_ASSESSMENT_V2),
       latestResultId: null,
       completedAt: session.completed_at,
       createdAt: session.created_at,

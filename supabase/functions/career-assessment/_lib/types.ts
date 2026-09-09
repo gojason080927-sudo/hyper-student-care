@@ -1,6 +1,36 @@
-export const CAREER_RESULT_VERSION = 'HYPER_CAREER_V1' as const
+export const CAREER_ASSESSMENT_V1 = 'HYPER_CAREER_V1' as const
+export const CAREER_ASSESSMENT_V2 = 'HYPER_CAREER_V2' as const
+export type CareerAssessmentVersion = typeof CAREER_ASSESSMENT_V1 | typeof CAREER_ASSESSMENT_V2
 
-export const CAREER_QUESTION_COUNT = 88
+/** 신규 세션이 사용하는 현재 검사 버전 */
+export const CURRENT_ASSESSMENT_VERSION = CAREER_ASSESSMENT_V2
+/** 하위 호환: 결과 기록 시 기본값은 현재 버전 */
+export const CAREER_RESULT_VERSION = CAREER_ASSESSMENT_V2
+
+export const CAREER_QUESTION_COUNT_V1 = 88
+export const CAREER_QUESTION_COUNT_V2 = 140
+export const CAREER_QUESTION_COUNT = CAREER_QUESTION_COUNT_V2
+
+export function isCareerAssessmentV2(version?: string | null): boolean {
+  return version === CAREER_ASSESSMENT_V2
+}
+
+export function questionCountForVersion(version?: string | null): number {
+  return isCareerAssessmentV2(version) ? CAREER_QUESTION_COUNT_V2 : CAREER_QUESTION_COUNT_V1
+}
+
+export function resolveExpectedQuestionCount(input?: {
+  expectedQuestionCount?: number | null
+  assessmentVersion?: string | null
+}): number {
+  const count = Number(input?.expectedQuestionCount ?? 0)
+  if (count === CAREER_QUESTION_COUNT_V1 || count === CAREER_QUESTION_COUNT_V2) return count
+  return questionCountForVersion(input?.assessmentVersion)
+}
+
+export function timeEstimateForVersion(version?: string | null): string {
+  return isCareerAssessmentV2(version) ? '약 15~20분' : '약 12~15분'
+}
 
 export const MAJOR_FIT_WEIGHTS = {
   interest: 0.4,
@@ -71,6 +101,8 @@ export type CareerQuestion = {
   domain: CareerDomain
   scoringCode: string
   displayOrder: number
+  displayOrderV2?: number
+  introducedIn?: CareerAssessmentVersion
 }
 
 export type RiasecVector = Record<RiasecCode, number>
@@ -117,7 +149,7 @@ export type RankedItem = {
 }
 
 export type CareerAssessmentScores = {
-  resultVersion: typeof CAREER_RESULT_VERSION
+  resultVersion: CareerAssessmentVersion
   riasecScores: ScoreMap<RiasecCode>
   riasecTop2: [RiasecCode, RiasecCode]
   riasecCodeLabel: string
@@ -141,6 +173,8 @@ export type CareerSessionSummary = {
   accessToken: string
   status: CareerSessionStatus
   answeredCount: number
+  expectedQuestionCount: number
+  assessmentVersion: CareerAssessmentVersion
   startedAt: string | null
   completedAt: string | null
   createdAt: string

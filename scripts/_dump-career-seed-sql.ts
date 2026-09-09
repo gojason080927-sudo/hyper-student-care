@@ -14,16 +14,31 @@ function sqlArray(values: string[]): string {
 const statements: string[] = []
 
 for (const q of CAREER_QUESTIONS) {
-  statements.push(`INSERT INTO public.career_assessment_questions
-    (question_number, text, domain, scoring_code, display_order, is_active)
-    VALUES (${q.questionNumber}, ${sqlStr(q.text)}, ${sqlStr(q.domain)}, ${sqlStr(q.scoringCode)}, ${q.displayOrder}, true)
+  const introducedIn = q.questionNumber <= 88 ? 'HYPER_CAREER_V1' : 'HYPER_CAREER_V2'
+  const v2Order = q.displayOrderV2 ?? q.displayOrder
+  if (q.questionNumber <= 88) {
+    statements.push(`INSERT INTO public.career_assessment_questions
+    (question_number, text, domain, scoring_code, display_order, display_order_v2, introduced_in, is_active)
+    VALUES (${q.questionNumber}, ${sqlStr(q.text)}, ${sqlStr(q.domain)}, ${sqlStr(q.scoringCode)}, ${q.displayOrder}, ${v2Order}, ${sqlStr(introducedIn)}, true)
+    ON CONFLICT (question_number) DO UPDATE
+      SET display_order_v2 = EXCLUDED.display_order_v2,
+          introduced_in = EXCLUDED.introduced_in,
+          is_active = true,
+          updated_at = now();`)
+  } else {
+    statements.push(`INSERT INTO public.career_assessment_questions
+    (question_number, text, domain, scoring_code, display_order, display_order_v2, introduced_in, is_active)
+    VALUES (${q.questionNumber}, ${sqlStr(q.text)}, ${sqlStr(q.domain)}, ${sqlStr(q.scoringCode)}, ${q.displayOrder}, ${v2Order}, ${sqlStr(introducedIn)}, true)
     ON CONFLICT (question_number) DO UPDATE
       SET text = EXCLUDED.text,
           domain = EXCLUDED.domain,
           scoring_code = EXCLUDED.scoring_code,
           display_order = EXCLUDED.display_order,
+          display_order_v2 = EXCLUDED.display_order_v2,
+          introduced_in = EXCLUDED.introduced_in,
           is_active = true,
           updated_at = now();`)
+  }
 }
 
 for (const p of CAREER_MAJOR_PROFILES) {

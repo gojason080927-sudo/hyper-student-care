@@ -47,17 +47,46 @@ async function sha256Hex(value: string): Promise<string> {
     .join('')
 }
 
-function publicQuestion(row: {
+const ASSESSMENT_V1 = 'HYPER_CAREER_V1'
+const ASSESSMENT_V2 = 'HYPER_CAREER_V2'
+
+type QuestionRow = {
   id: string
   question_number: number
   text: string
+  domain: string
+  scoring_code: string
   display_order: number
-}) {
+  display_order_v2?: number | null
+  introduced_in?: string | null
+  is_active: boolean
+}
+
+function sessionVersion(session: { assessment_version?: string | null }): string {
+  return session.assessment_version === ASSESSMENT_V2 ? ASSESSMENT_V2 : ASSESSMENT_V1
+}
+
+function sessionExpectedCount(session: {
+  assessment_version?: string | null
+  expected_question_count?: number | null
+}): number {
+  const count = Number(session.expected_question_count ?? 0)
+  if (count === 88 || count === 140) return count
+  return sessionVersion(session) === ASSESSMENT_V2 ? 140 : 88
+}
+
+function questionsForSession(all: QuestionRow[], session: { assessment_version?: string | null }): QuestionRow[] {
+  if (sessionVersion(session) === ASSESSMENT_V2) return all
+  return all.filter((row) => row.question_number <= 88)
+}
+
+function publicQuestion(row: QuestionRow, version: string) {
   return {
     id: row.id,
     questionNumber: row.question_number,
     text: row.text,
-    displayOrder: row.display_order,
+    displayOrder:
+      version === ASSESSMENT_V2 ? (row.display_order_v2 ?? row.display_order) : row.display_order,
   }
 }
 
@@ -112,11 +141,11 @@ Deno.serve(async (req) => {
   const loadQuestions = async () => {
     const { data, error } = await admin
       .from('career_assessment_questions')
-      .select('id, question_number, text, domain, scoring_code, display_order, is_active')
+      .select('id, question_number, text, domain, scoring_code, display_order, display_order_v2, introduced_in, is_active')
       .eq('is_active', true)
       .order('question_number')
     if (error || !data) throw new Error(error?.message ?? 'questions_load_failed')
-    return data
+    return data as QuestionRow[]
   }
 
   if (action === 'create_or_get' || action === 'create_or_get_bulk') {
@@ -155,6 +184,8 @@ Deno.serve(async (req) => {
           access_token: token,
           token_hash: tokenHash,
           status: 'not_started',
+          assessment_version: ASSESSMENT_V2,
+          expected_question_count: 140,
         })
         .select('*')
         .single()
@@ -207,6 +238,8 @@ Deno.serve(async (req) => {
         access_token: token,
         token_hash: tokenHash,
         status: 'not_started',
+        assessment_version: ASSESSMENT_V2,
+        expected_question_count: 140,
       })
       .select('*')
       .single()
@@ -351,7 +384,10 @@ Deno.serve(async (req) => {
     }
     if (!subject) return jsonResponse({ error: 'subject_not_found' }, 404)
 
-    const questions = await loadQuestions()
+    const allQuestions = await loadQuestions()
+    const version = sessionVersion(session)
+    const expectedQuestionCount = sessionExpectedCount(session)
+    const questions = questionsForSession(allQuestions, session)
 
     if (action === 'load') {
       const { data: responses } = await admin
@@ -364,9 +400,11 @@ Deno.serve(async (req) => {
           id: session.id,
           status: session.status,
           completedAt: session.completed_at,
+          assessmentVersion: version,
+          expectedQuestionCount,
         },
         student: subject,
-        questions: questions.map(publicQuestion),
+        questions: questions.map((row) => publicQuestion(row, version)),
         answers: responses ?? [],
         answeredCount: responses?.length ?? 0,
       })
@@ -430,7 +468,7 @@ Deno.serve(async (req) => {
       .select('question_id, answer')
       .eq('session_id', session.id)
     if (responseError) return jsonResponse({ error: responseError.message }, 500)
-    if ((responseRows?.length ?? 0) < 88) {
+    if ((responseRows?.length ?? 0) < expectedQuestionCount) {
       const answeredIds = new Set((responseRows ?? []).map((row) => row.question_id))
       const missing = questions
         .filter((q) => !answeredIds.has(q.id))

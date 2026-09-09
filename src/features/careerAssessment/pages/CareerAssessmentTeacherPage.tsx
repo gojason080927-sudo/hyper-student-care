@@ -260,7 +260,7 @@ export function CareerAssessmentTeacherPage() {
                     </span>
                   </td>
                   <td className="px-3 py-3 text-slate-600">
-                    {progress.answeredCount} / 88 · {progress.percent}%
+                    {progress.answeredCount} / {progress.expectedQuestionCount} · {progress.percent}%
                   </td>
                   <td className="px-3 py-3">
                     <div className="flex flex-wrap gap-2">

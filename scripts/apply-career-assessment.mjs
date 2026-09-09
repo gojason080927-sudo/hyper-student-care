@@ -52,8 +52,18 @@ if (!databaseUrl) {
   process.exit(1)
 }
 
+const mode = process.argv.includes('--seed-only')
+  ? 'seed'
+  : process.argv.includes('--schema-only')
+    ? 'schema'
+    : 'all'
+
 const sql = readFileSync('supabase/career-assessment-migration.sql', 'utf8')
-const seed = JSON.parse(execSync('npx tsx scripts/_dump-career-seed.ts', { encoding: 'utf8' }))
+const guestsSql = readFileSync('supabase/career-assessment-guests.sql', 'utf8')
+const v2Sql = readFileSync('supabase/career-assessment-v2.sql', 'utf8')
+const seed = mode === 'schema'
+  ? { questions: [], profiles: [], dictionary: [] }
+  : JSON.parse(execSync('npx tsx scripts/_dump-career-seed.ts', { encoding: 'utf8' }))
 
 const client = new Client({
   connectionString: databaseUrl,
@@ -62,23 +72,53 @@ const client = new Client({
 
 try {
   await client.connect()
-  console.log('Connected')
-  await client.query(sql)
+  console.log('Connected', { mode })
+  if (mode !== 'seed') {
+    await client.query(sql)
+    await client.query(guestsSql)
+    await client.query(v2Sql)
+  }
+
+  const v1Preserve = await client.query(`
+    SELECT
+      count(*) FILTER (WHERE status <> 'completed') AS open_sessions,
+      count(*) FILTER (WHERE status = 'completed') AS completed_sessions,
+      count(*) FILTER (WHERE coalesce(assessment_version, 'HYPER_CAREER_V1') = 'HYPER_CAREER_V1' AND status <> 'completed') AS open_v1
+    FROM public.career_assessment_sessions
+  `)
+  console.log('existing sessions (untouched except version backfill)', v1Preserve.rows[0])
 
   for (const q of seed.questions) {
-    await client.query(
-      `INSERT INTO public.career_assessment_questions
-        (question_number, text, domain, scoring_code, display_order, is_active)
-       VALUES ($1, $2, $3, $4, $5, true)
-       ON CONFLICT (question_number) DO UPDATE
-         SET text = EXCLUDED.text,
-             domain = EXCLUDED.domain,
-             scoring_code = EXCLUDED.scoring_code,
-             display_order = EXCLUDED.display_order,
-             is_active = true,
-             updated_at = now()`,
-      [q.questionNumber, q.text, q.domain, q.scoringCode, q.displayOrder],
-    )
+    const introducedIn = q.questionNumber <= 88 ? 'HYPER_CAREER_V1' : 'HYPER_CAREER_V2'
+    if (q.questionNumber <= 88) {
+      await client.query(
+        `INSERT INTO public.career_assessment_questions
+          (question_number, text, domain, scoring_code, display_order, display_order_v2, introduced_in, is_active)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, true)
+         ON CONFLICT (question_number) DO UPDATE
+           SET display_order_v2 = EXCLUDED.display_order_v2,
+               introduced_in = EXCLUDED.introduced_in,
+               is_active = true,
+               updated_at = now()`,
+        [q.questionNumber, q.text, q.domain, q.scoringCode, q.displayOrder, q.displayOrderV2, introducedIn],
+      )
+    } else {
+      await client.query(
+        `INSERT INTO public.career_assessment_questions
+          (question_number, text, domain, scoring_code, display_order, display_order_v2, introduced_in, is_active)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, true)
+         ON CONFLICT (question_number) DO UPDATE
+           SET text = EXCLUDED.text,
+               domain = EXCLUDED.domain,
+               scoring_code = EXCLUDED.scoring_code,
+               display_order = EXCLUDED.display_order,
+               display_order_v2 = EXCLUDED.display_order_v2,
+               introduced_in = EXCLUDED.introduced_in,
+               is_active = true,
+               updated_at = now()`,
+        [q.questionNumber, q.text, q.domain, q.scoringCode, q.displayOrder, q.displayOrderV2, introducedIn],
+      )
+    }
   }
 
   for (const p of seed.profiles) {
@@ -165,7 +205,27 @@ try {
       (SELECT count(*) FROM public.career_fit_bands) AS bands
   `)
   console.log('seed counts', counts.rows[0])
-  if (Number(counts.rows[0].questions) !== 88) throw new Error('expected 88 questions')
+  if (mode !== 'schema' && Number(counts.rows[0].questions) !== 140) {
+    throw new Error('expected 140 questions')
+  }
+  if (mode === 'schema') {
+    console.log('schema-only OK — deploy edge function before seeding 89-140')
+    return
+  }
+  const v1Texts = await client.query(`
+    SELECT question_number, text, scoring_code
+    FROM public.career_assessment_questions
+    WHERE question_number BETWEEN 1 AND 88
+    ORDER BY question_number
+  `)
+  if (v1Texts.rows.length !== 88) throw new Error('V1 questions missing')
+  const seedV1 = seed.questions.filter((q) => q.questionNumber <= 88)
+  for (const row of v1Texts.rows) {
+    const src = seedV1.find((q) => q.questionNumber === Number(row.question_number))
+    if (!src) throw new Error(`missing seed V1 ${row.question_number}`)
+    if (row.text !== src.text) throw new Error(`V1 text mutated: ${row.question_number}`)
+    if (row.scoring_code !== src.scoringCode) throw new Error(`V1 scoring mutated: ${row.question_number}`)
+  }
   if (Number(counts.rows[0].profiles) !== 36) throw new Error('expected 36 profiles')
   console.log('OK')
 } finally {
