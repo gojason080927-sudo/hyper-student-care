@@ -1,5 +1,5 @@
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AdmissionStrategyNametag } from '../../components/admissionStrategy/AdmissionStrategyNametag'
 import { ConnectedAdmissionStrategyViewer } from '../../components/admissionStrategy/ConnectedAdmissionStrategyViewer'
 import {
@@ -26,7 +26,12 @@ export function ParentStudentAdmissionStrategyPage() {
   const navigate = useNavigate()
   const student = useParentStudent()
   const { posts, loading } = useParentAdmissionStrategyPosts()
-  const { materials, loading: materialsLoading, error: materialsError } = useParentAdmissionStrategyMaterials()
+  const {
+    materials,
+    loading: materialsLoading,
+    error: materialsError,
+    markMaterialViewed,
+  } = useParentAdmissionStrategyMaterials()
   const [tab, setTab] = useState<AdmissionStrategyTab>('고입')
   const basePath = `/care/${student.studentAccessKey}/admission-strategy`
 
@@ -38,6 +43,15 @@ export function ParentStudentAdmissionStrategyPage() {
     () => (materialId ? materials.find((item) => item.id === materialId) ?? null : null),
     [materialId, materials],
   )
+
+  useEffect(() => {
+    if (selectedMaterial) setTab(selectedMaterial.track)
+  }, [selectedMaterial])
+
+  useEffect(() => {
+    if (!materialId || !selectedMaterial?.isUnread) return
+    void markMaterialViewed(materialId)
+  }, [markMaterialViewed, materialId, selectedMaterial?.isUnread])
 
   if (postId) {
     if (loading) {
@@ -70,7 +84,12 @@ export function ParentStudentAdmissionStrategyPage() {
     )
   }
 
-  const visible = filterAdmissionStrategyByTrack(posts, tabToTrack(tab))
+  const visiblePosts = filterAdmissionStrategyByTrack(posts, tabToTrack(tab))
+  const visibleMaterials = materials.filter((item) => item.track === tab)
+  const unreadByTrack = {
+    고입: materials.some((item) => item.track === '고입' && item.isUnread),
+    대입: materials.some((item) => item.track === '대입' && item.isUnread),
+  }
   const listLoading = loading || materialsLoading
 
   return (
@@ -83,9 +102,18 @@ export function ParentStudentAdmissionStrategyPage() {
         <p className="text-sm text-slate-500">불러오는 중...</p>
       ) : (
         <>
-          {materials.length > 0 && (
+          <ParentSegmentTabs
+            value={tab}
+            onChange={setTab}
+            items={[
+              { id: '고입', label: '고입 전략', unread: unreadByTrack.고입 },
+              { id: '대입', label: '대입 전략', unread: unreadByTrack.대입 },
+            ]}
+          />
+
+          {visibleMaterials.length > 0 && (
             <section className="space-y-3">
-              {materials.map((material) => (
+              {visibleMaterials.map((material) => (
                 <AdmissionStrategyNametag
                   key={material.id}
                   material={material}
@@ -95,18 +123,9 @@ export function ParentStudentAdmissionStrategyPage() {
             </section>
           )}
 
-          <ParentSegmentTabs
-            value={tab}
-            onChange={setTab}
-            items={[
-              { id: '고입', label: '고입 전략' },
-              { id: '대입', label: '대입 전략' },
-            ]}
-          />
-
-          {visible.length > 0 ? (
+          {visiblePosts.length > 0 ? (
             <div className="parent-record-list space-y-3">
-              {visible.map((post) => (
+              {visiblePosts.map((post) => (
                 <Link key={post.id} to={`${basePath}/${post.id}`} className="block">
                   <ParentRecordCard title={post.title} date={formatKoreanDate(post.publishedAt)}>
                     <p className="text-sm text-[#6B7280]">자세히 보기</p>
@@ -114,7 +133,7 @@ export function ParentStudentAdmissionStrategyPage() {
                 </Link>
               ))}
             </div>
-          ) : materials.length === 0 ? (
+          ) : visibleMaterials.length === 0 ? (
             <ParentEmptyState
               message={
                 tab === '고입'

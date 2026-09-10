@@ -6,6 +6,7 @@ import {
   admissionStrategyMaterialFromRow,
   canPublishMaterial,
   conversionStatusLabel,
+  hasMaterialTrack,
   isParentVisibleMaterial,
   materialStatusLabel,
   nextDisplayOrder,
@@ -30,6 +31,7 @@ import {
 
 const row: AdmissionStrategyMaterialRow = {
   id: '11111111-1111-4111-8111-111111111111',
+  track: '대입',
   title: '2028 대입 완전정리',
   description: '학부모 상담자료',
   material_type: 'pdf',
@@ -68,6 +70,7 @@ const mapped = admissionStrategyMaterialFromRow(row, [
 ])
 
 assert.equal(mapped.title, '2028 대입 완전정리')
+assert.equal(mapped.track, '대입')
 assert.equal(mapped.pages.length, 2)
 assert.equal(mapped.pages[0]?.pageNumber, 1)
 assert.equal(isParentVisibleMaterial(mapped), true)
@@ -81,6 +84,8 @@ assert.equal(isParentVisibleMaterial(draft), false)
 assert.equal(isParentVisibleMaterial(hidden), false)
 assert.equal(isParentVisibleMaterial({ ...mapped, conversionStatus: 'failed', pageCount: 3 }), false)
 assert.equal(canPublishMaterial({ conversionStatus: 'needs_pdf', pageCount: 0 }), false)
+assert.equal(hasMaterialTrack(mapped), true)
+assert.equal(hasMaterialTrack({ track: null }), false)
 assert.equal(
   needsPageConversion({
     materialType: 'pdf',
@@ -139,23 +144,47 @@ assert.equal(nextDisplayOrder([{ displayOrder: 4 }, { displayOrder: 1 }]), 5)
 const parsed = parseParentAdmissionStrategyMaterials([
   {
     id: 'm1',
+    track: '고입',
     title: '고교학점제 안내',
     description: '',
     page_count: 2,
     display_order: 1,
     published_at: '2026-09-10T00:00:00Z',
+    is_unread: true,
     pages: [
       { page_number: 1, asset_path: 'm1/pages/a-001.webp', width: 100, height: 200 },
       { page_number: 2, asset_path: 'm1/pages/a-002.webp', width: 100, height: 200 },
     ],
     status: 'DRAFT',
   },
+  { id: 'm2', title: '분류 없는 자료' },
   { id: '', title: '무시' },
 ])
 assert.equal(parsed.length, 1)
 assert.equal(parsed[0]?.title, '고교학점제 안내')
+assert.equal(parsed[0]?.track, '고입')
+assert.equal(parsed[0]?.isUnread, true)
 assert.equal(parsed[0]?.pages.length, 2)
 assert.ok(!('status' in parsed[0]!))
+assert.equal(
+  parseParentAdmissionStrategyMaterial({
+    id: 'm3',
+    track: '대입',
+    title: '2028 대입 핵심전략 가이드',
+    page_count: 20,
+    is_unread: false,
+  })?.isUnread,
+  false,
+)
+assert.equal(
+  parseParentAdmissionStrategyMaterial({
+    id: 'm4',
+    track: '대입',
+    title: '확인 필드 없는 자료',
+    page_count: 1,
+  })?.isUnread,
+  false,
+)
 assert.equal(parseParentAdmissionStrategyMaterial(null), null)
 assert.deepEqual(parseParentAdmissionStrategyMaterials(null), [])
 

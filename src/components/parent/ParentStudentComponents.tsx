@@ -134,7 +134,7 @@ export function ParentPageHeader({ title, description, action }: ParentPageHeade
 type ParentSegmentTabsProps<T extends string> = {
   value: T
   onChange: (next: T) => void
-  items: { id: T; label: string }[]
+  items: { id: T; label: string; unread?: boolean }[]
 }
 
 /** 학부모 카테고리 내부 2열 탭 (공지/보강, 고입/대입) */
@@ -157,11 +157,19 @@ export function ParentSegmentTabs<T extends string>({
             role="tab"
             aria-selected={active}
             onClick={() => onChange(item.id)}
-            className={`min-h-11 rounded-lg px-3 text-sm font-semibold transition ${
+            className={`relative min-h-11 rounded-lg px-3 text-sm font-semibold transition ${
               active ? 'bg-white text-[#163A70] shadow-sm' : 'text-[#6B7280]'
             }`}
           >
-            {item.label}
+            <span className="inline-flex max-w-full items-center justify-center gap-1.5">
+              <span>{item.label}</span>
+              {item.unread ? (
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full bg-[#FF8A3D]"
+                  aria-label="확인하지 않은 새 자료"
+                />
+              ) : null}
+            </span>
           </button>
         )
       })}

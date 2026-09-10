@@ -1,3 +1,5 @@
+import type { AdmissionStrategyTrack } from './admissionStrategy'
+
 export const ADMISSION_STRATEGY_MATERIAL_STATUSES = ['DRAFT', 'PUBLISHED', 'HIDDEN'] as const
 export const ADMISSION_STRATEGY_MATERIAL_TYPES = ['pdf', 'pptx'] as const
 export const ADMISSION_STRATEGY_CONVERSION_STATUSES = [
@@ -26,6 +28,7 @@ export type AdmissionStrategyMaterialPage = {
 
 export type AdmissionStrategyMaterial = {
   id: string
+  track: AdmissionStrategyTrack | null
   title: string
   description: string
   materialType: AdmissionStrategyMaterialType
@@ -52,11 +55,13 @@ export type ParentAdmissionStrategyMaterialPage = {
 
 export type ParentAdmissionStrategyMaterial = {
   id: string
+  track: AdmissionStrategyTrack
   title: string
   description: string
   pageCount: number
   displayOrder: number
   publishedAt: string | null
+  isUnread: boolean
   pages: ParentAdmissionStrategyMaterialPage[]
 }
 

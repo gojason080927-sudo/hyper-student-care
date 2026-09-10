@@ -8,7 +8,7 @@ import {
   upsertAdmissionStrategyMaterial,
 } from '../lib/db/admissionStrategyMaterial'
 import type { AdmissionStrategyMaterial, AdmissionStrategyMaterialStatus } from '../types/admissionStrategyMaterial'
-import { canPublishMaterial, swappedDisplayOrders } from '../lib/db/admissionStrategyMaterialModel'
+import { canPublishMaterial, swappedDisplayOrders, hasMaterialTrack } from '../lib/db/admissionStrategyMaterialModel'
 import { reprocessAdmissionStrategyMaterialFromSource } from '../lib/admissionStrategy/materialUploadFlow'
 import { teacherFacingError } from '../lib/admissionStrategy/storagePaths'
 import { useData } from './useData'
@@ -98,16 +98,25 @@ export function useTeacherAdmissionStrategyMaterials() {
 
   const setStatus = useCallback(
     async (material: AdmissionStrategyMaterial, status: AdmissionStrategyMaterialStatus) => {
+      if (status === 'PUBLISHED' && !hasMaterialTrack(material)) {
+        throw new Error('고입 또는 대입을 선택한 뒤 게시할 수 있습니다.')
+      }
       if (status === 'PUBLISHED' && !canPublishMaterial(material)) {
         throw new Error('페이지 변환이 끝난 자료만 게시할 수 있습니다. PDF를 업로드해 주세요.')
       }
+      const alreadyPublished =
+        materials.find((item) => item.id === material.id)?.status === 'PUBLISHED'
       const publishedAt =
-        status === 'PUBLISHED' ? (material.publishedAt ?? new Date().toISOString()) : material.publishedAt
+        status === 'PUBLISHED'
+          ? alreadyPublished
+            ? (material.publishedAt ?? new Date().toISOString())
+            : new Date().toISOString()
+          : material.publishedAt
       await updateAdmissionStrategyMaterialStatus(material.id, status, publishedAt)
       await reload()
       showToast(status === 'PUBLISHED' ? '학부모 앱에 게시되었습니다.' : status === 'HIDDEN' ? '학부모 앱에서 숨겼습니다.' : '초안으로 변경했습니다.')
     },
-    [reload, showToast],
+    [materials, reload, showToast],
   )
 
   const moveMaterial = useCallback(

@@ -12,9 +12,12 @@ import {
   ADMISSION_STRATEGY_MATERIAL_STATUSES,
   ADMISSION_STRATEGY_MATERIAL_TYPES,
 } from '../../types/admissionStrategyMaterial.ts'
+import type { AdmissionStrategyTrack } from '../../types/admissionStrategy.ts'
+import { ADMISSION_STRATEGY_TRACKS } from '../../types/admissionStrategy.ts'
 
 export type AdmissionStrategyMaterialRow = {
   id: string
+  track: string | null
   title: string
   description: string | null
   material_type: string
@@ -53,6 +56,13 @@ function isConversion(value: string): value is AdmissionStrategyConversionStatus
   return (ADMISSION_STRATEGY_CONVERSION_STATUSES as readonly string[]).includes(value)
 }
 
+function parseMaterialTrack(value: unknown): AdmissionStrategyTrack | null {
+  return typeof value === 'string' &&
+    (ADMISSION_STRATEGY_TRACKS as readonly string[]).includes(value)
+    ? (value as AdmissionStrategyTrack)
+    : null
+}
+
 export function admissionStrategyMaterialPageFromRow(
   row: AdmissionStrategyMaterialPageRow,
 ): AdmissionStrategyMaterialPage {
@@ -73,6 +83,7 @@ export function admissionStrategyMaterialFromRow(
 ): AdmissionStrategyMaterial {
   return {
     id: row.id,
+    track: parseMaterialTrack(row.track),
     title: row.title,
     description: row.description ?? '',
     materialType: isType(row.material_type) ? row.material_type : 'pdf',
@@ -99,6 +110,7 @@ export function admissionStrategyMaterialToRow(
 ): AdmissionStrategyMaterialRow {
   return {
     id: record.id,
+    track: record.track,
     title: record.title,
     description: record.description || null,
     material_type: record.materialType,
@@ -133,6 +145,12 @@ export function canPublishMaterial(record: {
   pageCount: number | null
 }): boolean {
   return record.conversionStatus === 'ready' && (record.pageCount ?? 0) > 0
+}
+
+export function hasMaterialTrack(
+  record: { track?: AdmissionStrategyTrack | null },
+): record is { track: AdmissionStrategyTrack } {
+  return record.track === '고입' || record.track === '대입'
 }
 
 export function needsPageConversion(record: {
@@ -222,11 +240,14 @@ export function parseParentAdmissionStrategyMaterial(
   const row = value as Record<string, unknown>
   const id = typeof row.id === 'string' ? row.id : ''
   const title = typeof row.title === 'string' ? row.title : ''
-  if (!id || !title) return null
+  const track = parseMaterialTrack(row.track)
+  if (!id || !title || !track) return null
   const pages = parseParentAdmissionStrategyMaterialPages(row.pages)
   const pageCountRaw = Number(row.page_count ?? row.pageCount ?? pages.length)
+  const unreadRaw = row.is_unread ?? row.isUnread
   return {
     id,
+    track,
     title,
     description: typeof row.description === 'string' ? row.description : '',
     pageCount: Number.isFinite(pageCountRaw) ? pageCountRaw : pages.length,
@@ -237,6 +258,7 @@ export function parseParentAdmissionStrategyMaterial(
         : typeof row.publishedAt === 'string'
           ? row.publishedAt
           : null,
+    isUnread: unreadRaw === true,
     pages,
   }
 }
