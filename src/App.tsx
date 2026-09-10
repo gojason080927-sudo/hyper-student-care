@@ -100,6 +100,7 @@ import { CareerAssessmentTeacherPage } from './features/careerAssessment/pages/C
 import { CareerAssessmentTeacherResultPage } from './features/careerAssessment/pages/CareerAssessmentTeacherResultPage'
 import { CareerTestStudentPage } from './features/careerAssessment/pages/CareerTestStudentPage'
 import { ParentCareerResultPage } from './features/careerAssessment/pages/ParentCareerResultPage'
+import { AdmissionStrategyViewerPreviewPage } from './pages/dev/AdmissionStrategyViewerPreviewPage'
 
 
 
@@ -114,6 +115,9 @@ function App() {
         {/* 학부모·학생: 로그인 없이 student_access_key 링크로 접근 */}
 
         <Route path="/career-test/:token" element={<CareerTestStudentPage />} />
+        {import.meta.env.DEV ? (
+          <Route path="/dev/admission-viewer" element={<AdmissionStrategyViewerPreviewPage />} />
+        ) : null}
 
         <Route path="/care/:studentAccessKey" element={<ParentStudentLayout />}>
 
@@ -139,6 +143,8 @@ function App() {
           <Route path="notices-makeup" element={<ParentStudentNoticesMakeupPage />} />
 
           <Route path="admission-strategy" element={<ParentStudentAdmissionStrategyPage />} />
+
+          <Route path="admission-strategy/m/:materialId" element={<ParentStudentAdmissionStrategyPage />} />
 
           <Route path="admission-strategy/:postId" element={<ParentStudentAdmissionStrategyPage />} />
 

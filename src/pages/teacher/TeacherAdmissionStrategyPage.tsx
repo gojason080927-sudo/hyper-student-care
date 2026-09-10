@@ -1,5 +1,6 @@
 import { Plus } from 'lucide-react'
 import { useMemo, useState, type FormEvent } from 'react'
+import { TeacherAdmissionStrategyMaterialsPanel } from '../../components/admissionStrategy/TeacherAdmissionStrategyMaterialsPanel'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Modal } from '../../components/ui/Modal'
@@ -40,6 +41,7 @@ export function TeacherAdmissionStrategyPage() {
   const { user } = useAuth()
   const defaultAuthor = user?.email?.split('@')[0] ?? ''
   const { posts, loading, savePost, removePost } = useTeacherAdmissionStrategyPosts()
+  const [section, setSection] = useState<'materials' | 'posts'>('materials')
   const [track, setTrack] = useState<AdmissionStrategyTrack>('고입')
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState<FormState>(() => emptyForm('고입', defaultAuthor))
@@ -103,15 +105,41 @@ export function TeacherAdmissionStrategyPage() {
     <div className="space-y-6">
       <PageHeader
         title="고입 · 대입 입시전략"
-        description="학부모 앱에 공개할 진학·입시 자료를 관리합니다."
+        description="학부모 앱에 공개할 진학·입시 자료와 글을 관리합니다."
         action={
-          <button type="button" onClick={openAdd} className={`${btnPrimary} inline-flex items-center gap-2`}>
-            <Plus className="h-4 w-4" />
-            새 글 작성
-          </button>
+          section === 'posts' ? (
+            <button type="button" onClick={openAdd} className={`${btnPrimary} inline-flex items-center gap-2`}>
+              <Plus className="h-4 w-4" />
+              새 글 작성
+            </button>
+          ) : null
         }
       />
 
+      <div className="grid grid-cols-2 gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+        {(
+          [
+            { id: 'materials', label: '입시자료' },
+            { id: 'posts', label: '전략 글' },
+          ] as const
+        ).map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => setSection(item.id)}
+            className={`min-h-11 rounded-lg px-3 text-sm font-semibold ${
+              section === item.id ? 'bg-navy-900 text-white' : 'text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      {section === 'materials' ? <TeacherAdmissionStrategyMaterialsPanel /> : null}
+
+      {section === 'posts' ? (
+      <>
       <div className="grid grid-cols-2 gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
         {(['고입', '대입'] as const).map((item) => (
           <button
@@ -242,6 +270,8 @@ export function TeacherAdmissionStrategyPage() {
           setDeleteTarget(null)
         }}
       />
+      </>
+      ) : null}
     </div>
   )
 }

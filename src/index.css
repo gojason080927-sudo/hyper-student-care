@@ -113,6 +113,12 @@ html {
   height: auto;
 }
 
+.admission-strategy-viewer img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
 /* 강사용 모바일 PWA */
 .teacher-mobile-app {
   padding-left: env(safe-area-inset-left);
