@@ -21,15 +21,15 @@ export function AdmissionStrategyNametag({ material, onOpen }: AdmissionStrategy
     <button
       type="button"
       onClick={() => onOpen(material.id)}
-      className="pm-card flex min-h-14 w-full items-center justify-between gap-3 px-4 py-3.5 text-left sm:px-5"
+      className="admission-strategy-nametag pm-card flex min-h-14 w-full items-start justify-between gap-3 whitespace-normal px-4 py-3.5 pr-4 text-left sm:items-center sm:px-5 sm:pr-5"
     >
-      <span className="min-w-0">
-        <span className="block break-anywhere text-base font-semibold leading-snug text-[#163A70]">
+      <span className="min-w-0 flex-1 overflow-visible pr-1">
+        <span className="admission-strategy-nametag-title block max-w-full whitespace-normal break-anywhere text-base font-semibold leading-snug text-[#163A70]">
           {material.title}
         </span>
-        {updated && <span className="mt-1 block text-xs text-[#6B7280]">{updated}</span>}
+        {updated && <span className="mt-1 block whitespace-normal text-xs text-[#6B7280]">{updated}</span>}
       </span>
-      <ChevronRight className="h-5 w-5 shrink-0 text-[#163A70]" aria-hidden />
+      <ChevronRight className="mt-0.5 h-5 w-5 shrink-0 text-[#163A70] sm:mt-0" aria-hidden />
     </button>
   )
 }

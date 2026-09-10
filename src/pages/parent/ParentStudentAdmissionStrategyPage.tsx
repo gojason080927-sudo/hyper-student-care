@@ -104,17 +104,7 @@ export function ParentStudentAdmissionStrategyPage() {
             ]}
           />
 
-          {visible.length === 0 && materials.length === 0 ? (
-            <ParentEmptyState
-              message={
-                tab === '고입'
-                  ? '고입 전략 자료를 준비 중입니다.'
-                  : '대입 전략 자료를 준비 중입니다.'
-              }
-            />
-          ) : visible.length === 0 ? (
-            <ParentEmptyState message="등록된 전략 글이 없습니다." />
-          ) : (
+          {visible.length > 0 ? (
             <div className="parent-record-list space-y-3">
               {visible.map((post) => (
                 <Link key={post.id} to={`${basePath}/${post.id}`} className="block">
@@ -124,7 +114,15 @@ export function ParentStudentAdmissionStrategyPage() {
                 </Link>
               ))}
             </div>
-          )}
+          ) : materials.length === 0 ? (
+            <ParentEmptyState
+              message={
+                tab === '고입'
+                  ? '고입 전략 자료를 준비 중입니다.'
+                  : '대입 전략 자료를 준비 중입니다.'
+              }
+            />
+          ) : null}
         </>
       )}
 
