@@ -147,6 +147,12 @@ export function canPublishMaterial(record: {
   return record.conversionStatus === 'ready' && (record.pageCount ?? 0) > 0
 }
 
+export function hasUnreadAdmissionStrategyMaterials(
+  materials: { isUnread?: boolean }[],
+): boolean {
+  return materials.some((item) => item.isUnread === true)
+}
+
 export function hasMaterialTrack(
   record: { track?: AdmissionStrategyTrack | null },
 ): record is { track: AdmissionStrategyTrack } {

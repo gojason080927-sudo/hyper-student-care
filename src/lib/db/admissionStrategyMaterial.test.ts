@@ -7,6 +7,7 @@ import {
   canPublishMaterial,
   conversionStatusLabel,
   hasMaterialTrack,
+  hasUnreadAdmissionStrategyMaterials,
   isParentVisibleMaterial,
   materialStatusLabel,
   nextDisplayOrder,
@@ -86,6 +87,18 @@ assert.equal(isParentVisibleMaterial({ ...mapped, conversionStatus: 'failed', pa
 assert.equal(canPublishMaterial({ conversionStatus: 'needs_pdf', pageCount: 0 }), false)
 assert.equal(hasMaterialTrack(mapped), true)
 assert.equal(hasMaterialTrack({ track: null }), false)
+assert.equal(
+  hasUnreadAdmissionStrategyMaterials([
+    { isUnread: false },
+    { isUnread: true },
+  ]),
+  true,
+)
+assert.equal(
+  hasUnreadAdmissionStrategyMaterials([{ isUnread: false }, { isUnread: false }]),
+  false,
+)
+assert.equal(hasUnreadAdmissionStrategyMaterials([]), false)
 assert.equal(
   needsPageConversion({
     materialType: 'pdf',

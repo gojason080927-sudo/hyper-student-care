@@ -10,6 +10,13 @@ import {
 } from 'react'
 import { createPortal } from 'react-dom'
 import { useViewerScrollLock } from '../../hooks/useViewerScrollLock'
+import {
+  clampPageIndex,
+  edgeTapDirection,
+  shouldAcceptViewerNavigation,
+  stepPageIndex,
+  VIEWER_ORIENTATION_LOCK_MS,
+} from '../../lib/admissionStrategy/viewerNavigation'
 
 export type AdmissionStrategyViewerPage = {
   pageNumber: number
@@ -49,7 +56,9 @@ export function AdmissionStrategyMaterialViewer({
   onNeedPages,
 }: AdmissionStrategyMaterialViewerProps) {
   const total = pages.length
-  const [pageIndex, setPageIndex] = useState(() => clamp((initialPage || 1) - 1, 0, Math.max(total - 1, 0)))
+  const [pageIndex, setPageIndex] = useState(() =>
+    clampPageIndex((initialPage || 1) - 1, Math.max(total, 0)),
+  )
   const [scale, setScale] = useState(1)
   const [translate, setTranslate] = useState({ x: 0, y: 0 })
   const [gestureActive, setGestureActive] = useState(false)
@@ -59,18 +68,46 @@ export function AdmissionStrategyMaterialViewer({
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null)
   const lastTapRef = useRef<{ time: number; x: number; y: number } | null>(null)
   const stageRef = useRef<HTMLDivElement | null>(null)
+  const pageIndexRef = useRef(pageIndex)
+  const lastNavAtRef = useRef(0)
+  const lastTouchAtRef = useRef(0)
+  const orientationLockUntilRef = useRef(0)
+  pageIndexRef.current = pageIndex
 
   useViewerScrollLock(open)
 
   const goTo = useCallback(
     (nextIndex: number) => {
       if (total === 0) return
-      const clamped = clamp(nextIndex, 0, total - 1)
+      const clamped = clampPageIndex(nextIndex, total)
+      if (clamped === pageIndexRef.current) return
+      pageIndexRef.current = clamped
       setPageIndex(clamped)
       setScale(1)
       setTranslate({ x: 0, y: 0 })
     },
     [total],
+  )
+
+  const stepBy = useCallback(
+    (delta: number, pointerType?: string) => {
+      const now = Date.now()
+      if (now < orientationLockUntilRef.current) return
+      if (
+        !shouldAcceptViewerNavigation({
+          now,
+          lastAcceptedAt: lastNavAtRef.current,
+          pointerType,
+          lastTouchAt: lastTouchAtRef.current,
+        })
+      ) {
+        return
+      }
+      if (pointerType === 'touch' || pointerType === 'pen') lastTouchAtRef.current = now
+      lastNavAtRef.current = now
+      goTo(stepPageIndex(pageIndexRef.current, delta, total))
+    },
+    [goTo, total],
   )
 
   useEffect(() => {
@@ -84,6 +121,23 @@ export function AdmissionStrategyMaterialViewer({
 
   useEffect(() => {
     if (!open) return
+    let lastLandscape = window.innerWidth > window.innerHeight
+    const lockIfOrientationChanged = () => {
+      const landscape = window.innerWidth > window.innerHeight
+      if (landscape === lastLandscape) return
+      lastLandscape = landscape
+      orientationLockUntilRef.current = Date.now() + VIEWER_ORIENTATION_LOCK_MS
+    }
+    window.addEventListener('orientationchange', lockIfOrientationChanged)
+    window.addEventListener('resize', lockIfOrientationChanged)
+    return () => {
+      window.removeEventListener('orientationchange', lockIfOrientationChanged)
+      window.removeEventListener('resize', lockIfOrientationChanged)
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (!open) return
     const handleKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault()
@@ -92,16 +146,16 @@ export function AdmissionStrategyMaterialViewer({
       }
       if (event.key === 'ArrowLeft') {
         event.preventDefault()
-        goTo(pageIndex - 1)
+        goTo(stepPageIndex(pageIndexRef.current, -1, total))
       }
       if (event.key === 'ArrowRight') {
         event.preventDefault()
-        goTo(pageIndex + 1)
+        goTo(stepPageIndex(pageIndexRef.current, 1, total))
       }
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [goTo, onClose, open, pageIndex])
+  }, [goTo, onClose, open, total])
 
   const current = pages[pageIndex]
   const pageLabel = total > 0 ? `${pageIndex + 1} / ${total}` : '0 / 0'
@@ -111,12 +165,13 @@ export function AdmissionStrategyMaterialViewer({
     setTranslate({ x: 0, y: 0 })
   }
 
-  const handleEdgeTap = (clientX: number) => {
-    const width = stageRef.current?.clientWidth ?? window.innerWidth
-    if (width <= 0) return
-    const ratio = clientX / width
-    if (ratio <= 0.28) goTo(pageIndex - 1)
-    else if (ratio >= 0.72) goTo(pageIndex + 1)
+  const handleEdgeTap = (clientX: number, pointerType?: string) => {
+    const rect = stageRef.current?.getBoundingClientRect()
+    const direction = edgeTapDirection(clientX, {
+      left: rect?.left ?? 0,
+      width: rect?.width ?? window.innerWidth,
+    })
+    if (direction !== 0) stepBy(direction, pointerType)
   }
 
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -166,13 +221,22 @@ export function AdmissionStrategyMaterialViewer({
     }
   }
 
-  const onPointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
-    const start = swipeStartRef.current
-    const pointerCount = pointersRef.current.size
-    pointersRef.current.delete(event.pointerId)
+  const resetGesturePointers = (pointerId: number) => {
+    pointersRef.current.delete(pointerId)
     pinchStartRef.current = null
     panStartRef.current = null
     if (pointersRef.current.size === 0) setGestureActive(false)
+  }
+
+  const onPointerCancel = (event: ReactPointerEvent<HTMLDivElement>) => {
+    resetGesturePointers(event.pointerId)
+    swipeStartRef.current = null
+  }
+
+  const onPointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const start = swipeStartRef.current
+    const pointerCount = pointersRef.current.size
+    resetGesturePointers(event.pointerId)
 
     if (pointerCount === 1 && scale === 1 && start) {
       const dx = event.clientX - start.x
@@ -194,10 +258,10 @@ export function AdmissionStrategyMaterialViewer({
       lastTapRef.current = { time: now, x: event.clientX, y: event.clientY }
 
       if (Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy) * 1.15) {
-        if (dx < 0) goTo(pageIndex + 1)
-        else goTo(pageIndex - 1)
+        if (dx < 0) stepBy(1, event.pointerType)
+        else stepBy(-1, event.pointerType)
       } else if (Math.hypot(dx, dy) < 12) {
-        handleEdgeTap(event.clientX)
+        handleEdgeTap(event.clientX, event.pointerType)
       }
     }
 
@@ -233,7 +297,7 @@ export function AdmissionStrategyMaterialViewer({
 
   return createPortal(
     <div
-      className="admission-strategy-viewer fixed inset-0 z-[80] flex h-[100dvh] w-screen flex-col bg-[#070f1c] text-white"
+      className="admission-strategy-viewer fixed inset-0 z-[80] flex h-[100dvh] w-full max-w-full flex-col overflow-hidden bg-[#070f1c] text-white"
       role="dialog"
       aria-modal="true"
       aria-label={title}
@@ -260,7 +324,7 @@ export function AdmissionStrategyMaterialViewer({
 
       <div
         ref={stageRef}
-        className="relative min-h-0 flex-1 touch-none overflow-hidden"
+        className="relative min-h-0 min-w-0 flex-1 touch-none overflow-hidden"
         style={{
           paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
           paddingLeft: 'env(safe-area-inset-left)',
@@ -269,7 +333,7 @@ export function AdmissionStrategyMaterialViewer({
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
+        onPointerCancel={onPointerCancel}
         onWheel={onWheel}
       >
         {errorMessage ? (
@@ -290,8 +354,10 @@ export function AdmissionStrategyMaterialViewer({
                   src={current.src}
                   alt={`${title} ${current.pageNumber}페이지`}
                   draggable={false}
-                  className="h-full w-full select-none object-contain"
+                  className="pointer-events-none max-h-full max-w-full min-h-0 min-w-0 select-none object-contain"
                   style={{
+                    width: 'auto',
+                    height: 'auto',
                     transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
                     transformOrigin: 'center center',
                     transition: gestureActive ? 'none' : 'transform 120ms ease-out',
@@ -307,7 +373,7 @@ export function AdmissionStrategyMaterialViewer({
               className="absolute left-1 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white hover:bg-black/50 sm:inline-flex"
               aria-label="이전 페이지"
               disabled={pageIndex <= 0}
-              onClick={() => goTo(pageIndex - 1)}
+              onClick={() => goTo(stepPageIndex(pageIndexRef.current, -1, total))}
             >
               <ChevronLeft className="h-6 w-6" />
             </button>
@@ -316,7 +382,7 @@ export function AdmissionStrategyMaterialViewer({
               className="absolute right-1 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white hover:bg-black/50 sm:inline-flex"
               aria-label="다음 페이지"
               disabled={pageIndex >= total - 1}
-              onClick={() => goTo(pageIndex + 1)}
+              onClick={() => goTo(stepPageIndex(pageIndexRef.current, 1, total))}
             >
               <ChevronRight className="h-6 w-6" />
             </button>

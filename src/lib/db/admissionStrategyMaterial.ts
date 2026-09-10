@@ -22,6 +22,7 @@ export {
   canPublishMaterial,
   conversionStatusLabel,
   hasMaterialTrack,
+  hasUnreadAdmissionStrategyMaterials,
   isParentVisibleMaterial,
   materialStatusLabel,
   needsPageConversion,
