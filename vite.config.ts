@@ -1,7 +1,25 @@
+import { cpSync, existsSync, mkdirSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)))
+
+function copyPdfjsSupportFiles() {
+  const srcRoot = resolve(repoRoot, 'node_modules/pdfjs-dist')
+  const destRoot = resolve(repoRoot, 'public/pdfjs')
+  for (const dir of ['cmaps', 'standard_fonts', 'wasm', 'iccs']) {
+    const from = resolve(srcRoot, dir)
+    if (!existsSync(from)) continue
+    mkdirSync(destRoot, { recursive: true })
+    cpSync(from, resolve(destRoot, dir), { recursive: true })
+  }
+}
+
+copyPdfjsSupportFiles()
 
 // https://vite.dev/config/
 export default defineConfig({

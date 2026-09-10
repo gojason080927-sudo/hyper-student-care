@@ -5,6 +5,7 @@ import {
   upsertAdmissionStrategyMaterial,
 } from '../db/admissionStrategyMaterial'
 import {
+  downloadSourceFile,
   listMaterialStoragePaths,
   removeStoragePaths,
   uploadRenderedPages,
@@ -16,6 +17,81 @@ export type MaterialUploadProgress = {
   message: string
   current?: number
   total?: number
+}
+
+async function persistConvertedPages(params: {
+  material: AdmissionStrategyMaterial
+  fileId: string
+  file: File | Blob
+  sourceFilePath: string
+  previousPaths: string[]
+  onProgress?: (progress: MaterialUploadProgress) => void
+}): Promise<AdmissionStrategyMaterial> {
+  const { material, fileId, file, sourceFilePath, previousPaths, onProgress } = params
+  onProgress?.({ message: 'PDF 페이지를 변환하는 중...' })
+  const { renderPdfFileToPages } = await import('./pdfToPageImages')
+  const rendered = await renderPdfFileToPages(file, (progress) => {
+    onProgress?.({
+      message: `PDF 변환 중 (${progress.current} / ${progress.total})`,
+      current: progress.current,
+      total: progress.total,
+    })
+  })
+  onProgress?.({ message: '페이지 이미지를 올리는 중...' })
+  const uploaded = await uploadRenderedPages({
+    materialId: material.id,
+    fileId,
+    pages: rendered,
+  })
+  await replaceAdmissionStrategyMaterialPages(
+    material.id,
+    uploaded.map((page) => ({
+      pageNumber: page.pageNumber,
+      assetPath: page.assetPath,
+      width: page.width,
+      height: page.height,
+    })),
+  )
+  const next: AdmissionStrategyMaterial = {
+    ...material,
+    sourceFilePath,
+    conversionStatus: 'ready',
+    conversionError: '',
+    pageCount: uploaded.length,
+    pages: uploaded.map((page) => ({
+      id: createId(),
+      materialId: material.id,
+      pageNumber: page.pageNumber,
+      assetPath: page.assetPath,
+      width: page.width,
+      height: page.height,
+      createdAt: new Date().toISOString(),
+    })),
+  }
+  await upsertAdmissionStrategyMaterial(next)
+  const keep = new Set([sourceFilePath, ...uploaded.map((page) => page.assetPath)])
+  await removeStoragePaths(previousPaths.filter((path) => !keep.has(path)))
+  return next
+}
+
+async function markConversionFailed(
+  material: AdmissionStrategyMaterial,
+  error: unknown,
+): Promise<AdmissionStrategyMaterial> {
+  const failed: AdmissionStrategyMaterial = {
+    ...material,
+    conversionStatus: 'failed',
+    conversionError:
+      error instanceof Error && error.message.trim()
+        ? error.message.trim()
+        : '파일 변환에 실패했습니다. PDF를 다시 업로드해 주세요.',
+  }
+  try {
+    await upsertAdmissionStrategyMaterial(failed)
+  } catch {
+    // 변환 실패 상태를 남기지 못해도 원 오류를 우선한다.
+  }
+  return failed
 }
 
 export async function processAdmissionStrategyUpload(params: {
@@ -40,8 +116,8 @@ export async function processAdmissionStrategyUpload(params: {
 
   onProgress?.({ message: '원본 파일을 올리는 중...' })
   try {
-    const previousPaths = await listMaterialStoragePaths(material.id)
     await upsertAdmissionStrategyMaterial(next)
+    const previousPaths = await listMaterialStoragePaths(material.id)
     const sourceFilePath = await uploadSourceFile({
       materialId: material.id,
       fileId,
@@ -49,6 +125,7 @@ export async function processAdmissionStrategyUpload(params: {
       kind,
     })
     next = { ...next, sourceFilePath }
+    await upsertAdmissionStrategyMaterial(next)
 
     if (kind === 'pptx') {
       await replaceAdmissionStrategyMaterialPages(material.id, [])
@@ -66,63 +143,50 @@ export async function processAdmissionStrategyUpload(params: {
       return next
     }
 
-    onProgress?.({ message: 'PDF 페이지를 변환하는 중...' })
-    const { renderPdfFileToPages } = await import('./pdfToPageImages')
-    const rendered = await renderPdfFileToPages(file, (progress) => {
-      onProgress?.({
-        message: `PDF 변환 중 (${progress.current} / ${progress.total})`,
-        current: progress.current,
-        total: progress.total,
-      })
-    })
-    onProgress?.({ message: '페이지 이미지를 올리는 중...' })
-    const uploaded = await uploadRenderedPages({
-      materialId: material.id,
+    return await persistConvertedPages({
+      material: next,
       fileId,
-      pages: rendered,
+      file,
+      sourceFilePath,
+      previousPaths,
+      onProgress,
     })
-    await replaceAdmissionStrategyMaterialPages(
-      material.id,
-      uploaded.map((page) => ({
-        pageNumber: page.pageNumber,
-        assetPath: page.assetPath,
-        width: page.width,
-        height: page.height,
-      })),
-    )
-    next = {
-      ...next,
-      conversionStatus: 'ready',
-      conversionError: '',
-      pageCount: uploaded.length,
-      pages: uploaded.map((page) => ({
-        id: createId(),
-        materialId: material.id,
-        pageNumber: page.pageNumber,
-        assetPath: page.assetPath,
-        width: page.width,
-        height: page.height,
-        createdAt: new Date().toISOString(),
-      })),
-    }
-    await upsertAdmissionStrategyMaterial(next)
-    const keep = new Set([sourceFilePath, ...uploaded.map((page) => page.assetPath)])
-    await removeStoragePaths(previousPaths.filter((path) => !keep.has(path)))
-    return next
   } catch (error) {
-    const failed: AdmissionStrategyMaterial = {
-      ...next,
-      conversionStatus: 'failed',
-      conversionError:
-        error instanceof Error && error.message.trim()
-          ? error.message.trim()
-          : '파일 변환에 실패했습니다. PDF를 다시 업로드해 주세요.',
-    }
-    try {
-      await upsertAdmissionStrategyMaterial(failed)
-    } catch {
-      // 변환 실패 상태를 남기지 못해도 원 오류를 우선한다.
-    }
+    await markConversionFailed(next, error)
+    throw error
+  }
+}
+
+export async function reprocessAdmissionStrategyMaterialFromSource(params: {
+  material: AdmissionStrategyMaterial
+  onProgress?: (progress: MaterialUploadProgress) => void
+}): Promise<AdmissionStrategyMaterial> {
+  const { material, onProgress } = params
+  if (!material.sourceFilePath) {
+    throw new Error('원본 PDF가 없습니다. PDF를 다시 업로드해 주세요.')
+  }
+
+  const next: AdmissionStrategyMaterial = {
+    ...material,
+    conversionStatus: 'converting',
+    conversionError: '',
+  }
+  onProgress?.({ message: '원본 PDF를 불러오는 중...' })
+  try {
+    await upsertAdmissionStrategyMaterial(next)
+    const file = await downloadSourceFile(material.sourceFilePath)
+    const previousPaths = await listMaterialStoragePaths(material.id)
+    const fileId = createId()
+    return await persistConvertedPages({
+      material: next,
+      fileId,
+      file,
+      sourceFilePath: material.sourceFilePath,
+      previousPaths,
+      onProgress,
+    })
+  } catch (error) {
+    await markConversionFailed(next, error)
     throw error
   }
 }

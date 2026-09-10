@@ -12,11 +12,18 @@ import {
   type DetectedUploadKind,
 } from './storagePaths'
 
+function isMissingStoragePrefixError(message: string): boolean {
+  return /not found|not exist|invalidkey|no such file|the resource was not found/i.test(message)
+}
+
 async function listFolder(prefix: string): Promise<string[]> {
   const { data, error } = await getSupabase()
     .storage.from(ADMISSION_STRATEGY_STORAGE_BUCKET)
     .list(prefix, { limit: 1000 })
-  if (error) throw new Error(error.message || '저장된 파일을 확인하지 못했습니다.')
+  if (error) {
+    if (isMissingStoragePrefixError(error.message || '')) return []
+    throw new Error(error.message || '저장된 파일을 확인하지 못했습니다.')
+  }
   return (data ?? [])
     .map((entry) => entry.name)
     .filter((name) => Boolean(name) && name !== '.emptyFolderPlaceholder')
@@ -91,6 +98,15 @@ export async function uploadRenderedPages(params: {
     })
   }
   return uploaded
+}
+
+export async function downloadSourceFile(path: string): Promise<File> {
+  const { data, error } = await getSupabase().storage.from(ADMISSION_STRATEGY_STORAGE_BUCKET).download(path)
+  if (error || !data) {
+    throw new Error(error?.message || '원본 PDF를 불러오지 못했습니다.')
+  }
+  const fileName = path.split('/').pop() || 'source.pdf'
+  return new File([data], fileName, { type: data.type || 'application/pdf' })
 }
 
 export function createMaterialPageSignedUrl(assetPath: string, expiresIn = 60 * 30): Promise<string> {

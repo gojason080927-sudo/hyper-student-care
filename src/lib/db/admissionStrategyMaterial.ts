@@ -22,6 +22,7 @@ export {
   conversionStatusLabel,
   isParentVisibleMaterial,
   materialStatusLabel,
+  needsPageConversion,
   nextDisplayOrder,
   parseParentAdmissionStrategyMaterial,
   parseParentAdmissionStrategyMaterials,
