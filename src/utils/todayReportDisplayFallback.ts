@@ -16,6 +16,15 @@ import type {
 import { findClassTodayReportCommon } from './classTodayReportCommon'
 import { isHomeworkStatusSelected } from './homework'
 
+/** TODAY view keeps carry-forward. Historical date lookup must not. */
+export type TodayReportDisplayLookupOptions = {
+  allowCarryForward?: boolean
+}
+
+function carryForwardEnabled(options?: TodayReportDisplayLookupOptions): boolean {
+  return options?.allowCarryForward !== false
+}
+
 function isOnOrBefore(candidate: string, limitDate: string): boolean {
   return candidate <= limitDate
 }
@@ -81,6 +90,7 @@ export function findClassTodayReportCommonForDisplay(
   reportDate: string,
   subject: TextbookSubject,
   slotNumber: TextbookSlotNumber,
+  options?: TodayReportDisplayLookupOptions,
 ): { record?: ClassTodayReportCommon; isFallback: boolean } {
   const exact = findClassTodayReportCommon(
     records,
@@ -91,6 +101,7 @@ export function findClassTodayReportCommonForDisplay(
     slotNumber,
   )
   if (exact) return { record: exact, isFallback: false }
+  if (!carryForwardEnabled(options)) return { record: undefined, isFallback: false }
   const latest = findLatestClassTodayReportCommonOnOrBefore(
     records,
     grade,
@@ -129,6 +140,7 @@ export function findClassTodayReportCommonForProgressDisplay(
   reportDate: string,
   subject: TextbookSubject,
   slotNumber: TextbookSlotNumber,
+  options?: TodayReportDisplayLookupOptions,
 ): { record?: ClassTodayReportCommon; isFallback: boolean } {
   const exact = findClassTodayReportCommon(
     records,
@@ -140,6 +152,10 @@ export function findClassTodayReportCommonForProgressDisplay(
   )
   if (exact && hasClassCommonProgressContent(exact)) {
     return { record: exact, isFallback: false }
+  }
+  if (!carryForwardEnabled(options)) {
+    if (exact) return { record: exact, isFallback: false }
+    return { record: undefined, isFallback: false }
   }
 
   const trimmedClass = className.trim()
@@ -171,6 +187,7 @@ export function findHomeworkTextbookEntryForDisplay(
   date: string,
   subject: TextbookSubject,
   slotNumber: TextbookSlotNumber,
+  options?: TodayReportDisplayLookupOptions,
 ): { entry?: HomeworkTextbookEntry; isFallback: boolean } {
   const exact = entries.find(
     (entry) =>
@@ -180,6 +197,7 @@ export function findHomeworkTextbookEntryForDisplay(
       entry.slotNumber === slotNumber,
   )
   if (exact) return { entry: exact, isFallback: false }
+  if (!carryForwardEnabled(options)) return { entry: undefined, isFallback: false }
 
   const matches = entries.filter(
     (entry) =>
@@ -207,7 +225,12 @@ export function findHomeworkPerformanceEntryForDisplay(
   date: string,
   subject: TextbookSubject,
   slotNumber: TextbookSlotNumber,
+  options?: TodayReportDisplayLookupOptions,
 ): { entry?: HomeworkTextbookEntry; isFallback: boolean } {
+  if (!carryForwardEnabled(options)) {
+    return findHomeworkTextbookEntryForDisplay(entries, studentId, date, subject, slotNumber, options)
+  }
+
   const sameSlot = entries.filter(
     (entry) =>
       entry.studentId === studentId &&
@@ -258,6 +281,7 @@ export function findProgressRecordForDisplay(
   date: string,
   subject: string,
   slotNumber: TextbookSlotNumber,
+  options?: TodayReportDisplayLookupOptions,
 ): { record?: ProgressRecord; isFallback: boolean } {
   const exact = records.find(
     (record) =>
@@ -268,6 +292,7 @@ export function findProgressRecordForDisplay(
   )
   // Exact-date row wins (including intentional empty tombstone after clear+save).
   if (exact) return { record: exact, isFallback: false }
+  if (!carryForwardEnabled(options)) return { record: undefined, isFallback: false }
 
   const matches = records.filter(
     (record) =>
@@ -291,7 +316,7 @@ export type ParentTodayReportSource = {
   isFallback: boolean
 }
 
-function studentHasReportContentOnDate(params: {
+export function studentHasReportContentOnDate(params: {
   studentId: string
   date: string
   progressRecords: ProgressRecord[]
@@ -374,7 +399,12 @@ export function resolveParentTodayReportDisplaySource(params: {
   classTodayReportCommon: ClassTodayReportCommon[]
   grade: string
   className: string
+  allowCarryForward?: boolean
 }): ParentTodayReportSource {
+  if (!carryForwardEnabled(params)) {
+    return { displayDate: params.selectedDate, isFallback: false }
+  }
+
   if (
     studentHasReportContentOnDate({
       ...params,
