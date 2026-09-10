@@ -282,7 +282,7 @@ export function AdmissionStrategyMaterialViewer({
           </div>
         ) : (
           <>
-            <div className="flex h-full w-full items-center justify-center">
+            <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
               {current.error ? (
                 <p className="px-6 text-center text-sm text-white/80">이 페이지를 불러오지 못했습니다.</p>
               ) : current.src ? (
@@ -290,7 +290,7 @@ export function AdmissionStrategyMaterialViewer({
                   src={current.src}
                   alt={`${title} ${current.pageNumber}페이지`}
                   draggable={false}
-                  className="max-h-full max-w-full select-none object-contain"
+                  className="h-full w-full select-none object-contain"
                   style={{
                     transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
                     transformOrigin: 'center center',

@@ -10,12 +10,12 @@ function makePage(pageNumber: number, label: string, fill: string): string {
   ctx.fillStyle = fill
   ctx.fillRect(0, 0, canvas.width, canvas.height)
   ctx.fillStyle = '#163A70'
-  ctx.font = 'bold 48px sans-serif'
-  ctx.fillText(label, 64, 160)
+  ctx.font = 'bold 42px sans-serif'
+  ctx.fillText(label, 48, 96)
   ctx.font = '28px sans-serif'
   ctx.fillStyle = '#334155'
-  ctx.fillText(`${pageNumber} / 3`, 64, 220)
-  ctx.fillText('스와이프 · 좌우 터치 · 키보드로 이동', 64, 280)
+  ctx.fillText(`${pageNumber} / 3`, 48, 150)
+  ctx.fillText('스와이프 · 좌우 터치 · 키보드로 이동', 48, 200)
   return canvas.toDataURL('image/png')
 }
 
@@ -43,6 +43,7 @@ export function AdmissionStrategyViewerPreviewPage() {
         뷰어 열기
       </button>
       <AdmissionStrategyMaterialViewer
+        key={open ? 'open' : 'closed'}
         open={open}
         title="2028 대입 완전정리"
         pages={pages}
