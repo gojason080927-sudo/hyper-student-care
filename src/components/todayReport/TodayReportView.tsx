@@ -48,8 +48,22 @@ import {
   getTodayString,
   isToday,
 } from '../../utils/date'
-import { resolveParentTodayReportDisplaySource } from '../../utils/todayReportDisplayFallback'
+import {
+  findAttendanceOnDate,
+  findDailyTestsOnDate,
+  findLatestAttendanceForDisplay,
+  findLatestDailyTestsForDisplay,
+  findLatestTodayAssignmentRecordForDisplay,
+  findTodayAssignmentOnDate,
+  hasParentTodayReportContentOnDate,
+  resolveParentTodayReportDisplaySource,
+} from '../../utils/todayReportDisplayFallback'
 import { addDaysInSeoul, getSeoulDateString, isTodaySeoul } from '../../utils/seoulDate'
+import {
+  canGoParentHistoryNext,
+  canGoParentHistoryPrev,
+  clampParentTodayReportDate,
+} from '../../utils/parentTodayReportHistory'
 import {
   dailyTestFormToSavePayload,
   dailyTestRecordToForm,
@@ -89,6 +103,15 @@ const PARENT_EMPTY_MESSAGES = {
   progress: '오늘 등록된 진도 정보가 없습니다.',
   dailyTest: '오늘 등록된 일일 테스트 결과가 없습니다.',
   classNote: '등록된 코멘트가 없습니다.',
+} as const
+
+const PARENT_HISTORICAL_EMPTY_MESSAGES = {
+  attendance: '이 날짜에 등록된 출결 정보가 없습니다.',
+  homework: '이 날짜에 등록된 숙제 정보가 없습니다.',
+  progress: '이 날짜에 등록된 진도 정보가 없습니다.',
+  dailyTest: '이 날짜에 등록된 일일 테스트 결과가 없습니다.',
+  classNote: '이 날짜에 등록된 코멘트가 없습니다.',
+  page: '이 날짜에 등록된 학습 기록이 없습니다.',
 } as const
 
 function ParentReadOnlyBody({
@@ -283,7 +306,11 @@ export function TodayReportView({
   omitSections,
 }: TodayReportViewProps) {
   const today = readOnly ? getSeoulDateString() : getTodayString()
-  const [selectedDate, setSelectedDate] = useState(initialDate ?? today)
+  const [selectedDate, setSelectedDate] = useState(() =>
+    readOnly
+      ? clampParentTodayReportDate(initialDate ?? today, today)
+      : (initialDate ?? today),
+  )
   const {
     attendance: attendanceRaw,
     progressRecords: progressRecordsRaw,
@@ -322,8 +349,17 @@ export function TodayReportView({
   const studentTextbookSlots = studentTextbookSlotsRaw ?? []
 
   useEffect(() => {
-    if (initialDate) setSelectedDate(initialDate)
-  }, [initialDate])
+    if (initialDate) {
+      setSelectedDate(
+        readOnly ? clampParentTodayReportDate(initialDate, today) : initialDate,
+      )
+    }
+  }, [initialDate, readOnly, today])
+
+  useEffect(() => {
+    if (!readOnly) return
+    setSelectedDate((current) => clampParentTodayReportDate(current, today))
+  }, [readOnly, today])
 
   useEffect(() => {
     void refreshTodayReport(student.id, selectedDate)
@@ -337,14 +373,17 @@ export function TodayReportView({
   })
 
   const shiftSelectedDate = (delta: number) => {
-    setSelectedDate((current) =>
-      readOnly ? addDaysInSeoul(current, delta) : addDays(current, delta),
-    )
+    setSelectedDate((current) => {
+      const next = readOnly ? addDaysInSeoul(current, delta) : addDays(current, delta)
+      if (readOnly) return clampParentTodayReportDate(next, today)
+      return next > today ? today : next
+    })
   }
 
   const selectedDateIsToday = readOnly ? isTodaySeoul(selectedDate) : isToday(selectedDate)
+  const isHistoricalView = readOnly && !selectedDateIsToday
 
-  /** Parent read-only: show latest actual report on/before selected date (no DB copy). */
+  /** Today: keep recent-value carry. Historical: exact selected date only. */
   const parentDisplaySource = useMemo(() => {
     if (!readOnly) {
       return { displayDate: selectedDate, isFallback: false }
@@ -361,6 +400,7 @@ export function TodayReportView({
       classTodayReportCommon,
       grade: student.grade.trim(),
       className: student.className.trim(),
+      historical: isHistoricalView,
     })
   }, [
     attendance,
@@ -368,6 +408,7 @@ export function TodayReportView({
     classTodayReportCommon,
     dailyTests,
     homeworkTextbookEntries,
+    isHistoricalView,
     progressRecords,
     readOnly,
     selectedDate,
@@ -379,12 +420,50 @@ export function TodayReportView({
 
   const contentDate = readOnly ? parentDisplaySource.displayDate : selectedDate
 
+  const hasHistoricalDateContent = useMemo(
+    () =>
+      hasParentTodayReportContentOnDate({
+        studentId: student.id,
+        date: selectedDate,
+        progressRecords,
+        homeworkTextbookEntries,
+        attendance,
+        dailyTests,
+        todayAssignments,
+        classNotes,
+        classTodayReportCommon,
+        grade: student.grade.trim(),
+        className: student.className.trim(),
+      }),
+    [
+      attendance,
+      classNotes,
+      classTodayReportCommon,
+      dailyTests,
+      homeworkTextbookEntries,
+      progressRecords,
+      selectedDate,
+      student.className,
+      student.grade,
+      student.id,
+      todayAssignments,
+    ],
+  )
+
+  const parentEmpty = isHistoricalView
+    ? PARENT_HISTORICAL_EMPTY_MESSAGES
+    : PARENT_EMPTY_MESSAGES
+
   const dayAttendance = useMemo(
     () =>
-      attendance.find(
-        (record) => record.studentId === student.id && record.date === contentDate,
-      ),
-    [attendance, contentDate, student.id],
+      readOnly
+        ? isHistoricalView
+          ? findAttendanceOnDate(attendance, student.id, selectedDate)
+          : findLatestAttendanceForDisplay(attendance, student.id, selectedDate)
+        : attendance.find(
+            (record) => record.studentId === student.id && record.date === selectedDate,
+          ),
+    [attendance, isHistoricalView, readOnly, selectedDate, student.id],
   )
 
   const dayProgressList = useMemo(
@@ -406,17 +485,30 @@ export function TodayReportView({
 
   const dayDailyTests = useMemo(
     () =>
-      dailyTests
-        .filter((record) => record.studentId === student.id && record.date === contentDate)
-        .sort((a, b) => a.subject.localeCompare(b.subject, 'ko')),
-    [contentDate, dailyTests, student.id],
+      readOnly
+        ? isHistoricalView
+          ? findDailyTestsOnDate(dailyTests, student.id, selectedDate)
+          : findLatestDailyTestsForDisplay(dailyTests, student.id, selectedDate)
+        : dailyTests
+            .filter((record) => record.studentId === student.id && record.date === selectedDate)
+            .sort((a, b) => a.subject.localeCompare(b.subject, 'ko')),
+    [dailyTests, isHistoricalView, readOnly, selectedDate, student.id],
   )
 
   const dayDailyTest = dayDailyTests[0]
 
   const dayAssignment = useMemo(
-    () => findTodayAssignment(todayAssignments, student.id, contentDate),
-    [contentDate, student.id, todayAssignments],
+    () =>
+      readOnly
+        ? isHistoricalView
+          ? findTodayAssignmentOnDate(todayAssignments, student.id, selectedDate)
+          : findLatestTodayAssignmentRecordForDisplay(
+              todayAssignments,
+              student.id,
+              selectedDate,
+            )
+        : findTodayAssignment(todayAssignments, student.id, selectedDate),
+    [isHistoricalView, readOnly, selectedDate, student.id, todayAssignments],
   )
 
   const dayClassNote = useMemo(
@@ -490,7 +582,12 @@ export function TodayReportView({
     students,
   ])
 
-  const canGoNext = compareDateStrings(selectedDate, today) < 0
+  const canGoPrev = readOnly
+    ? canGoParentHistoryPrev(selectedDate, today)
+    : true
+  const canGoNext = readOnly
+    ? canGoParentHistoryNext(selectedDate, today)
+    : compareDateStrings(selectedDate, today) < 0
   const dateLabel = `${formatKoreanDateLong(selectedDate)}${selectedDateIsToday ? ' · 오늘' : ''}`
   const tc = compactTeacherInput && !readOnly
   const useTextbookSlotHomework = tc || readOnly
@@ -507,31 +604,47 @@ export function TodayReportView({
       {!hideHeader && !embeddedMobile &&
         (readOnly ? (
         <>
-          <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-            <button
-              type="button"
-              aria-label="이전 날짜"
-              onClick={() => shiftSelectedDate(-1)}
-              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <span className="min-w-[8rem] text-center text-sm font-medium text-navy-900">
-              {dateLabel}
-            </span>
-            <button
-              type="button"
-              aria-label="다음 날짜"
-              disabled={!canGoNext}
-              onClick={() => canGoNext && shiftSelectedDate(1)}
-              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-2 py-2">
+            <div className="flex items-center justify-center gap-1.5">
+              <button
+                type="button"
+                aria-label="이전 날짜"
+                disabled={!canGoPrev}
+                onClick={() => canGoPrev && shiftSelectedDate(-1)}
+                className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="min-w-0 flex-1 text-center text-sm font-medium leading-tight text-navy-900">
+                {dateLabel}
+              </span>
+              <button
+                type="button"
+                aria-label="다음 날짜"
+                disabled={!canGoNext}
+                onClick={() => canGoNext && shiftSelectedDate(1)}
+                className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+            {!selectedDateIsToday && (
+              <div className="mt-1.5 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => setSelectedDate(today)}
+                  className="inline-flex min-h-9 items-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-medium text-navy-800 hover:bg-white"
+                >
+                  오늘
+                </button>
+              </div>
+            )}
           </div>
-          <p className="text-center text-[11px] text-slate-500">
-            마지막 업데이트: {formatKoreanDate(parentDisplaySource.displayDate)}
-          </p>
+          {!isHistoricalView && (
+            <p className="text-center text-[11px] text-slate-500">
+              마지막 업데이트: {formatKoreanDate(parentDisplaySource.displayDate)}
+            </p>
+          )}
           <StudentSummaryCard student={student} compact />
         </>
       ) : (
@@ -585,6 +698,10 @@ export function TodayReportView({
         resetKey={selectedDate}
       >
         <div className={tc ? 'space-y-1.5' : 'space-y-3'}>
+          {isHistoricalView && !hasHistoricalDateContent ? (
+            <p className="text-sm text-slate-400">{PARENT_HISTORICAL_EMPTY_MESSAGES.page}</p>
+          ) : (
+          <>
           {showSection('attendance') && (
           <AttendanceSection
             key={`attendance-${selectedDate}`}
@@ -595,6 +712,7 @@ export function TodayReportView({
             onSave={saveAttendanceRecord}
             teacherCompact={tc}
             hideTitle={sectionHideTitle}
+            emptyMessage={parentEmpty.attendance}
           />
           )}
 
@@ -640,6 +758,7 @@ export function TodayReportView({
               hideTitle={sectionHideTitle}
               visibleSlots={visibleSlots}
               useMobileStatusPicker={embeddedMobile}
+              historical={isHistoricalView}
             />
           ) : (
             <HomeworkAssignmentSection
@@ -652,6 +771,7 @@ export function TodayReportView({
               onSaveHomework={saveHomeworkRecord}
               onSaveTodayAssignment={saveTodayAssignmentRecord}
               teacherCompact={tc}
+              emptyMessage={parentEmpty.homework}
             />
           ))}
 
@@ -697,6 +817,7 @@ export function TodayReportView({
               onNotify={showToast}
               hideTitle={sectionHideTitle}
               visibleSlots={visibleSlots}
+              historical={isHistoricalView}
             />
           ) : (
             <ProgressSection
@@ -707,6 +828,7 @@ export function TodayReportView({
               date={selectedDate}
               onSave={saveProgressRecord}
               teacherCompact={tc}
+              emptyMessage={parentEmpty.progress}
             />
           ))}
 
@@ -725,6 +847,7 @@ export function TodayReportView({
             useMobileDailyTestInput={mobileSection === 'dailyTest'}
             className={student.className}
             subjects={student.subjects}
+            emptyMessage={parentEmpty.dailyTest}
           />
           )}
 
@@ -742,6 +865,25 @@ export function TodayReportView({
             hideTitle={sectionHideTitle}
           />
           )}
+          {showSection('classNote') &&
+            readOnly &&
+            isHistoricalView &&
+            Boolean(dayClassNote?.note.trim()) &&
+            dayDailyTests.length === 0 && (
+              <ClassNoteSection
+                key={`class-note-historical-${selectedDate}`}
+                readOnly
+                record={dayClassNote}
+                studentId={student.id}
+                date={selectedDate}
+                onSave={saveClassNoteRecord}
+                teacherCompact={tc}
+                hideTitle={sectionHideTitle}
+                emptyMessage={parentEmpty.classNote}
+              />
+            )}
+          </>
+          )}
         </div>
       </TodayReportErrorBoundary>
     </div>
@@ -756,6 +898,7 @@ function AttendanceSection({
   onSave,
   teacherCompact = false,
   hideTitle = false,
+  emptyMessage = PARENT_EMPTY_MESSAGES.attendance,
 }: {
   readOnly: boolean
   record?: AttendanceRecord
@@ -764,6 +907,7 @@ function AttendanceSection({
   onSave: ReturnType<typeof useData>['saveAttendanceRecord']
   teacherCompact?: boolean
   hideTitle?: boolean
+  emptyMessage?: string
 }) {
   const [status, setStatus] = useState<AttendanceStatus | ''>(record?.status ?? '')
   const [reason, setReason] = useState(record?.reason ?? '')
@@ -790,7 +934,7 @@ function AttendanceSection({
       {readOnly ? (
         <ParentReadOnlyBody
           hasData={Boolean(record?.status)}
-          emptyMessage={PARENT_EMPTY_MESSAGES.attendance}
+          emptyMessage={emptyMessage}
         >
           {() => (
             <div className="space-y-2.5">
@@ -927,6 +1071,7 @@ function ProgressSection({
   date,
   onSave,
   teacherCompact = false,
+  emptyMessage = PARENT_EMPTY_MESSAGES.progress,
 }: {
   readOnly: boolean
   records: ProgressRecord[]
@@ -934,6 +1079,7 @@ function ProgressSection({
   date: string
   onSave: ReturnType<typeof useData>['saveProgressRecord']
   teacherCompact?: boolean
+  emptyMessage?: string
 }) {
   const mathRecord = findProgressBySubject(records, '수학')
   const englishRecord = findProgressBySubject(records, '영어')
@@ -989,7 +1135,7 @@ function ProgressSection({
       {readOnly ? (
         <ParentReadOnlyBody
           hasData={records.length > 0}
-          emptyMessage={PARENT_EMPTY_MESSAGES.progress}
+          emptyMessage={emptyMessage}
         >
           {() => (
             <div className="space-y-3">
@@ -1159,6 +1305,7 @@ function HomeworkAssignmentSection({
   onSaveHomework,
   onSaveTodayAssignment,
   teacherCompact = false,
+  emptyMessage = PARENT_EMPTY_MESSAGES.homework,
 }: {
   readOnly: boolean
   homeworkRecord?: HomeworkRecord
@@ -1168,6 +1315,7 @@ function HomeworkAssignmentSection({
   onSaveHomework: ReturnType<typeof useData>['saveHomeworkRecord']
   onSaveTodayAssignment: ReturnType<typeof useData>['saveTodayAssignmentRecord']
   teacherCompact?: boolean
+  emptyMessage?: string
 }) {
   const [status, setStatus] = useState<HomeworkStatus | ''>(homeworkRecord?.status ?? '')
   const [todayAssignment, setTodayAssignment] = useState('')
@@ -1208,11 +1356,11 @@ function HomeworkAssignmentSection({
   const hasReadContent = hasHomeworkDisplayData(homeworkRecord, displayToday)
 
   return (
-    <SectionCard title="숙제 수행 결과" teacherCompact={teacherCompact}>
+    <SectionCard title="과제 수행" teacherCompact={teacherCompact}>
       {readOnly ? (
         <ParentReadOnlyBody
           hasData={hasReadContent}
-          emptyMessage={PARENT_EMPTY_MESSAGES.homework}
+          emptyMessage={emptyMessage}
         >
           {() => (
             <HomeworkResultDisplay
@@ -1293,6 +1441,7 @@ function ClassNoteSection({
   extraActions,
   teacherCompact = false,
   hideTitle = false,
+  emptyMessage = PARENT_EMPTY_MESSAGES.classNote,
 }: {
   readOnly: boolean
   record?: ClassNoteRecord
@@ -1302,6 +1451,7 @@ function ClassNoteSection({
   extraActions?: ReactNode
   teacherCompact?: boolean
   hideTitle?: boolean
+  emptyMessage?: string
 }) {
   const [hasClassNote, setHasClassNote] = useState(record?.hasClassNote ?? false)
   const [note, setNote] = useState(record?.note ?? '')
@@ -1346,7 +1496,7 @@ function ClassNoteSection({
       {readOnly ? (
         <ParentReadOnlyBody
           hasData={showParentNote || showNoSpecialNote}
-          emptyMessage={PARENT_EMPTY_MESSAGES.classNote}
+          emptyMessage={emptyMessage}
         >
           {() =>
             showNoSpecialNote ? (
@@ -1470,6 +1620,7 @@ function DailyTestSection({
   useMobileDailyTestInput = false,
   className: studentClassName = '',
   subjects = [],
+  emptyMessage = PARENT_EMPTY_MESSAGES.dailyTest,
 }: {
   readOnly: boolean
   record?: DailyTestRecord
@@ -1484,6 +1635,7 @@ function DailyTestSection({
   useMobileDailyTestInput?: boolean
   className?: string
   subjects?: readonly string[]
+  emptyMessage?: string
 }) {
   const parentRecords = records && records.length > 0 ? records : record ? [record] : []
   const visibleDailyTestSubjects = useMemo(
@@ -1499,18 +1651,42 @@ function DailyTestSection({
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const mobileDailyTestRef = useRef<TeacherMobileDailyTestSessionFormRef>(null)
+  const diagnosisEditRef = useRef(false)
+  const dailyTestScopeRef = useRef(`${studentId}|${date}`)
+  const formRef = useRef(form)
+  formRef.current = form
 
   useEffect(() => {
+    const scope = `${studentId}|${date}`
+    const scopeChanged = dailyTestScopeRef.current !== scope
+    if (scopeChanged) {
+      diagnosisEditRef.current = false
+      dailyTestScopeRef.current = scope
+    }
+
     if (record) {
       const loaded = dailyTestRecordToForm(record)
-      setForm({
-        ...loaded,
-        studentId,
-        date,
-        sessionResults: normalizeSessionResultsForForm(loaded.sessionResults),
+      setForm((prev) => {
+        const next = {
+          ...loaded,
+          studentId,
+          date,
+          sessionResults: normalizeSessionResultsForForm(loaded.sessionResults),
+          learningDiagnosis:
+            !scopeChanged && diagnosisEditRef.current
+              ? {
+                  ...loaded.learningDiagnosis,
+                  teacherFeedback: prev.learningDiagnosis.teacherFeedback,
+                }
+              : loaded.learningDiagnosis,
+        }
+        formRef.current = next
+        return next
       })
     } else {
-      setForm({ ...emptyDailyTestForm(), studentId, date })
+      const next = { ...emptyDailyTestForm(), studentId, date }
+      formRef.current = next
+      setForm(next)
     }
     setErrors({})
   }, [date, record, studentId])
@@ -1526,28 +1702,29 @@ function DailyTestSection({
   }, [readOnly, visibleDailyTestSubjects])
 
   const handleSave = () => {
+    const currentForm = formRef.current
     const committedSessions = useMobileDailyTestInput
-      ? (mobileDailyTestRef.current?.commitToSessionResults() ?? form.sessionResults)
-      : form.sessionResults
+      ? (mobileDailyTestRef.current?.commitToSessionResults() ?? currentForm.sessionResults)
+      : currentForm.sessionResults
     const sessionErrors = validateDailyTestSessions(committedSessions)
     const nextErrors: Record<string, string> = { ...sessionErrors }
-    if (!form.testName.trim()) nextErrors.testName = '시험명을 입력해 주세요.'
+    if (!currentForm.testName.trim()) nextErrors.testName = '시험명을 입력해 주세요.'
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
 
     const payload = useMobileDailyTestInput
       ? mobileDailyTestFormToSavePayload(
           {
-            ...form,
+            ...currentForm,
             id: record?.id,
             studentId,
             date,
           },
           mobileDailyTestRef.current?.getRounds() ??
-            sessionsToMobileDailyTestRounds(form.sessionResults),
+            sessionsToMobileDailyTestRounds(currentForm.sessionResults),
         )
       : dailyTestFormToSavePayload({
-          ...form,
+          ...currentForm,
           id: record?.id,
           studentId,
           date,
@@ -1555,12 +1732,16 @@ function DailyTestSection({
         })
 
     onSave(payload)
-    setForm((prev) => ({
-      ...prev,
-      sessionResults: useMobileDailyTestInput
-        ? payload.sessionResults
-        : normalizeSessionResultsForForm(payload.sessionResults),
-    }))
+    setForm((prev) => {
+      const next = {
+        ...prev,
+        sessionResults: useMobileDailyTestInput
+          ? payload.sessionResults
+          : normalizeSessionResultsForForm(payload.sessionResults),
+      }
+      formRef.current = next
+      return next
+    })
   }
 
   return (
@@ -1574,7 +1755,7 @@ function DailyTestSection({
       {readOnly ? (
         <ParentReadOnlyBody
           hasData={parentRecords.some((item) => hasDailyTestDisplayData(item))}
-          emptyMessage={PARENT_EMPTY_MESSAGES.dailyTest}
+          emptyMessage={emptyMessage}
         >
           {() => (
             <div className="space-y-4">
@@ -1638,9 +1819,17 @@ function DailyTestSection({
             />
           )}
           <DailyLearningDiagnosisFields
+            key={`${studentId}-${date}-${form.subject}`}
             subject={form.subject}
             value={form.learningDiagnosis}
-            onChange={(learningDiagnosis) => setForm({ ...form, learningDiagnosis })}
+            onChange={(learningDiagnosis) => {
+              diagnosisEditRef.current = true
+              setForm((prev) => {
+                const next = { ...prev, learningDiagnosis }
+                formRef.current = next
+                return next
+              })
+            }}
             compact={teacherCompact}
           />
           <div className="flex justify-end">

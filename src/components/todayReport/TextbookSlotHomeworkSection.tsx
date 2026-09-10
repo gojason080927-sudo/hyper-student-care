@@ -13,7 +13,7 @@ import type {
   TextbookSubject,
 } from '../../types/records'
 import { TEXTBOOK_SUBJECTS } from '../../types/records'
-import { inputClass } from '../../utils/labels'
+import { inputClass, TODAY_REPORT_HOMEWORK_SECTION_TITLE } from '../../utils/labels'
 import { TODAY_ASSIGNMENT_MAX_LENGTH } from '../../utils/todayAssignment'
 import {
   buildTextbookNameDrafts,
@@ -119,6 +119,7 @@ export function TextbookSlotHomeworkSection({
   hideTitle = false,
   visibleSlots,
   useMobileStatusPicker = false,
+  historical = false,
 }: {
   readOnly: boolean
   studentId: string
@@ -152,6 +153,8 @@ export function TextbookSlotHomeworkSection({
   visibleSlots?: SubjectVisibleSlots
   /** 강사용 모바일 PWA: 숙제 상태 버튼 전용 UI */
   useMobileStatusPicker?: boolean
+  /** 학부모 과거 날짜: 선택 날짜 실제 기록만 */
+  historical?: boolean
 }) {
   const subjectsToRender = useMemo(
     () => {
@@ -245,21 +248,26 @@ export function TextbookSlotHomeworkSection({
       slots,
       entries,
       classContext,
+      { historical },
     )
 
     logParentHomeworkDebug(studentId, date, entries, slots, displays)
 
     if (displays.length === 0) {
       return (
-        <SectionCard title="숙제 수행 결과" hideTitle={hideTitle}>
-          <p className="text-sm text-slate-400">등록된 숙제 정보가 없습니다.</p>
+        <SectionCard title={TODAY_REPORT_HOMEWORK_SECTION_TITLE} hideTitle={hideTitle}>
+          <p className="text-sm text-slate-400">
+            {historical
+              ? '이 날짜에 등록된 숙제 정보가 없습니다.'
+              : '등록된 숙제 정보가 없습니다.'}
+          </p>
         </SectionCard>
       )
     }
 
     const grouped = groupHomeworkBySubject(filterParentVisibleSlotDisplays(displays))
     return (
-      <SectionCard title="숙제 수행 결과" hideTitle={hideTitle}>
+      <SectionCard title={TODAY_REPORT_HOMEWORK_SECTION_TITLE} hideTitle={hideTitle}>
         <div className="space-y-4">
           {subjectsToRender.map((subject) => {
             const items = grouped[subject]
@@ -408,7 +416,7 @@ export function TextbookSlotHomeworkSection({
   }
 
   return (
-    <SectionCard title="숙제 수행 결과" hideTitle={hideTitle}>
+    <SectionCard title={TODAY_REPORT_HOMEWORK_SECTION_TITLE} hideTitle={hideTitle}>
       <div className="space-y-3">
         {subjectsToRender.map((subject) => (
           <div key={subject} lang="ko">

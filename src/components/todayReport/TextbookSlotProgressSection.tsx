@@ -87,6 +87,7 @@ export function TextbookSlotProgressSection({
   onNotify,
   hideTitle = false,
   visibleSlots,
+  historical = false,
 }: {
   readOnly: boolean
   studentId: string
@@ -106,6 +107,7 @@ export function TextbookSlotProgressSection({
       currentPage: number
       totalPage: number
       recordId?: string
+      writeEvenIfEmpty?: boolean
     }>,
   ) => Promise<boolean>
   onSaveSlot: ReturnType<typeof useData>['saveStudentTextbookSlot']
@@ -119,6 +121,8 @@ export function TextbookSlotProgressSection({
   hideTitle?: boolean
   /** 모바일 PWA 등: 과목별 표시·저장 슬롯 제한 (수학 1~2 등) */
   visibleSlots?: SubjectVisibleSlots
+  /** 학부모 과거 날짜: 선택 날짜 실제 기록만 */
+  historical?: boolean
 }) {
   const subjectsToRender = useMemo(
     () => {
@@ -275,6 +279,7 @@ export function TextbookSlotProgressSection({
       slots,
       progressRecords,
       classContext,
+      { historical },
     )
 
     logParentProgressDebug(studentId, date, progressRecords, classContext, displays)
@@ -282,7 +287,11 @@ export function TextbookSlotProgressSection({
     if (displays.length === 0) {
       return (
         <SectionCard title="오늘의 진도" hideTitle={hideTitle}>
-          <p className="text-sm text-slate-400">오늘 등록된 진도 정보가 없습니다.</p>
+          <p className="text-sm text-slate-400">
+            {historical
+              ? '이 날짜에 등록된 진도 정보가 없습니다.'
+              : '오늘 등록된 진도 정보가 없습니다.'}
+          </p>
         </SectionCard>
       )
     }
@@ -352,13 +361,24 @@ export function TextbookSlotProgressSection({
       }
 
       const hasContent =
-        textbookName ||
         draft.currentProgress.trim() ||
         currentPage > 0 ||
         totalPage > 0 ||
         memo
 
-      if (!hasContent) return []
+      const seededHadContent = Boolean(
+        display.currentProgress.trim() ||
+          display.currentPage > 0 ||
+          display.totalPage > 0,
+      )
+      const writeEvenIfEmpty = !hasContent && seededHadContent
+
+      if (!hasContent && !writeEvenIfEmpty && !textbookName) return []
+
+      if (!hasContent && !writeEvenIfEmpty) {
+        // textbook name only — still allow name save above; skip progress row
+        return []
+      }
 
       return [
         {
@@ -366,7 +386,8 @@ export function TextbookSlotProgressSection({
           currentProgress: draft.currentProgress.trim(),
           currentPage,
           totalPage,
-          recordId: display.recordId,
+          recordId: writeEvenIfEmpty ? undefined : display.recordId,
+          writeEvenIfEmpty,
         },
       ]
     })
@@ -411,7 +432,11 @@ export function TextbookSlotProgressSection({
           textbookName: '',
           currentProgress: slot.currentProgress,
           currentPage: slot.currentPage,
-          totalPage: slot.totalPage > 0 ? slot.totalPage : 1,
+          totalPage: slot.writeEvenIfEmpty
+            ? 0
+            : slot.totalPage > 0
+              ? slot.totalPage
+              : 1,
           lastStudyDate: date,
           teacherMemo: memo,
         },

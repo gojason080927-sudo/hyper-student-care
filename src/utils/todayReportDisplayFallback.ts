@@ -13,8 +13,13 @@ import type {
   TextbookSubject,
   TodayAssignmentRecord,
 } from '../types/records'
-import { findClassTodayReportCommon } from './classTodayReportCommon'
+import {
+  findClassTodayReportCommon,
+  findClassTodayReportCommonForSubject,
+} from './classTodayReportCommon'
+import { hasDailyTestDisplayData } from './dailyTest'
 import { isHomeworkStatusSelected } from './homework'
+import { classNamesForClassCommonLookup } from './mathSharedGroup'
 
 function isOnOrBefore(candidate: string, limitDate: string): boolean {
   return candidate <= limitDate
@@ -240,6 +245,167 @@ export function findHomeworkPerformanceEntryForDisplay(
   )
 }
 
+function hasTodayAssignmentText(value: string | undefined): boolean {
+  return Boolean(value?.trim())
+}
+
+/**
+ * Parent 오늘의 과제 display-only: 오늘 저장된 과제 문구가 있으면 그 값,
+ * 없으면 해당 학생/반 슬롯의 가장 최근 과제. DB에 복사하지 않는다.
+ */
+export function resolveParentTodayAssignmentText(params: {
+  entries: HomeworkTextbookEntry[]
+  commonRecords: ClassTodayReportCommon[]
+  grade: string
+  className: string
+  studentId: string
+  date: string
+  subject: TextbookSubject
+  slotNumber: TextbookSlotNumber
+}): string {
+  const {
+    entries,
+    commonRecords,
+    grade,
+    className,
+    studentId,
+    date,
+    subject,
+    slotNumber,
+  } = params
+
+  const exactCommon = findClassTodayReportCommonForSubject(
+    commonRecords,
+    grade,
+    className,
+    date,
+    subject,
+    slotNumber,
+  )
+  if (hasTodayAssignmentText(exactCommon?.todayAssignment)) {
+    return exactCommon!.todayAssignment.trim()
+  }
+
+  const exactEntry = entries.find(
+    (entry) =>
+      entry.studentId === studentId &&
+      entry.date === date &&
+      entry.subject === subject &&
+      entry.slotNumber === slotNumber,
+  )
+  if (hasTodayAssignmentText(exactEntry?.todayAssignment)) {
+    return exactEntry!.todayAssignment.trim()
+  }
+
+  const classNames = classNamesForClassCommonLookup(grade, className, subject)
+  const names = classNames.length > 0 ? classNames : [className.trim()]
+  const commonMatches = commonRecords.filter(
+    (record) =>
+      record.grade === grade &&
+      names.includes(record.className.trim()) &&
+      record.subject === subject &&
+      record.slotNumber === slotNumber &&
+      isOnOrBefore(record.reportDate, date) &&
+      hasTodayAssignmentText(record.todayAssignment),
+  )
+  const latestCommon = pickLatestByDate(commonMatches, (r) => r.reportDate, date)
+
+  const entryMatches = entries.filter(
+    (entry) =>
+      entry.studentId === studentId &&
+      entry.subject === subject &&
+      entry.slotNumber === slotNumber &&
+      isOnOrBefore(entry.date, date) &&
+      hasTodayAssignmentText(entry.todayAssignment),
+  )
+  const latestEntry = pickLatestByDate(entryMatches, (e) => e.date, date)
+
+  if (latestCommon && latestEntry) {
+    if (latestCommon.reportDate >= latestEntry.date) {
+      return latestCommon.todayAssignment.trim()
+    }
+    return latestEntry.todayAssignment.trim()
+  }
+  return latestCommon?.todayAssignment.trim() || latestEntry?.todayAssignment.trim() || ''
+}
+
+/** Parent 출결: 오늘 상태 있으면 오늘, 없으면 해당 학생의 가장 최근 출결. */
+export function findLatestAttendanceForDisplay(
+  records: AttendanceRecord[],
+  studentId: string,
+  date: string,
+): AttendanceRecord | undefined {
+  const exact = records.find(
+    (record) =>
+      record.studentId === studentId &&
+      record.date === date &&
+      Boolean(record.status),
+  )
+  if (exact) return exact
+
+  const matches = records.filter(
+    (record) =>
+      record.studentId === studentId &&
+      Boolean(record.status) &&
+      isOnOrBefore(record.date, date),
+  )
+  return pickLatestByDate(matches, (record) => record.date, date)
+}
+
+/** Parent 레거시 today_assignments: 오늘 과제 문구가 있으면 오늘, 없으면 최근. */
+export function findLatestTodayAssignmentRecordForDisplay(
+  records: TodayAssignmentRecord[],
+  studentId: string,
+  date: string,
+): TodayAssignmentRecord | undefined {
+  const hasContent = (record: TodayAssignmentRecord) =>
+    Boolean(record.assignment1.trim() || record.assignment2.trim())
+
+  const exact = records.find(
+    (record) => record.studentId === studentId && record.date === date && hasContent(record),
+  )
+  if (exact) return exact
+
+  const matches = records.filter(
+    (record) =>
+      record.studentId === studentId &&
+      hasContent(record) &&
+      isOnOrBefore(record.date, date),
+  )
+  return pickLatestByDate(matches, (record) => record.date, date)
+}
+
+/**
+ * Parent 일일테스트: 오늘 응시/기록이 있으면 오늘 것만,
+ * 없으면 가장 최근 날짜의 해당 학생 테스트 전부.
+ */
+export function findLatestDailyTestsForDisplay(
+  records: DailyTestRecord[],
+  studentId: string,
+  date: string,
+): DailyTestRecord[] {
+  const sortBySubject = (items: DailyTestRecord[]) =>
+    [...items].sort((a, b) => a.subject.localeCompare(b.subject, 'ko'))
+
+  const todays = records.filter(
+    (record) =>
+      record.studentId === studentId &&
+      record.date === date &&
+      hasDailyTestDisplayData(record),
+  )
+  if (todays.length > 0) return sortBySubject(todays)
+
+  const prior = records.filter(
+    (record) =>
+      record.studentId === studentId &&
+      isOnOrBefore(record.date, date) &&
+      hasDailyTestDisplayData(record),
+  )
+  const latest = pickLatestByDate(prior, (record) => record.date, date)
+  if (!latest) return []
+  return sortBySubject(prior.filter((record) => record.date === latest.date))
+}
+
 /** Past homework text for parent: prefer previousAssignment; if carrying a prior day, use that day's todayAssignment. */
 export function resolveParentPreviousAssignmentDisplay(
   entry: HomeworkTextbookEntry | undefined,
@@ -291,7 +457,7 @@ export type ParentTodayReportSource = {
   isFallback: boolean
 }
 
-function studentHasReportContentOnDate(params: {
+export function hasParentTodayReportContentOnDate(params: {
   studentId: string
   date: string
   progressRecords: ProgressRecord[]
@@ -361,7 +527,54 @@ function studentHasReportContentOnDate(params: {
   return false
 }
 
-/** Resolve which date's actual records to show for parent read-only Today Report. */
+/** Exact-date attendance. Historical view must not carry another day's status. */
+export function findAttendanceOnDate(
+  records: AttendanceRecord[],
+  studentId: string,
+  date: string,
+): AttendanceRecord | undefined {
+  return records.find(
+    (record) =>
+      record.studentId === studentId &&
+      record.date === date &&
+      Boolean(record.status),
+  )
+}
+
+/** Exact-date daily tests only. */
+export function findDailyTestsOnDate(
+  records: DailyTestRecord[],
+  studentId: string,
+  date: string,
+): DailyTestRecord[] {
+  return records
+    .filter(
+      (record) =>
+        record.studentId === studentId &&
+        record.date === date &&
+        hasDailyTestDisplayData(record),
+    )
+    .sort((a, b) => a.subject.localeCompare(b.subject, 'ko'))
+}
+
+/** Exact-date legacy today_assignments row. */
+export function findTodayAssignmentOnDate(
+  records: TodayAssignmentRecord[],
+  studentId: string,
+  date: string,
+): TodayAssignmentRecord | undefined {
+  return records.find(
+    (record) =>
+      record.studentId === studentId &&
+      record.date === date &&
+      Boolean(record.assignment1.trim() || record.assignment2.trim()),
+  )
+}
+
+/**
+ * Resolve which date's actual records to show for parent read-only Today Report.
+ * Historical view (past date explicitly selected) must stay on that date.
+ */
 export function resolveParentTodayReportDisplaySource(params: {
   studentId: string
   selectedDate: string
@@ -374,9 +587,15 @@ export function resolveParentTodayReportDisplaySource(params: {
   classTodayReportCommon: ClassTodayReportCommon[]
   grade: string
   className: string
+  /** Past-date history: never substitute another day's snapshot. */
+  historical?: boolean
 }): ParentTodayReportSource {
+  if (params.historical) {
+    return { displayDate: params.selectedDate, isFallback: false }
+  }
+
   if (
-    studentHasReportContentOnDate({
+    hasParentTodayReportContentOnDate({
       ...params,
       date: params.selectedDate,
     })

@@ -25,6 +25,7 @@ import {
   findHomeworkTextbookEntryForDisplay,
   findProgressRecordForDisplay,
   resolveParentPreviousAssignmentDisplay,
+  resolveParentTodayAssignmentText,
 } from './todayReportDisplayFallback'
 import { resolveSelectedHomeworkStatus } from './homework'
 
@@ -150,7 +151,12 @@ export function findTextbookSlot(
       subjectsMatch(slot.subject, subject) &&
       normalizeSlotNumber(slot.slotNumber) === slotNumber,
   )
-  return matches.find((slot) => slot.textbookName.trim()) ?? matches[0]
+  if (matches.length === 0) return undefined
+  const named = matches.filter((slot) => slot.textbookName.trim())
+  const pool = named.length > 0 ? named : matches
+  return pool.reduce((best, slot) =>
+    slot.updatedAt >= best.updatedAt ? slot : best,
+  )
 }
 
 export function getTextbookName(
@@ -263,38 +269,16 @@ export function findClassPeerTextbookName(
 function resolveDisplayTextbookName(
   classContext: TextbookDisplayClassContext | undefined,
   studentId: string,
-  date: string,
+  _date: string,
   subject: TextbookSubject,
   slotNumber: TextbookSlotNumber,
   slots: StudentTextbookSlot[],
 ): string {
-  if (!classContext) {
-    return getTextbookName(slots, studentId, subject, slotNumber)
-  }
+  const lookupSlots = classContext?.classSlots ?? slots
+  const ownName = getTextbookName(lookupSlots, studentId, subject, slotNumber)
+  if (ownName) return ownName
 
-  const common = findClassTodayReportCommonForSubject(
-    classContext.commonRecords,
-    classContext.grade,
-    classContext.className,
-    date,
-    subject,
-    slotNumber,
-  )
-  const commonName = common?.textbookName.trim()
-  if (commonName) return commonName
-
-  const fromAnyCommon = findClassCommonTextbookName(
-    classContext.commonRecords,
-    classContext.grade,
-    classContext.className,
-    subject,
-    slotNumber,
-    date,
-  ).trim()
-  if (fromAnyCommon) return fromAnyCommon
-
-  const lookupSlots = classContext.classSlots ?? slots
-  if (classContext.getTextbookPeerStudentIds) {
+  if (classContext?.getTextbookPeerStudentIds) {
     const peerName = findClassPeerTextbookName(
       lookupSlots,
       classContext.getTextbookPeerStudentIds(subject),
@@ -304,15 +288,50 @@ function resolveDisplayTextbookName(
     if (peerName) return peerName
   }
 
-  return getTextbookName(lookupSlots, studentId, subject, slotNumber)
+  // student_textbook_slots가 비어 있을 때만 반 공통 교재명을 사용한다.
+  // 슬롯에 값이 있으면 그 값이 canonical이며 class_today_report_common보다 우선한다.
+  if (classContext) {
+    const commonName = findClassCommonTextbookName(
+      classContext.commonRecords,
+      classContext.grade,
+      classContext.className,
+      subject,
+      slotNumber,
+    )
+    if (commonName) return commonName
+  }
+
+  return ''
 }
 
-type HomeworkSlotDisplayMode = 'edit' | 'parent' | 'default'
+type HomeworkSlotDisplayMode = 'edit' | 'parent' | 'parent-historical' | 'default'
+
+export type ParentTextbookDisplayOptions = {
+  /** Past-date history: exact stored rows only, no recent-value carry. */
+  historical?: boolean
+}
+
+function hasHistoricalHomeworkContent(item: HomeworkTextbookDisplay): boolean {
+  return Boolean(
+    item.todayAssignment.trim() || item.previousAssignment.trim() || item.status,
+  )
+}
+
+function hasHistoricalProgressContent(item: ProgressTextbookDisplay): boolean {
+  return Boolean(
+    item.progressContent.trim() ||
+      item.currentProgress.trim() ||
+      item.currentPage > 0 ||
+      item.totalPage > 0 ||
+      item.teacherMemo.trim(),
+  )
+}
 
 /**
  * edit/default: status는 해당 날짜 실제 행만 (월간 집계·강사 신규 입력용).
  * parent: 강사 새 저장 전까지 가장 최근 숙제 수행 결과(상태·지난 과제)를 표시 유지.
  *         오늘 행에 status가 비어 있어도(과제만 저장된 shell) 이전 수행 상태를 가리지 않음.
+ * parent-historical: 선택 날짜에 실제 저장된 값만. 다른 날짜를 끌어오지 않음.
  */
 function buildHomeworkSlotDisplays(
   studentId: string,
@@ -323,16 +342,26 @@ function buildHomeworkSlotDisplays(
   mode: HomeworkSlotDisplayMode = 'default',
 ): HomeworkTextbookDisplay[] {
   const carryPerformance = mode === 'parent'
+  const historical = mode === 'parent-historical'
 
   return TEXTBOOK_SUBJECTS.flatMap((subject) =>
     TEXTBOOK_SLOT_NUMBERS.map((slotNumber) => {
-      const { entry: contentEntry } = findHomeworkTextbookEntryForDisplay(
+      const exactEntry = findHomeworkTextbookEntry(
         entries,
         studentId,
         date,
         subject,
         slotNumber,
       )
+      const { entry: contentEntry } = historical
+        ? { entry: exactEntry }
+        : findHomeworkTextbookEntryForDisplay(
+            entries,
+            studentId,
+            date,
+            subject,
+            slotNumber,
+          )
       const performance = carryPerformance
         ? findHomeworkPerformanceEntryForDisplay(
             entries,
@@ -343,7 +372,7 @@ function buildHomeworkSlotDisplays(
           )
         : null
 
-      let common = classContext
+      const exactCommon = classContext
         ? findClassTodayReportCommonForSubject(
             classContext.commonRecords,
             classContext.grade,
@@ -353,7 +382,8 @@ function buildHomeworkSlotDisplays(
             slotNumber,
           )
         : undefined
-      if (!common && classContext) {
+      let common = exactCommon
+      if (!common && classContext && !historical) {
         common = findClassTodayReportCommonForDisplay(
           classContext.commonRecords,
           classContext.grade,
@@ -382,13 +412,32 @@ function buildHomeworkSlotDisplays(
           slotNumber,
           slots,
         ),
-        previousAssignment: carryPerformance
-          ? resolveParentPreviousAssignmentDisplay(
-              performance?.entry,
-              Boolean(performance?.isFallback),
-            )
-          : '',
-        todayAssignment: resolveCommonTodayAssignment(common, contentEntry),
+        previousAssignment: historical
+          ? exactEntry?.previousAssignment.trim() ||
+            exactCommon?.previousAssignment.trim() ||
+            ''
+          : carryPerformance
+            ? resolveParentPreviousAssignmentDisplay(
+                performance?.entry,
+                Boolean(performance?.isFallback),
+              )
+            : '',
+        todayAssignment: historical
+          ? exactCommon?.todayAssignment.trim() ||
+            exactEntry?.todayAssignment.trim() ||
+            ''
+          : carryPerformance
+            ? resolveParentTodayAssignmentText({
+                entries,
+                commonRecords: classContext?.commonRecords ?? [],
+                grade: classContext?.grade ?? '',
+                className: classContext?.className ?? '',
+                studentId,
+                date,
+                subject,
+                slotNumber,
+              })
+            : resolveCommonTodayAssignment(common, contentEntry),
         status,
         entryId: exactSameDate?.id,
       }
@@ -460,15 +509,33 @@ export function buildParentHomeworkTextbookDisplays(
   slots: StudentTextbookSlot[],
   entries: HomeworkTextbookEntry[],
   classContext?: TextbookDisplayClassContext,
+  options?: ParentTextbookDisplayOptions,
 ): HomeworkTextbookDisplay[] {
+  const historical = Boolean(options?.historical)
   return buildHomeworkSlotDisplays(
     studentId,
     date,
     slots,
     entries,
     classContext,
-    'parent',
-  ).filter(hasHomeworkSlotContent)
+    historical ? 'parent-historical' : 'parent',
+  ).filter(historical ? hasHistoricalHomeworkContent : hasHomeworkSlotContent)
+}
+
+function findExactProgressRecord(
+  records: ProgressRecord[],
+  studentId: string,
+  date: string,
+  subject: string,
+  slotNumber: TextbookSlotNumber,
+): ProgressRecord | undefined {
+  return records.find(
+    (record) =>
+      record.studentId === studentId &&
+      record.lastStudyDate === date &&
+      record.subject === subject &&
+      (record.slotNumber ?? 1) === slotNumber,
+  )
 }
 
 function buildProgressSlotDisplays(
@@ -477,10 +544,24 @@ function buildProgressSlotDisplays(
   slots: StudentTextbookSlot[],
   progressRecords: ProgressRecord[],
   classContext?: TextbookDisplayClassContext,
+  historical = false,
 ): ProgressTextbookDisplay[] {
   return TEXTBOOK_SUBJECTS.flatMap((subject) => {
     let subjectMemo = ''
     for (const slotNumber of TEXTBOOK_SLOT_NUMBERS) {
+      if (historical) {
+        const exact = findExactProgressRecord(
+          progressRecords,
+          studentId,
+          date,
+          subject,
+          slotNumber,
+        )
+        if (!subjectMemo && exact?.teacherMemo.trim()) {
+          subjectMemo = exact.teacherMemo.trim()
+        }
+        continue
+      }
       const { record, isFallback } = findProgressRecordForDisplay(
         progressRecords,
         studentId,
@@ -494,13 +575,23 @@ function buildProgressSlotDisplays(
     }
 
     return TEXTBOOK_SLOT_NUMBERS.map((slotNumber) => {
-      const { record, isFallback } = findProgressRecordForDisplay(
+      const exact = findExactProgressRecord(
         progressRecords,
         studentId,
         date,
         subject,
         slotNumber,
       )
+      const lookup = historical
+        ? { record: exact, isFallback: false }
+        : findProgressRecordForDisplay(
+            progressRecords,
+            studentId,
+            date,
+            subject,
+            slotNumber,
+          )
+      const { record, isFallback } = lookup
       const slotName = resolveDisplayTextbookName(
         classContext,
         studentId,
@@ -509,29 +600,48 @@ function buildProgressSlotDisplays(
         slotNumber,
         slots,
       )
-      // Prefer progress-aware common lookup so homework-only shells do not wipe 진도.
-      const common = classContext
-        ? findClassTodayReportCommonForProgressDisplay(
+      const exactCommon = classContext
+        ? findClassTodayReportCommonForSubject(
             classContext.commonRecords,
             classContext.grade,
             classContext.className,
             date,
             subject,
             slotNumber,
-          ).record
+          )
         : undefined
-      const textbookName = slotName || record?.textbookName.trim() || ''
-      // Exact-date student progress (incl. sticky empty) wins over common carry-forward.
-      const currentProgress =
-        record && !isFallback
+      const common = historical
+        ? exactCommon
+        : classContext
+          ? findClassTodayReportCommonForProgressDisplay(
+              classContext.commonRecords,
+              classContext.grade,
+              classContext.className,
+              date,
+              subject,
+              slotNumber,
+            ).record
+          : undefined
+      const textbookName = slotName
+      const currentProgress = historical
+        ? exact
+          ? exact.currentProgress.trim()
+          : exactCommon?.currentProgress.trim() || ''
+        : record && !isFallback
           ? record.currentProgress.trim()
           : resolveCommonCurrentProgress(common, record)
-      const currentPage =
-        record && !isFallback
+      const currentPage = historical
+        ? exact
+          ? exact.currentPage
+          : exactCommon?.currentPage ?? 0
+        : record && !isFallback
           ? record.currentPage
           : resolveCommonCurrentPage(common, record)
-      const totalPage =
-        record && !isFallback
+      const totalPage = historical
+        ? exact
+          ? exact.totalPage
+          : exactCommon?.totalPage ?? 0
+        : record && !isFallback
           ? record.totalPage
           : resolveCommonTotalPage(common, record)
       return {
@@ -612,8 +722,17 @@ export function buildParentProgressTextbookDisplays(
   slots: StudentTextbookSlot[],
   progressRecords: ProgressRecord[],
   classContext?: TextbookDisplayClassContext,
+  options?: ParentTextbookDisplayOptions,
 ): ProgressTextbookDisplay[] {
-  return buildProgressSlotDisplays(studentId, date, slots, progressRecords, classContext)
+  const historical = Boolean(options?.historical)
+  return buildProgressSlotDisplays(
+    studentId,
+    date,
+    slots,
+    progressRecords,
+    classContext,
+    historical,
+  )
     .map((item) => ({
       ...item,
       progressContent: resolveParentProgressContent(
@@ -623,7 +742,7 @@ export function buildParentProgressTextbookDisplays(
         item.totalPage,
       ),
     }))
-    .filter(hasProgressSlotContent)
+    .filter(historical ? hasHistoricalProgressContent : hasProgressSlotContent)
 }
 
 export function buildProgressTextbookDisplaysForEdit(
