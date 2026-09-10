@@ -543,3 +543,19 @@
   border-color: rgba(239, 68, 68, 0.25) !important;
   background: rgba(239, 68, 68, 0.06) !important;
 }
+
+/* Nametag: HTML button UA is white-space:nowrap; wrap the full title instead of clipping. */
+.admission-strategy-nametag {
+  overflow: visible;
+  white-space: normal;
+}
+
+.admission-strategy-nametag-title {
+  display: block;
+  max-width: 100%;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: unset;
+  white-space: normal;
+  word-break: break-word;
+}
