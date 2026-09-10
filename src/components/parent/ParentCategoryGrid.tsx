@@ -1,5 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useParentStudent } from '../../contexts/ParentStudentContext'
+import { useParentAdmissionStrategyMaterials } from '../../hooks/useParentAdmissionStrategyMaterials'
+import { hasUnreadAdmissionStrategyMaterials } from '../../lib/db/admissionStrategyMaterial'
 import { formatKoreanDateLong, getTodayString } from '../../utils/date'
 import {
   isParentCategoryPathActive,
@@ -12,6 +14,8 @@ const todayReportHighlights = ['출결', '오늘의 진도', '과제 수행', '�
 export function ParentCategoryGrid() {
   const student = useParentStudent()
   const location = useLocation()
+  const { materials } = useParentAdmissionStrategyMaterials()
+  const admissionUnread = hasUnreadAdmissionStrategyMaterials(materials)
   const basePath = `/care/${student.studentAccessKey}`
   const todayLabel = formatKoreanDateLong(getTodayString())
 
@@ -52,12 +56,20 @@ export function ParentCategoryGrid() {
           const path = `${basePath}/${segment}`
           const isActive = isParentCategoryPathActive(segment, location.pathname)
 
+          const showAdmissionUnread = segment === 'admission-strategy' && admissionUnread
+
           return (
             <Link
               key={segment}
               to={path}
-              className={`pm-menu-card ${isActive ? 'pm-menu-card--active' : ''}`}
+              className={`pm-menu-card relative ${isActive ? 'pm-menu-card--active' : ''}`}
             >
+              {showAdmissionUnread ? (
+                <span
+                  className="absolute right-2.5 top-2.5 h-2 w-2 shrink-0 rounded-full bg-[#FF8A3D]"
+                  aria-label="확인하지 않은 새 자료"
+                />
+              ) : null}
               <span className="pm-menu-icon">
                 <Icon className="h-[18px] w-[18px] sm:h-5 sm:w-5" strokeWidth={2} aria-hidden />
               </span>
