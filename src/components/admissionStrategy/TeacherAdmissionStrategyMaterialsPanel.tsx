@@ -14,6 +14,7 @@ import {
   canPublishMaterial,
   conversionStatusLabel,
   materialStatusLabel,
+  needsPageConversion,
   nextDisplayOrder,
 } from '../../lib/db/admissionStrategyMaterialModel'
 import { teacherFacingError, validateUploadFile } from '../../lib/admissionStrategy/storagePaths'
@@ -44,7 +45,7 @@ function createdDateLabel(iso: string): string {
 export function TeacherAdmissionStrategyMaterialsPanel() {
   const { user } = useAuth()
   const { showToast } = useData()
-  const { materials, loading, saveMaterial, setStatus, moveMaterial, removeMaterial } =
+  const { materials, loading, convertingId, reload, saveMaterial, setStatus, moveMaterial, removeMaterial, reprocessMaterial } =
     useTeacherAdmissionStrategyMaterials()
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState<FormState>(emptyForm)
@@ -123,13 +124,16 @@ export function TeacherAdmissionStrategyMaterialsPanel() {
             pages: [],
           }
 
-      await saveMaterial(record, '자료 정보를 저장했습니다.')
       if (form.file) {
         record = await processAdmissionStrategyUpload({
           material: record,
           file: form.file,
           onProgress: (item) => setProgress(item.message),
         })
+        await reload()
+        showToast('입시전략 자료가 저장되었습니다.')
+      } else {
+        await saveMaterial(record)
       }
 
       const shouldPublish = form.status === 'PUBLISHED'
@@ -235,9 +239,12 @@ export function TeacherAdmissionStrategyMaterialsPanel() {
                 </div>
               </dl>
 
-              {material.conversionError && (
-                <p className="mt-2 text-sm text-rose-600">{material.conversionError}</p>
-              )}
+                {convertingId === material.id && (
+                  <p className="mt-2 text-sm text-navy-700">페이지를 웹 열람용으로 변환하는 중...</p>
+                )}
+                {material.conversionError && (
+                  <p className="mt-2 text-sm text-rose-600">{material.conversionError}</p>
+                )}
               {material.description && (
                 <p className="mt-2 line-clamp-2 text-sm text-slate-600">{material.description}</p>
               )}
@@ -265,6 +272,18 @@ export function TeacherAdmissionStrategyMaterialsPanel() {
                     아래로
                   </span>
                 </button>
+                {needsPageConversion(material) && (
+                  <button
+                    type="button"
+                    className={`${btnSecondary} px-3 py-1.5 text-xs`}
+                    disabled={convertingId === material.id}
+                    onClick={() => {
+                      void reprocessMaterial(material).catch(() => undefined)
+                    }}
+                  >
+                    {convertingId === material.id ? '변환 중...' : '페이지 다시 만들기'}
+                  </button>
+                )}
                 {canPublishMaterial(material) && (
                   <button
                     type="button"
@@ -274,7 +293,7 @@ export function TeacherAdmissionStrategyMaterialsPanel() {
                     미리보기
                   </button>
                 )}
-                {material.status !== 'PUBLISHED' && (
+                {material.status !== 'PUBLISHED' && canPublishMaterial(material) && (
                   <button
                     type="button"
                     className={`${btnPrimary} px-3 py-1.5 text-xs`}

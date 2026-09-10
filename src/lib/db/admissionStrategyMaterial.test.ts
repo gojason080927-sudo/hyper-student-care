@@ -13,6 +13,7 @@ import {
   parseParentAdmissionStrategyMaterials,
   sortMaterialsByDisplayOrder,
   swappedDisplayOrders,
+  needsPageConversion,
   type AdmissionStrategyMaterialRow,
 } from './admissionStrategyMaterialModel.ts'
 import {
@@ -80,6 +81,33 @@ assert.equal(isParentVisibleMaterial(draft), false)
 assert.equal(isParentVisibleMaterial(hidden), false)
 assert.equal(isParentVisibleMaterial({ ...mapped, conversionStatus: 'failed', pageCount: 3 }), false)
 assert.equal(canPublishMaterial({ conversionStatus: 'needs_pdf', pageCount: 0 }), false)
+assert.equal(
+  needsPageConversion({
+    materialType: 'pdf',
+    sourceFilePath: row.source_file_path,
+    conversionStatus: 'pending',
+    pageCount: 0,
+  }),
+  true,
+)
+assert.equal(
+  needsPageConversion({
+    materialType: 'pdf',
+    sourceFilePath: row.source_file_path,
+    conversionStatus: 'ready',
+    pageCount: 3,
+  }),
+  false,
+)
+assert.equal(
+  needsPageConversion({
+    materialType: 'pdf',
+    sourceFilePath: null,
+    conversionStatus: 'pending',
+    pageCount: 0,
+  }),
+  false,
+)
 
 const ordered = sortMaterialsByDisplayOrder([
   { ...mapped, id: 'b', displayOrder: 2, createdAt: '2026-09-02T00:00:00Z' },

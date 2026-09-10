@@ -135,6 +135,21 @@ export function canPublishMaterial(record: {
   return record.conversionStatus === 'ready' && (record.pageCount ?? 0) > 0
 }
 
+export function needsPageConversion(record: {
+  materialType: AdmissionStrategyMaterialType
+  sourceFilePath: string | null
+  conversionStatus: AdmissionStrategyConversionStatus
+  pageCount: number | null
+}): boolean {
+  if (record.materialType !== 'pdf' || !record.sourceFilePath) return false
+  if (record.conversionStatus === 'ready' && (record.pageCount ?? 0) > 0) return false
+  return (
+    record.conversionStatus === 'pending' ||
+    record.conversionStatus === 'converting' ||
+    record.conversionStatus === 'failed'
+  )
+}
+
 export function sortMaterialsByDisplayOrder<T extends { displayOrder: number; createdAt: string }>(
   materials: T[],
 ): T[] {

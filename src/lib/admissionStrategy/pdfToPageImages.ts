@@ -19,6 +19,7 @@ export type PdfRenderProgress = {
 }
 
 const TARGET_WIDTH = 1400
+const PDFJS_ASSET_BASE = '/pdfjs/'
 
 function preferredImageType(): { contentType: string; extension: 'webp' | 'jpeg' } {
   try {
@@ -67,7 +68,7 @@ async function renderPdfPage(
   if (!context) throw new Error('페이지를 그릴 수 없습니다.')
   context.fillStyle = '#ffffff'
   context.fillRect(0, 0, canvas.width, canvas.height)
-  await page.render({ canvas, canvasContext: context, viewport }).promise
+  await page.render({ canvas, viewport }).promise
   const blob = await canvasToBlob(canvas, imageType.contentType, imageType.extension === 'webp' ? 0.82 : 0.86)
   canvas.width = 0
   canvas.height = 0
@@ -82,11 +83,21 @@ async function renderPdfPage(
 }
 
 export async function renderPdfFileToPages(
-  file: File,
+  file: File | Blob,
   onProgress?: (progress: PdfRenderProgress) => void,
 ): Promise<RenderedMaterialPage[]> {
-  const data = await file.arrayBuffer()
-  const loadingTask = getDocument({ data, disableRange: true, disableStream: true })
+  const data = new Uint8Array(await file.arrayBuffer())
+  const loadingTask = getDocument({
+    data,
+    disableRange: true,
+    disableStream: true,
+    cMapUrl: `${PDFJS_ASSET_BASE}cmaps/`,
+    cMapPacked: true,
+    standardFontDataUrl: `${PDFJS_ASSET_BASE}standard_fonts/`,
+    wasmUrl: `${PDFJS_ASSET_BASE}wasm/`,
+    iccUrl: `${PDFJS_ASSET_BASE}iccs/`,
+    isOffscreenCanvasSupported: false,
+  })
   const pdf = await loadingTask.promise
   try {
     const total = pdf.numPages
