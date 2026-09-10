@@ -24,6 +24,11 @@ export function AdmissionStrategyNametag({ material, onOpen }: AdmissionStrategy
       className="admission-strategy-nametag pm-card flex min-h-14 w-full items-start justify-between gap-3 whitespace-normal px-4 py-3.5 pr-4 text-left sm:items-center sm:px-5 sm:pr-5"
     >
       <span className="min-w-0 flex-1 overflow-visible pr-1">
+        {material.isUnread && (
+          <span className="mb-1 block text-xs font-semibold leading-snug text-[#E67A2E]">
+            새로운 자료가 업로드되었습니다
+          </span>
+        )}
         <span className="admission-strategy-nametag-title block max-w-full whitespace-normal break-anywhere text-base font-semibold leading-snug text-[#163A70]">
           {material.title}
         </span>

@@ -21,6 +21,7 @@ export {
   admissionStrategyMaterialToRow,
   canPublishMaterial,
   conversionStatusLabel,
+  hasMaterialTrack,
   isParentVisibleMaterial,
   materialStatusLabel,
   needsPageConversion,
@@ -126,6 +127,21 @@ export async function deleteAdmissionStrategyMaterial(id: string): Promise<void>
   }
   const { error } = await getSupabase().from('admission_strategy_materials').delete().eq('id', id)
   if (error) throw new Error(error.message || '입시전략 자료 삭제에 실패했습니다.')
+}
+
+export async function markParentAdmissionStrategyMaterialViewed(
+  accessKey: string,
+  materialId: string,
+): Promise<string | null> {
+  try {
+    const data = await fetchParentAnonRpc('mark_parent_admission_strategy_material_viewed', {
+      p_access_key: accessKey,
+      p_material_id: materialId,
+    })
+    return typeof data === 'string' ? data : null
+  } catch (error) {
+    throw new Error(error instanceof Error ? error.message : '자료 확인 상태를 저장하지 못했습니다.')
+  }
 }
 
 export async function fetchParentAdmissionStrategyMaterials(

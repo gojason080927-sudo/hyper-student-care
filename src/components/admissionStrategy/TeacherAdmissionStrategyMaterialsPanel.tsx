@@ -13,12 +13,14 @@ import { processAdmissionStrategyUpload } from '../../lib/admissionStrategy/mate
 import {
   canPublishMaterial,
   conversionStatusLabel,
+  hasMaterialTrack,
   materialStatusLabel,
   needsPageConversion,
   nextDisplayOrder,
 } from '../../lib/db/admissionStrategyMaterialModel'
 import { teacherFacingError, validateUploadFile } from '../../lib/admissionStrategy/storagePaths'
 import type { AdmissionStrategyMaterial, AdmissionStrategyMaterialStatus } from '../../types/admissionStrategyMaterial'
+import type { AdmissionStrategyTrack } from '../../types/admissionStrategy'
 import { createId } from '../../utils/id'
 import { formatKoreanDate } from '../../utils/date'
 import { btnPrimary, btnSecondary, inputClass } from '../../utils/labels'
@@ -27,6 +29,7 @@ import { requireNonEmpty } from '../../utils/validation'
 
 type FormState = {
   id?: string
+  track: AdmissionStrategyTrack | ''
   title: string
   description: string
   status: AdmissionStrategyMaterialStatus
@@ -34,7 +37,7 @@ type FormState = {
 }
 
 function emptyForm(): FormState {
-  return { title: '', description: '', status: 'DRAFT', file: null }
+  return { track: '', title: '', description: '', status: 'DRAFT', file: null }
 }
 
 function createdDateLabel(iso: string): string {
@@ -71,6 +74,7 @@ export function TeacherAdmissionStrategyMaterialsPanel() {
   const openEdit = (material: AdmissionStrategyMaterial) => {
     setForm({
       id: material.id,
+      track: material.track ?? '',
       title: material.title,
       description: material.description,
       status: material.status,
@@ -86,6 +90,9 @@ export function TeacherAdmissionStrategyMaterialsPanel() {
     const nextErrors: Record<string, string> = {}
     const titleErr = requireNonEmpty(form.title, '자료 이름')
     if (titleErr) nextErrors.title = titleErr
+    if (form.track !== '고입' && form.track !== '대입') {
+      nextErrors.track = '고입 또는 대입을 선택해 주세요.'
+    }
     if (!form.id && !form.file) nextErrors.file = 'PDF 또는 PPTX 파일을 선택해 주세요.'
     if (form.file) {
       const fileErr = validateUploadFile(form.file)
@@ -100,6 +107,7 @@ export function TeacherAdmissionStrategyMaterialsPanel() {
       let record: AdmissionStrategyMaterial = existing
         ? {
             ...existing,
+            track: form.track === '고입' || form.track === '대입' ? form.track : existing.track,
             title: form.title.trim(),
             description: form.description.trim(),
             status: form.status === 'PUBLISHED' && !canPublishMaterial(existing) ? existing.status : form.status,
@@ -107,6 +115,7 @@ export function TeacherAdmissionStrategyMaterialsPanel() {
           }
         : {
             id: createId(),
+            track: form.track === '고입' || form.track === '대입' ? form.track : null,
             title: form.title.trim(),
             description: form.description.trim(),
             materialType: 'pdf',
@@ -192,6 +201,7 @@ export function TeacherAdmissionStrategyMaterialsPanel() {
                 <div className="min-w-0">
                   <h4 className="break-anywhere text-base font-bold text-navy-900">{material.title}</h4>
                   <p className="mt-1 text-sm text-slate-500">
+                    {material.track ? `${material.track} · ` : ''}
                     {createdDateLabel(material.createdAt)}
                     {material.originalFileName ? ` · ${material.originalFileName}` : ''}
                   </p>
@@ -293,7 +303,7 @@ export function TeacherAdmissionStrategyMaterialsPanel() {
                     미리보기
                   </button>
                 )}
-                {material.status !== 'PUBLISHED' && canPublishMaterial(material) && (
+                {material.status !== 'PUBLISHED' && canPublishMaterial(material) && hasMaterialTrack(material) && (
                   <button
                     type="button"
                     className={`${btnPrimary} px-3 py-1.5 text-xs`}
@@ -350,6 +360,22 @@ export function TeacherAdmissionStrategyMaterialsPanel() {
               disabled={busy}
             />
             {errors.title && <p className="mt-1 text-sm text-rose-500">{errors.title}</p>}
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">분류 *</label>
+            <select
+              value={form.track}
+              disabled={busy}
+              onChange={(event) =>
+                setForm({ ...form, track: event.target.value as AdmissionStrategyTrack | '' })
+              }
+              className={inputClass(errors.track)}
+            >
+              <option value="">고입 / 대입 선택</option>
+              <option value="고입">고입</option>
+              <option value="대입">대입</option>
+            </select>
+            {errors.track && <p className="mt-1 text-sm text-rose-500">{errors.track}</p>}
           </div>
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-700">설명 (선택)</label>

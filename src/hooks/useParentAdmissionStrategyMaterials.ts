@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { fetchParentAdmissionStrategyMaterials } from '../lib/db/admissionStrategyMaterial'
+import { fetchParentAdmissionStrategyMaterials, markParentAdmissionStrategyMaterialViewed } from '../lib/db/admissionStrategyMaterial'
 import type { ParentAdmissionStrategyMaterial } from '../types/admissionStrategyMaterial'
 import { useParentStudent } from '../contexts/ParentStudentContext'
 import { useParentResumeReload } from './useParentResumeReload'
@@ -42,5 +42,19 @@ export function useParentAdmissionStrategyMaterials() {
 
   useParentResumeReload(() => load(false))
 
-  return { materials, loading, error }
+  const markMaterialViewed = useCallback(
+    async (materialId: string) => {
+      try {
+        await markParentAdmissionStrategyMaterialViewed(accessKey, materialId)
+        setMaterials((current) =>
+          current.map((item) => (item.id === materialId ? { ...item, isUnread: false } : item)),
+        )
+      } catch {
+        /* 확인 기록 실패 시 점 유지. 다음 resume 재조회에서 서버 상태를 따른다. */
+      }
+    },
+    [accessKey],
+  )
+
+  return { materials, loading, error, markMaterialViewed }
 }
