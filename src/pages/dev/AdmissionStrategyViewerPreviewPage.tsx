@@ -1,33 +1,27 @@
 import { useMemo, useState } from 'react'
 import { AdmissionStrategyMaterialViewer } from '../../components/admissionStrategy/AdmissionStrategyMaterialViewer'
 
-function makePage(pageNumber: number, label: string, fill: string): string {
-  const canvas = document.createElement('canvas')
-  canvas.width = 900
-  canvas.height = 1272
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return ''
-  ctx.fillStyle = fill
-  ctx.fillRect(0, 0, canvas.width, canvas.height)
-  ctx.fillStyle = '#163A70'
-  ctx.font = 'bold 42px sans-serif'
-  ctx.fillText(label, 48, 96)
-  ctx.font = '28px sans-serif'
-  ctx.fillStyle = '#334155'
-  ctx.fillText(`${pageNumber} / 3`, 48, 150)
-  ctx.fillText('스와이프 · 좌우 터치 · 키보드로 이동', 48, 200)
-  return canvas.toDataURL('image/png')
+function pageSrc(pageNumber: number, total: number): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1272">
+    <rect width="100%" height="100%" fill="#eef4ff"/>
+    <text x="48" y="96" font-size="42" font-family="sans-serif" fill="#163A70">페이지 ${pageNumber}</text>
+    <text x="48" y="150" font-size="28" font-family="sans-serif" fill="#334155">${pageNumber} / ${total}</text>
+  </svg>`
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`
 }
 
-/** 개발 전용: 전체화면 자료 뷰어 제스처 확인 */
+/** 개발 전용: 전체화면 자료 뷰어 제스처 확인 (기본 20페이지) */
 export function AdmissionStrategyViewerPreviewPage() {
   const [open, setOpen] = useState(true)
+  const total = 20
   const pages = useMemo(
-    () => [
-      { pageNumber: 1, src: makePage(1, '2028 대입 완전정리', '#eef4ff'), width: 900, height: 1272 },
-      { pageNumber: 2, src: makePage(2, '고교학점제 안내', '#f4fffb'), width: 900, height: 1272 },
-      { pageNumber: 3, src: makePage(3, '정시 지원 전략', '#fff7ed'), width: 900, height: 1272 },
-    ],
+    () =>
+      Array.from({ length: total }, (_, index) => ({
+        pageNumber: index + 1,
+        src: pageSrc(index + 1, total),
+        width: 900,
+        height: 1272,
+      })),
     [],
   )
 

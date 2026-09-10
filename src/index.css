@@ -121,6 +121,18 @@ html {
   object-fit: contain;
 }
 
+/* 터치 기기(카카오 가로모드 포함)에서는 오버레이 버튼을 숨긴다.
+   sm 브레이크포인트는 가로 휴대폰 폭에도 걸려, 버튼 click + 스테이지 pointerup이 동시에 발생했다. */
+.admission-strategy-viewer-nav {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .admission-strategy-viewer-nav {
+    display: inline-flex;
+  }
+}
+
 /* 강사용 모바일 PWA */
 .teacher-mobile-app {
   padding-left: env(safe-area-inset-left);
