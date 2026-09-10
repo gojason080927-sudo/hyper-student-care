@@ -14,6 +14,7 @@ import {
 } from './admissionStrategyMaterialModel'
 import { deleteMaterialStorage } from '../admissionStrategy/materialStorage'
 import { createId } from '../../utils/id'
+import { fetchParentAnonRpc } from './parentAnonRpc'
 
 export {
   admissionStrategyMaterialFromRow,
@@ -130,23 +131,33 @@ export async function deleteAdmissionStrategyMaterial(id: string): Promise<void>
 export async function fetchParentAdmissionStrategyMaterials(
   accessKey: string,
 ): Promise<ParentAdmissionStrategyMaterial[] | null> {
-  const { data, error } = await getSupabase().rpc('get_parent_admission_strategy_materials', {
-    p_access_key: accessKey,
-  })
-  if (error) throw new Error(error.message || '입시전략 자료를 불러오지 못했습니다.')
-  if (data == null) return null
-  return parseParentAdmissionStrategyMaterials(data)
+  try {
+    const data = await fetchParentAnonRpc('get_parent_admission_strategy_materials', {
+      p_access_key: accessKey,
+    })
+    if (data == null) return null
+    return parseParentAdmissionStrategyMaterials(data)
+  } catch (error) {
+    throw new Error(
+      error instanceof Error ? error.message : '입시전략 자료를 불러오지 못했습니다.',
+    )
+  }
 }
 
 export async function fetchParentAdmissionStrategyMaterial(
   accessKey: string,
   materialId: string,
 ): Promise<ParentAdmissionStrategyMaterial | null> {
-  const { data, error } = await getSupabase().rpc('get_parent_admission_strategy_material', {
-    p_access_key: accessKey,
-    p_material_id: materialId,
-  })
-  if (error) throw new Error(error.message || '입시전략 자료를 불러오지 못했습니다.')
-  if (data == null) return null
-  return parseParentAdmissionStrategyMaterial(data)
+  try {
+    const data = await fetchParentAnonRpc('get_parent_admission_strategy_material', {
+      p_access_key: accessKey,
+      p_material_id: materialId,
+    })
+    if (data == null) return null
+    return parseParentAdmissionStrategyMaterial(data)
+  } catch (error) {
+    throw new Error(
+      error instanceof Error ? error.message : '입시전략 자료를 불러오지 못했습니다.',
+    )
+  }
 }

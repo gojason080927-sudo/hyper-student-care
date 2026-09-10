@@ -1,4 +1,5 @@
 /* 학부모 /care PWA service worker — push + 알림 클릭. 강사 /teacher/sw.js 와 스코프가 다릅니다. */
+/* cache-bypass v2: navigate/RPC 는 HTTP 캐시를 쓰지 않는다. Storage 이미지 캐시는 유지. */
 
 self.addEventListener('install', (event) => {
   event.waitUntil(self.skipWaiting())
@@ -9,9 +10,14 @@ self.addEventListener('activate', (event) => {
 })
 
 // Android Chrome WebAPK("앱 설치") requires a fetch listener.
-// Network-only passthrough — does not cache and does not change push handling.
+// Network passthrough. Navigation and Supabase RPC skip HTTP cache so Kakao/PWA
+// do not keep stale parent JSON. Page images still use default fetch caching.
 self.addEventListener('fetch', (event) => {
-  event.respondWith(fetch(event.request))
+  const request = event.request
+  const url = new URL(request.url)
+  const bypassHttpCache =
+    request.mode === 'navigate' || url.pathname.includes('/rest/v1/rpc/')
+  event.respondWith(fetch(request, bypassHttpCache ? { cache: 'no-store' } : undefined))
 })
 
 self.addEventListener('push', (event) => {

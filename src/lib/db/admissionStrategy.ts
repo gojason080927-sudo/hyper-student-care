@@ -6,6 +6,7 @@ import {
   parseParentAdmissionStrategyPosts,
   type AdmissionStrategyRow,
 } from './admissionStrategyModel'
+import { fetchParentAnonRpc } from './parentAnonRpc'
 
 export {
   admissionStrategyFromRow,
@@ -41,10 +42,13 @@ export async function deleteAdmissionStrategyPost(id: string): Promise<void> {
 export async function fetchParentAdmissionStrategyPosts(
   accessKey: string,
 ): Promise<ParentAdmissionStrategyPost[] | null> {
-  const { data, error } = await getSupabase().rpc('get_parent_admission_strategy_posts', {
-    p_access_key: accessKey,
-  })
-  if (error) throw new Error(error.message || '입시전략을 불러오지 못했습니다.')
-  if (data == null) return null
-  return parseParentAdmissionStrategyPosts(data)
+  try {
+    const data = await fetchParentAnonRpc('get_parent_admission_strategy_posts', {
+      p_access_key: accessKey,
+    })
+    if (data == null) return null
+    return parseParentAdmissionStrategyPosts(data)
+  } catch (error) {
+    throw new Error(error instanceof Error ? error.message : '입시전략을 불러오지 못했습니다.')
+  }
 }
