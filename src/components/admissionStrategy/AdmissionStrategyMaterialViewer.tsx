@@ -11,11 +11,17 @@ import {
 import { createPortal } from 'react-dom'
 import { useViewerScrollLock } from '../../hooks/useViewerScrollLock'
 import {
+  applyViewerNavigation,
   clampPageIndex,
-  edgeTapDirection,
-  shouldAcceptViewerNavigation,
+  isCoarsePointerEnvironment,
+  isViewerControlEventTarget,
+  resolveStagePointerNav,
+  setViewerNavigationSink,
+  shouldDeferStageEdgeToControl,
+  shouldHandleStagePointer,
   stepPageIndex,
-  VIEWER_ORIENTATION_LOCK_MS,
+  type ViewerNavRecord,
+  type ViewerNavSource,
 } from '../../lib/admissionStrategy/viewerNavigation'
 
 export type AdmissionStrategyViewerPage = {
@@ -40,7 +46,6 @@ type AdmissionStrategyMaterialViewerProps = {
 const MIN_SCALE = 1
 const MAX_SCALE = 3.2
 const DOUBLE_TAP_MS = 280
-const SWIPE_THRESHOLD = 48
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value))
@@ -69,45 +74,58 @@ export function AdmissionStrategyMaterialViewer({
   const lastTapRef = useRef<{ time: number; x: number; y: number } | null>(null)
   const stageRef = useRef<HTMLDivElement | null>(null)
   const pageIndexRef = useRef(pageIndex)
-  const lastNavAtRef = useRef(0)
-  const lastTouchAtRef = useRef(0)
-  const orientationLockUntilRef = useRef(0)
   pageIndexRef.current = pageIndex
 
   useViewerScrollLock(open)
 
-  const goTo = useCallback(
-    (nextIndex: number) => {
+  useEffect(() => {
+    if (!open || !import.meta.env.DEV) return
+    const records: ViewerNavRecord[] = []
+    const devWindow = window as Window & { __admissionViewerNav?: ViewerNavRecord[] }
+    devWindow.__admissionViewerNav = records
+    setViewerNavigationSink((record) => {
+      records.push(record)
+    })
+    return () => {
+      setViewerNavigationSink(null)
+    }
+  }, [open])
+
+  const pointerEnv = () => ({
+    coarsePointer: isCoarsePointerEnvironment(),
+    maxTouchPoints: typeof navigator === 'undefined' ? 0 : navigator.maxTouchPoints,
+  })
+
+  const navigate = useCallback(
+    (
+      nextIndex: number,
+      source: ViewerNavSource,
+      meta?: { eventType?: string; pointerType?: string },
+    ) => {
       if (total === 0) return
-      const clamped = clampPageIndex(nextIndex, total)
-      if (clamped === pageIndexRef.current) return
-      pageIndexRef.current = clamped
-      setPageIndex(clamped)
+      const result = applyViewerNavigation({
+        fromIndex: pageIndexRef.current,
+        nextIndex,
+        total,
+        source,
+        eventType: meta?.eventType,
+        pointerType: meta?.pointerType,
+        at: Date.now(),
+      })
+      if (!result.changed) return
+      pageIndexRef.current = result.toIndex
+      setPageIndex(result.toIndex)
       setScale(1)
       setTranslate({ x: 0, y: 0 })
     },
     [total],
   )
 
-  const stepBy = useCallback(
-    (delta: number, pointerType?: string) => {
-      const now = Date.now()
-      if (now < orientationLockUntilRef.current) return
-      if (
-        !shouldAcceptViewerNavigation({
-          now,
-          lastAcceptedAt: lastNavAtRef.current,
-          pointerType,
-          lastTouchAt: lastTouchAtRef.current,
-        })
-      ) {
-        return
-      }
-      if (pointerType === 'touch' || pointerType === 'pen') lastTouchAtRef.current = now
-      lastNavAtRef.current = now
-      goTo(stepPageIndex(pageIndexRef.current, delta, total))
+  const step = useCallback(
+    (delta: number, source: ViewerNavSource, meta?: { eventType?: string; pointerType?: string }) => {
+      navigate(stepPageIndex(pageIndexRef.current, delta, total), source, meta)
     },
-    [goTo, total],
+    [navigate, total],
   )
 
   useEffect(() => {
@@ -121,23 +139,6 @@ export function AdmissionStrategyMaterialViewer({
 
   useEffect(() => {
     if (!open) return
-    let lastLandscape = window.innerWidth > window.innerHeight
-    const lockIfOrientationChanged = () => {
-      const landscape = window.innerWidth > window.innerHeight
-      if (landscape === lastLandscape) return
-      lastLandscape = landscape
-      orientationLockUntilRef.current = Date.now() + VIEWER_ORIENTATION_LOCK_MS
-    }
-    window.addEventListener('orientationchange', lockIfOrientationChanged)
-    window.addEventListener('resize', lockIfOrientationChanged)
-    return () => {
-      window.removeEventListener('orientationchange', lockIfOrientationChanged)
-      window.removeEventListener('resize', lockIfOrientationChanged)
-    }
-  }, [open])
-
-  useEffect(() => {
-    if (!open) return
     const handleKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault()
@@ -146,16 +147,16 @@ export function AdmissionStrategyMaterialViewer({
       }
       if (event.key === 'ArrowLeft') {
         event.preventDefault()
-        goTo(stepPageIndex(pageIndexRef.current, -1, total))
+        step(-1, 'keyboard', { eventType: 'keydown' })
       }
       if (event.key === 'ArrowRight') {
         event.preventDefault()
-        goTo(stepPageIndex(pageIndexRef.current, 1, total))
+        step(1, 'keyboard', { eventType: 'keydown' })
       }
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [goTo, onClose, open, total])
+  }, [onClose, open, step])
 
   const current = pages[pageIndex]
   const pageLabel = total > 0 ? `${pageIndex + 1} / ${total}` : '0 / 0'
@@ -165,17 +166,15 @@ export function AdmissionStrategyMaterialViewer({
     setTranslate({ x: 0, y: 0 })
   }
 
-  const handleEdgeTap = (clientX: number, pointerType?: string) => {
-    const rect = stageRef.current?.getBoundingClientRect()
-    const direction = edgeTapDirection(clientX, {
-      left: rect?.left ?? 0,
-      width: rect?.width ?? window.innerWidth,
-    })
-    if (direction !== 0) stepBy(direction, pointerType)
-  }
-
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    event.currentTarget.setPointerCapture(event.pointerId)
+    if (isViewerControlEventTarget(event.target)) return
+    if (!shouldHandleStagePointer(event.pointerType, pointerEnv())) return
+    event.preventDefault()
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId)
+    } catch {
+      /* untrusted test events cannot capture */
+    }
     pointersRef.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
     setGestureActive(true)
     if (pointersRef.current.size === 1) {
@@ -238,6 +237,16 @@ export function AdmissionStrategyMaterialViewer({
     const pointerCount = pointersRef.current.size
     resetGesturePointers(event.pointerId)
 
+    if (!shouldHandleStagePointer(event.pointerType, pointerEnv())) {
+      swipeStartRef.current = null
+      return
+    }
+
+    if (isViewerControlEventTarget(event.target)) {
+      swipeStartRef.current = null
+      return
+    }
+
     if (pointerCount === 1 && scale === 1 && start) {
       const dx = event.clientX - start.x
       const dy = event.clientY - start.y
@@ -256,12 +265,24 @@ export function AdmissionStrategyMaterialViewer({
       }
 
       lastTapRef.current = { time: now, x: event.clientX, y: event.clientY }
-
-      if (Math.abs(dx) > SWIPE_THRESHOLD && Math.abs(dx) > Math.abs(dy) * 1.15) {
-        if (dx < 0) stepBy(1, event.pointerType)
-        else stepBy(-1, event.pointerType)
-      } else if (Math.hypot(dx, dy) < 12) {
-        handleEdgeTap(event.clientX, event.pointerType)
+      const rect = stageRef.current?.getBoundingClientRect()
+      const nav = resolveStagePointerNav({
+        dx,
+        dy,
+        clientX: event.clientX,
+        stage: { left: rect?.left ?? 0, width: rect?.width ?? window.innerWidth },
+      })
+      const targetAtPoint =
+        typeof document !== 'undefined' ? document.elementFromPoint(event.clientX, event.clientY) : null
+      if (shouldDeferStageEdgeToControl(nav.action, targetAtPoint)) {
+        swipeStartRef.current = null
+        return
+      }
+      if (nav.action !== 'none') {
+        step(nav.direction, nav.action === 'swipe' ? 'swipe' : 'edge-tap', {
+          eventType: event.type,
+          pointerType: event.pointerType,
+        })
       }
     }
 
@@ -291,6 +312,10 @@ export function AdmissionStrategyMaterialViewer({
     if (next === 1) setTranslate({ x: 0, y: 0 })
   }
 
+  const stopControlPointer = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    event.stopPropagation()
+  }
+
   const dots = useMemo(() => (total > 0 && total <= 12 ? pages.map((page) => page.pageNumber) : []), [pages, total])
 
   if (!open || typeof document === 'undefined') return null
@@ -312,6 +337,7 @@ export function AdmissionStrategyMaterialViewer({
       >
         <button
           type="button"
+          data-viewer-control="close"
           onClick={onClose}
           className="inline-flex h-11 w-11 items-center justify-center rounded-full text-white hover:bg-white/10"
           aria-label="닫기"
@@ -319,75 +345,96 @@ export function AdmissionStrategyMaterialViewer({
           <X className="h-6 w-6" />
         </button>
         <h2 className="min-w-0 flex-1 truncate text-sm font-semibold sm:text-base">{title}</h2>
-        <p className="shrink-0 px-2 text-sm tabular-nums text-white/80">{pageLabel}</p>
+        <p
+          data-testid="viewer-page-label"
+          data-page={pageIndex + 1}
+          className="shrink-0 px-2 text-sm tabular-nums text-white/80"
+        >
+          {pageLabel}
+        </p>
       </header>
 
-      <div
-        ref={stageRef}
-        className="relative min-h-0 min-w-0 flex-1 touch-none overflow-hidden"
-        style={{
-          paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
-          paddingLeft: 'env(safe-area-inset-left)',
-          paddingRight: 'env(safe-area-inset-right)',
-        }}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerCancel}
-        onWheel={onWheel}
-      >
-        {errorMessage ? (
-          <div className="flex h-full items-center justify-center px-6 text-center text-sm text-white/80">
-            {errorMessage}
-          </div>
-        ) : !current ? (
-          <div className="flex h-full items-center justify-center px-6 text-center text-sm text-white/80">
-            표시할 페이지가 없습니다.
-          </div>
-        ) : (
-          <>
-            <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
-              {current.error ? (
-                <p className="px-6 text-center text-sm text-white/80">이 페이지를 불러오지 못했습니다.</p>
-              ) : current.src ? (
-                <img
-                  src={current.src}
-                  alt={`${title} ${current.pageNumber}페이지`}
-                  draggable={false}
-                  className="pointer-events-none max-h-full max-w-full min-h-0 min-w-0 select-none object-contain"
-                  style={{
-                    width: 'auto',
-                    height: 'auto',
-                    transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
-                    transformOrigin: 'center center',
-                    transition: gestureActive ? 'none' : 'transform 120ms ease-out',
-                  }}
-                />
-              ) : (
-                <p className="text-sm text-white/70">{current.loading === false ? '페이지가 없습니다.' : '불러오는 중...'}</p>
-              )}
+      <div className="relative min-h-0 min-w-0 flex-1">
+        <div
+          ref={stageRef}
+          data-testid="viewer-stage"
+          className="absolute inset-0 touch-none overflow-hidden"
+          style={{
+            paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))',
+            paddingLeft: 'env(safe-area-inset-left)',
+            paddingRight: 'env(safe-area-inset-right)',
+          }}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          onPointerCancel={onPointerCancel}
+          onWheel={onWheel}
+        >
+          {errorMessage ? (
+            <div className="flex h-full items-center justify-center px-6 text-center text-sm text-white/80">
+              {errorMessage}
             </div>
+          ) : !current ? (
+            <div className="flex h-full items-center justify-center px-6 text-center text-sm text-white/80">
+              표시할 페이지가 없습니다.
+            </div>
+          ) : current.error ? (
+            <p className="flex h-full items-center justify-center px-6 text-center text-sm text-white/80">
+              이 페이지를 불러오지 못했습니다.
+            </p>
+          ) : current.src ? (
+            <div className="flex h-full w-full items-center justify-center overflow-hidden">
+              <img
+                src={current.src}
+                alt={`${title} ${current.pageNumber}페이지`}
+                draggable={false}
+                className="pointer-events-none max-h-full max-w-full min-h-0 min-w-0 select-none object-contain"
+                style={{
+                  width: 'auto',
+                  height: 'auto',
+                  transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
+                  transformOrigin: 'center center',
+                  transition: gestureActive ? 'none' : 'transform 120ms ease-out',
+                }}
+              />
+            </div>
+          ) : (
+            <p className="flex h-full items-center justify-center text-sm text-white/70">
+              {current.loading === false ? '페이지가 없습니다.' : '불러오는 중...'}
+            </p>
+          )}
+        </div>
 
-            <button
-              type="button"
-              className="absolute left-1 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white hover:bg-black/50 sm:inline-flex"
-              aria-label="이전 페이지"
-              disabled={pageIndex <= 0}
-              onClick={() => goTo(stepPageIndex(pageIndexRef.current, -1, total))}
-            >
-              <ChevronLeft className="h-6 w-6" />
-            </button>
-            <button
-              type="button"
-              className="absolute right-1 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white hover:bg-black/50 sm:inline-flex"
-              aria-label="다음 페이지"
-              disabled={pageIndex >= total - 1}
-              onClick={() => goTo(stepPageIndex(pageIndexRef.current, 1, total))}
-            >
-              <ChevronRight className="h-6 w-6" />
-            </button>
-          </>
-        )}
+        <button
+          type="button"
+          data-viewer-control="prev"
+          aria-label="이전 페이지"
+          disabled={pageIndex <= 0}
+          className="admission-strategy-viewer-nav absolute left-1 top-1/2 z-10 h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white hover:bg-black/50"
+          onPointerDown={stopControlPointer}
+          onPointerUp={stopControlPointer}
+          onClick={(event) => {
+            event.stopPropagation()
+            step(-1, 'control', { eventType: 'click' })
+          }}
+        >
+          <ChevronLeft className="h-6 w-6" />
+        </button>
+        <button
+          type="button"
+          data-viewer-control="next"
+          aria-label="다음 페이지"
+          disabled={pageIndex >= total - 1}
+          className="admission-strategy-viewer-nav absolute right-1 top-1/2 z-10 h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/35 text-white hover:bg-black/50"
+          onPointerDown={stopControlPointer}
+          onPointerUp={stopControlPointer}
+          onClick={(event) => {
+            event.stopPropagation()
+            step(1, 'control', { eventType: 'click' })
+          }}
+        >
+          <ChevronRight className="h-6 w-6" />
+        </button>
       </div>
 
       {dots.length > 1 && (
@@ -396,8 +443,9 @@ export function AdmissionStrategyMaterialViewer({
             <button
               key={pageNumber}
               type="button"
+              data-viewer-control="dot"
               aria-label={`${pageNumber}페이지`}
-              onClick={() => goTo(index)}
+              onClick={() => navigate(index, 'dot', { eventType: 'click' })}
               className={`h-1.5 rounded-full transition ${
                 index === pageIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/35'
               }`}
