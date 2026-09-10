@@ -449,7 +449,7 @@ export function buildSyncedProgressRecordForPeer(params: {
   }
 }
 
-if (import.meta.env.DEV) {
+if (typeof import.meta.env !== 'undefined' && import.meta.env.DEV) {
   ;(globalThis as { __classTodayReportCommonDebug?: boolean }).__classTodayReportCommonDebug =
     true
 }

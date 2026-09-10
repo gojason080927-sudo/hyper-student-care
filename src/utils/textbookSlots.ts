@@ -321,8 +321,11 @@ function buildHomeworkSlotDisplays(
   entries: HomeworkTextbookEntry[],
   classContext?: TextbookDisplayClassContext,
   mode: HomeworkSlotDisplayMode = 'default',
+  options?: { allowCarryForward?: boolean },
 ): HomeworkTextbookDisplay[] {
-  const carryPerformance = mode === 'parent'
+  const allowCarryForward = options?.allowCarryForward !== false
+  const carryPerformance = mode === 'parent' && allowCarryForward
+  const lookup = { allowCarryForward }
 
   return TEXTBOOK_SUBJECTS.flatMap((subject) =>
     TEXTBOOK_SLOT_NUMBERS.map((slotNumber) => {
@@ -332,6 +335,7 @@ function buildHomeworkSlotDisplays(
         date,
         subject,
         slotNumber,
+        lookup,
       )
       const performance = carryPerformance
         ? findHomeworkPerformanceEntryForDisplay(
@@ -340,6 +344,7 @@ function buildHomeworkSlotDisplays(
             date,
             subject,
             slotNumber,
+            lookup,
           )
         : null
 
@@ -353,7 +358,7 @@ function buildHomeworkSlotDisplays(
             slotNumber,
           )
         : undefined
-      if (!common && classContext) {
+      if (!common && classContext && allowCarryForward) {
         common = findClassTodayReportCommonForDisplay(
           classContext.commonRecords,
           classContext.grade,
@@ -361,6 +366,7 @@ function buildHomeworkSlotDisplays(
           date,
           subject,
           slotNumber,
+          lookup,
         ).record
       }
 
@@ -387,7 +393,9 @@ function buildHomeworkSlotDisplays(
               performance?.entry,
               Boolean(performance?.isFallback),
             )
-          : '',
+          : mode === 'parent'
+            ? (exactSameDate?.previousAssignment.trim() ?? '')
+            : '',
         todayAssignment: resolveCommonTodayAssignment(common, contentEntry),
         status,
         entryId: exactSameDate?.id,
@@ -460,6 +468,7 @@ export function buildParentHomeworkTextbookDisplays(
   slots: StudentTextbookSlot[],
   entries: HomeworkTextbookEntry[],
   classContext?: TextbookDisplayClassContext,
+  options?: { allowCarryForward?: boolean },
 ): HomeworkTextbookDisplay[] {
   return buildHomeworkSlotDisplays(
     studentId,
@@ -468,6 +477,7 @@ export function buildParentHomeworkTextbookDisplays(
     entries,
     classContext,
     'parent',
+    options,
   ).filter(hasHomeworkSlotContent)
 }
 
@@ -477,7 +487,9 @@ function buildProgressSlotDisplays(
   slots: StudentTextbookSlot[],
   progressRecords: ProgressRecord[],
   classContext?: TextbookDisplayClassContext,
+  options?: { allowCarryForward?: boolean },
 ): ProgressTextbookDisplay[] {
+  const lookup = { allowCarryForward: options?.allowCarryForward !== false }
   return TEXTBOOK_SUBJECTS.flatMap((subject) => {
     let subjectMemo = ''
     for (const slotNumber of TEXTBOOK_SLOT_NUMBERS) {
@@ -487,6 +499,7 @@ function buildProgressSlotDisplays(
         date,
         subject,
         slotNumber,
+        lookup,
       )
       if (!isFallback && !subjectMemo && record?.teacherMemo.trim()) {
         subjectMemo = record.teacherMemo.trim()
@@ -500,6 +513,7 @@ function buildProgressSlotDisplays(
         date,
         subject,
         slotNumber,
+        lookup,
       )
       const slotName = resolveDisplayTextbookName(
         classContext,
@@ -518,6 +532,7 @@ function buildProgressSlotDisplays(
             date,
             subject,
             slotNumber,
+            lookup,
           ).record
         : undefined
       const textbookName = slotName || record?.textbookName.trim() || ''
@@ -612,8 +627,9 @@ export function buildParentProgressTextbookDisplays(
   slots: StudentTextbookSlot[],
   progressRecords: ProgressRecord[],
   classContext?: TextbookDisplayClassContext,
+  options?: { allowCarryForward?: boolean },
 ): ProgressTextbookDisplay[] {
-  return buildProgressSlotDisplays(studentId, date, slots, progressRecords, classContext)
+  return buildProgressSlotDisplays(studentId, date, slots, progressRecords, classContext, options)
     .map((item) => ({
       ...item,
       progressContent: resolveParentProgressContent(

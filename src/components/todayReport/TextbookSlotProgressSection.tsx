@@ -87,6 +87,7 @@ export function TextbookSlotProgressSection({
   onNotify,
   hideTitle = false,
   visibleSlots,
+  allowCarryForward = true,
 }: {
   readOnly: boolean
   studentId: string
@@ -119,6 +120,8 @@ export function TextbookSlotProgressSection({
   hideTitle?: boolean
   /** 모바일 PWA 등: 과목별 표시·저장 슬롯 제한 (수학 1~2 등) */
   visibleSlots?: SubjectVisibleSlots
+  /** 학부모 오늘 화면만 최근값 유지. 과거 날짜는 false. */
+  allowCarryForward?: boolean
 }) {
   const subjectsToRender = useMemo(
     () => {
@@ -275,6 +278,7 @@ export function TextbookSlotProgressSection({
       slots,
       progressRecords,
       classContext,
+      { allowCarryForward },
     )
 
     logParentProgressDebug(studentId, date, progressRecords, classContext, displays)

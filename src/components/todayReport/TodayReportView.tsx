@@ -48,8 +48,13 @@ import {
   getTodayString,
   isToday,
 } from '../../utils/date'
-import { resolveParentTodayReportDisplaySource } from '../../utils/todayReportDisplayFallback'
+import { resolveParentTodayReportDisplaySource, studentHasReportContentOnDate } from '../../utils/todayReportDisplayFallback'
 import { addDaysInSeoul, getSeoulDateString, isTodaySeoul } from '../../utils/seoulDate'
+import {
+  canShiftParentTodayReportDate,
+  clampParentTodayReportDate,
+  getParentTodayReportMinDate,
+} from '../../utils/parentTodayReportHistory'
 import {
   dailyTestFormToSavePayload,
   dailyTestRecordToForm,
@@ -283,6 +288,7 @@ export function TodayReportView({
   omitSections,
 }: TodayReportViewProps) {
   const today = readOnly ? getSeoulDateString() : getTodayString()
+  const parentMinDate = readOnly ? getParentTodayReportMinDate(today) : undefined
   const [selectedDate, setSelectedDate] = useState(initialDate ?? today)
   const {
     attendance: attendanceRaw,
@@ -326,6 +332,11 @@ export function TodayReportView({
   }, [initialDate])
 
   useEffect(() => {
+    if (!readOnly) return
+    setSelectedDate((current) => clampParentTodayReportDate(current, today))
+  }, [readOnly, today])
+
+  useEffect(() => {
     void refreshTodayReport(student.id, selectedDate)
   }, [refreshTodayReport, selectedDate, student.id])
 
@@ -337,14 +348,19 @@ export function TodayReportView({
   })
 
   const shiftSelectedDate = (delta: number) => {
-    setSelectedDate((current) =>
-      readOnly ? addDaysInSeoul(current, delta) : addDays(current, delta),
-    )
+    setSelectedDate((current) => {
+      if (readOnly) {
+        if (!canShiftParentTodayReportDate(current, delta, today)) return current
+        return addDaysInSeoul(current, delta)
+      }
+      return addDays(current, delta)
+    })
   }
 
   const selectedDateIsToday = readOnly ? isTodaySeoul(selectedDate) : isToday(selectedDate)
+  const parentAllowCarryForward = !readOnly || selectedDateIsToday
 
-  /** Parent read-only: show latest actual report on/before selected date (no DB copy). */
+  /** Parent today: keep latest-value carry-forward. Historical dates: exact records only. */
   const parentDisplaySource = useMemo(() => {
     if (!readOnly) {
       return { displayDate: selectedDate, isFallback: false }
@@ -361,6 +377,7 @@ export function TodayReportView({
       classTodayReportCommon,
       grade: student.grade.trim(),
       className: student.className.trim(),
+      allowCarryForward: parentAllowCarryForward,
     })
   }, [
     attendance,
@@ -368,6 +385,7 @@ export function TodayReportView({
     classTodayReportCommon,
     dailyTests,
     homeworkTextbookEntries,
+    parentAllowCarryForward,
     progressRecords,
     readOnly,
     selectedDate,
@@ -491,7 +509,40 @@ export function TodayReportView({
   ])
 
   const canGoNext = compareDateStrings(selectedDate, today) < 0
+  const canGoPrev = readOnly
+    ? Boolean(parentMinDate && compareDateStrings(selectedDate, parentMinDate) > 0)
+    : true
   const dateLabel = `${formatKoreanDateLong(selectedDate)}${selectedDateIsToday ? ' · 오늘' : ''}`
+  const parentHasExactContent = useMemo(
+    () =>
+      studentHasReportContentOnDate({
+        studentId: student.id,
+        date: selectedDate,
+        progressRecords,
+        homeworkTextbookEntries,
+        attendance,
+        dailyTests,
+        todayAssignments,
+        classNotes,
+        classTodayReportCommon,
+        grade: student.grade.trim(),
+        className: student.className.trim(),
+      }),
+    [
+      attendance,
+      classNotes,
+      classTodayReportCommon,
+      dailyTests,
+      homeworkTextbookEntries,
+      progressRecords,
+      selectedDate,
+      student.className,
+      student.grade,
+      student.id,
+      todayAssignments,
+    ],
+  )
+  const showParentHistoryEmpty = readOnly && !selectedDateIsToday && !parentHasExactContent
   const tc = compactTeacherInput && !readOnly
   const useTextbookSlotHomework = tc || readOnly
   const useTextbookSlotProgress = tc || readOnly
@@ -511,12 +562,13 @@ export function TodayReportView({
             <button
               type="button"
               aria-label="이전 날짜"
-              onClick={() => shiftSelectedDate(-1)}
-              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+              disabled={!canGoPrev}
+              onClick={() => canGoPrev && shiftSelectedDate(-1)}
+              className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span className="min-w-[8rem] text-center text-sm font-medium text-navy-900">
+            <span className="min-w-0 flex-1 text-center text-sm font-medium text-navy-900">
               {dateLabel}
             </span>
             <button
@@ -524,14 +576,29 @@ export function TodayReportView({
               aria-label="다음 날짜"
               disabled={!canGoNext}
               onClick={() => canGoNext && shiftSelectedDate(1)}
-              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
-          <p className="text-center text-[11px] text-slate-500">
-            마지막 업데이트: {formatKoreanDate(parentDisplaySource.displayDate)}
-          </p>
+          <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center">
+            {!selectedDateIsToday ? (
+              <button
+                type="button"
+                onClick={() => setSelectedDate(today)}
+                className="min-h-11 rounded-lg px-3 text-sm font-medium text-navy-700 hover:bg-slate-50"
+              >
+                오늘
+              </button>
+            ) : null}
+            {parentDisplaySource.isFallback ? (
+              <p className="text-[11px] text-slate-500">
+                마지막 업데이트: {formatKoreanDate(parentDisplaySource.displayDate)}
+              </p>
+            ) : (
+              <p className="text-[11px] text-slate-500">최근 30일 기록 조회</p>
+            )}
+          </div>
           <StudentSummaryCard student={student} compact />
         </>
       ) : (
@@ -585,6 +652,10 @@ export function TodayReportView({
         resetKey={selectedDate}
       >
         <div className={tc ? 'space-y-1.5' : 'space-y-3'}>
+          {showParentHistoryEmpty ? (
+            <EmptyHint message="이 날짜에 등록된 학습 기록이 없습니다." />
+          ) : (
+            <>
           {showSection('attendance') && (
           <AttendanceSection
             key={`attendance-${selectedDate}`}
@@ -640,6 +711,7 @@ export function TodayReportView({
               hideTitle={sectionHideTitle}
               visibleSlots={visibleSlots}
               useMobileStatusPicker={embeddedMobile}
+              allowCarryForward={parentAllowCarryForward}
             />
           ) : (
             <HomeworkAssignmentSection
@@ -697,6 +769,7 @@ export function TodayReportView({
               onNotify={showToast}
               hideTitle={sectionHideTitle}
               visibleSlots={visibleSlots}
+              allowCarryForward={parentAllowCarryForward}
             />
           ) : (
             <ProgressSection
@@ -741,6 +814,8 @@ export function TodayReportView({
             teacherCompact={tc}
             hideTitle={sectionHideTitle}
           />
+          )}
+            </>
           )}
         </div>
       </TodayReportErrorBoundary>

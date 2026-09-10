@@ -119,6 +119,7 @@ export function TextbookSlotHomeworkSection({
   hideTitle = false,
   visibleSlots,
   useMobileStatusPicker = false,
+  allowCarryForward = true,
 }: {
   readOnly: boolean
   studentId: string
@@ -152,6 +153,8 @@ export function TextbookSlotHomeworkSection({
   visibleSlots?: SubjectVisibleSlots
   /** 강사용 모바일 PWA: 숙제 상태 버튼 전용 UI */
   useMobileStatusPicker?: boolean
+  /** 학부모 오늘 화면만 최근값 유지. 과거 날짜는 false. */
+  allowCarryForward?: boolean
 }) {
   const subjectsToRender = useMemo(
     () => {
@@ -245,6 +248,7 @@ export function TextbookSlotHomeworkSection({
       slots,
       entries,
       classContext,
+      { allowCarryForward },
     )
 
     logParentHomeworkDebug(studentId, date, entries, slots, displays)
