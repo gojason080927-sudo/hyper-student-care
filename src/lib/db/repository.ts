@@ -393,6 +393,8 @@ export type TodayReportData = {
   dailyTest: DailyTestRecord | null
   /** 같은 날짜 수학/영어 등 복수 일일테스트 */
   dailyTests?: DailyTestRecord[]
+  /** True when dailyTests is a complete same-day set (replace). False/omitted: upsert only. */
+  dailyTestsComplete?: boolean
   classTodayReportCommon?: ClassTodayReportCommon[]
 }
 
@@ -451,6 +453,7 @@ export async function fetchTodayReportData(
     classNote: classNoteRow ? classNoteFromRow(classNoteRow) : null,
     dailyTests: dailyTestRows.map(dailyTestFromRow),
     dailyTest: dailyTestRows[0] ? dailyTestFromRow(dailyTestRows[0]) : null,
+    dailyTestsComplete: true,
   }
 }
 
