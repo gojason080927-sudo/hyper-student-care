@@ -146,10 +146,18 @@ export function mergeTodayReportIntoState(
             : report.dailyTest
               ? [report.dailyTest]
               : []
-        return [
-          ...removeByStudentDate(current.dailyTests, studentId, date),
-          ...incoming,
-        ]
+        if (report.dailyTestsComplete) {
+          return [
+            ...removeByStudentDate(current.dailyTests, studentId, date),
+            ...incoming,
+          ]
+        }
+        if (incoming.length === 0) return current.dailyTests
+        let next = current.dailyTests
+        for (const record of incoming) {
+          next = upsertByStudentDateAndSubject(next, record)
+        }
+        return next
       })(),
     }
   }

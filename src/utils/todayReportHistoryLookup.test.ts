@@ -248,4 +248,100 @@ assert.equal(
   '집합과 명제 p.38~43',
 )
 
+const otherStudentProgress = progress(day7, '다른 학생 진도')
+otherStudentProgress.id = 'prg-other'
+otherStudentProgress.studentId = 'stu-2'
+assert.equal(
+  findProgressRecordForDisplay(
+    [...progressRows, otherStudentProgress],
+    studentId,
+    day7,
+    '수학',
+    1,
+    { allowCarryForward: false },
+  ).record?.currentProgress,
+  '집합과 명제 p.32~37',
+)
+assert.equal(
+  findProgressRecordForDisplay(
+    [...progressRows, otherStudentProgress],
+    'stu-2',
+    day7,
+    '수학',
+    1,
+    { allowCarryForward: false },
+  ).record?.currentProgress,
+  '다른 학생 진도',
+)
+
+const classCommon = [
+  {
+    id: 'cc-day7',
+    grade: '고1',
+    className: '고1 수학A',
+    reportDate: day7,
+    subject: '수학' as const,
+    slotNumber: 1 as const,
+    textbookName: '집합과 명제',
+    currentProgress: 'day7 진도',
+    currentPage: 32,
+    totalPage: 100,
+    previousAssignment: '',
+    todayAssignment: '',
+    createdAt: '',
+    updatedAt: '2026-09-03T01:00:00.000Z',
+  },
+  {
+    id: 'cc-today',
+    grade: '고1',
+    className: '고1 수학A',
+    reportDate: today,
+    subject: '수학' as const,
+    slotNumber: 1 as const,
+    textbookName: '미적분',
+    currentProgress: 'today 진도',
+    currentPage: 90,
+    totalPage: 100,
+    previousAssignment: '',
+    todayAssignment: '',
+    createdAt: '',
+    updatedAt: '2026-09-10T12:00:00.000Z',
+  },
+]
+const classContext = {
+  grade: '고1',
+  className: '고1 수학A',
+  commonRecords: classCommon,
+}
+const namedDay7 = buildParentProgressTextbookDisplays(
+  studentId,
+  day7,
+  [],
+  progressRows,
+  classContext,
+  { allowCarryForward: false },
+)
+assert.equal(namedDay7[0]?.textbookName, '집합과 명제')
+assert.notEqual(namedDay7[0]?.textbookName, '미적분')
+
+const mixedDay7Attendance = attendanceRows.find((row) => row.date === day7)?.status
+const mixedDay7Progress = findProgressRecordForDisplay(progressRows, studentId, day7, '수학', 1, {
+  allowCarryForward: false,
+}).record?.currentProgress
+const mixedDay7Homework = findHomeworkPerformanceEntryForDisplay(
+  homeworkRows,
+  studentId,
+  day7,
+  '수학',
+  1,
+  { allowCarryForward: false },
+).entry?.previousAssignment
+const mixedDay7Test = tests.find((row) => row.date === day7)?.score
+assert.equal(mixedDay7Attendance, '출석')
+assert.equal(mixedDay7Progress, '집합과 명제 p.32~37')
+assert.equal(mixedDay7Homework, '과제 A')
+assert.equal(mixedDay7Test, 90)
+assert.notEqual(mixedDay7Attendance, attendanceRows.find((row) => row.date === today)?.status)
+assert.notEqual(mixedDay7Progress, progressRows.find((row) => row.lastStudyDate === today)?.currentProgress)
+
 console.log('todayReportHistoryLookup OK')

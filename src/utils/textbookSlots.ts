@@ -267,6 +267,7 @@ function resolveDisplayTextbookName(
   subject: TextbookSubject,
   slotNumber: TextbookSlotNumber,
   slots: StudentTextbookSlot[],
+  options?: { allowCarryForward?: boolean },
 ): string {
   if (!classContext) {
     return getTextbookName(slots, studentId, subject, slotNumber)
@@ -283,15 +284,17 @@ function resolveDisplayTextbookName(
   const commonName = common?.textbookName.trim()
   if (commonName) return commonName
 
-  const fromAnyCommon = findClassCommonTextbookName(
-    classContext.commonRecords,
-    classContext.grade,
-    classContext.className,
-    subject,
-    slotNumber,
-    date,
-  ).trim()
-  if (fromAnyCommon) return fromAnyCommon
+  if (options?.allowCarryForward !== false) {
+    const fromAnyCommon = findClassCommonTextbookName(
+      classContext.commonRecords,
+      classContext.grade,
+      classContext.className,
+      subject,
+      slotNumber,
+      date,
+    ).trim()
+    if (fromAnyCommon) return fromAnyCommon
+  }
 
   const lookupSlots = classContext.classSlots ?? slots
   if (classContext.getTextbookPeerStudentIds) {
@@ -387,6 +390,7 @@ function buildHomeworkSlotDisplays(
           subject,
           slotNumber,
           slots,
+          lookup,
         ),
         previousAssignment: carryPerformance
           ? resolveParentPreviousAssignmentDisplay(
@@ -522,6 +526,7 @@ function buildProgressSlotDisplays(
         subject,
         slotNumber,
         slots,
+        lookup,
       )
       // Prefer progress-aware common lookup so homework-only shells do not wipe 진도.
       const common = classContext

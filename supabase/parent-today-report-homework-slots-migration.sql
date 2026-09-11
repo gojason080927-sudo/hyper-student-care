@@ -59,10 +59,18 @@ BEGIN
      FROM public.class_notes cn
      WHERE cn.student_id = v_student_id AND cn.date = p_date
      LIMIT 1),
+    'daily_tests',
+    coalesce(
+      (SELECT jsonb_agg(to_jsonb(d) ORDER BY d.subject)
+       FROM public.daily_tests d
+       WHERE d.student_id = v_student_id AND d.date = p_date),
+      '[]'::jsonb
+    ),
     'daily_test',
     (SELECT to_jsonb(d)
      FROM public.daily_tests d
      WHERE d.student_id = v_student_id AND d.date = p_date
+     ORDER BY d.subject
      LIMIT 1),
     'class_today_report_common',
     coalesce(

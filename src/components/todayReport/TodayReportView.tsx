@@ -45,8 +45,6 @@ import {
   compareDateStrings,
   formatKoreanDate,
   formatKoreanDateLong,
-  getTodayString,
-  isToday,
 } from '../../utils/date'
 import { resolveParentTodayReportDisplaySource, studentHasReportContentOnDate } from '../../utils/todayReportDisplayFallback'
 import { addDaysInSeoul, getSeoulDateString, isTodaySeoul } from '../../utils/seoulDate'
@@ -54,6 +52,10 @@ import {
   canShiftParentTodayReportDate,
   clampParentTodayReportDate,
   getParentTodayReportMinDate,
+  getParentTodayReportSectionEmptyMessages,
+  PARENT_TODAY_REPORT_EMPTY_DAY_MESSAGE,
+  PARENT_TODAY_REPORT_SECTION_EMPTY_TODAY,
+  selectParentTodayReportDate,
 } from '../../utils/parentTodayReportHistory'
 import {
   dailyTestFormToSavePayload,
@@ -88,13 +90,6 @@ import {
 import { resolveCommonClassContext } from '../../utils/classCommonDataKey'
 import { getVisibleDailyTestSubjects } from '../../utils/studentGradeClass'
 
-const PARENT_EMPTY_MESSAGES = {
-  attendance: '오늘 등록된 출결 정보가 없습니다.',
-  homework: '오늘 등록된 숙제 정보가 없습니다.',
-  progress: '오늘 등록된 진도 정보가 없습니다.',
-  dailyTest: '오늘 등록된 일일 테스트 결과가 없습니다.',
-  classNote: '등록된 코멘트가 없습니다.',
-} as const
 
 function ParentReadOnlyBody({
   hasData,
@@ -287,7 +282,7 @@ export function TodayReportView({
   mobileSection,
   omitSections,
 }: TodayReportViewProps) {
-  const today = readOnly ? getSeoulDateString() : getTodayString()
+  const today = getSeoulDateString()
   const parentMinDate = readOnly ? getParentTodayReportMinDate(today) : undefined
   const [selectedDate, setSelectedDate] = useState(initialDate ?? today)
   const {
@@ -357,8 +352,11 @@ export function TodayReportView({
     })
   }
 
-  const selectedDateIsToday = readOnly ? isTodaySeoul(selectedDate) : isToday(selectedDate)
+  const selectedDateIsToday = isTodaySeoul(selectedDate)
   const parentAllowCarryForward = !readOnly || selectedDateIsToday
+  const parentEmptyMessages = getParentTodayReportSectionEmptyMessages(
+    readOnly && !selectedDateIsToday,
+  )
 
   /** Parent today: keep latest-value carry-forward. Historical dates: exact records only. */
   const parentDisplaySource = useMemo(() => {
@@ -568,9 +566,20 @@ export function TodayReportView({
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <span className="min-w-0 flex-1 text-center text-sm font-medium text-navy-900">
-              {dateLabel}
-            </span>
+            <label className="relative min-w-0 flex-1">
+              <span className="block min-h-11 px-1 py-2 text-center text-sm font-medium leading-7 text-navy-900">
+                {dateLabel}
+              </span>
+              <input
+                type="date"
+                aria-label="학습 기록 날짜 선택"
+                value={selectedDate}
+                min={parentMinDate}
+                max={today}
+                onChange={(e) => setSelectedDate(selectParentTodayReportDate(e.target.value, today))}
+                className="absolute inset-0 cursor-pointer opacity-0"
+              />
+            </label>
             <button
               type="button"
               aria-label="다음 날짜"
@@ -606,7 +615,7 @@ export function TodayReportView({
           <div className="rounded-2xl border border-slate-200 bg-navy-50 px-4 py-3">
             <p className="text-center text-sm font-semibold text-navy-900 sm:text-base">
               {formatKoreanDateLong(selectedDate)}
-              {isToday(selectedDate) ? ' 오늘의 학습 리포트' : ' 학습 리포트'}
+              {isTodaySeoul(selectedDate) ? ' 오늘의 학습 리포트' : ' 학습 리포트'}
             </p>
             <div className="mt-2 flex items-center justify-center gap-2">
               {dateMode === 'navigate' ? (
@@ -620,7 +629,7 @@ export function TodayReportView({
                     <ChevronLeft className="h-4 w-4" />
                   </button>
                   <span className="min-w-[7rem] text-center text-xs text-slate-500">
-                    {isToday(selectedDate) ? '오늘' : selectedDate}
+                    {isTodaySeoul(selectedDate) ? '오늘' : selectedDate}
                   </span>
                   <button
                     type="button"
@@ -653,7 +662,7 @@ export function TodayReportView({
       >
         <div className={tc ? 'space-y-1.5' : 'space-y-3'}>
           {showParentHistoryEmpty ? (
-            <EmptyHint message="이 날짜에 등록된 학습 기록이 없습니다." />
+            <EmptyHint message={PARENT_TODAY_REPORT_EMPTY_DAY_MESSAGE} />
           ) : (
             <>
           {showSection('attendance') && (
@@ -666,6 +675,7 @@ export function TodayReportView({
             onSave={saveAttendanceRecord}
             teacherCompact={tc}
             hideTitle={sectionHideTitle}
+            emptyMessage={parentEmptyMessages.attendance}
           />
           )}
 
@@ -724,6 +734,7 @@ export function TodayReportView({
               onSaveHomework={saveHomeworkRecord}
               onSaveTodayAssignment={saveTodayAssignmentRecord}
               teacherCompact={tc}
+              emptyMessage={parentEmptyMessages.homework}
             />
           ))}
 
@@ -780,6 +791,7 @@ export function TodayReportView({
               date={selectedDate}
               onSave={saveProgressRecord}
               teacherCompact={tc}
+              emptyMessage={parentEmptyMessages.progress}
             />
           ))}
 
@@ -798,6 +810,7 @@ export function TodayReportView({
             useMobileDailyTestInput={mobileSection === 'dailyTest'}
             className={student.className}
             subjects={student.subjects}
+            emptyMessage={parentEmptyMessages.dailyTest}
           />
           )}
 
@@ -813,6 +826,7 @@ export function TodayReportView({
             extraActions={classNoteExtraActions}
             teacherCompact={tc}
             hideTitle={sectionHideTitle}
+            emptyMessage={parentEmptyMessages.classNote}
           />
           )}
             </>
@@ -831,6 +845,7 @@ function AttendanceSection({
   onSave,
   teacherCompact = false,
   hideTitle = false,
+  emptyMessage = PARENT_TODAY_REPORT_SECTION_EMPTY_TODAY.attendance,
 }: {
   readOnly: boolean
   record?: AttendanceRecord
@@ -839,6 +854,7 @@ function AttendanceSection({
   onSave: ReturnType<typeof useData>['saveAttendanceRecord']
   teacherCompact?: boolean
   hideTitle?: boolean
+  emptyMessage?: string
 }) {
   const [status, setStatus] = useState<AttendanceStatus | ''>(record?.status ?? '')
   const [reason, setReason] = useState(record?.reason ?? '')
@@ -865,7 +881,7 @@ function AttendanceSection({
       {readOnly ? (
         <ParentReadOnlyBody
           hasData={Boolean(record?.status)}
-          emptyMessage={PARENT_EMPTY_MESSAGES.attendance}
+          emptyMessage={emptyMessage}
         >
           {() => (
             <div className="space-y-2.5">
@@ -1002,6 +1018,7 @@ function ProgressSection({
   date,
   onSave,
   teacherCompact = false,
+  emptyMessage = PARENT_TODAY_REPORT_SECTION_EMPTY_TODAY.progress,
 }: {
   readOnly: boolean
   records: ProgressRecord[]
@@ -1009,6 +1026,7 @@ function ProgressSection({
   date: string
   onSave: ReturnType<typeof useData>['saveProgressRecord']
   teacherCompact?: boolean
+  emptyMessage?: string
 }) {
   const mathRecord = findProgressBySubject(records, '수학')
   const englishRecord = findProgressBySubject(records, '영어')
@@ -1064,7 +1082,7 @@ function ProgressSection({
       {readOnly ? (
         <ParentReadOnlyBody
           hasData={records.length > 0}
-          emptyMessage={PARENT_EMPTY_MESSAGES.progress}
+          emptyMessage={emptyMessage}
         >
           {() => (
             <div className="space-y-3">
@@ -1234,6 +1252,7 @@ function HomeworkAssignmentSection({
   onSaveHomework,
   onSaveTodayAssignment,
   teacherCompact = false,
+  emptyMessage = PARENT_TODAY_REPORT_SECTION_EMPTY_TODAY.homework,
 }: {
   readOnly: boolean
   homeworkRecord?: HomeworkRecord
@@ -1243,6 +1262,7 @@ function HomeworkAssignmentSection({
   onSaveHomework: ReturnType<typeof useData>['saveHomeworkRecord']
   onSaveTodayAssignment: ReturnType<typeof useData>['saveTodayAssignmentRecord']
   teacherCompact?: boolean
+  emptyMessage?: string
 }) {
   const [status, setStatus] = useState<HomeworkStatus | ''>(homeworkRecord?.status ?? '')
   const [todayAssignment, setTodayAssignment] = useState('')
@@ -1287,7 +1307,7 @@ function HomeworkAssignmentSection({
       {readOnly ? (
         <ParentReadOnlyBody
           hasData={hasReadContent}
-          emptyMessage={PARENT_EMPTY_MESSAGES.homework}
+          emptyMessage={emptyMessage}
         >
           {() => (
             <HomeworkResultDisplay
@@ -1368,6 +1388,7 @@ function ClassNoteSection({
   extraActions,
   teacherCompact = false,
   hideTitle = false,
+  emptyMessage = PARENT_TODAY_REPORT_SECTION_EMPTY_TODAY.classNote,
 }: {
   readOnly: boolean
   record?: ClassNoteRecord
@@ -1377,6 +1398,7 @@ function ClassNoteSection({
   extraActions?: ReactNode
   teacherCompact?: boolean
   hideTitle?: boolean
+  emptyMessage?: string
 }) {
   const [hasClassNote, setHasClassNote] = useState(record?.hasClassNote ?? false)
   const [note, setNote] = useState(record?.note ?? '')
@@ -1421,7 +1443,7 @@ function ClassNoteSection({
       {readOnly ? (
         <ParentReadOnlyBody
           hasData={showParentNote || showNoSpecialNote}
-          emptyMessage={PARENT_EMPTY_MESSAGES.classNote}
+          emptyMessage={emptyMessage}
         >
           {() =>
             showNoSpecialNote ? (
@@ -1545,6 +1567,7 @@ function DailyTestSection({
   useMobileDailyTestInput = false,
   className: studentClassName = '',
   subjects = [],
+  emptyMessage,
 }: {
   readOnly: boolean
   record?: DailyTestRecord
@@ -1559,6 +1582,7 @@ function DailyTestSection({
   useMobileDailyTestInput?: boolean
   className?: string
   subjects?: readonly string[]
+  emptyMessage?: string
 }) {
   const parentRecords = records && records.length > 0 ? records : record ? [record] : []
   const visibleDailyTestSubjects = useMemo(
@@ -1649,7 +1673,7 @@ function DailyTestSection({
       {readOnly ? (
         <ParentReadOnlyBody
           hasData={parentRecords.some((item) => hasDailyTestDisplayData(item))}
-          emptyMessage={PARENT_EMPTY_MESSAGES.dailyTest}
+          emptyMessage={emptyMessage ?? PARENT_TODAY_REPORT_SECTION_EMPTY_TODAY.dailyTest}
         >
           {() => (
             <div className="space-y-4">

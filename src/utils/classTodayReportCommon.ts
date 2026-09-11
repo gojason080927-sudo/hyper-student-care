@@ -175,9 +175,14 @@ export function findClassCommonTextbookName(
           record.className === linkedClassName &&
           record.subject === subject &&
           classCommonSlotNumber(record.slotNumber) === slotNumber &&
-          record.textbookName.trim(),
+          record.textbookName.trim() &&
+          (!reportDate || record.reportDate <= reportDate),
       )
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      .sort((a, b) => {
+        const byDate = b.reportDate.localeCompare(a.reportDate)
+        if (byDate !== 0) return byDate
+        return b.updatedAt.localeCompare(a.updatedAt)
+      })
     if (matches[0]) return matches[0].textbookName.trim()
   }
 

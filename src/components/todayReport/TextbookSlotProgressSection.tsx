@@ -286,7 +286,11 @@ export function TextbookSlotProgressSection({
     if (displays.length === 0) {
       return (
         <SectionCard title="오늘의 진도" hideTitle={hideTitle}>
-          <p className="text-sm text-slate-400">오늘 등록된 진도 정보가 없습니다.</p>
+          <p className="text-sm text-slate-400">
+            {readOnly && !allowCarryForward
+              ? '해당 날짜에 등록된 진도 정보가 없습니다.'
+              : '오늘 등록된 진도 정보가 없습니다.'}
+          </p>
         </SectionCard>
       )
     }

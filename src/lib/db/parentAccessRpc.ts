@@ -557,6 +557,7 @@ export async function rpcGetParentTodayReport(
       )
       return one ? [one] : []
     })(),
+    dailyTestsComplete: Array.isArray(report.daily_tests),
     classTodayReportCommon,
   }
 }
