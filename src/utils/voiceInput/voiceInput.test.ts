@@ -34,6 +34,11 @@ import {
   speechErrorMessage,
   type SpeechRecognitionResultEventLike,
 } from './speechRecognition.ts'
+import {
+  dispatchVoiceSessionFinal,
+  isVoiceBulkSaveCommand,
+  routeVoiceTranscript,
+} from './voiceSaveCommand.ts'
 
 const DATE = '2026-09-14'
 const 김도영 = { id: 'doyoung', name: '김도영' }
@@ -294,6 +299,7 @@ for (const file of [
   'src/utils/voiceInput/parseVoiceTranscript.ts',
   'src/utils/voiceInput/applyVoiceDraft.ts',
   'src/utils/voiceInput/speechRecognition.ts',
+  'src/utils/voiceInput/voiceSaveCommand.ts',
   'src/components/todayReport/SectionVoiceInput.tsx',
 ]) {
   const source = readFileSync(file, 'utf8')
@@ -743,6 +749,458 @@ assert.match(
 assert.doesNotMatch(
   readFileSync('src/utils/voiceInput/speechRecognition.ts', 'utf8'),
   /finals\.push/,
+)
+
+function emptySaveCounts() {
+  return {
+    attendance: 0,
+    homework: 0,
+    material: 0,
+    progress: 0,
+    assignment: 0,
+    dailyTest: 0,
+    attitude: 0,
+  }
+}
+
+// M. VOICE SAVE COMMAND V1.1
+assert.equal(isVoiceBulkSaveCommand('일괄 저장'), true)
+assert.equal(isVoiceBulkSaveCommand('일괄저장'), true)
+assert.equal(isVoiceBulkSaveCommand('  일괄   저장  '), true)
+assert.equal(isVoiceBulkSaveCommand('저장'), false)
+assert.equal(isVoiceBulkSaveCommand('완료'), false)
+assert.equal(isVoiceBulkSaveCommand('저장해줘'), false)
+assert.equal(isVoiceBulkSaveCommand('확인'), false)
+assert.equal(isVoiceBulkSaveCommand('오케이'), false)
+assert.equal(isVoiceBulkSaveCommand('문제지 43페이지까지'), false)
+assert.equal(routeVoiceTranscript('일괄저장').kind, 'save-command')
+assert.equal(routeVoiceTranscript('저장').kind, 'form-fill')
+
+const 강나경 = { id: 'nagyeong', name: '강나경' }
+const saveCommandStudents = [강나경, ...students]
+const saveCommandAttendance = [...presentExceptMinjae, attendance('nagyeong', '출석')]
+
+// CASE A — homework fill then a new session “일괄 저장”
+{
+  const fillSession = createSpeechTranscriptSession()
+  fillSession.ingest(
+    speechEvent(0, [{ transcript: '강나경만 부분완료. 나머지 모두 완료', isFinal: true }]),
+  )
+  const hwDrafts: Record<string, { status: '' | '완료' | '부분 완료' | '미완료' }> = {
+    [homeworkDraftKey('nagyeong', '수학', 1)]: { status: '' },
+    [homeworkDraftKey('doyoung', '수학', 1)]: { status: '' },
+    [homeworkDraftKey('seongmin', '수학', 1)]: { status: '' },
+    [homeworkDraftKey('ryu', '수학', 1)]: { status: '' },
+    [homeworkDraftKey('minjae', '수학', 1)]: { status: '' },
+    [homeworkDraftKey('nagyeong', '수학', 2)]: { status: '' },
+    [homeworkDraftKey('doyoung', '수학', 2)]: { status: '완료' },
+  }
+  const counts = emptySaveCounts()
+  const filled = dispatchVoiceSessionFinal(fillSession, {
+    onApply: (text) => {
+      const applied = applyHomeworkDrafts(
+        hwDrafts,
+        text,
+        saveCommandStudents,
+        saveCommandAttendance,
+        DATE,
+        '수학',
+        1,
+      )
+      Object.assign(hwDrafts, applied.drafts)
+    },
+    onSaveCommand: () => {
+      counts.homework += 1
+    },
+  })
+  assert.equal(filled.kind, 'form-fill')
+  assert.equal(hwDrafts[homeworkDraftKey('nagyeong', '수학', 1)]?.status, '부분 완료')
+  assert.equal(hwDrafts[homeworkDraftKey('doyoung', '수학', 1)]?.status, '완료')
+  assert.equal(hwDrafts[homeworkDraftKey('minjae', '수학', 1)]?.status, '')
+  assert.equal(hwDrafts[homeworkDraftKey('doyoung', '수학', 2)]?.status, '완료')
+  assert.equal(counts.homework, 0)
+
+  const saveSession = createSpeechTranscriptSession()
+  saveSession.ingest(speechEvent(0, [{ transcript: '일괄 저장', isFinal: true }]))
+  const saved = dispatchVoiceSessionFinal(saveSession, {
+    onApply: (text) => {
+      const applied = applyHomeworkDrafts(
+        hwDrafts,
+        text,
+        saveCommandStudents,
+        saveCommandAttendance,
+        DATE,
+        '수학',
+        1,
+      )
+      Object.assign(hwDrafts, applied.drafts)
+    },
+    onSaveCommand: () => {
+      counts.homework += 1
+    },
+  })
+  assert.equal(saved.kind, 'save-command')
+  assert.equal(counts.homework, 1)
+  assert.equal(counts.attendance, 0)
+  assert.equal(counts.material, 0)
+  assert.equal(counts.progress, 0)
+  assert.equal(counts.assignment, 0)
+  assert.equal(counts.dailyTest, 0)
+  assert.equal(counts.attitude, 0)
+  assert.equal(hwDrafts[homeworkDraftKey('nagyeong', '수학', 1)]?.status, '부분 완료')
+  assert.notEqual(hwDrafts[homeworkDraftKey('nagyeong', '수학', 1)]?.status, '일괄 저장')
+}
+
+// CASE B — duplicate final “일괄 저장” in one session → save 1
+{
+  const session = createSpeechTranscriptSession()
+  session.ingest(speechEvent(0, [{ transcript: '일괄 저장', isFinal: true }]))
+  session.ingest(
+    speechEvent(0, [
+      { transcript: '일괄 저장', isFinal: true },
+      { transcript: '일괄 저장', isFinal: true },
+    ]),
+  )
+  let saveCount = 0
+  let applyCount = 0
+  const first = dispatchVoiceSessionFinal(session, {
+    onApply: () => {
+      applyCount += 1
+    },
+    onSaveCommand: () => {
+      saveCount += 1
+    },
+  })
+  const second = dispatchVoiceSessionFinal(session, {
+    onApply: () => {
+      applyCount += 1
+    },
+    onSaveCommand: () => {
+      saveCount += 1
+    },
+  })
+  assert.equal(first.kind, 'save-command')
+  assert.equal(second.kind, 'none')
+  assert.equal(saveCount, 1)
+  assert.equal(applyCount, 0)
+}
+
+// CASE C — after save completes, a new session can save again
+{
+  let saveCount = 0
+  const first = createSpeechTranscriptSession()
+  first.ingest(speechEvent(0, [{ transcript: '일괄저장', isFinal: true }]))
+  dispatchVoiceSessionFinal(first, {
+    onApply: () => {},
+    onSaveCommand: () => {
+      saveCount += 1
+    },
+  })
+  const second = createSpeechTranscriptSession()
+  second.ingest(speechEvent(0, [{ transcript: '일괄 저장', isFinal: true }]))
+  dispatchVoiceSessionFinal(second, {
+    onApply: () => {},
+    onSaveCommand: () => {
+      saveCount += 1
+    },
+  })
+  assert.equal(saveCount, 2)
+}
+
+// CASE D / E — ordinary text is form-fill; command string never enters the field
+{
+  const session = createSpeechTranscriptSession()
+  session.ingest(speechEvent(0, [{ transcript: '문제지 43페이지까지', isFinal: true }]))
+  let saveCount = 0
+  const drafts = {
+    '수학:1': { todayAssignment: '', textbookName: '' },
+  }
+  const routed = dispatchVoiceSessionFinal(session, {
+    onApply: (text) => {
+      const applied = applyTodayAssignmentSlotDraft(drafts, text, '수학', 1)
+      drafts['수학:1'] = applied.drafts['수학:1']!
+    },
+    onSaveCommand: () => {
+      saveCount += 1
+    },
+  })
+  assert.equal(routed.kind, 'form-fill')
+  assert.equal(drafts['수학:1']?.todayAssignment, '문제지 43페이지까지')
+  assert.equal(saveCount, 0)
+
+  const commandSession = createSpeechTranscriptSession()
+  commandSession.ingest(speechEvent(0, [{ transcript: '일괄 저장', isFinal: true }]))
+  const before = drafts['수학:1']?.todayAssignment
+  dispatchVoiceSessionFinal(commandSession, {
+    onApply: (text) => {
+      const applied = applyTodayAssignmentSlotDraft(drafts, text, '수학', 1)
+      drafts['수학:1'] = applied.drafts['수학:1']!
+    },
+    onSaveCommand: () => {
+      saveCount += 1
+    },
+  })
+  assert.equal(drafts['수학:1']?.todayAssignment, before)
+  assert.equal(saveCount, 1)
+}
+
+// CASE F — similar phrases are not save commands
+for (const phrase of ['저장', '완료', '저장해줘', '끝', '확인', '오케이']) {
+  assert.equal(isVoiceBulkSaveCommand(phrase), false)
+  const session = createSpeechTranscriptSession()
+  session.ingest(speechEvent(0, [{ transcript: phrase, isFinal: true }]))
+  let saveCount = 0
+  let applied = ''
+  dispatchVoiceSessionFinal(session, {
+    onApply: (text) => {
+      applied = text
+    },
+    onSaveCommand: () => {
+      saveCount += 1
+    },
+  })
+  assert.equal(saveCount, 0)
+  assert.equal(applied, phrase)
+}
+
+// CASE G — homework save command does not fire other section saves
+{
+  const counts = emptySaveCounts()
+  const session = createSpeechTranscriptSession()
+  session.ingest(speechEvent(0, [{ transcript: '일괄 저장', isFinal: true }]))
+  dispatchVoiceSessionFinal(session, {
+    onApply: () => {},
+    onSaveCommand: () => {
+      counts.homework += 1
+    },
+  })
+  assert.deepEqual(counts, { ...emptySaveCounts(), homework: 1 })
+}
+
+// CASE H — math concept fill/save does not change type slot
+{
+  const drafts = {
+    '수학:1': { currentProgress: '개념 기존' },
+    '수학:2': { currentProgress: '유형 기존' },
+  }
+  const fill = createSpeechTranscriptSession()
+  fill.ingest(speechEvent(0, [{ transcript: '2차 함수', isFinal: true }]))
+  dispatchVoiceSessionFinal(fill, {
+    onApply: (text) => {
+      const applied = applyProgressSlotDraft(drafts, text, '수학', 1)
+      Object.assign(drafts, applied.drafts)
+    },
+    onSaveCommand: () => {},
+  })
+  const save = createSpeechTranscriptSession()
+  save.ingest(speechEvent(0, [{ transcript: '일괄 저장', isFinal: true }]))
+  let progressSaves = 0
+  dispatchVoiceSessionFinal(save, {
+    onApply: (text) => {
+      const applied = applyProgressSlotDraft(drafts, text, '수학', 1)
+      Object.assign(drafts, applied.drafts)
+    },
+    onSaveCommand: () => {
+      progressSaves += 1
+    },
+  })
+  assert.equal(progressSaves, 1)
+  assert.equal(drafts['수학:1']?.currentProgress, '2차 함수')
+  assert.equal(drafts['수학:2']?.currentProgress, '유형 기존')
+}
+
+{
+  const drafts = {
+    '수학:1': { currentProgress: '개념 유지' },
+    '수학:2': { currentProgress: '유형 기존' },
+  }
+  const fill = createSpeechTranscriptSession()
+  fill.ingest(speechEvent(0, [{ transcript: '120번에서 135번', isFinal: true }]))
+  dispatchVoiceSessionFinal(fill, {
+    onApply: (text) => {
+      const applied = applyProgressSlotDraft(drafts, text, '수학', 2)
+      Object.assign(drafts, applied.drafts)
+    },
+    onSaveCommand: () => {},
+  })
+  assert.equal(drafts['수학:1']?.currentProgress, '개념 유지')
+  assert.equal(drafts['수학:2']?.currentProgress, '120번에서 135번')
+}
+
+// CASE I — English grammar → reading → vocab previous slots stay
+{
+  const drafts = {
+    '영어:1': { todayAssignment: '문법기존' },
+    '영어:2': { todayAssignment: '독해기존' },
+    '영어:3': { todayAssignment: '단어기존' },
+  }
+  const grammar = createSpeechTranscriptSession()
+  grammar.ingest(speechEvent(0, [{ transcript: '관계대명사 문제', isFinal: true }]))
+  dispatchVoiceSessionFinal(grammar, {
+    onApply: (text) => {
+      Object.assign(drafts, applyTodayAssignmentSlotDraft(drafts, text, '영어', 1).drafts)
+    },
+    onSaveCommand: () => {},
+  })
+  const reading = createSpeechTranscriptSession()
+  reading.ingest(speechEvent(0, [{ transcript: '8강 7번부터 10번', isFinal: true }]))
+  dispatchVoiceSessionFinal(reading, {
+    onApply: (text) => {
+      Object.assign(drafts, applyTodayAssignmentSlotDraft(drafts, text, '영어', 2).drafts)
+    },
+    onSaveCommand: () => {},
+  })
+  const vocab = createSpeechTranscriptSession()
+  vocab.ingest(speechEvent(0, [{ transcript: '13과 암기', isFinal: true }]))
+  dispatchVoiceSessionFinal(vocab, {
+    onApply: (text) => {
+      Object.assign(drafts, applyTodayAssignmentSlotDraft(drafts, text, '영어', 3).drafts)
+    },
+    onSaveCommand: () => {},
+  })
+  const save = createSpeechTranscriptSession()
+  save.ingest(speechEvent(0, [{ transcript: '일괄저장', isFinal: true }]))
+  let assignmentSaves = 0
+  dispatchVoiceSessionFinal(save, {
+    onApply: (text) => {
+      Object.assign(drafts, applyTodayAssignmentSlotDraft(drafts, text, '영어', 3).drafts)
+    },
+    onSaveCommand: () => {
+      assignmentSaves += 1
+    },
+  })
+  assert.equal(assignmentSaves, 1)
+  assert.equal(drafts['영어:1']?.todayAssignment, '관계대명사 문제')
+  assert.equal(drafts['영어:2']?.todayAssignment, '8강 7번부터 10번')
+  assert.equal(drafts['영어:3']?.todayAssignment, '13과 암기')
+}
+
+// CASE J — absent student still excluded from homework fill; save command is not a parser
+{
+  const hwDrafts: Record<string, { status: '' | '완료' | '부분 완료' | '미완료' }> = {
+    [homeworkDraftKey('doyoung', '수학', 1)]: { status: '' },
+    [homeworkDraftKey('minjae', '수학', 1)]: { status: '' },
+  }
+  const fill = createSpeechTranscriptSession()
+  fill.ingest(speechEvent(0, [{ transcript: '전원 완료', isFinal: true }]))
+  dispatchVoiceSessionFinal(fill, {
+    onApply: (text) => {
+      Object.assign(
+        hwDrafts,
+        applyHomeworkDrafts(hwDrafts, text, students, presentExceptMinjae, DATE, '수학', 1).drafts,
+      )
+    },
+    onSaveCommand: () => {},
+  })
+  assert.equal(hwDrafts[homeworkDraftKey('doyoung', '수학', 1)]?.status, '완료')
+  assert.equal(hwDrafts[homeworkDraftKey('minjae', '수학', 1)]?.status, '')
+  const save = createSpeechTranscriptSession()
+  save.ingest(speechEvent(0, [{ transcript: '일괄 저장', isFinal: true }]))
+  dispatchVoiceSessionFinal(save, {
+    onApply: (text) => {
+      Object.assign(
+        hwDrafts,
+        applyHomeworkDrafts(hwDrafts, text, students, presentExceptMinjae, DATE, '수학', 1).drafts,
+      )
+    },
+    onSaveCommand: () => {},
+  })
+  assert.equal(hwDrafts[homeworkDraftKey('minjae', '수학', 1)]?.status, '')
+}
+
+// CASE K — saving=true does not re-enter save
+{
+  const session = createSpeechTranscriptSession()
+  session.ingest(speechEvent(0, [{ transcript: '일괄 저장', isFinal: true }]))
+  let saveCount = 0
+  dispatchVoiceSessionFinal(session, {
+    saving: true,
+    onApply: () => {},
+    onSaveCommand: () => {
+      saveCount += 1
+    },
+  })
+  assert.equal(saveCount, 0)
+}
+
+// Daily-test round fill stays on the mic round; save command does not invent a round
+{
+  const drafts = {
+    doyoung: {
+      rounds: [
+        { round: 1 as const, score: '', passed: false },
+        { round: 2 as const, score: '', passed: false },
+        { round: 3 as const, score: '', passed: false },
+        { round: 4 as const, score: '', passed: false },
+      ],
+      learningDiagnosis: { ...emptyDiagnosis },
+    },
+  }
+  const fill = createSpeechTranscriptSession()
+  fill.ingest(speechEvent(0, [{ transcript: '김도영 92점', isFinal: true }]))
+  dispatchVoiceSessionFinal(fill, {
+    onApply: (text) => {
+      Object.assign(
+        drafts,
+        applyDailyTestDrafts(drafts, text, students, presentExceptMinjae, DATE, 2).drafts,
+      )
+    },
+    onSaveCommand: () => {},
+  })
+  assert.equal(drafts.doyoung.rounds.find((row) => row.round === 2)?.score, '92')
+  assert.equal(drafts.doyoung.rounds.find((row) => row.round === 1)?.score, '')
+  const save = createSpeechTranscriptSession()
+  save.ingest(speechEvent(0, [{ transcript: '일괄 저장', isFinal: true }]))
+  dispatchVoiceSessionFinal(save, {
+    onApply: (text) => {
+      Object.assign(
+        drafts,
+        applyDailyTestDrafts(drafts, text, students, presentExceptMinjae, DATE, 3).drafts,
+      )
+    },
+    onSaveCommand: () => {},
+  })
+  assert.equal(drafts.doyoung.rounds.find((row) => row.round === 3)?.score, '')
+}
+
+// CASE L — STT unavailable still leaves manual save/input path
+assert.equal(detectBrowserSpeechSupport(), 'unsupported')
+assert.match(
+  readFileSync('src/components/todayReport/ClassHomeworkStatusBulkPanel.tsx', 'utf8'),
+  /숙제 수행 결과 전체 저장/,
+)
+assert.match(
+  readFileSync('src/components/todayReport/ClassAttendanceBulkPanel.tsx', 'utf8'),
+  /전체 출결 저장/,
+)
+assert.match(
+  readFileSync('src/components/todayReport/SectionVoiceInput.tsx', 'utf8'),
+  /텍스트/,
+)
+
+for (const [file, handler] of [
+  ['src/components/todayReport/ClassAttendanceBulkPanel.tsx', 'handleSaveAll'],
+  ['src/components/todayReport/ClassHomeworkStatusBulkPanel.tsx', 'handleSaveAll'],
+  ['src/components/todayReport/ClassMaterialPrepBulkPanel.tsx', 'handleSaveAll'],
+  ['src/components/todayReport/ClassAttitudeBulkPanel.tsx', 'handleSaveAll'],
+  ['src/components/todayReport/ClassDailyTestBulkPanel.tsx', 'handleSaveAll'],
+  ['src/components/todayReport/ClassCommonProgressPanel.tsx', 'handleSave'],
+  ['src/components/todayReport/ClassCommonTodayAssignmentPanel.tsx', 'handleSave'],
+] as const) {
+  const source = readFileSync(file, 'utf8')
+  assert.match(source, /onSaveCommand=\{\(\) => void handleSave/)
+  assert.match(source, new RegExp(`if \\(saving`))
+  assert.ok(source.includes(`onSaveCommand={() => void ${handler}()}`))
+  assert.ok(source.includes(`onClick={() => void ${handler}()}`))
+}
+
+assert.match(
+  readFileSync('src/components/todayReport/SectionVoiceInput.tsx', 'utf8'),
+  /routeVoiceTranscript/,
+)
+assert.doesNotMatch(
+  readFileSync('src/utils/voiceInput/voiceSaveCommand.ts', 'utf8'),
+  /from '@supabase/,
 )
 
 console.log('voiceInput.test.ts passed')

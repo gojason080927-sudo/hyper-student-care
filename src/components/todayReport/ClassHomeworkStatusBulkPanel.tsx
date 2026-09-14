@@ -354,6 +354,7 @@ export function ClassHomeworkStatusBulkPanel({
                   setDrafts(applied.drafts)
                   return applied.summary
                 }}
+                onSaveCommand={() => void handleSaveAll()}
               />
             )
           })}

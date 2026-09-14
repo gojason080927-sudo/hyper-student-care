@@ -6,6 +6,7 @@ import {
   type LiveSpeechSession,
 } from '../../utils/voiceInput/speechRecognition'
 import { formatVoiceSummary } from '../../utils/voiceInput/parseVoiceTranscript'
+import { routeVoiceTranscript } from '../../utils/voiceInput/voiceSaveCommand'
 import type { VoiceApplySummary } from '../../utils/voiceInput/types'
 
 type SectionVoiceInputProps = {
@@ -14,11 +15,13 @@ type SectionVoiceInputProps = {
   compact?: boolean
   disabled?: boolean
   onApply: (transcript: string) => VoiceApplySummary
+  /** Existing section bulk-save handler. Voice never writes to DB itself. */
+  onSaveCommand?: () => void
 }
 
 /**
- * Section-aware mic. Fills the current form/draft only — never writes to DB.
- * STT uses the browser Web Speech API when present; otherwise text fallback.
+ * Section-aware mic. Form-fill stays on the current draft.
+ * “일괄 저장” calls this section’s existing save handler only — no direct DB write.
  */
 export function SectionVoiceInput({
   label,
@@ -26,6 +29,7 @@ export function SectionVoiceInput({
   compact = false,
   disabled = false,
   onApply,
+  onSaveCommand,
 }: SectionVoiceInputProps) {
   const reactId = useId()
   const fallbackId = `${reactId}-fallback`
@@ -38,6 +42,10 @@ export function SectionVoiceInput({
   const [fallbackText, setFallbackText] = useState('')
   const sessionRef = useRef<LiveSpeechSession | null>(null)
   const appliedThisSessionRef = useRef(false)
+  const onSaveCommandRef = useRef(onSaveCommand)
+  const disabledRef = useRef(disabled)
+  onSaveCommandRef.current = onSaveCommand
+  disabledRef.current = disabled
 
   useEffect(() => {
     return () => {
@@ -47,13 +55,22 @@ export function SectionVoiceInput({
   }, [])
 
   const applyTranscript = (raw: string) => {
-    const text = raw.replace(/\s+/g, ' ').trim()
-    if (!text) {
+    const routed = routeVoiceTranscript(raw)
+    if (routed.kind === 'none') {
       setError('인식된 내용이 없습니다. 텍스트로 입력할 수 있습니다.')
       setFallbackOpen(true)
       return
     }
-    const next = onApply(text)
+    if (routed.kind === 'save-command') {
+      setSummary(null)
+      setError('')
+      setFallbackText('')
+      setFallbackOpen(false)
+      if (disabledRef.current) return
+      onSaveCommandRef.current?.()
+      return
+    }
+    const next = onApply(routed.transcript)
     setSummary(next)
     setError('')
     setFallbackText('')
