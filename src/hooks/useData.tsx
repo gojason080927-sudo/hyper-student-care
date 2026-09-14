@@ -31,6 +31,7 @@ import type {
   WeeklyLearningSummaryRecord,
 } from '../types/records'
 import type { Student, StudentFormData } from '../types/student'
+import { useAuth } from '../contexts/AuthContext'
 import { loadAppData, loadParentCareData as fetchParentCareData, loadTodayReportFromSupabase, shouldDeferInitialLoadForParentRoute, type DataSource } from '../lib/dataLoader'
 import { rpcSubmitParentQuestion } from '../lib/db/parentAccessRpc'
 import { getParentAccessKeyFromPath } from '../lib/supabase'
@@ -304,6 +305,8 @@ export type DataContextValue = {
 const DataContext = createContext<DataContextValue | null>(null)
 
 export function DataProvider({ children }: { children: ReactNode }) {
+  const { session } = useAuth()
+  const sessionUserId = session?.user?.id ?? null
   const [students, setStudents] = useState<Student[]>([])
   const [attendance, setAttendanceRecords] = useState<AttendanceRecord[]>([])
   const [homework, setHomework] = useState<HomeworkRecord[]>([])
@@ -514,7 +517,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     reloadRef.current = () => load({ silent: true })
     void load()
-  }, [load])
+  }, [load, sessionUserId])
 
   const reloadData = useCallback(async () => {
     await load({ silent: true })

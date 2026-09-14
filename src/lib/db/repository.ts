@@ -122,6 +122,22 @@ function isMissingTableError(error: { message?: string; code?: string }): boolea
   )
 }
 
+function isPermissionDeniedError(error: { message?: string; code?: string }): boolean {
+  const message = error.message ?? ''
+  return (
+    error.code === '42501' ||
+    error.code === 'PGRST301' ||
+    error.code === '401' ||
+    /permission denied/i.test(message) ||
+    /row-level security/i.test(message) ||
+    /not authorized/i.test(message)
+  )
+}
+
+function isSafeSelectSkipError(error: { message?: string; code?: string }): boolean {
+  return isMissingTableError(error) || isPermissionDeniedError(error)
+}
+
 async function selectAll<T>(table: string): Promise<T[]> {
   const { data, error } = await getSupabase().from(table).select('*')
   throwIfError(error, table, `${table} 조회 실패`)
@@ -131,10 +147,12 @@ async function selectAll<T>(table: string): Promise<T[]> {
 async function selectAllSafe<T>(table: string): Promise<T[]> {
   const { data, error } = await getSupabase().from(table).select('*')
   if (error) {
-    if (isMissingTableError(error)) {
-      console.warn(
-        `[Repository] ${table} table missing — returning empty list. Run supabase/textbook-slots-migration.sql in Supabase SQL Editor.`,
-      )
+    if (isSafeSelectSkipError(error)) {
+      if (isMissingTableError(error)) {
+        console.warn(
+          `[Repository] ${table} table missing — returning empty list. Run supabase/textbook-slots-migration.sql in Supabase SQL Editor.`,
+        )
+      }
       return []
     }
     throwIfError(error, table, `${table} 조회 실패`)
@@ -148,12 +166,7 @@ async function selectByStudentIdSafe<T>(table: string, studentId: string): Promi
     .select('*')
     .eq('student_id', studentId)
   if (error) {
-    if (isMissingTableError(error)) {
-      console.warn(
-        `[Repository] ${table} table missing — returning empty list. Run supabase/textbook-slots-migration.sql in Supabase SQL Editor.`,
-      )
-      return []
-    }
+    if (isSafeSelectSkipError(error)) return []
     throwIfError(error, table, `${table} student_id 조회 실패`)
   }
   return (data ?? []) as T[]
@@ -497,9 +510,7 @@ async function selectByStudentAndDateSafe<T>(
     .eq('student_id', studentId)
     .eq('date', date)
   if (error) {
-    if (error.code === '42P01' || /does not exist/i.test(error.message ?? '')) {
-      return []
-    }
+    if (isSafeSelectSkipError(error)) return []
     throwIfError(error, table, `${table} student_id+date 조회 실패`)
   }
   return (data ?? []) as T[]
