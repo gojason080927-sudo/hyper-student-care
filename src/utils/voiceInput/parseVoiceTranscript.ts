@@ -7,6 +7,22 @@ import type {
   MaterialPrepStatus,
 } from '../../types/records'
 import { markStudentTokens } from './nameMatch'
+import {
+  clauseHasContinuation,
+  extractScoreValue,
+  isExcellentAttitudePhrase,
+  parseAttendanceStatusPhrase,
+  parseHomeworkStatusPhrase,
+  parseMaterialStatusPhrase,
+  parseAttitudeIssuePhrases,
+  parseWrongCausePhrases,
+  SID_EXCLUDE_RE,
+  SID_ONLY_RE,
+  SID_TOKEN_RE,
+  splitVoiceClauses,
+  statedOnlyCount,
+  stripVoiceFillers,
+} from './voiceLexicon'
 import type {
   AttendanceVoiceAssignment,
   AttitudeVoiceAssignment,
@@ -18,7 +34,7 @@ import type {
   VoiceStudentRef,
 } from './types'
 
-const COLLECTIVE_RE = /(전원|모두|전부|나머지)/
+const COLLECTIVE_RE = /(전원|모두|전부|나머지|다른\s*애들|다른\s*학생들?|전체)/
 
 function studentById(
   students: VoiceStudentRef[],
@@ -28,10 +44,7 @@ function studentById(
 }
 
 function splitClauses(tokenized: string): string[] {
-  return tokenized
-    .split(/[\n.。!！?？;；]+/)
-    .map((part) => part.trim())
-    .filter(Boolean)
+  return splitVoiceClauses(stripVoiceFillers(tokenized))
 }
 
 function extractMemo(clause: string): { clause: string; memo: string } {
@@ -46,12 +59,7 @@ function extractMemo(clause: string): { clause: string; memo: string } {
 }
 
 function parseAttendanceStatus(clause: string): AttendanceStatus | null {
-  if (clause.includes('결석')) return '결석'
-  if (clause.includes('지각')) return '지각'
-  if (clause.includes('조퇴')) return '조퇴'
-  if (clause.includes('출석')) return '출석'
-  if (clause.includes('병결')) return '결석'
-  return null
+  return parseAttendanceStatusPhrase(clause)
 }
 
 function parseExcuseKind(clause: string): {
@@ -69,58 +77,31 @@ function parseExcuseKind(clause: string): {
 }
 
 function parseHomeworkStatus(clause: string): HomeworkStatus | null {
-  const compact = clause.replace(/\s+/g, '')
-  if (compact.includes('미완료') || compact.includes('안함') || compact.includes('미제출')) {
-    return null
-  }
-  if (compact.includes('부분완료') || compact.includes('일부완료')) return '부분 완료'
-  if (compact.includes('완료') || compact.includes('다함')) return '완료'
+  const parsed = parseHomeworkStatusPhrase(clause)
+  if (parsed === '부분 완료' || parsed === '완료') return parsed
   return null
 }
 
 function parseMaterialStatus(clause: string): {
   status: MaterialPrepStatus | null
   mappedFromUncertain: boolean
+  ambiguous: boolean
 } {
-  const compact = clause.replace(/\s+/g, '')
-  if (
-    compact.includes('미지참') ||
-    compact.includes('안가져옴') ||
-    compact.includes('안가지고') ||
-    compact.includes('안가져왔')
-  ) {
-    return { status: '부분 지참', mappedFromUncertain: true }
-  }
-  if (compact.includes('부분지참') || compact.includes('일부지참')) {
-    return { status: '부분 지참', mappedFromUncertain: false }
-  }
-  if (compact.includes('지참') || compact.includes('가져옴')) {
-    return { status: '지참', mappedFromUncertain: false }
-  }
-  return { status: null, mappedFromUncertain: false }
+  return parseMaterialStatusPhrase(clause)
 }
 
 function parseAttitudeIssues(clause: string): ClassAttitudeIssue[] {
-  const issues: ClassAttitudeIssue[] = []
-  const compact = clause.replace(/\s+/g, '')
-  for (const issue of CLASS_ATTITUDE_ISSUES) {
-    const needle = issue.replace(/\s+/g, '')
-    if (compact.includes(needle)) issues.push(issue)
-  }
-  if (compact.includes('수업방해') && !issues.includes('수업방해')) {
-    issues.push('수업방해')
-  }
-  return issues
+  const issues = parseAttitudeIssuePhrases(clause)
+  return CLASS_ATTITUDE_ISSUES.filter((issue) => issues.includes(issue))
 }
 
 function isExcellentAttitude(clause: string): boolean {
-  const compact = clause.replace(/\s+/g, '')
-  return compact.includes('우수') || compact.includes('좋음')
+  return isExcellentAttitudePhrase(clause)
 }
 
 function idsFromClause(clause: string): string[] {
   const ids: string[] = []
-  const re = /«SID:([^»]+)»/g
+  const re = new RegExp(SID_TOKEN_RE.source, 'g')
   let match: RegExpExecArray | null = re.exec(clause)
   while (match) {
     if (match[1]) ids.push(match[1])
@@ -131,7 +112,7 @@ function idsFromClause(clause: string): string[] {
 
 function excludedIdsFromClause(clause: string): string[] {
   const ids: string[] = []
-  const re = /«SID:([^»]+)»\s*제외/g
+  const re = new RegExp(SID_EXCLUDE_RE.source, 'g')
   let match: RegExpExecArray | null = re.exec(clause)
   while (match) {
     if (match[1]) ids.push(match[1])
@@ -141,24 +122,19 @@ function excludedIdsFromClause(clause: string): string[] {
 }
 
 function onlyIdsFromClause(clause: string): string[] {
-  const ids: string[] = []
-  const re = /«SID:([^»]+)»\s*만/g
-  let match: RegExpExecArray | null = re.exec(clause)
-  while (match) {
-    if (match[1]) ids.push(match[1])
-    match = re.exec(clause)
-  }
-  return ids
+  if (!SID_ONLY_RE.test(clause)) return []
+  return idsFromClause(clause)
 }
 
 function unknownNameReviews(tokenized: string): VoiceReviewItem[] {
   const stripped = tokenized.replace(/«SID:[^»]+»/g, ' ')
-  const leftover = stripped.match(/[가-힣]{2,4}(?=\s*(?:만|제외|점|결석|출석|지각|조퇴|완료|지참|우수))/g)
+  const leftover = stripped.match(/[가-힣]{2,4}(?=\s*(?:만|제외|빼고|점|결석|출석|지각|조퇴|완료|지참|우수|졸음|잡담))/g)
   if (!leftover) return []
   const skip = new Set([
     '전원',
     '모두',
     '전부',
+    '전체',
     '나머지',
     '부분',
     '일부',
@@ -178,6 +154,9 @@ function unknownNameReviews(tokenized: string): VoiceReviewItem[] {
     '피드백',
     '일일',
     '테스트',
+    '학생',
+    '애들',
+    '다른',
   ])
   const items: VoiceReviewItem[] = []
   const seen = new Set<string>()
@@ -208,12 +187,19 @@ function collectNamedAndCollective<T>(
   const excluded = new Set<string>()
   const needsReview: VoiceReviewItem[] = [...unknownNameReviews(tokenized)]
   let collective: T | null = null
+  let lastNamedValue: T | null = null
 
   for (const rawClause of splitClauses(tokenized)) {
     const excludedHere = excludedIdsFromClause(rawClause)
     for (const id of excludedHere) excluded.add(id)
 
-    const clauseWithoutExclude = rawClause.replace(/«SID:[^»]+»\s*제외/g, ' ').replace(/\s+/g, ' ').trim()
+    const clauseWithoutExclude = rawClause
+      .replace(
+        /«SID:[^»]+»(?:은|는|이|가|이가|이는|을|를|랑|이랑|하고|도)?\s*(?:제외(?:하고)?|빼고|말고|외에는)/g,
+        ' ',
+      )
+      .replace(/\s+/g, ' ')
+      .trim()
     const value = parseValue(clauseWithoutExclude)
     needsReview.push(...extraReview(clauseWithoutExclude, idsFromClause(rawClause), value))
 
@@ -221,17 +207,48 @@ function collectNamedAndCollective<T>(
       collective = value
     }
 
-    const onlyIds = onlyIdsFromClause(clauseWithoutExclude)
+    const stated = statedOnlyCount(clauseWithoutExclude)
+    let onlyIds = onlyIdsFromClause(clauseWithoutExclude)
+    if (onlyIds.length === 0 && stated != null) {
+      onlyIds = idsFromClause(clauseWithoutExclude)
+    }
     if (onlyIds.length > 0 && value !== null) {
+      if (stated != null && stated !== onlyIds.length) {
+        needsReview.push({
+          label: '인원',
+          reason: '말한 인원과 이름 수가 달라 확인 필요',
+        })
+      }
       for (const id of onlyIds) named.push({ studentId: id, value })
+      lastNamedValue = value
+      continue
+    }
+
+    if (
+      value === null &&
+      lastNamedValue !== null &&
+      clauseHasContinuation(clauseWithoutExclude)
+    ) {
+      for (const id of idsFromClause(clauseWithoutExclude)) {
+        named.push({ studentId: id, value: lastNamedValue })
+      }
       continue
     }
 
     const remainingIds = idsFromClause(clauseWithoutExclude).filter(
       (id) => !onlyIds.includes(id) && !excludedHere.includes(id),
     )
+    if (
+      excludedHere.length > 0 &&
+      value !== null &&
+      remainingIds.length === 0 &&
+      onlyIds.length === 0
+    ) {
+      collective = value
+    }
     if (remainingIds.length > 0 && value !== null && !COLLECTIVE_RE.test(clauseWithoutExclude)) {
       for (const id of remainingIds) named.push({ studentId: id, value })
+      lastNamedValue = value
     }
   }
 
@@ -386,9 +403,15 @@ export function parseHomeworkVoice(
 ): VoiceParseResult<HomeworkVoiceAssignment> {
   const { tokenized, duplicateReviews } = markStudentTokens(transcript, students)
   const parsed = collectNamedAndCollective(tokenized, parseHomeworkStatus, (clause, ids, value) => {
-    const compact = clause.replace(/\s+/g, '')
+    const parsedStatus = parseHomeworkStatusPhrase(clause)
+    if (parsedStatus === 'ambiguous') {
+      return (ids.length > 0 ? ids : ['*']).map((id) => ({
+        label: studentById(students, id)?.name ?? '숙제',
+        reason: '상태가 분명하지 않아 확인 필요',
+      }))
+    }
     if (value !== null) return []
-    if (compact.includes('미완료') || compact.includes('안함') || compact.includes('미제출')) {
+    if (parsedStatus === 'blocked') {
       return (ids.length > 0 ? ids : ['*']).map((id) => ({
         label: studentById(students, id)?.name ?? '숙제',
         reason: '신규 입력은 완료/부분 완료만 허용',
@@ -422,6 +445,12 @@ export function parseMaterialVoice(
     (clause) => parseMaterialStatus(clause).status,
     (clause, ids) => {
       const parsedStatus = parseMaterialStatus(clause)
+      if (parsedStatus.ambiguous) {
+        return (ids.length > 0 ? ids : ['*']).map((id) => ({
+          label: studentById(students, id)?.name ?? '교재',
+          reason: '상태가 분명하지 않아 확인 필요',
+        }))
+      }
       if (parsedStatus.mappedFromUncertain) {
         const targets = ids.length > 0 ? ids : students.map((s) => s.id)
         for (const id of targets) uncertain.add(id)
@@ -522,13 +551,7 @@ function parseWrongCauseDeltas(clause: string): {
   calculationErrorDelta: number
   applicationLackDelta: number
 } {
-  const compact = clause.replace(/\s+/g, '')
-  return {
-    conceptLackDelta: compact.includes('개념부족') ? 1 : 0,
-    calculationErrorDelta: compact.includes('계산실수') ? 1 : 0,
-    applicationLackDelta:
-      compact.includes('응용능력부족') || compact.includes('응용부족') ? 1 : 0,
-  }
+  return parseWrongCausePhrases(clause)
 }
 
 export function parseDailyTestVoice(
@@ -562,22 +585,19 @@ export function parseDailyTestVoice(
       continue
     }
     const { clause, memo } = extractMemo(piece)
-    const scoreMatch = clause.match(/(\d{1,3})\s*점/)
+    const scoreParsed = extractScoreValue(clause)
     const causes = parseWrongCauseDeltas(clause)
-    if (!scoreMatch && !causes.conceptLackDelta && !causes.calculationErrorDelta && !causes.applicationLackDelta && !memo) {
+    if (!scoreParsed && !causes.conceptLackDelta && !causes.calculationErrorDelta && !causes.applicationLackDelta && !memo) {
       continue
     }
-    const rawScore = scoreMatch?.[1]
-    if (rawScore) {
-      const numeric = Number(rawScore)
-      if (!Number.isInteger(numeric) || numeric < 0 || numeric > 100) {
-        needsReview.push({
-          label: student?.name ?? studentId,
-          reason: '점수 범위 확인 필요',
-        })
-        continue
-      }
+    if (scoreParsed?.invalid) {
+      needsReview.push({
+        label: student?.name ?? studentId,
+        reason: '점수 범위 확인 필요',
+      })
+      continue
     }
+    const rawScore = scoreParsed && !scoreParsed.invalid ? scoreParsed.score : ''
     assignments.push({
       studentId,
       round,

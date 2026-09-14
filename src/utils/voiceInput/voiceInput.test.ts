@@ -300,6 +300,7 @@ for (const file of [
   'src/utils/voiceInput/applyVoiceDraft.ts',
   'src/utils/voiceInput/speechRecognition.ts',
   'src/utils/voiceInput/voiceSaveCommand.ts',
+  'src/utils/voiceInput/voiceLexicon.ts',
   'src/components/todayReport/SectionVoiceInput.tsx',
 ]) {
   const source = readFileSync(file, 'utf8')
