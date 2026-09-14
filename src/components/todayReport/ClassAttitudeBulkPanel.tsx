@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { StudentKakaoShareAction } from '../students/StudentKakaoShareAction'
 import { ClassAttitudePicker } from '../studentCare/ClassAttitudePicker'
 import { AbsentFollowOnHint, StudentFollowOnRowHeader } from './AbsentFollowOnBadge'
@@ -12,6 +12,7 @@ import {
   selectAttitudeBulkSaveTargets,
   type AttitudeBulkDraft,
 } from '../../utils/todayReportAbsence'
+import { markChangedDraftKeys, overlayLoadedDrafts } from '../../utils/todayReportDraftMerge'
 import { applyAttitudeDrafts } from '../../utils/voiceInput/applyVoiceDraft'
 import { SectionVoiceInput } from './SectionVoiceInput'
 
@@ -38,6 +39,7 @@ export function ClassAttitudeBulkPanel({
   const { attendance, studentDailyCare, saveStudentDailyCareRecordAsync, showToast } = useData()
   const [saving, setSaving] = useState(false)
   const [drafts, setDrafts] = useState<Record<string, AttitudeBulkDraft>>({})
+  const dirtyAttitudeKeysRef = useRef(new Set<string>())
 
   const dayCareByStudent = useMemo(() => {
     const map = new Map<string, StudentDailyCareRecord>()
@@ -51,14 +53,21 @@ export function ClassAttitudeBulkPanel({
   const studentIdsKey = students.map((student) => student.id).join('|')
 
   useEffect(() => {
-    const next: Record<string, AttitudeBulkDraft> = {}
-    for (const student of students) {
-      next[student.id] = draftFromRecord(dayCareByStudent.get(student.id))
-    }
-    setDrafts(next)
+    dirtyAttitudeKeysRef.current.clear()
+  }, [date, studentIdsKey])
+
+  useEffect(() => {
+    setDrafts((prev) => {
+      const loaded: Record<string, AttitudeBulkDraft> = {}
+      for (const student of students) {
+        loaded[student.id] = draftFromRecord(dayCareByStudent.get(student.id))
+      }
+      return overlayLoadedDrafts(prev, loaded, dirtyAttitudeKeysRef.current)
+    })
   }, [date, dayCareByStudent, studentIdsKey, students])
 
   const setDraft = (studentId: string, patch: Partial<AttitudeBulkDraft>) => {
+    dirtyAttitudeKeysRef.current.add(studentId)
     setDrafts((prev) => ({
       ...prev,
       [studentId]: {
@@ -89,7 +98,6 @@ export function ClassAttitudeBulkPanel({
               id: existing?.id,
               studentId: student.id,
               date,
-              materialPrep: existing?.materialPrep ?? null,
               attitudeIssues,
               attitudeNote,
             },
@@ -118,6 +126,9 @@ export function ClassAttitudeBulkPanel({
         )
         return
       }
+      for (const { student } of targets) {
+        dirtyAttitudeKeysRef.current.delete(student.id)
+      }
       showToast('수업태도가 저장되었습니다.')
     } finally {
       setSaving(false)
@@ -141,6 +152,7 @@ export function ClassAttitudeBulkPanel({
           disabled={saving}
           onApply={(transcript) => {
             const applied = applyAttitudeDrafts(drafts, transcript, students, attendance, date)
+            markChangedDraftKeys(drafts, applied.drafts, dirtyAttitudeKeysRef.current)
             setDrafts(applied.drafts)
             return applied.summary
           }}

@@ -1161,8 +1161,6 @@ function MaterialPrepSection({
       studentId,
       date,
       materialPrep: value,
-      attitudeIssues: record?.attitudeIssues ?? [],
-      attitudeNote: record?.attitudeNote ?? '',
     })
   }
 
@@ -1235,7 +1233,6 @@ function ClassAttitudeSection({
       id: record?.id,
       studentId,
       date,
-      materialPrep: record?.materialPrep ?? null,
       attitudeIssues: issues,
       attitudeNote: issues.length > 0 ? note : '',
     })

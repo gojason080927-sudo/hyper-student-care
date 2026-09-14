@@ -1,5 +1,5 @@
 import { Check } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { DailyLearningDiagnosisFields } from '../diagnosis/DailyLearningDiagnosisFields'
 import { DailyTestPassRuleBadge } from '../dailytest/DailyTestSessionFormSection'
 import { useData } from '../../hooks/useData'
@@ -25,6 +25,7 @@ import {
   type MobileDailyTestRound,
 } from '../../utils/teacherMobileDailyTest'
 import { isFollowOnInputRequired, isStudentAbsentOnDate } from '../../utils/todayReportAbsence'
+import { markChangedDraftKeys, overlayLoadedDrafts } from '../../utils/todayReportDraftMerge'
 import { applyDailyTestDrafts } from '../../utils/voiceInput/applyVoiceDraft'
 import { AbsentFollowOnHint, StudentFollowOnRowHeader } from './AbsentFollowOnBadge'
 import { SectionVoiceInput } from './SectionVoiceInput'
@@ -65,6 +66,8 @@ export function ClassDailyTestBulkPanel({
   const [testName, setTestName] = useState(() => defaultDailyTestNameForDate(date))
   const [subject, setSubject] = useState('수학')
   const [drafts, setDrafts] = useState<Record<string, StudentDraft>>({})
+  const dirtyDailyTestKeysRef = useRef(new Set<string>())
+  const dirtyTestNameRef = useRef(false)
 
   const subjectOptions = useMemo(
     () => getVisibleDailyTestSubjects(className),
@@ -84,7 +87,12 @@ export function ClassDailyTestBulkPanel({
   }, [subject, subjectOptions])
 
   useEffect(() => {
-    const next: Record<string, StudentDraft> = {}
+    dirtyDailyTestKeysRef.current.clear()
+    dirtyTestNameRef.current = false
+  }, [date, studentIdsKey, subject])
+
+  useEffect(() => {
+    const loaded: Record<string, StudentDraft> = {}
     let sharedTestName = ''
 
     for (const student of students) {
@@ -98,19 +106,31 @@ export function ClassDailyTestBulkPanel({
         if (!sharedTestName && record.testName.trim()) {
           sharedTestName = record.testName.trim()
         }
-        next[student.id] = {
+        loaded[student.id] = {
           recordId: record.id,
           rounds: sessionsToBulkDailyTestRounds(record.sessionResults),
           wrongAnswerBank: record.memo ?? '',
           learningDiagnosis: normalizeDailyLearningDiagnosis(record.learningDiagnosis),
         }
       } else {
-        next[student.id] = emptyStudentDraft()
+        loaded[student.id] = emptyStudentDraft()
       }
     }
 
-    setDrafts(next)
-    setTestName(sharedTestName || defaultDailyTestNameForDate(date))
+    setDrafts((prev) =>
+      overlayLoadedDrafts(
+        prev,
+        loaded,
+        dirtyDailyTestKeysRef.current,
+        (local, server) => ({
+          ...local,
+          recordId: server?.recordId ?? local.recordId,
+        }),
+      ),
+    )
+    if (!dirtyTestNameRef.current) {
+      setTestName(sharedTestName || defaultDailyTestNameForDate(date))
+    }
     if (subjectOptions[0] && !subjectOptions.includes(subject as (typeof subjectOptions)[number])) {
       setSubject(subjectOptions[0])
     }
@@ -120,6 +140,7 @@ export function ClassDailyTestBulkPanel({
     studentId: string,
     updater: (rounds: MobileDailyTestRound[]) => MobileDailyTestRound[],
   ) => {
+    dirtyDailyTestKeysRef.current.add(studentId)
     setDrafts((prev) => {
       const current = prev[studentId] ?? emptyStudentDraft()
       return {
@@ -136,6 +157,7 @@ export function ClassDailyTestBulkPanel({
     studentId: string,
     learningDiagnosis: DailyLearningDiagnosisData,
   ) => {
+    dirtyDailyTestKeysRef.current.add(studentId)
     setDrafts((prev) => {
       const current = prev[studentId] ?? emptyStudentDraft()
       return {
@@ -248,6 +270,7 @@ export function ClassDailyTestBulkPanel({
           continue
         }
         if (result.recordId) {
+          dirtyDailyTestKeysRef.current.delete(result.student.id)
           setDrafts((prev) => ({
             ...prev,
             [result.student.id]: {
@@ -306,6 +329,7 @@ export function ClassDailyTestBulkPanel({
                   date,
                   round,
                 )
+                markChangedDraftKeys(drafts, applied.drafts, dirtyDailyTestKeysRef.current)
                 setDrafts(applied.drafts)
                 return applied.summary
               }}
@@ -329,7 +353,10 @@ export function ClassDailyTestBulkPanel({
           </label>
           <input
             value={testName}
-            onChange={(e) => setTestName(e.target.value)}
+            onChange={(e) => {
+              dirtyTestNameRef.current = true
+              setTestName(e.target.value)
+            }}
             disabled={saving}
             placeholder="시험명"
             className={`${inputClass()} min-h-10 py-2 text-sm`}
