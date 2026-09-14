@@ -24,6 +24,8 @@ import {
   studentFromRow,
   studentTextbookSlotFromRow,
   todayAssignmentFromRow,
+  studentDailyCareFromRow,
+  weeklyLearningSummaryFromRow,
   type AttendanceRow,
   type ClassNoteRow,
   type ClassScheduleGridRow,
@@ -38,8 +40,11 @@ import {
   type ProgressRow,
   type QuestionRow,
   type StudentRow,
+  type StudentDailyCareRow,
   type StudentTextbookSlotRow,
   type TodayAssignmentRow,
+  type WeeklyLearningSummaryRow,
+  type WeeklySummaryReadRow,
 } from './mappers'
 
 function mapRows<T, R>(rows: unknown, map: (row: T) => R): R[] {
@@ -433,6 +438,21 @@ export async function rpcGetParentCareBundle(accessKey: string): Promise<LocalBa
       classNoteFromRow,
     ),
     classTodayReportCommon,
+    studentDailyCare: mapRows<StudentDailyCareRow, ReturnType<typeof studentDailyCareFromRow>>(
+      bundle.student_daily_care,
+      studentDailyCareFromRow,
+    ),
+    weeklyLearningSummaries: mapRows<
+      WeeklyLearningSummaryRow,
+      ReturnType<typeof weeklyLearningSummaryFromRow>
+    >(bundle.weekly_learning_summaries, weeklyLearningSummaryFromRow),
+    weeklySummaryRead: mapOptionalRow<
+      WeeklySummaryReadRow,
+      { lastReadAt: string; lastReadSummaryId: string | null }
+    >(bundle.weekly_summary_read, (row) => ({
+      lastReadAt: row.last_read_at,
+      lastReadSummaryId: row.last_read_summary_id ?? null,
+    })),
   }
 
   console.log('[ParentAccess] rpc get_parent_care_bundle success', {
@@ -559,6 +579,10 @@ export async function rpcGetParentTodayReport(
     })(),
     dailyTestsComplete: Array.isArray(report.daily_tests),
     classTodayReportCommon,
+    studentDailyCare: mapOptionalRow<StudentDailyCareRow, ReturnType<typeof studentDailyCareFromRow>>(
+      report.student_daily_care,
+      studentDailyCareFromRow,
+    ),
   }
 }
 

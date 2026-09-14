@@ -45,8 +45,8 @@ export function ParentHomeworkSlotCard({ item }: { item: HomeworkTextbookDisplay
 
   return (
     <li className="pm-slot-card px-2.5 py-2 sm:px-3">
-      <p className="break-words text-xl font-bold leading-snug text-navy-900 sm:text-2xl">{title}</p>
-      <div className="mt-2 space-y-1.5">
+      <p className="break-words text-base font-bold leading-snug text-navy-900 sm:text-lg">{title}</p>
+      <div className="mt-1.5 space-y-1.5">
         <div className="space-y-0.5">
           <div className="flex flex-wrap items-center gap-2">
             <span className={HOMEWORK_FIELD_LABEL_CLASS}>지난 과제</span>

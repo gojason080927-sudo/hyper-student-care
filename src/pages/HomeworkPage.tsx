@@ -121,6 +121,9 @@ export function HomeworkPage() {
       homeworkRecordToSavePayload({
         ...form,
         status: form.status as HomeworkStatus,
+        existingStatus: form.id
+          ? homework.find((record) => record.id === form.id)?.status
+          : undefined,
       }),
     )
     setModalOpen(false)

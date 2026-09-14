@@ -4,10 +4,13 @@ import { useSearchParams } from 'react-router-dom'
 import { SectionTitleWithHint } from '../../components/ui/SectionTitleWithHint'
 import { TeacherMobileHeader } from '../../components/teacherMobile/TeacherMobileHeader'
 import { ClassAttendanceBulkPanel } from '../../components/todayReport/ClassAttendanceBulkPanel'
+import { LearningStatusBadge } from '../../components/studentCare/LearningStatusBadge'
+import { computeLearningRisk } from '../../utils/studentCare'
 import { ClassCommonProgressPanel } from '../../components/todayReport/ClassCommonProgressPanel'
 import { ClassCommonTodayAssignmentPanel } from '../../components/todayReport/ClassCommonTodayAssignmentPanel'
 import { ClassDailyTestBulkPanel } from '../../components/todayReport/ClassDailyTestBulkPanel'
 import { ClassHomeworkStatusBulkPanel } from '../../components/todayReport/ClassHomeworkStatusBulkPanel'
+import { ClassMaterialPrepBulkPanel } from '../../components/todayReport/ClassMaterialPrepBulkPanel'
 import { TodayReportView } from '../../components/todayReport/TodayReportView'
 import { TodayReportCompleteButton } from '../../components/todayReport/TodayReportCompleteButton'
 import { StudentKakaoShareAction } from '../../components/students/StudentKakaoShareAction'
@@ -25,6 +28,7 @@ import type { Student } from '../../types/student'
 type ReportSection =
   | 'attendance'
   | 'homework'
+  | 'materialPrep'
   | 'classTodayHomework'
   | 'progress'
   | 'dailyTest'
@@ -33,6 +37,7 @@ type ReportSection =
 const CLASS_SCOPED_SECTIONS: { id: ReportSection; label: string }[] = [
   { id: 'attendance', label: '출결' },
   { id: 'homework', label: '숙제 수행 결과' },
+  { id: 'materialPrep', label: '교재 준비' },
   { id: 'classTodayHomework', label: '반 공통 오늘 과제' },
   { id: 'progress', label: '반 공통 오늘의 진도' },
   { id: 'dailyTest', label: '일일테스트' },
@@ -256,6 +261,14 @@ export function TeacherMobileTodayReportPage() {
                     students={classStudents}
                     compact
                   />
+                ) : section.id === 'materialPrep' ? (
+                  <ClassMaterialPrepBulkPanel
+                    key={`class-material-${date}-${className}`}
+                    date={date}
+                    className={className}
+                    students={classStudents}
+                    compact
+                  />
                 ) : section.id === 'classTodayHomework' ? (
                   <ClassCommonTodayAssignmentPanel
                     key={`class-today-hw-${date}-${className}`}
@@ -347,12 +360,37 @@ function ClassNoteStudentList({
   date: string
   classSync?: ClassTodayReportSyncContext
 }) {
+  const {
+    attendance,
+    homework,
+    homeworkTextbookEntries,
+    dailyTests,
+    studentDailyCare,
+    classNotes,
+    progressRecords,
+  } = useData()
+
   return (
     <div className="divide-y divide-[rgba(22,58,112,0.06)]">
       {students.map((student) => (
         <div key={student.id} className="py-2 first:pt-0 last:pb-0">
           <div className="mb-1.5 flex items-center justify-between gap-2">
-            <p className="text-sm font-bold text-[#163A70]">{student.name}</p>
+            <div className="flex min-w-0 items-center gap-2">
+              <p className="text-sm font-bold text-[#163A70]">{student.name}</p>
+              <LearningStatusBadge
+                compact
+                result={computeLearningRisk({
+                  studentId: student.id,
+                  attendance,
+                  homework,
+                  homeworkTextbookEntries,
+                  dailyTests,
+                  dailyCare: studentDailyCare,
+                  progressRecords,
+                  classNotes,
+                })}
+              />
+            </div>
             <StudentKakaoShareAction student={student} compact />
           </div>
           <TodayReportView

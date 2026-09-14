@@ -15,8 +15,10 @@ import type {
   MonthlyLearningReportRecord,
   ProgressRecord,
   QuestionRecord,
+  StudentDailyCareRecord,
   StudentTextbookSlot,
   TodayAssignmentRecord,
+  WeeklyLearningSummaryRecord,
 } from '../../types/records'
 import type { Student } from '../../types/student'
 import {
@@ -54,6 +56,10 @@ import {
   studentToRow,
   todayAssignmentFromRow,
   todayAssignmentToRow,
+  studentDailyCareFromRow,
+  studentDailyCareToRow,
+  weeklyLearningSummaryFromRow,
+  weeklyLearningSummaryToRow,
   type AssignmentCompletionRow,
   type AttendanceRow,
   type ClassNoteRow,
@@ -69,8 +75,10 @@ import {
   type ProgressRow,
   type StudentTextbookSlotRow,
   type QuestionRow,
+  type StudentDailyCareRow,
   type StudentRow,
   type TodayAssignmentRow,
+  type WeeklyLearningSummaryRow,
 } from './mappers'
 
 export class RepositoryError extends Error {
@@ -180,6 +188,15 @@ async function selectOneByStudentAndDate<T>(
   date: string,
 ): Promise<T | null> {
   const rows = await selectByStudentAndDate<T>(table, studentId, date)
+  return rows[0] ?? null
+}
+
+async function selectOneByStudentAndDateSafe<T>(
+  table: string,
+  studentId: string,
+  date: string,
+): Promise<T | null> {
+  const rows = await selectByStudentAndDateSafe<T>(table, studentId, date)
   return rows[0] ?? null
 }
 
@@ -312,6 +329,8 @@ export type AllRecords = {
   todayAssignments: TodayAssignmentRecord[]
   classNotes: ClassNoteRecord[]
   classTodayReportCommon: ClassTodayReportCommon[]
+  studentDailyCare: StudentDailyCareRecord[]
+  weeklyLearningSummaries: WeeklyLearningSummaryRecord[]
 }
 
 export async function fetchAllRecords(): Promise<AllRecords> {
@@ -332,6 +351,8 @@ export async function fetchAllRecords(): Promise<AllRecords> {
     todayAssignmentRows,
     classNoteRows,
     classTodayReportCommonRows,
+    studentDailyCareRows,
+    weeklyLearningSummaryRows,
   ] = await Promise.all([
     selectAll<AttendanceRow>('attendance'),
     selectAll<HomeworkRow>('homework'),
@@ -349,6 +370,8 @@ export async function fetchAllRecords(): Promise<AllRecords> {
     selectAll<TodayAssignmentRow>('today_assignments'),
     selectAll<ClassNoteRow>('class_notes'),
     selectAllSafe<ClassTodayReportCommonRow>('class_today_report_common'),
+    selectAllSafe<StudentDailyCareRow>('student_daily_care'),
+    selectAllSafe<WeeklyLearningSummaryRow>('weekly_learning_summaries'),
   ])
 
   return {
@@ -368,6 +391,8 @@ export async function fetchAllRecords(): Promise<AllRecords> {
     todayAssignments: todayAssignmentRows.map(todayAssignmentFromRow),
     classNotes: classNoteRows.map(classNoteFromRow),
     classTodayReportCommon: classTodayReportCommonRows.map(classTodayReportCommonFromRow),
+    studentDailyCare: studentDailyCareRows.map(studentDailyCareFromRow),
+    weeklyLearningSummaries: weeklyLearningSummaryRows.map(weeklyLearningSummaryFromRow),
   }
 }
 
@@ -396,6 +421,7 @@ export type TodayReportData = {
   /** True when dailyTests is a complete same-day set (replace). False/omitted: upsert only. */
   dailyTestsComplete?: boolean
   classTodayReportCommon?: ClassTodayReportCommon[]
+  studentDailyCare?: StudentDailyCareRecord | null
 }
 
 export async function fetchTodayReportData(
@@ -412,6 +438,7 @@ export async function fetchTodayReportData(
     todayAssignmentRow,
     classNoteRow,
     dailyTestRows,
+    studentDailyCareRow,
   ] = await Promise.all([
     selectByStudentAndDate<AttendanceRow>('attendance', studentId, date),
     getSupabase()
@@ -438,6 +465,7 @@ export async function fetchTodayReportData(
     selectOneByStudentAndDate<TodayAssignmentRow>('today_assignments', studentId, date),
     selectOneByStudentAndDate<ClassNoteRow>('class_notes', studentId, date),
     selectByStudentAndDate<DailyTestRow>('daily_tests', studentId, date),
+    selectOneByStudentAndDateSafe<StudentDailyCareRow>('student_daily_care', studentId, date),
   ])
 
   return {
@@ -454,6 +482,7 @@ export async function fetchTodayReportData(
     dailyTests: dailyTestRows.map(dailyTestFromRow),
     dailyTest: dailyTestRows[0] ? dailyTestFromRow(dailyTestRows[0]) : null,
     dailyTestsComplete: true,
+    studentDailyCare: studentDailyCareRow ? studentDailyCareFromRow(studentDailyCareRow) : null,
   }
 }
 
@@ -486,7 +515,18 @@ export async function fetchAttendanceByStudent(studentId: string): Promise<Atten
 }
 
 export async function upsertAttendance(record: AttendanceRecord): Promise<void> {
-  await upsertRow('attendance', attendanceToRow(record))
+  const row = attendanceToRow(record)
+  const { error } = await getSupabase().from('attendance').upsert(row, { onConflict: 'id' })
+  if (!error) return
+  if (isMissingColumnError(error) && 'excuse_kind' in row) {
+    console.warn(
+      '[Repository] attendance.excuse_kind missing — saving legacy columns only. Run supabase/weekly-student-care-migration.sql',
+    )
+    const { excuse_kind: _excuse, ...legacyRow } = row
+    await upsertRow('attendance', legacyRow)
+    return
+  }
+  throwIfError(error, 'attendance', 'attendance 저장 실패')
 }
 
 export async function deleteAttendance(id: string): Promise<void> {
@@ -829,6 +869,60 @@ export async function upsertClassNote(record: ClassNoteRecord): Promise<void> {
     .from('class_notes')
     .upsert(classNoteToRow(record), { onConflict: 'student_id,date' })
   throwIfError(error, 'class_notes', 'class_notes 저장 실패')
+}
+
+export async function upsertStudentDailyCare(record: StudentDailyCareRecord): Promise<void> {
+  const { error } = await getSupabase()
+    .from('student_daily_care')
+    .upsert(studentDailyCareToRow(record), { onConflict: 'student_id,date' })
+  if (!error) return
+  if (isMissingTableError(error)) {
+    console.warn(
+      '[Repository] student_daily_care table missing — skip save. Run supabase/weekly-student-care-migration.sql',
+    )
+    return
+  }
+  throwIfError(error, 'student_daily_care', 'student_daily_care 저장 실패')
+}
+
+export async function upsertWeeklyLearningSummary(
+  record: WeeklyLearningSummaryRecord,
+): Promise<boolean> {
+  const { error } = await getSupabase()
+    .from('weekly_learning_summaries')
+    .upsert(weeklyLearningSummaryToRow(record), {
+      onConflict: 'student_id,week_start',
+      ignoreDuplicates: true,
+    })
+  if (!error) return true
+  if (isMissingTableError(error)) {
+    console.warn(
+      '[Repository] weekly_learning_summaries table missing — skip save. Run supabase/weekly-student-care-migration.sql',
+    )
+    return false
+  }
+  throwIfError(error, 'weekly_learning_summaries', 'weekly_learning_summaries 저장 실패')
+  return false
+}
+
+export async function rpcEnsureWeeklyLearningSummaries(): Promise<number | null> {
+  const { data, error } = await getSupabase().rpc('ensure_weekly_learning_summaries')
+  if (error) {
+    console.warn('[Repository] ensure_weekly_learning_summaries failed', error.message)
+    return null
+  }
+  return typeof data === 'number' ? data : Number(data ?? 0)
+}
+
+export async function rpcMarkWeeklySummaryRead(accessKey: string): Promise<string | null> {
+  const { data, error } = await getSupabase().rpc('mark_weekly_summary_read', {
+    p_access_key: accessKey.trim(),
+  })
+  if (error) {
+    console.error('[Repository] mark_weekly_summary_read failed', error)
+    return null
+  }
+  return typeof data === 'string' ? data : null
 }
 
 // ---------------------------------------------------------------------------

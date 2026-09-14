@@ -6,6 +6,7 @@ import { ClassCommonProgressPanel } from '../components/todayReport/ClassCommonP
 import { ClassCommonTodayAssignmentPanel } from '../components/todayReport/ClassCommonTodayAssignmentPanel'
 import { ClassDailyTestBulkPanel } from '../components/todayReport/ClassDailyTestBulkPanel'
 import { ClassHomeworkStatusBulkPanel } from '../components/todayReport/ClassHomeworkStatusBulkPanel'
+import { ClassMaterialPrepBulkPanel } from '../components/todayReport/ClassMaterialPrepBulkPanel'
 import { TodayReportCompleteButton } from '../components/todayReport/TodayReportCompleteButton'
 import { TodayReportStudentAccordion } from '../components/todayReport/TodayReportStudentAccordion'
 import { useData } from '../hooks/useData'
@@ -248,6 +249,16 @@ export function TeacherTodayReportBulkPage() {
               key={`pc-class-homework-status-${date}-${className}`}
               date={date}
               grade={grade}
+              className={className}
+              students={classStudents}
+            />
+          </section>
+
+          <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+            <h3 className="mb-2 text-sm font-bold text-navy-900">교재 준비</h3>
+            <ClassMaterialPrepBulkPanel
+              key={`pc-class-material-${date}-${className}`}
+              date={date}
               className={className}
               students={classStudents}
             />

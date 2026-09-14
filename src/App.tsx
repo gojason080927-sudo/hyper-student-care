@@ -87,6 +87,7 @@ import { MonthlyLearningReportDetailPage } from './pages/MonthlyLearningReportDe
 import { ParentStudentQuestionsPage } from './pages/parent/ParentStudentQuestionsPage'
 
 import { ParentStudentTodayReportPage } from './pages/parent/ParentStudentTodayReportPage'
+import { ParentStudentWeeklySummaryPage } from './pages/parent/ParentStudentWeeklySummaryPage'
 
 import { EntranceExamAttemptPage } from './features/entranceExam/EntranceExamAttemptPage'
 import { EntranceExamHubPage } from './features/entranceExam/EntranceExamHubPage'
@@ -101,6 +102,7 @@ import { CareerAssessmentTeacherResultPage } from './features/careerAssessment/p
 import { CareerTestStudentPage } from './features/careerAssessment/pages/CareerTestStudentPage'
 import { ParentCareerResultPage } from './features/careerAssessment/pages/ParentCareerResultPage'
 import { AdmissionStrategyViewerPreviewPage } from './pages/dev/AdmissionStrategyViewerPreviewPage'
+import { ParentMobileLayoutPreviewPage } from './pages/dev/ParentMobileLayoutPreviewPage'
 
 
 
@@ -116,7 +118,10 @@ function App() {
 
         <Route path="/career-test/:token" element={<CareerTestStudentPage />} />
         {import.meta.env.DEV ? (
-          <Route path="/dev/admission-viewer" element={<AdmissionStrategyViewerPreviewPage />} />
+          <>
+            <Route path="/dev/admission-viewer" element={<AdmissionStrategyViewerPreviewPage />} />
+            <Route path="/dev/parent-mobile-layout" element={<ParentMobileLayoutPreviewPage />} />
+          </>
         ) : null}
 
         <Route path="/care/:studentAccessKey" element={<ParentStudentLayout />}>
@@ -124,6 +129,8 @@ function App() {
           <Route index element={<ParentStudentHomePage />} />
 
           <Route path="today-report" element={<ParentStudentTodayReportPage />} />
+
+          <Route path="weekly-learning-summary" element={<ParentStudentWeeklySummaryPage />} />
 
           <Route path="attendance" element={<ParentStudentAttendancePage />} />
 

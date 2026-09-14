@@ -69,6 +69,8 @@ export async function loadAppData(): Promise<{ data: AppData; source: DataSource
       classScheduleGrids: [],
       todayAssignments: [],
       classNotes: [],
+      studentDailyCare: [],
+      weeklyLearningSummaries: [],
     },
     source: 'none',
   }

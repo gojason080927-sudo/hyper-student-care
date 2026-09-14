@@ -133,6 +133,7 @@ export async function saveClassBulkStudentDraft(
           content: existing.homework ? getHomeworkContent(existing.homework) : '',
           status: draft.homeworkStatus,
           teacherMemo: existing.homework?.teacherMemo ?? '',
+          existingStatus: existing.homework?.status,
         })
         const record: HomeworkRecord = touchRecord({
           ...(existing.homework ?? { id: payload.id ?? createId(), ...ts }),

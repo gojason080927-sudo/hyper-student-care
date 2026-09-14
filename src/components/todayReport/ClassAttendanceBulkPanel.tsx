@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useData } from '../../hooks/useData'
-import type { AttendanceRecord, AttendanceStatus } from '../../types/records'
+import type { AttendanceExcuseKind, AttendanceRecord, AttendanceStatus } from '../../types/records'
 import type { Student } from '../../types/student'
 import { formatKoreanDate } from '../../utils/date'
 import {
@@ -10,21 +10,26 @@ import {
   getAttendanceColor,
   inputClass,
 } from '../../utils/labels'
+import { AttendanceExcuseButtons, attendanceNeedsExcuse } from '../studentCare/AttendanceExcuseButtons'
+import { LearningStatusBadge } from '../studentCare/LearningStatusBadge'
+import { computeLearningRisk } from '../../utils/studentCare'
 
 type AttendanceDraft = {
   status: AttendanceStatus | ''
   reason: string
   recordId?: string
   memo: string
+  excuseKind: AttendanceExcuseKind | null
 }
 
 function draftFromRecord(record: AttendanceRecord | undefined): AttendanceDraft {
-  if (!record) return { status: '', reason: '', memo: '' }
+  if (!record) return { status: '', reason: '', memo: '', excuseKind: null }
   return {
     status: record.status,
     reason: record.reason,
     recordId: record.id,
     memo: record.memo,
+    excuseKind: record.excuseKind ?? null,
   }
 }
 
@@ -44,7 +49,7 @@ export function ClassAttendanceBulkPanel({
   students,
   compact = false,
 }: ClassAttendanceBulkPanelProps) {
-  const { attendance, saveAttendanceRecordAsync, showToast } = useData()
+  const { attendance, homework, homeworkTextbookEntries, dailyTests, studentDailyCare, saveAttendanceRecordAsync, showToast } = useData()
   const [saving, setSaving] = useState(false)
   const [drafts, setDrafts] = useState<Record<string, AttendanceDraft>>({})
 
@@ -72,13 +77,14 @@ export function ClassAttendanceBulkPanel({
 
   const setStatus = (studentId: string, status: AttendanceStatus) => {
     setDrafts((prev) => {
-      const current = prev[studentId] ?? { status: '', reason: '', memo: '' }
+      const current = prev[studentId] ?? { status: '', reason: '', memo: '', excuseKind: null }
       return {
         ...prev,
         [studentId]: {
           ...current,
           status,
           reason: status === '출석' ? '' : current.reason,
+          excuseKind: attendanceNeedsExcuse(status) ? current.excuseKind : null,
         },
       }
     })
@@ -86,7 +92,7 @@ export function ClassAttendanceBulkPanel({
 
   const setReason = (studentId: string, reason: string) => {
     setDrafts((prev) => {
-      const current = prev[studentId] ?? { status: '', reason: '', memo: '' }
+      const current = prev[studentId] ?? { status: '', reason: '', memo: '', excuseKind: null }
       return {
         ...prev,
         [studentId]: { ...current, reason },
@@ -98,11 +104,12 @@ export function ClassAttendanceBulkPanel({
     setDrafts((prev) => {
       const next: Record<string, AttendanceDraft> = { ...prev }
       for (const student of students) {
-        const current = next[student.id] ?? { status: '', reason: '', memo: '' }
+        const current = next[student.id] ?? { status: '', reason: '', memo: '', excuseKind: null }
         next[student.id] = {
           ...current,
           status: '출석',
           reason: '',
+          excuseKind: null,
         }
       }
       return next
@@ -113,8 +120,15 @@ export function ClassAttendanceBulkPanel({
     if (saving || students.length === 0) return
 
     const missing = students.filter((s) => !drafts[s.id]?.status)
+    const missingExcuse = students.filter(
+      (s) => attendanceNeedsExcuse(drafts[s.id]?.status ?? '') && !drafts[s.id]?.excuseKind,
+    )
     if (missing.length > 0) {
       showToast(`출결 미선택: ${missing.map((s) => s.name).join(', ')}`)
+      return
+    }
+    if (missingExcuse.length > 0) {
+      showToast(`인정/무단 미선택: ${missingExcuse.map((s) => s.name).join(', ')}`)
       return
     }
 
@@ -137,6 +151,7 @@ export function ClassAttendanceBulkPanel({
                 status: draft.status,
                 reason: draft.status === '출석' ? '' : draft.reason.trim(),
                 memo: draft.memo,
+                excuseKind: attendanceNeedsExcuse(draft.status) ? draft.excuseKind : null,
               },
               { silent: true },
             )
@@ -175,7 +190,7 @@ export function ClassAttendanceBulkPanel({
           setDrafts((prev) => ({
             ...prev,
             [result.student.id]: {
-              ...(prev[result.student.id] ?? { status: '', reason: '', memo: '' }),
+              ...(prev[result.student.id] ?? { status: '', reason: '', memo: '', excuseKind: null }),
               recordId: result.recordId,
             },
           }))
@@ -231,19 +246,30 @@ export function ClassAttendanceBulkPanel({
         }
       >
         {students.map((student) => {
-          const draft = drafts[student.id] ?? { status: '', reason: '', memo: '' }
+          const draft = drafts[student.id] ?? { status: '', reason: '', memo: '', excuseKind: null }
           const showReason = Boolean(draft.status && draft.status !== '출석')
+          const risk = computeLearningRisk({
+            studentId: student.id,
+            attendance,
+            homework,
+            homeworkTextbookEntries,
+            dailyTests,
+            dailyCare: studentDailyCare,
+          })
           return (
             <div key={student.id} className={compact ? 'px-2.5 py-2' : 'px-3 py-2.5'}>
-              <p
-                className={
-                  compact
-                    ? 'mb-1.5 text-sm font-bold text-[#163A70]'
-                    : 'mb-1.5 text-sm font-bold text-navy-900'
-                }
-              >
-                {student.name}
-              </p>
+              <div className="mb-1.5 flex items-center gap-2">
+                <p
+                  className={
+                    compact
+                      ? 'text-sm font-bold text-[#163A70]'
+                      : 'text-sm font-bold text-navy-900'
+                  }
+                >
+                  {student.name}
+                </p>
+                <LearningStatusBadge result={risk} compact />
+              </div>
               <div className="flex flex-nowrap gap-1">
                 {ATTENDANCE_STATUSES.map((status) => {
                   const selected = draft.status === status
@@ -265,13 +291,32 @@ export function ClassAttendanceBulkPanel({
                 })}
               </div>
               {showReason && (
-                <input
-                  value={draft.reason}
-                  onChange={(e) => setReason(student.id, e.target.value)}
-                  disabled={saving}
-                  placeholder="사유 (선택)"
-                  className={`${inputClass()} mt-1.5 min-h-9 py-1.5 text-xs`}
-                />
+                <>
+                  <AttendanceExcuseButtons
+                    status={draft.status}
+                    excuseKind={draft.excuseKind}
+                    compact
+                    disabled={saving}
+                    onChange={(excuseKind) => {
+                      setDrafts((prev) => {
+                        const current = prev[student.id] ?? {
+                          status: '',
+                          reason: '',
+                          memo: '',
+                          excuseKind: null,
+                        }
+                        return { ...prev, [student.id]: { ...current, excuseKind } }
+                      })
+                    }}
+                  />
+                  <input
+                    value={draft.reason}
+                    onChange={(e) => setReason(student.id, e.target.value)}
+                    disabled={saving}
+                    placeholder="사유 (선택)"
+                    className={`${inputClass()} mt-1.5 min-h-9 py-1.5 text-xs`}
+                  />
+                </>
               )}
             </div>
           )

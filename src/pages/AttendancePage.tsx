@@ -5,7 +5,15 @@ import { PageLoadingState } from '../components/ui/PageLoadingState'
 import { SummaryCards } from '../components/ui/SummaryCards'
 import { EmptyState } from '../components/ui/EmptyState'
 import { useData } from '../hooks/useData'
-import type { AttendanceRecord, AttendanceStatus } from '../types/records'
+import type {
+  AttendanceExcuseKind,
+  AttendanceRecord,
+  AttendanceStatus,
+  DailyTestRecord,
+  HomeworkRecord,
+  HomeworkTextbookEntry,
+  StudentDailyCareRecord,
+} from '../types/records'
 import type { Student, StudentFilters } from '../types'
 import { filterStudentsLegacy, formatSubjects } from '../utils/filters'
 import { getTodayString, formatKoreanDate, isToday } from '../utils/date'
@@ -14,8 +22,17 @@ import {
   getAttendanceButtonClass,
   inputClass,
 } from '../utils/labels'
+import { AttendanceExcuseButtons, attendanceNeedsExcuse } from '../components/studentCare/AttendanceExcuseButtons'
+import { LearningStatusBadge } from '../components/studentCare/LearningStatusBadge'
+import { computeLearningRisk } from '../utils/studentCare'
 
-type Draft = { status: AttendanceStatus | ''; reason: string; memo: string; recordId?: string }
+type Draft = {
+  status: AttendanceStatus | ''
+  reason: string
+  memo: string
+  recordId?: string
+  excuseKind: AttendanceExcuseKind | null
+}
 
 type SaveFlash = 'saved' | 'updated' | 'failed'
 
@@ -26,14 +43,19 @@ function draftFromRecord(record: AttendanceRecord | undefined): Draft {
         reason: record.reason,
         memo: record.memo,
         recordId: record.id,
+        excuseKind: record.excuseKind ?? null,
       }
-    : { status: '', reason: '', memo: '' }
+    : { status: '', reason: '', memo: '', excuseKind: null }
 }
 
 export function AttendancePage() {
   const {
     students,
     attendance,
+    homework,
+    homeworkTextbookEntries,
+    dailyTests,
+    studentDailyCare,
     saveAttendanceRecordAsync,
     deleteAttendanceRecord,
     isLoading,
@@ -61,7 +83,7 @@ export function AttendancePage() {
     <div className="space-y-6">
       <PageHeader
         title="출결관리"
-        description="날짜별 학생 출결을 선택하면 자동으로 저장됩니다."
+        description="날짜별 학생 출결을 선택하면 저장됩니다. 지각·결석은 인정/무단을 선택한 뒤 저장됩니다."
         badge={
           <span
             className={`inline-block rounded-lg px-3 py-1 text-sm font-medium ${isToday(date) ? 'bg-navy-900 text-white' : 'bg-slate-100 text-slate-600'}`}
@@ -90,6 +112,11 @@ export function AttendancePage() {
           dayRecords={dayRecords}
           onSave={saveAttendanceRecordAsync}
           onDelete={deleteAttendanceRecord}
+          homework={homework}
+          homeworkTextbookEntries={homeworkTextbookEntries}
+          dailyTests={dailyTests}
+          studentDailyCare={studentDailyCare}
+          attendanceAll={attendance}
         />
       )}
     </div>
@@ -102,12 +129,22 @@ function AttendanceStudentList({
   dayRecords,
   onSave,
   onDelete,
+  homework,
+  homeworkTextbookEntries,
+  dailyTests,
+  studentDailyCare,
+  attendanceAll,
 }: {
   date: string
   students: Student[]
   dayRecords: AttendanceRecord[]
   onSave: ReturnType<typeof useData>['saveAttendanceRecordAsync']
   onDelete: ReturnType<typeof useData>['deleteAttendanceRecord']
+  homework: HomeworkRecord[]
+  homeworkTextbookEntries: HomeworkTextbookEntry[]
+  dailyTests: DailyTestRecord[]
+  studentDailyCare: StudentDailyCareRecord[]
+  attendanceAll: AttendanceRecord[]
 }) {
   const initialDrafts = useMemo(() => {
     const next: Record<string, Draft> = {}
@@ -182,6 +219,9 @@ function AttendanceStudentList({
     ) => {
       const draft = draftsRef.current[studentId]
       if (!draft?.status) return { success: false as const }
+      if (attendanceNeedsExcuse(draft.status) && !draft.excuseKind) {
+        return { success: false as const }
+      }
 
       if (savingIdsRef.current.has(studentId)) return { success: false as const }
 
@@ -198,6 +238,7 @@ function AttendanceStudentList({
           status: draft.status as AttendanceStatus,
           reason: draft.reason,
           memo: draft.memo,
+          excuseKind: attendanceNeedsExcuse(draft.status) ? draft.excuseKind : null,
         },
         { silent: true },
       )
@@ -240,8 +281,10 @@ function AttendanceStudentList({
     const nextDraft: Draft = {
       ...(current ?? draftFromRecord(undefined)),
       status,
+      excuseKind: attendanceNeedsExcuse(status) ? current?.excuseKind ?? null : null,
     }
 
+    draftsRef.current[studentId] = nextDraft
     setDrafts((prev) => ({ ...prev, [studentId]: nextDraft }))
     setFlashByStudent((prev) => {
       const next = { ...prev }
@@ -249,14 +292,21 @@ function AttendanceStudentList({
       return next
     })
 
+    if (attendanceNeedsExcuse(status) && !nextDraft.excuseKind) return
+
     void persistDraft(studentId, { previousCommitted: committed })
   }
 
   const updateDraft = (studentId: string, patch: Partial<Draft>) => {
-    setDrafts((prev) => ({ ...prev, [studentId]: { ...prev[studentId], ...patch } }))
+    const nextDraft = { ...(draftsRef.current[studentId] ?? draftFromRecord(undefined)), ...patch }
+    draftsRef.current[studentId] = nextDraft
+    setDrafts((prev) => ({ ...prev, [studentId]: nextDraft }))
+    if (patch.excuseKind !== undefined) {
+      void persistDraft(studentId, { previousCommitted: committedRef.current[studentId] })
+      return
+    }
     if (patch.reason !== undefined || patch.memo !== undefined) {
-      const draft = { ...draftsRef.current[studentId], ...patch }
-      if (!draft.status) return
+      if (!nextDraft.status) return
 
       if (reasonTimersRef.current[studentId]) {
         window.clearTimeout(reasonTimersRef.current[studentId])
@@ -309,9 +359,22 @@ function AttendanceStudentList({
             >
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:gap-5 lg:gap-6">
                 <div className="min-w-0 shrink-0 md:w-[min(100%,220px)] lg:w-[min(100%,260px)]">
-                  <p className="text-[1.35rem] font-extrabold leading-tight tracking-tight text-navy-900 sm:text-2xl">
-                    {student.name}
-                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-[1.35rem] font-extrabold leading-tight tracking-tight text-navy-900 sm:text-2xl">
+                      {student.name}
+                    </p>
+                    <LearningStatusBadge
+                      compact
+                      result={computeLearningRisk({
+                        studentId: student.id,
+                        attendance: attendanceAll,
+                        homework,
+                        homeworkTextbookEntries,
+                        dailyTests,
+                        dailyCare: studentDailyCare,
+                      })}
+                    />
+                  </div>
                   <p className="mt-2 text-xs leading-snug text-slate-500 sm:text-[13px]">
                     {student.school} · {student.grade} · {student.className || '-'}
                   </p>
@@ -334,6 +397,15 @@ function AttendanceStudentList({
                       </button>
                     ))}
                   </div>
+
+                  {attendanceNeedsExcuse(draft.status) ? (
+                    <AttendanceExcuseButtons
+                      status={draft.status}
+                      excuseKind={draft.excuseKind}
+                      disabled={isSavingRow}
+                      onChange={(excuseKind) => updateDraft(student.id, { excuseKind })}
+                    />
+                  ) : null}
 
                   <div className="flex shrink-0 items-center justify-end gap-3 md:min-w-[6rem] md:justify-end">
                     {flash === 'saved' && (

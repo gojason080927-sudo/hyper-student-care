@@ -19,6 +19,9 @@ export const ATTENDANCE_STATUSES: AttendanceStatus[] = [
 
 export const HOMEWORK_STATUSES: HomeworkStatus[] = ['완료', '부분 완료', '미완료']
 
+/** 강사 신규 입력값. 미완료는 legacy 표시 전용이며 선택지에 넣지 않는다. */
+export const HOMEWORK_INPUT_STATUSES: HomeworkStatus[] = ['완료', '부분 완료']
+
 export const MAKEUP_METHODS: MakeupMethod[] = ['학원 보강', '영상 대체']
 
 export const MAKEUP_PLAN_STATUSES: MakeupPlanStatus[] = ['예정', '완료', '취소']

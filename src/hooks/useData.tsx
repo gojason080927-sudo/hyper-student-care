@@ -27,6 +27,8 @@ import type {
   ClassTodayReportCommon,
   TextbookSlotNumber,
   TextbookSubject,
+  StudentDailyCareRecord,
+  WeeklyLearningSummaryRecord,
 } from '../types/records'
 import type { Student, StudentFormData } from '../types/student'
 import { loadAppData, loadParentCareData as fetchParentCareData, loadTodayReportFromSupabase, shouldDeferInitialLoadForParentRoute, type DataSource } from '../lib/dataLoader'
@@ -66,18 +68,24 @@ import {
   upsertStudentTextbookSlot,
   upsertStudent,
   upsertTodayAssignment,
+  upsertStudentDailyCare,
+  rpcEnsureWeeklyLearningSummaries,
+  rpcMarkWeeklySummaryRead,
+  upsertWeeklyLearningSummary,
 } from '../lib/db/repository'
 import { mirrorLocalBackup, toLocalBackupData } from '../storage/localBackup'
 import { createId } from '../utils/id'
 import { normalizeContentPostRecord } from '../utils/contentPost'
 import { normalizeDailyTestRecord } from '../utils/dailyTest'
 import { EMPTY_DAILY_LEARNING_DIAGNOSIS } from '../utils/learningDiagnosis'
-import { normalizeHomeworkStatus } from '../utils/homework'
+import { resolveHomeworkStatusForSave } from '../utils/homework'
 import {
   normalizeDifficultyBreakdown,
   normalizeMonthlyEvaluationRecord,
 } from '../utils/monthlyEvaluation'
 import { createTimestamps, touchRecord } from '../utils/recordStorage'
+import { buildWeeklyLearningSummary, getLastWeeklySummaryCutoff } from '../utils/studentCare'
+import { getSeoulDateString } from '../utils/seoulDate'
 import { copyTextToClipboard } from '../utils/copyToClipboard'
 import {
   createStudentFromForm,
@@ -125,6 +133,9 @@ export type DataContextValue = {
   todayAssignments: TodayAssignmentRecord[]
   classNotes: ClassNoteRecord[]
   classTodayReportCommon: ClassTodayReportCommon[]
+  studentDailyCare: StudentDailyCareRecord[]
+  weeklyLearningSummaries: WeeklyLearningSummaryRecord[]
+  weeklySummaryRead: { lastReadAt: string; lastReadSummaryId: string | null } | null
   addStudent: (data: StudentFormData) => void
   updateStudent: (id: string, data: StudentFormData) => void
   deleteStudent: (id: string) => void
@@ -276,6 +287,11 @@ export type DataContextValue = {
   saveClassNoteRecord: (
     data: Omit<ClassNoteRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
   ) => boolean
+  saveStudentDailyCareRecord: (
+    data: Omit<StudentDailyCareRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
+  ) => boolean
+  ensureWeeklyLearningSummaries: () => Promise<number | null>
+  markWeeklySummaryRead: (accessKey: string) => Promise<void>
   isLoading: boolean
   isSaving: boolean
   dataSource: DataSource
@@ -315,6 +331,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [classTodayReportCommon, setClassTodayReportCommon] = useState<
     ClassTodayReportCommon[]
   >([])
+  const [studentDailyCare, setStudentDailyCare] = useState<StudentDailyCareRecord[]>([])
+  const [weeklyLearningSummaries, setWeeklyLearningSummaries] = useState<
+    WeeklyLearningSummaryRecord[]
+  >([])
+  const [weeklySummaryRead, setWeeklySummaryRead] = useState<{
+    lastReadAt: string
+    lastReadSummaryId: string | null
+  } | null>(null)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -332,6 +356,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     todayAssignments,
     classNotes,
     dailyTests,
+    studentDailyCare,
   })
 
   stateRef.current = {
@@ -344,6 +369,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     todayAssignments,
     classNotes,
     dailyTests,
+    studentDailyCare,
   }
 
   const mirrorCurrentBackup = useCallback(() => {
@@ -365,6 +391,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
         classScheduleGrids,
         todayAssignments,
         classNotes,
+        classTodayReportCommon,
+        studentDailyCare,
+        weeklyLearningSummaries,
+        weeklySummaryRead,
       }),
     )
   }, [
@@ -445,6 +475,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setTodayAssignments(data.todayAssignments)
     setClassNotes(data.classNotes)
     setClassTodayReportCommon(data.classTodayReportCommon ?? [])
+    setStudentDailyCare(data.studentDailyCare ?? [])
+    setWeeklyLearningSummaries(data.weeklyLearningSummaries ?? [])
+    setWeeklySummaryRead(data.weeklySummaryRead ?? null)
   }, [])
 
   const load = useCallback(async (options?: { silent?: boolean }) => {
@@ -515,6 +548,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setTodayAssignments(merged.todayAssignments)
     setClassNotes(merged.classNotes)
     setDailyTests(merged.dailyTests)
+    setStudentDailyCare(merged.studentDailyCare)
     if (report.classTodayReportCommon?.length) {
       setClassTodayReportCommon((prev) =>
         mergeClassTodayReportCommonRecords(prev, report.classTodayReportCommon!),
@@ -614,6 +648,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setMakeupPlans((prev) => prev.filter((p) => p.studentId !== id))
       setTodayAssignments((prev) => prev.filter((p) => p.studentId !== id))
       setClassNotes((prev) => prev.filter((p) => p.studentId !== id))
+      setStudentDailyCare((prev) => prev.filter((p) => p.studentId !== id))
+      setWeeklyLearningSummaries((prev) => prev.filter((p) => p.studentId !== id))
       void persistWithReload(() => deleteStudentById(id), '학생 삭제에 실패했습니다.')
       showToast('학생이 삭제되었습니다.')
     },
@@ -870,9 +906,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
         showToast('존재하지 않는 학생입니다.')
         return false
       }
+      const existing = data.id
+        ? homework.find((r) => r.id === data.id)
+        : homework.find((r) => r.studentId === data.studentId && r.date === data.date)
+      const resolvedStatus = resolveHomeworkStatusForSave(data.status, existing?.status)
+      if (resolvedStatus === '') {
+        showToast('숙제 수행은 완료 또는 부분 완료만 저장할 수 있습니다.')
+        return false
+      }
       const normalizedData = {
         ...data,
-        status: normalizeHomeworkStatus(data.status),
+        status: resolvedStatus,
       }
       const ts = createTimestamps()
       let record: HomeworkRecord
@@ -927,7 +971,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         slotNumber: data.slotNumber,
         previousAssignment: (data.previousAssignment ?? existing?.previousAssignment ?? '').trim(),
         todayAssignment: data.todayAssignment.trim(),
-        status: data.status ? normalizeHomeworkStatus(data.status) : '',
+        status: resolveHomeworkStatusForSave(data.status, existing?.status),
         createdAt: existing?.createdAt ?? ts.createdAt,
         updatedAt: ts.updatedAt,
       }
@@ -993,7 +1037,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         slotNumber: data.slotNumber,
         previousAssignment: (data.previousAssignment ?? existing?.previousAssignment ?? '').trim(),
         todayAssignment: data.todayAssignment.trim(),
-        status: data.status ? normalizeHomeworkStatus(data.status) : '',
+        status: resolveHomeworkStatusForSave(data.status, existing?.status),
         createdAt: existing?.createdAt ?? ts.createdAt,
         updatedAt: ts.updatedAt,
       }
@@ -2463,6 +2507,133 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [classNotes, handlePersistError, showToast, validateStudent],
   )
 
+  const saveStudentDailyCareRecord = useCallback(
+    (
+      data: Omit<StudentDailyCareRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
+    ) => {
+      if (!validateStudent(data.studentId)) {
+        showToast('존재하지 않는 학생입니다.')
+        return false
+      }
+      const ts = createTimestamps()
+      const existing = data.id
+        ? studentDailyCare.find((record) => record.id === data.id)
+        : studentDailyCare.find(
+            (record) => record.studentId === data.studentId && record.date === data.date,
+          )
+      const id = data.id ?? existing?.id ?? createId()
+      const record: StudentDailyCareRecord = {
+        id,
+        studentId: data.studentId,
+        date: data.date,
+        materialPrep: data.materialPrep ?? existing?.materialPrep ?? null,
+        attitudeIssues: data.attitudeIssues ?? existing?.attitudeIssues ?? [],
+        attitudeNote: (data.attitudeNote ?? existing?.attitudeNote ?? '').slice(0, 500),
+        createdAt: existing?.createdAt ?? ts.createdAt,
+        updatedAt: ts.updatedAt,
+      }
+      setStudentDailyCare((prev) => {
+        const withoutDuplicate = prev.filter(
+          (item) =>
+            !(item.studentId === data.studentId && item.date === data.date) &&
+            item.id !== id,
+        )
+        return [...withoutDuplicate, record]
+      })
+      void persistWithReload(
+        () => upsertStudentDailyCare(record),
+        '교재 준비·수업태도 저장에 실패했습니다.',
+        { type: 'todayReport', studentId: record.studentId, date: record.date },
+      )
+      showToast('학습관리 항목이 저장되었습니다.')
+      return true
+    },
+    [handlePersistError, showToast, studentDailyCare, validateStudent],
+  )
+
+  const weeklyEnsureRef = useRef({
+    students,
+    attendance,
+    homework,
+    homeworkTextbookEntries,
+    dailyTests,
+    studentDailyCare,
+    progressRecords,
+    classNotes,
+    weeklyLearningSummaries,
+  })
+  weeklyEnsureRef.current = {
+    students,
+    attendance,
+    homework,
+    homeworkTextbookEntries,
+    dailyTests,
+    studentDailyCare,
+    progressRecords,
+    classNotes,
+    weeklyLearningSummaries,
+  }
+
+  const ensureWeeklyLearningSummaries = useCallback(async () => {
+    const inserted = await rpcEnsureWeeklyLearningSummaries()
+    if (inserted != null) {
+      await load({ silent: true })
+      return inserted
+    }
+
+    const snapshot = weeklyEnsureRef.current
+    const cutoff = getLastWeeklySummaryCutoff()
+    const asOfDate = getSeoulDateString(cutoff.asOf)
+    let created = 0
+    const nextRecords: WeeklyLearningSummaryRecord[] = []
+    for (const student of snapshot.students.filter((item) => item.status === '재원')) {
+      const exists = snapshot.weeklyLearningSummaries.some(
+        (summary) => summary.studentId === student.id && summary.weekStart === cutoff.weekStart,
+      )
+      if (exists) continue
+      const record = buildWeeklyLearningSummary({
+        studentId: student.id,
+        weekStart: cutoff.weekStart,
+        asOfIso: cutoff.asOfIso,
+        asOfDate,
+        attendance: snapshot.attendance,
+        homework: snapshot.homework,
+        homeworkTextbookEntries: snapshot.homeworkTextbookEntries,
+        dailyTests: snapshot.dailyTests,
+        dailyCare: snapshot.studentDailyCare,
+        progressRecords: snapshot.progressRecords,
+        classNotes: snapshot.classNotes,
+      })
+      const saved = await upsertWeeklyLearningSummary(record)
+      if (saved) {
+        nextRecords.push(record)
+        created += 1
+      }
+    }
+    if (nextRecords.length > 0) {
+      setWeeklyLearningSummaries((prev) => [...prev, ...nextRecords])
+    }
+    return created
+  }, [load])
+
+  const markWeeklySummaryRead = useCallback(
+    async (accessKey: string) => {
+      const lastReadAt = await rpcMarkWeeklySummaryRead(accessKey)
+      const student = students.find((item) => item.studentAccessKey.trim() === accessKey.trim())
+      const latest = weeklyLearningSummaries
+        .filter((summary) => (student ? summary.studentId === student.id : true))
+        .sort(
+          (a, b) =>
+            b.weekStart.localeCompare(a.weekStart) || b.createdAt.localeCompare(a.createdAt),
+        )[0]
+      setWeeklySummaryRead({
+        lastReadAt: lastReadAt ?? new Date().toISOString(),
+        lastReadSummaryId: latest?.id ?? null,
+      })
+    },
+    [students, weeklyLearningSummaries],
+  )
+
   const value = useMemo<DataContextValue>(
     () => ({
       students,
@@ -2482,6 +2653,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       todayAssignments,
       classNotes,
       classTodayReportCommon,
+      studentDailyCare,
+      weeklyLearningSummaries,
+      weeklySummaryRead,
       addStudent,
       updateStudent,
       deleteStudent,
@@ -2526,6 +2700,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       deleteClassScheduleGrid,
       saveTodayAssignmentRecord,
       saveClassNoteRecord,
+      saveStudentDailyCareRecord,
+      ensureWeeklyLearningSummaries,
+      markWeeklySummaryRead,
       isLoading,
       isSaving,
       dataSource,
@@ -2541,6 +2718,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       classNotes,
       classScheduleGrids,
       classTodayReportCommon,
+      studentDailyCare,
+      weeklyLearningSummaries,
+      weeklySummaryRead,
       contentPosts,
       copyStudentCareLink,
       dailyTests,
@@ -2581,6 +2761,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       saveAttendanceRecord,
       saveAttendanceRecordAsync,
       saveClassNoteRecord,
+      saveStudentDailyCareRecord,
+      ensureWeeklyLearningSummaries,
+      markWeeklySummaryRead,
       saveClassScheduleGrid,
       saveContentPost,
       saveDailyTestRecord,
