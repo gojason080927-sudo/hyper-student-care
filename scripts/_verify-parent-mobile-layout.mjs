@@ -130,9 +130,11 @@ try {
           (el.textContent ?? '').includes('전일 학습 종합 평가'),
         )?.textContent ?? ''
       ).trim()
-      const gradeLegend = [...document.querySelectorAll('[data-preview-grades] span, [data-preview-grades] button')].map(
-        (el) => (el.textContent ?? '').trim(),
-      )
+      const evaluationBadge = (
+        [...document.querySelectorAll('[data-preview-section="today-report"] span, [data-preview-section="today-report"] button')].find(
+          (el) => /🟢 우수|🔵 양호|🟡 주의|🔴 위험/.test(el.textContent ?? ''),
+        )?.textContent ?? ''
+      ).trim()
 
       return {
         innerWidth: window.innerWidth,
@@ -146,7 +148,7 @@ try {
         largeGaps,
         homeTags,
         evaluationTitle,
-        gradeLegend,
+        evaluationBadge,
       }
     })
 
@@ -168,13 +170,8 @@ try {
     if (metrics.evaluationTitle !== '전일 학습 종합 평가') {
       fails.push(`evaluation title: ${metrics.evaluationTitle}`)
     }
-    if (
-      !metrics.gradeLegend.includes('🟢 우수') ||
-      !metrics.gradeLegend.includes('🔵 양호') ||
-      !metrics.gradeLegend.includes('🟡 주의') ||
-      !metrics.gradeLegend.includes('🔴 위험')
-    ) {
-      fails.push(`grade legend ${JSON.stringify(metrics.gradeLegend)}`)
+    if (!/🟢 우수|🔵 양호|🟡 주의|🔴 위험/.test(metrics.evaluationBadge)) {
+      fails.push(`evaluation badge: ${metrics.evaluationBadge}`)
     }
 
     const screenshotPath = `${ARTIFACT_DIR}/parent-mobile-${width}.png`

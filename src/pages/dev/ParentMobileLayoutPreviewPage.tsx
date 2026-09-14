@@ -1,4 +1,4 @@
-import { PriorDayLearningEvaluationRow, PriorDayLearningGradeBadge } from '../../components/studentCare/LearningStatusBadge'
+import { PriorDayLearningEvaluationRow } from '../../components/studentCare/LearningStatusBadge'
 import { ParentStudentInfoCard } from '../../components/parent/ParentStudentComponents'
 import {
   ParentHomeworkSlotCard,
@@ -218,11 +218,6 @@ export function ParentMobileLayoutPreviewPage() {
               compact
               evaluation={<PriorDayLearningEvaluationRow result={previewEvaluation} />}
             />
-            <div data-preview-grades="" className="flex flex-wrap gap-1.5">
-              {(['우수', '양호', '주의', '위험'] as const).map((grade) => (
-                <PriorDayLearningGradeBadge key={grade} grade={grade} />
-              ))}
-            </div>
             <section className="rounded-2xl border border-slate-200 bg-white px-3.5 py-3 shadow-sm">
               <h2 className="text-base font-bold text-navy-900">숙제 수행 결과</h2>
               <div className="mt-2">
