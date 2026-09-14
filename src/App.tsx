@@ -102,6 +102,7 @@ import { CareerAssessmentTeacherResultPage } from './features/careerAssessment/p
 import { CareerTestStudentPage } from './features/careerAssessment/pages/CareerTestStudentPage'
 import { ParentCareerResultPage } from './features/careerAssessment/pages/ParentCareerResultPage'
 import { AdmissionStrategyViewerPreviewPage } from './pages/dev/AdmissionStrategyViewerPreviewPage'
+import { ParentMobileLayoutPreviewPage } from './pages/dev/ParentMobileLayoutPreviewPage'
 
 
 
@@ -117,7 +118,10 @@ function App() {
 
         <Route path="/career-test/:token" element={<CareerTestStudentPage />} />
         {import.meta.env.DEV ? (
-          <Route path="/dev/admission-viewer" element={<AdmissionStrategyViewerPreviewPage />} />
+          <>
+            <Route path="/dev/admission-viewer" element={<AdmissionStrategyViewerPreviewPage />} />
+            <Route path="/dev/parent-mobile-layout" element={<ParentMobileLayoutPreviewPage />} />
+          </>
         ) : null}
 
         <Route path="/care/:studentAccessKey" element={<ParentStudentLayout />}>

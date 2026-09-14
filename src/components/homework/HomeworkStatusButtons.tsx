@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react'
 import type { HomeworkStatus } from '../../types/records'
-import { HOMEWORK_STATUSES } from '../../utils/labels'
+import { HOMEWORK_INPUT_STATUSES } from '../../utils/labels'
 import { resolveSelectedHomeworkStatus } from '../../utils/homework'
 
 export const homeworkStatusStyles: Record<
@@ -54,11 +54,11 @@ export function HomeworkStatusButtons({
         <p className={labelClass}>{label}</p>
       )}
       <div
-        className={`flex flex-wrap gap-1.5 ${compact ? '' : 'grid grid-cols-1 gap-2 sm:grid-cols-3'}`}
+        className={`flex flex-wrap gap-1.5 ${compact ? '' : 'grid grid-cols-1 gap-2 sm:grid-cols-2'}`}
         role="group"
         aria-label={label ?? '지난 과제'}
       >
-        {HOMEWORK_STATUSES.map((status) => {
+        {HOMEWORK_INPUT_STATUSES.map((status) => {
           const selected = current === status
           const styles = homeworkStatusStyles[status]
           return (
@@ -83,6 +83,11 @@ export function HomeworkStatusButtons({
           )
         })}
       </div>
+      {current === '미완료' ? (
+        <p className={`text-slate-500 ${compact ? 'mt-1 text-xs' : 'mt-1.5 text-sm'}`}>
+          기존 기록: 미완료 (신규 입력은 완료 / 부분 완료만 가능)
+        </p>
+      ) : null}
       {error && <p className={`text-rose-500 ${compact ? 'mt-1 text-xs' : 'mt-1.5 text-sm'}`}>{error}</p>}
     </div>
   )

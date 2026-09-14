@@ -14,7 +14,7 @@ type LearningStatusBadgeProps = {
 }
 
 export function LearningStatusBadge({ result, onClick, compact = false }: LearningStatusBadgeProps) {
-  const className = `${compact ? 'px-1.5 py-0.5 text-[11px]' : 'px-2 py-0.5 text-xs'} inline-flex items-center rounded-full border font-semibold ${LEVEL_CLASS[result.level]}`
+  const className = `${compact ? 'px-1.5 py-0.5 text-[11px]' : 'px-2 py-0.5 text-xs'} inline-flex shrink-0 items-center whitespace-nowrap rounded-full border font-semibold ${LEVEL_CLASS[result.level]}`
   if (onClick) {
     return (
       <button type="button" onClick={onClick} className={className} aria-label={`현재 학습상태 ${result.level}`}>

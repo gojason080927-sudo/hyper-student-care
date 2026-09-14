@@ -244,9 +244,9 @@ export function StudentSummaryCard({
   if (compact) {
     return (
       <section className="rounded-xl border border-slate-200 bg-white px-3.5 py-3 shadow-sm sm:rounded-2xl sm:px-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-lg font-bold text-navy-900">{student.name}</h1>
-          {statusBadge}
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <h1 className="min-w-0 break-keep text-lg font-bold text-navy-900">{student.name}</h1>
+          <span className="shrink-0">{statusBadge}</span>
         </div>
         <p className="mt-0.5 line-clamp-2 break-anywhere text-sm text-slate-600">
           {[student.school, student.grade, student.teacher].filter(Boolean).join(' · ')}
@@ -257,9 +257,9 @@ export function StudentSummaryCard({
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm">
-      <div className="flex flex-wrap items-center gap-2">
-        <p className="text-lg font-bold text-navy-900">{student.name} 학생</p>
-        {statusBadge}
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <p className="min-w-0 break-keep text-lg font-bold text-navy-900">{student.name} 학생</p>
+        <span className="shrink-0">{statusBadge}</span>
       </div>
       <p className="mt-1 text-sm text-slate-600">
         {student.school} · {student.grade}

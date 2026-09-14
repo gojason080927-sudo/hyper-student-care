@@ -27,7 +27,7 @@ import {
   normalizeWrongAnswerItems,
 } from '../../utils/learningDiagnosis'
 import type { Student } from '../../types/student'
-import { normalizeHomeworkStatus } from '../../utils/homework'
+import { normalizeHomeworkStatus, persistStoredHomeworkStatus } from '../../utils/homework'
 
 export type StudentRow = {
   id: string
@@ -357,7 +357,7 @@ export function homeworkToRow(record: HomeworkRecord): HomeworkRow {
     date: record.date,
     title: record.title,
     description: record.description,
-    status: record.status,
+    status: persistStoredHomeworkStatus(record.status) || record.status,
     teacher_memo: record.teacherMemo,
     created_at: record.createdAt,
     updated_at: record.updatedAt,
@@ -804,7 +804,7 @@ export function homeworkTextbookEntryToRow(
     slot_number: record.slotNumber,
     previous_assignment: record.previousAssignment,
     today_assignment: record.todayAssignment,
-    status: record.status ? normalizeHomeworkStatus(record.status) : '',
+    status: persistStoredHomeworkStatus(record.status),
     created_at: record.createdAt,
     updated_at: record.updatedAt,
   }

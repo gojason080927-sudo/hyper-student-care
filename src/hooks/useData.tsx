@@ -78,7 +78,7 @@ import { createId } from '../utils/id'
 import { normalizeContentPostRecord } from '../utils/contentPost'
 import { normalizeDailyTestRecord } from '../utils/dailyTest'
 import { EMPTY_DAILY_LEARNING_DIAGNOSIS } from '../utils/learningDiagnosis'
-import { normalizeHomeworkStatus } from '../utils/homework'
+import { resolveHomeworkStatusForSave } from '../utils/homework'
 import {
   normalizeDifficultyBreakdown,
   normalizeMonthlyEvaluationRecord,
@@ -906,9 +906,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
         showToast('존재하지 않는 학생입니다.')
         return false
       }
+      const existing = data.id
+        ? homework.find((r) => r.id === data.id)
+        : homework.find((r) => r.studentId === data.studentId && r.date === data.date)
+      const resolvedStatus = resolveHomeworkStatusForSave(data.status, existing?.status)
+      if (resolvedStatus === '') {
+        showToast('숙제 수행은 완료 또는 부분 완료만 저장할 수 있습니다.')
+        return false
+      }
       const normalizedData = {
         ...data,
-        status: normalizeHomeworkStatus(data.status),
+        status: resolvedStatus,
       }
       const ts = createTimestamps()
       let record: HomeworkRecord
@@ -963,7 +971,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         slotNumber: data.slotNumber,
         previousAssignment: (data.previousAssignment ?? existing?.previousAssignment ?? '').trim(),
         todayAssignment: data.todayAssignment.trim(),
-        status: data.status ? normalizeHomeworkStatus(data.status) : '',
+        status: resolveHomeworkStatusForSave(data.status, existing?.status),
         createdAt: existing?.createdAt ?? ts.createdAt,
         updatedAt: ts.updatedAt,
       }
@@ -1029,7 +1037,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         slotNumber: data.slotNumber,
         previousAssignment: (data.previousAssignment ?? existing?.previousAssignment ?? '').trim(),
         todayAssignment: data.todayAssignment.trim(),
-        status: data.status ? normalizeHomeworkStatus(data.status) : '',
+        status: resolveHomeworkStatusForSave(data.status, existing?.status),
         createdAt: existing?.createdAt ?? ts.createdAt,
         updatedAt: ts.updatedAt,
       }

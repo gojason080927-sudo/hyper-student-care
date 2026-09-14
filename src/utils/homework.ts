@@ -38,6 +38,33 @@ export function normalizeHomeworkStatus(status: unknown): HomeworkStatus {
   return '미완료'
 }
 
+export function isHomeworkInputStatus(status: unknown): status is HomeworkStatus {
+  return status === '완료' || status === '부분 완료'
+}
+
+/**
+ * 신규 저장: 완료 / 부분 완료만 허용.
+ * 기존 row가 미완료이면 그 값만 보존한다. 빈 값·미선택을 미완료로 바꾸지 않는다.
+ */
+export function resolveHomeworkStatusForSave(
+  next: unknown,
+  existing?: unknown,
+): HomeworkStatus | '' {
+  const nextSelected = resolveSelectedHomeworkStatus(next)
+  const existingSelected = resolveSelectedHomeworkStatus(existing)
+  if (!nextSelected) {
+    if (existingSelected === '미완료') return '미완료'
+    return isHomeworkInputStatus(existingSelected) ? existingSelected : ''
+  }
+  if (isHomeworkInputStatus(nextSelected)) return nextSelected
+  if (nextSelected === '미완료' && existingSelected === '미완료') return '미완료'
+  return isHomeworkInputStatus(existingSelected)
+    ? existingSelected
+    : existingSelected === '미완료'
+      ? '미완료'
+      : ''
+}
+
 export function matchesHomeworkStatus(
   recordStatus: unknown,
   filterStatus: string,
@@ -65,15 +92,20 @@ export function homeworkRecordToSavePayload(
     content: string
     status: HomeworkStatus | string
     teacherMemo: string
+    existingStatus?: HomeworkStatus | string
   },
 ): Omit<HomeworkRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string } {
+  const status = resolveHomeworkStatusForSave(data.status, data.existingStatus)
+  if (status === '') {
+    throw new Error('숙제 수행은 완료 또는 부분 완료만 저장할 수 있습니다.')
+  }
   return {
     id: data.id,
     studentId: data.studentId,
     date: data.date,
     title: '',
     description: data.content.trim(),
-    status: normalizeHomeworkStatus(data.status),
+    status,
     teacherMemo: data.teacherMemo.trim(),
   }
 }
@@ -94,6 +126,11 @@ export function normalizeHomeworkRecord(record: HomeworkRecord): HomeworkRecord 
     description: content,
     status,
   }
+}
+
+/** DB에 쓰는 값. 빈 값·미지를 미완료로 바꾸지 않는다. */
+export function persistStoredHomeworkStatus(status: unknown): HomeworkStatus | '' {
+  return resolveSelectedHomeworkStatus(status) ?? ''
 }
 
 export function isHomeworkStatusSelected(status: unknown): boolean {

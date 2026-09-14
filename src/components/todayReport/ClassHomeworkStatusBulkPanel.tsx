@@ -206,7 +206,7 @@ export function ClassHomeworkStatusBulkPanel({
   const handleSaveAll = async () => {
     if (saving || students.length === 0 || slotPlan.length === 0) return
 
-    // Partial save: only slots with an explicit status (완료/부분 완료/미완료)
+    // Partial save: only slots with an explicit status (신규 완료/부분 완료, legacy 미완료 보존)
     const tasks = students.flatMap((student) =>
       slotPlan.flatMap(({ subject, slotNumber }) => {
         const key = draftKey(student.id, subject, slotNumber)

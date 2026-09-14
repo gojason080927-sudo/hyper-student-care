@@ -100,7 +100,7 @@ export function ParentStudentWeeklySummaryPage() {
   )
 }
 
-function WeeklySummaryDetail({ summary }: { summary: WeeklyLearningSummaryRecord }) {
+export function WeeklySummaryDetail({ summary }: { summary: WeeklyLearningSummaryRecord }) {
   return (
     <div className="space-y-3">
       <section className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
