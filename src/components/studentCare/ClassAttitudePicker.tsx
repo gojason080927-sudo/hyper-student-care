@@ -55,7 +55,7 @@ export function ClassAttitudePicker({
           disabled={disabled}
           aria-label="수업태도 우수 — 문제가 있으면 눌러 선택"
           onClick={() => setExpanded(true)}
-          className={`${chip} border font-semibold border-emerald-300 bg-emerald-50 text-emerald-800`}
+          className={`${chip} border font-semibold border-emerald-300 bg-emerald-50 text-emerald-800 disabled:cursor-not-allowed disabled:opacity-60`}
         >
           우수
         </button>

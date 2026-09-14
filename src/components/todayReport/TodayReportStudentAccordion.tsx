@@ -24,6 +24,8 @@ type TodayReportStudentAccordionProps = {
   omitHomeworkAndProgress?: boolean
   /** 반 전체 일일테스트 패널 사용 시 학생별 일일테스트 섹션 숨김 */
   omitDailyTest?: boolean
+  /** 반 전체 수업태도 패널 사용 시 학생별 수업태도 섹션 숨김 */
+  omitAttitude?: boolean
 }
 
 export function TodayReportStudentAccordion({
@@ -36,6 +38,7 @@ export function TodayReportStudentAccordion({
   omitAttendance = false,
   omitHomeworkAndProgress = false,
   omitDailyTest = false,
+  omitAttitude = false,
 }: TodayReportStudentAccordionProps) {
   const records = useMemo(
     () => findStudentDayRecords(student.id, date, lookupContext),
@@ -94,13 +97,14 @@ export function TodayReportStudentAccordion({
             compactTeacherInput
             classSync={classSync}
             omitSections={
-              omitAttendance || omitHomeworkAndProgress || omitDailyTest
+              omitAttendance || omitHomeworkAndProgress || omitDailyTest || omitAttitude
                 ? [
                     ...(omitAttendance ? (['attendance'] as const) : []),
                     ...(omitHomeworkAndProgress
                       ? (['homework', 'progress'] as const)
                       : []),
                     ...(omitDailyTest ? (['dailyTest'] as const) : []),
+                    ...(omitAttitude ? (['attitude'] as const) : []),
                   ]
                 : undefined
             }

@@ -101,6 +101,8 @@ import { resolveCommonClassContext } from '../../utils/classCommonDataKey'
 import { getVisibleDailyTestSubjects } from '../../utils/studentGradeClass'
 import { attendanceDisplayLabel } from '../../utils/studentCare/scoring'
 import { computePriorDayLearningEvaluation } from '../../utils/studentCare'
+import { isAbsentAttendanceRecord } from '../../utils/todayReportAbsence'
+import { AbsentFollowOnBadge, AbsentFollowOnHint } from './AbsentFollowOnBadge'
 
 function ParentReadOnlyBody({
   hasData,
@@ -616,6 +618,7 @@ export function TodayReportView({
     (!mobileSection || mobileSection === section) &&
     !(omitSections?.includes(section) ?? false)
   const sectionHideTitle = embeddedMobile
+  const followOnExcluded = !readOnly && isAbsentAttendanceRecord(dayAttendance)
 
   return (
     <div className={embeddedMobile ? '' : tc ? 'space-y-1.5' : 'space-y-3'}>
@@ -834,6 +837,7 @@ export function TodayReportView({
               onSave={saveStudentDailyCareRecord}
               teacherCompact={tc}
               hideTitle={sectionHideTitle}
+              followOnExcluded={followOnExcluded}
               emptyMessage={
                 readOnly && !selectedDateIsToday
                   ? '해당 날짜에 등록된 교재 준비 정보가 없습니다.'
@@ -936,6 +940,7 @@ export function TodayReportView({
               onSave={saveStudentDailyCareRecord}
               teacherCompact={tc}
               hideTitle={sectionHideTitle && mobileSection === 'attitude'}
+              followOnExcluded={followOnExcluded}
               treatMissingAsExcellent={selectedDateIsToday}
               emptyMessage={
                 readOnly && !selectedDateIsToday
@@ -1130,6 +1135,7 @@ function MaterialPrepSection({
   onSave,
   teacherCompact = false,
   hideTitle = false,
+  followOnExcluded = false,
   emptyMessage,
 }: {
   readOnly: boolean
@@ -1139,6 +1145,7 @@ function MaterialPrepSection({
   onSave: ReturnType<typeof useData>['saveStudentDailyCareRecord']
   teacherCompact?: boolean
   hideTitle?: boolean
+  followOnExcluded?: boolean
   emptyMessage: string
 }) {
   const [value, setValue] = useState<MaterialPrepStatus | null>(record?.materialPrep ?? null)
@@ -1148,7 +1155,7 @@ function MaterialPrepSection({
   }, [record])
 
   const handleSave = () => {
-    if (!value) return
+    if (followOnExcluded || !value) return
     onSave({
       id: record?.id,
       studentId,
@@ -1169,6 +1176,11 @@ function MaterialPrepSection({
             </p>
           )}
         </ParentReadOnlyBody>
+      ) : followOnExcluded ? (
+        <div className={teacherCompact ? 'space-y-1.5' : 'space-y-2'}>
+          <AbsentFollowOnBadge compact={teacherCompact} />
+          <AbsentFollowOnHint compact={teacherCompact} />
+        </div>
       ) : (
         <div className={teacherCompact ? 'space-y-2' : 'space-y-3'}>
           <MaterialPrepPicker value={value} onChange={setValue} compact={teacherCompact} />
@@ -1195,6 +1207,7 @@ function ClassAttitudeSection({
   teacherCompact = false,
   hideTitle = false,
   treatMissingAsExcellent = false,
+  followOnExcluded = false,
   emptyMessage,
 }: {
   readOnly: boolean
@@ -1205,6 +1218,7 @@ function ClassAttitudeSection({
   teacherCompact?: boolean
   hideTitle?: boolean
   treatMissingAsExcellent?: boolean
+  followOnExcluded?: boolean
   emptyMessage: string
 }) {
   const [issues, setIssues] = useState<ClassAttitudeIssue[]>(record?.attitudeIssues ?? [])
@@ -1216,6 +1230,7 @@ function ClassAttitudeSection({
   }, [record])
 
   const handleSave = () => {
+    if (followOnExcluded) return
     onSave({
       id: record?.id,
       studentId,
@@ -1250,6 +1265,11 @@ function ClassAttitudeSection({
             </div>
           )}
         </ParentReadOnlyBody>
+      ) : followOnExcluded ? (
+        <div className={teacherCompact ? 'space-y-1.5' : 'space-y-2'}>
+          <AbsentFollowOnBadge compact={teacherCompact} />
+          <AbsentFollowOnHint compact={teacherCompact} />
+        </div>
       ) : (
         <div className={teacherCompact ? 'space-y-2' : 'space-y-3'}>
           <ClassAttitudePicker
@@ -1849,7 +1869,7 @@ function DailyTestParentSection({
         readOnly
         sectionTitle={isEnglish ? '어휘 시험' : undefined}
       />
-      {/* 영어: 듣기 평가 → 강사 피드백 / 수학: 오답 분석 → 피드백 → 격주간 */}
+      {/* 영어: 듣기 평가 → 강사 피드백 / 수학: 오답 분석 → 피드백 */}
       <ParentDailyTestDiagnosisBlock record={record} classNote={classNote} />
       {/* 오답 BANK 데이터·기능은 유지. Today Report 학부모 화면 표시만 수업태도로 교체 */}
     </div>

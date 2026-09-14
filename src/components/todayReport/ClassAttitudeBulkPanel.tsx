@@ -1,32 +1,41 @@
 import { useEffect, useMemo, useState } from 'react'
+import { StudentKakaoShareAction } from '../students/StudentKakaoShareAction'
+import { ClassAttitudePicker } from '../studentCare/ClassAttitudePicker'
+import { AbsentFollowOnHint, StudentFollowOnRowHeader } from './AbsentFollowOnBadge'
 import { useData } from '../../hooks/useData'
-import type { MaterialPrepStatus, StudentDailyCareRecord } from '../../types/records'
+import type { ClassAttitudeIssue, StudentDailyCareRecord } from '../../types/records'
 import type { Student } from '../../types/student'
 import { formatKoreanDate } from '../../utils/date'
 import { btnPrimary } from '../../utils/labels'
 import {
   isStudentAbsentOnDate,
-  missingRequiredMaterialPrep,
+  selectAttitudeBulkSaveTargets,
+  type AttitudeBulkDraft,
 } from '../../utils/todayReportAbsence'
-import { MaterialPrepPicker } from '../studentCare/MaterialPrepPicker'
-import { AbsentFollowOnHint, StudentFollowOnRowHeader } from './AbsentFollowOnBadge'
 
-type ClassMaterialPrepBulkPanelProps = {
+type ClassAttitudeBulkPanelProps = {
   date: string
   className: string
   students: Student[]
   compact?: boolean
 }
 
-export function ClassMaterialPrepBulkPanel({
+function draftFromRecord(record: StudentDailyCareRecord | undefined): AttitudeBulkDraft {
+  return {
+    issues: record?.attitudeIssues ?? [],
+    note: record?.attitudeNote ?? '',
+  }
+}
+
+export function ClassAttitudeBulkPanel({
   date,
   className,
   students,
   compact = false,
-}: ClassMaterialPrepBulkPanelProps) {
+}: ClassAttitudeBulkPanelProps) {
   const { attendance, studentDailyCare, saveStudentDailyCareRecordAsync, showToast } = useData()
   const [saving, setSaving] = useState(false)
-  const [drafts, setDrafts] = useState<Record<string, StudentDailyCareRecord | undefined>>({})
+  const [drafts, setDrafts] = useState<Record<string, AttitudeBulkDraft>>({})
 
   const dayCareByStudent = useMemo(() => {
     const map = new Map<string, StudentDailyCareRecord>()
@@ -40,54 +49,54 @@ export function ClassMaterialPrepBulkPanel({
   const studentIdsKey = students.map((student) => student.id).join('|')
 
   useEffect(() => {
-    const next: Record<string, StudentDailyCareRecord | undefined> = {}
+    const next: Record<string, AttitudeBulkDraft> = {}
     for (const student of students) {
-      next[student.id] = dayCareByStudent.get(student.id)
+      next[student.id] = draftFromRecord(dayCareByStudent.get(student.id))
     }
     setDrafts(next)
   }, [date, dayCareByStudent, studentIdsKey, students])
 
+  const setDraft = (studentId: string, patch: Partial<AttitudeBulkDraft>) => {
+    setDrafts((prev) => ({
+      ...prev,
+      [studentId]: {
+        issues: prev[studentId]?.issues ?? [],
+        note: prev[studentId]?.note ?? '',
+        ...patch,
+      },
+    }))
+  }
+
   const handleSaveAll = async () => {
     if (saving) return
-    const missing = missingRequiredMaterialPrep(students, attendance, date, drafts)
-    if (missing.length > 0) {
-      showToast(`교재 준비 미선택: ${missing.map((s) => s.name).join(', ')}`)
-      return
-    }
-    const targets = students.filter(
-      (student) =>
-        !isStudentAbsentOnDate(attendance, student.id, date) && drafts[student.id]?.materialPrep,
-    )
+    const targets = selectAttitudeBulkSaveTargets(students, attendance, date, drafts)
     if (targets.length === 0) {
-      showToast('결석 학생은 교재 준비 입력 대상이 아닙니다.')
+      showToast('결석 학생은 수업태도 입력 대상이 아닙니다.')
       return
     }
+
     setSaving(true)
     const failures: string[] = []
     const saved: string[] = []
     try {
-      for (const student of targets) {
-        const current = drafts[student.id]
-        if (!current?.materialPrep) {
-          failures.push(student.name)
-          continue
-        }
+      for (const { student, attitudeIssues, attitudeNote } of targets) {
+        const existing = dayCareByStudent.get(student.id)
         try {
           const result = await saveStudentDailyCareRecordAsync(
             {
-              id: current.id,
+              id: existing?.id,
               studentId: student.id,
               date,
-              materialPrep: current.materialPrep,
-              attitudeIssues: current.attitudeIssues ?? [],
-              attitudeNote: current.attitudeNote ?? '',
+              materialPrep: existing?.materialPrep ?? null,
+              attitudeIssues,
+              attitudeNote,
             },
             { silent: true },
           )
           if (result.success) saved.push(student.name)
           else failures.push(student.name)
         } catch (error) {
-          console.error('[class-material-prep] save threw', {
+          console.error('[class-attitude] save threw', {
             studentId: student.id,
             name: student.name,
             date,
@@ -96,15 +105,18 @@ export function ClassMaterialPrepBulkPanel({
           failures.push(student.name)
         }
       }
+
       if (failures.length > 0 && saved.length === 0) {
-        showToast('교재 준비 저장에 실패했습니다.')
+        showToast('수업태도 저장에 실패했습니다.')
         return
       }
       if (failures.length > 0) {
-        showToast(`교재 준비 일부 저장 실패: ${failures.join(', ')} / 성공: ${saved.join(', ')}`)
+        showToast(
+          `수업태도 일부 저장 실패: ${failures.join(', ')} / 성공: ${saved.join(', ')}`,
+        )
         return
       }
-      showToast('교재 준비가 저장되었습니다.')
+      showToast('수업태도가 저장되었습니다.')
     } finally {
       setSaving(false)
     }
@@ -119,39 +131,38 @@ export function ClassMaterialPrepBulkPanel({
       <p className="text-xs font-medium text-slate-500">
         {formatKoreanDate(date)} / {className} · {students.length}명
       </p>
-      <div className={compact ? 'divide-y divide-[rgba(22,58,112,0.06)]' : 'divide-y divide-slate-100'}>
+      <div
+        className={
+          compact
+            ? 'divide-y divide-[rgba(22,58,112,0.06)]'
+            : 'divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white'
+        }
+      >
         {students.map((student) => {
-          const current = drafts[student.id]
           const excluded = isStudentAbsentOnDate(attendance, student.id, date)
+          const current = drafts[student.id] ?? { issues: [] as ClassAttitudeIssue[], note: '' }
           return (
             <div
               key={student.id}
-              className={compact ? 'px-1 py-2' : 'px-2 py-2.5'}
+              className={compact ? 'px-1 py-2' : 'px-3 py-2.5'}
               data-absent-excluded={excluded ? 'true' : 'false'}
             >
-              <StudentFollowOnRowHeader name={student.name} excluded={excluded} compact={compact} />
+              <StudentFollowOnRowHeader
+                name={student.name}
+                excluded={excluded}
+                compact={compact}
+                extra={<StudentKakaoShareAction student={student} compact />}
+              />
               {excluded ? (
                 <AbsentFollowOnHint compact={compact} />
               ) : (
-                <MaterialPrepPicker
-                  value={current?.materialPrep ?? null}
+                <ClassAttitudePicker
+                  issues={current.issues}
+                  note={current.note}
+                  onIssuesChange={(issues) => setDraft(student.id, { issues, note: issues.length > 0 ? current.note : '' })}
+                  onNoteChange={(note) => setDraft(student.id, { note })}
                   compact={compact}
                   disabled={saving}
-                  onChange={(value: MaterialPrepStatus) => {
-                    setDrafts((prev) => ({
-                      ...prev,
-                      [student.id]: {
-                        id: current?.id ?? '',
-                        studentId: student.id,
-                        date,
-                        materialPrep: value,
-                        attitudeIssues: current?.attitudeIssues ?? [],
-                        attitudeNote: current?.attitudeNote ?? '',
-                        createdAt: current?.createdAt ?? '',
-                        updatedAt: current?.updatedAt ?? '',
-                      },
-                    }))
-                  }}
                 />
               )}
             </div>
@@ -162,9 +173,9 @@ export function ClassMaterialPrepBulkPanel({
         type="button"
         onClick={() => void handleSaveAll()}
         disabled={saving}
-        className={compact ? 'tm-btn-primary w-full min-h-11' : `${btnPrimary} w-full`}
+        className={compact ? 'tm-btn-primary w-full min-h-11' : `${btnPrimary} w-full min-h-11`}
       >
-        {saving ? '저장 중…' : '전체 교재 준비 저장'}
+        {saving ? '저장 중…' : '수업태도 일괄 저장'}
       </button>
     </div>
   )

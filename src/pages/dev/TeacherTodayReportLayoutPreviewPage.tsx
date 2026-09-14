@@ -121,11 +121,22 @@ export function TeacherTodayReportLayoutPreviewPage() {
               onNoteChange={setNote}
               compact
             />
-            <div className="mt-2 flex justify-end">
-              <button type="button" className="min-h-9 rounded-lg bg-[#163A70] px-3 py-1.5 text-sm font-semibold text-white">
-                수업태도 저장
-              </button>
+            <button type="button" className="tm-btn-primary mt-2 w-full min-h-11 text-sm font-semibold">
+              수업태도 일괄 저장
+            </button>
+          </section>
+
+          <section className="tm-card px-3 py-3" data-preview-block="absent-excluded">
+            <h2 className="mb-2 text-sm font-bold text-[#163A70]">교재 준비</h2>
+            <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+              <p className="text-sm font-bold text-[#163A70]">김민재</p>
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
+                결석 · 입력 제외
+              </span>
             </div>
+            <p className="text-[11px] leading-5 text-slate-500">
+              결석으로 저장되어 이 날짜의 수업 참여 항목에서 제외됩니다.
+            </p>
           </section>
         </section>
       </main>

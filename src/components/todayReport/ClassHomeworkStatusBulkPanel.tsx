@@ -18,6 +18,8 @@ import {
 import { isHomeworkStatusSelected } from '../../utils/homework'
 import { getTextbookName } from '../../utils/textbookSlots'
 import { findHomeworkTextbookEntryForDisplay } from '../../utils/todayReportDisplayFallback'
+import { isFollowOnInputRequired, isStudentAbsentOnDate } from '../../utils/todayReportAbsence'
+import { AbsentFollowOnHint, StudentFollowOnRowHeader } from './AbsentFollowOnBadge'
 import { SubjectGroupCard, subjectGroupTitle } from './SubjectGroupCard'
 
 type SlotDraft = {
@@ -51,6 +53,7 @@ export function ClassHomeworkStatusBulkPanel({
   compact = false,
 }: ClassHomeworkStatusBulkPanelProps) {
   const {
+    attendance,
     homeworkTextbookEntries,
     studentTextbookSlots,
     saveHomeworkTextbookEntryAsync,
@@ -186,6 +189,7 @@ export function ClassHomeworkStatusBulkPanel({
     setDrafts((prev) => {
       const next = { ...prev }
       for (const student of students) {
+        if (!isFollowOnInputRequired(attendance, student.id, date)) continue
         for (const { subject, slotNumber } of slotPlan) {
           const key = draftKey(student.id, subject, slotNumber)
           dirtyStatusKeysRef.current.add(key)
@@ -206,17 +210,25 @@ export function ClassHomeworkStatusBulkPanel({
   const handleSaveAll = async () => {
     if (saving || students.length === 0 || slotPlan.length === 0) return
 
-    // Partial save: only slots with an explicit status (신규 완료/부분 완료, legacy 미완료 보존)
-    const tasks = students.flatMap((student) =>
-      slotPlan.flatMap(({ subject, slotNumber }) => {
+    // 결석 학생은 저장하지 않음(가짜 완료 금지). 출석 학생의 명시 선택만 저장.
+    const tasks = students.flatMap((student) => {
+      if (!isFollowOnInputRequired(attendance, student.id, date)) return []
+      return slotPlan.flatMap(({ subject, slotNumber }) => {
         const key = draftKey(student.id, subject, slotNumber)
         const draft = drafts[key]
         if (!isHomeworkStatusSelected(draft?.status) || !draft) return []
         return [{ student, subject, slotNumber, draft, key }]
-      }),
-    )
+      })
+    })
 
     if (tasks.length === 0) {
+      const required = students.filter((student) =>
+        isFollowOnInputRequired(attendance, student.id, date),
+      )
+      if (required.length === 0) {
+        showToast('결석 학생은 숙제 입력 대상이 아닙니다.')
+        return
+      }
       showToast('숙제 수행 결과를 선택해주세요.')
       return
     }
@@ -330,17 +342,18 @@ export function ClassHomeworkStatusBulkPanel({
             : 'divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white'
         }
       >
-        {students.map((student) => (
-          <div key={student.id} className={compact ? 'px-2.5 py-2.5' : 'px-3 py-3'}>
-            <p
-              className={
-                compact
-                  ? 'mb-2 text-sm font-bold text-[#163A70]'
-                  : 'mb-2 text-sm font-bold text-navy-900'
-              }
-            >
-              {student.name}
-            </p>
+        {students.map((student) => {
+          const excluded = isStudentAbsentOnDate(attendance, student.id, date)
+          return (
+          <div
+            key={student.id}
+            className={compact ? 'px-2.5 py-2.5' : 'px-3 py-3'}
+            data-absent-excluded={excluded ? 'true' : 'false'}
+          >
+            <StudentFollowOnRowHeader name={student.name} excluded={excluded} compact={compact} />
+            {excluded ? (
+              <AbsentFollowOnHint compact={compact} />
+            ) : (
             <div className="space-y-3">
               {subjects.map((subject) => {
                 const subjectSlots = slotPlan.filter((item) => item.subject === subject)
@@ -371,6 +384,7 @@ export function ClassHomeworkStatusBulkPanel({
                             }
                             label={heading}
                             compact
+                            disabled={saving}
                           />
                         </div>
                       )
@@ -379,8 +393,10 @@ export function ClassHomeworkStatusBulkPanel({
                 )
               })}
             </div>
+            )}
           </div>
-        ))}
+          )
+        })}
       </div>
 
       <button

@@ -12,6 +12,7 @@ type DailyLearningDiagnosisFieldsProps = {
   value: DailyLearningDiagnosisData
   onChange: (next: DailyLearningDiagnosisData) => void
   compact?: boolean
+  disabled?: boolean
 }
 
 type PassFail = '합격' | '불합격'
@@ -33,6 +34,7 @@ export function DailyLearningDiagnosisFields({
   value,
   onChange,
   compact = false,
+  disabled = false,
 }: DailyLearningDiagnosisFieldsProps) {
   const diagnosis = normalizeDailyLearningDiagnosis(value)
   const isMath = subject.includes('수학')
@@ -63,6 +65,7 @@ export function DailyLearningDiagnosisFields({
                 min={0}
                 step={1}
                 inputMode="numeric"
+                disabled={disabled}
                 value={diagnosis.conceptLackCount || ''}
                 onChange={(e) => patch({ conceptLackCount: parseNonNegIntInput(e.target.value) })}
                 className={inputClass()}
@@ -76,6 +79,7 @@ export function DailyLearningDiagnosisFields({
                 min={0}
                 step={1}
                 inputMode="numeric"
+                disabled={disabled}
                 value={diagnosis.calculationErrorCount || ''}
                 onChange={(e) =>
                   patch({ calculationErrorCount: parseNonNegIntInput(e.target.value) })
@@ -93,6 +97,7 @@ export function DailyLearningDiagnosisFields({
                 min={0}
                 step={1}
                 inputMode="numeric"
+                disabled={disabled}
                 value={diagnosis.applicationLackCount || ''}
                 onChange={(e) =>
                   patch({ applicationLackCount: parseNonNegIntInput(e.target.value) })
@@ -125,6 +130,7 @@ export function DailyLearningDiagnosisFields({
                 min={0}
                 max={100}
                 inputMode="numeric"
+                disabled={disabled}
                 value={diagnosis.englishListeningScore ?? ''}
                 onChange={(e) =>
                   patch({ englishListeningScore: parseListeningScoreInput(e.target.value) })
@@ -145,6 +151,7 @@ export function DailyLearningDiagnosisFields({
                   key={status}
                   type="button"
                   aria-pressed={selected}
+                  disabled={disabled}
                   onClick={() => setListeningResult(status)}
                   className={`flex items-center justify-center gap-1 rounded-lg border font-semibold ${
                     compact
@@ -171,49 +178,11 @@ export function DailyLearningDiagnosisFields({
           value={diagnosis.teacherFeedback}
           onChange={(e) => patch({ teacherFeedback: e.target.value })}
           rows={compact ? 3 : 5}
+          disabled={disabled}
           className={`${inputClass()} min-h-[5.5rem] resize-y`}
           placeholder="학생·학부모에게 전달할 피드백을 입력해 주세요."
         />
       </label>
-
-      {isMath ? (
-        <div className="grid gap-2 sm:grid-cols-2">
-          <label>
-            <span className="mb-1 block text-sm font-semibold text-slate-600">
-              격주간 오답 재시험
-            </span>
-            <input
-              type="number"
-              min={0}
-              value={diagnosis.fridayRetestTotal ?? ''}
-              onChange={(e) =>
-                patch({
-                  fridayRetestTotal:
-                    e.target.value.trim() === '' ? null : Math.max(0, Number(e.target.value) || 0),
-                })
-              }
-              className={inputClass()}
-              placeholder="해당 시에만 입력"
-            />
-          </label>
-          <label>
-            <span className="mb-1 block text-sm font-semibold text-slate-600">재시험 오답 수</span>
-            <input
-              type="number"
-              min={0}
-              value={diagnosis.fridayRetestWrong ?? ''}
-              onChange={(e) =>
-                patch({
-                  fridayRetestWrong:
-                    e.target.value.trim() === '' ? null : Math.max(0, Number(e.target.value) || 0),
-                })
-              }
-              className={inputClass()}
-              placeholder="0"
-            />
-          </label>
-        </div>
-      ) : null}
 
       {hasDailyLearningDiagnosisContent(diagnosis) ? null : (
         <p className="text-[11px] text-slate-500">
