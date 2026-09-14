@@ -148,6 +148,18 @@ try {
       (await page.locator('text=무단').count()) > 0
     if (!attendanceOk) fails.push('attendance 인정/무단 not visible')
 
+    const voiceUi =
+      (await page.locator('[data-voice-input]').count()) > 0 &&
+      (await page.locator('button:text-is("텍스트")').count()) > 0
+    if (!voiceUi) {
+      fails.push('section voice input UI missing')
+    } else {
+      const voiceOverflowText = await page.locator('[data-voice-input]').first().innerText()
+      if (voiceOverflowText.includes('확인 필요') && voiceOverflowText.length > 400) {
+        fails.push('voice status text unexpectedly long')
+      }
+    }
+
     const homeworkOk =
       (await page.locator('text=완료').count()) > 0 &&
       (await page.locator('text=부분 완료').count()) > 0
@@ -164,12 +176,12 @@ try {
       fails.push(`horizontal overflow ${overflow.scrollWidth} > ${overflow.innerWidth}`)
     }
 
-    await page.locator('button', { hasText: '수업태도 저장' }).scrollIntoViewIfNeeded()
+    await page.locator('button', { hasText: '수업태도 일괄 저장' }).scrollIntoViewIfNeeded()
     await page.waitForTimeout(150)
 
     const navOverlap = await page.evaluate(() => {
       const save = [...document.querySelectorAll('button')].find((el) =>
-        (el.textContent ?? '').includes('수업태도 저장'),
+        (el.textContent ?? '').includes('수업태도 일괄 저장'),
       )
       const nav = document.querySelector('nav[aria-label="강사용 모바일 메뉴"]')
       if (!save || !nav) return 'missing save or nav'
