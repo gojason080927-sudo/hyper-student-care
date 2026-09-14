@@ -37,8 +37,9 @@ export function TeacherTodayReportLayoutPreviewPage() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-lg font-bold leading-tight">Today Report 입력</p>
-                  <p className="mt-0.5 max-w-[18rem] text-[12px] leading-snug text-white/85 sm:text-[13px]">
-                    출결 · 숙제 · 교재준비 · 진도 · 일일테스트 · 수업태도
+                  <p className="mt-0.5 text-[12px] leading-[1.35] text-white/85">
+                    <span className="block break-keep">출결 · 숙제 · 교재준비</span>
+                    <span className="block break-keep">진도 · 일일테스트 · 수업태도</span>
                   </p>
                 </div>
                 <span className="tm-featured-arrow" aria-hidden>

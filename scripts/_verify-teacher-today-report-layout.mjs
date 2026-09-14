@@ -31,9 +31,10 @@ async function ensureDevServer() {
   } catch {
     // start below
   }
-  const child = spawn('npm', ['run', 'dev', '--', '--host', '127.0.0.1', '--port', String(PORT)], {
+  const child = spawn('npx', ['vite', '--host', '127.0.0.1', '--port', String(PORT)], {
     stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, BROWSER: 'none' },
+    detached: true,
   })
   const onData = (buf) => {
     buf.toString()
@@ -52,7 +53,11 @@ async function ensureDevServer() {
     }
   }
   if (!ready) {
-    child.kill()
+    try {
+      if (child.pid) process.kill(-child.pid, 'SIGKILL')
+    } catch {
+      child.kill('SIGKILL')
+    }
     throw new Error('vite dev server failed to start')
   }
   return child
@@ -96,7 +101,7 @@ try {
     }
 
     const homeCopy = await page.locator('[data-preview-section="home"]').innerText()
-    if (!homeCopy.includes('출결 · 숙제 · 교재준비 · 진도 · 일일테스트 · 수업태도')) {
+    if (!homeCopy.includes('출결 · 숙제 · 교재준비') || !homeCopy.includes('진도 · 일일테스트 · 수업태도')) {
       fails.push('HOME copy mismatch')
     }
     if (homeCopy.includes('특이사항')) fails.push('HOME still mentions 특이사항')
@@ -120,6 +125,13 @@ try {
     if (placeholder !== '수업 중 확인한 내용을 간단히 입력') {
       fails.push(`memo placeholder: ${placeholder}`)
     }
+    await page.locator('[data-attitude-note] textarea').fill(
+      '전날 수면 부족으로 보이며 후반부에는 집중도 회복',
+    )
+    await page.screenshot({
+      path: `${ARTIFACT_DIR}/teacher-today-report-${width}-attitude-memo.png`,
+      fullPage: true,
+    })
 
     await page.getByRole('button', { name: '졸음', exact: true }).click()
     await page.waitForSelector('[data-attitude-state="excellent"]')
@@ -181,7 +193,17 @@ try {
   }
 } finally {
   await browser.close()
-  if (server) server.kill()
+  if (server?.pid) {
+    try {
+      process.kill(-server.pid, 'SIGKILL')
+    } catch {
+      try {
+        server.kill('SIGKILL')
+      } catch {
+        // already gone
+      }
+    }
+  }
 }
 
 writeFileSync(`${ARTIFACT_DIR}/report.json`, JSON.stringify(report, null, 2))

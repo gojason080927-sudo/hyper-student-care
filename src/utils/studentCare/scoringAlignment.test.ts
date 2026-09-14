@@ -147,7 +147,8 @@ assert.doesNotMatch(teacherMobileToday, /강사 피드백/)
 assert.doesNotMatch(teacherMobileToday, /classNote/)
 
 const teacherHome = readFileSync('src/pages/teacherMobile/TeacherMobileDashboardPage.tsx', 'utf8')
-assert.match(teacherHome, /출결 · 숙제 · 교재준비 · 진도 · 일일테스트 · 수업태도/)
+assert.match(teacherHome, /출결 · 숙제 · 교재준비/)
+assert.match(teacherHome, /진도 · 일일테스트 · 수업태도/)
 assert.doesNotMatch(teacherHome, /특이사항/)
 
 const attitudePicker = readFileSync('src/components/studentCare/ClassAttitudePicker.tsx', 'utf8')
