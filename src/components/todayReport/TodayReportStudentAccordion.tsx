@@ -9,9 +9,6 @@ import {
   getTodayReportCompletionLabel,
   getTodayReportCompletionStatus,
 } from '../../utils/todayReportCompletionStatus'
-import { LearningStatusBadge } from '../studentCare/LearningStatusBadge'
-import { computeLearningRisk } from '../../utils/studentCare'
-import { useData } from '../../hooks/useData'
 import { findStudentDayRecords, type TodayReportLookupContext } from '../../utils/todayReportLookup'
 
 type TodayReportStudentAccordionProps = {
@@ -40,15 +37,6 @@ export function TodayReportStudentAccordion({
   omitHomeworkAndProgress = false,
   omitDailyTest = false,
 }: TodayReportStudentAccordionProps) {
-  const {
-    attendance,
-    homework,
-    homeworkTextbookEntries,
-    dailyTests,
-    studentDailyCare,
-    classNotes,
-    progressRecords,
-  } = useData()
   const records = useMemo(
     () => findStudentDayRecords(student.id, date, lookupContext),
     [date, lookupContext, student.id],
@@ -56,63 +44,44 @@ export function TodayReportStudentAccordion({
   const completionStatus = getTodayReportCompletionStatus(records, student.id, date)
   const completionLabel = getTodayReportCompletionLabel(completionStatus)
   const completionColor = getTodayReportCompletionColor(completionStatus)
-  const risk = useMemo(
-    () =>
-      computeLearningRisk({
-        studentId: student.id,
-        attendance,
-        homework,
-        homeworkTextbookEntries,
-        dailyTests,
-        dailyCare: studentDailyCare,
-        progressRecords,
-        classNotes,
-      }),
-    [
-      attendance,
-      classNotes,
-      dailyTests,
-      homework,
-      homeworkTextbookEntries,
-      progressRecords,
-      student.id,
-      studentDailyCare,
-    ],
-  )
 
   return (
     <article
       id={`today-report-student-${student.id}`}
       className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm"
     >
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={expanded}
-        className="flex w-full items-start justify-between gap-2 px-3 py-2.5 text-left hover:bg-slate-50/80 sm:px-4"
-      >
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <h3 className="text-sm font-bold text-navy-900">{student.name}</h3>
-            <LearningStatusBadge result={risk} compact />
-            <span
-              className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${completionColor}`}
-            >
-              {completionLabel}
-            </span>
+      <div className="flex items-start gap-1 px-3 py-2.5 sm:px-4">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={expanded}
+          className="flex min-w-0 flex-1 items-start justify-between gap-2 text-left hover:bg-slate-50/80"
+        >
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <h3 className="text-sm font-bold text-navy-900">{student.name}</h3>
+              <span
+                className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${completionColor}`}
+              >
+                {completionLabel}
+              </span>
+            </div>
+            <p className="mt-0.5 text-xs text-slate-600">
+              {student.school} · {student.grade} · {student.className || '-'} ·{' '}
+              {student.teacher || '-'}
+            </p>
           </div>
-          <p className="mt-0.5 text-xs text-slate-600">
-            {student.school} · {student.grade} · {student.className || '-'} ·{' '}
-            {student.teacher || '-'}
-          </p>
+          <ChevronDown
+            className={`mt-0.5 h-4 w-4 shrink-0 text-slate-400 transition-transform ${
+              expanded ? 'rotate-180' : ''
+            }`}
+            aria-hidden
+          />
+        </button>
+        <div className="shrink-0 pt-0.5">
+          <StudentKakaoShareAction student={student} compact />
         </div>
-        <ChevronDown
-          className={`mt-0.5 h-4 w-4 shrink-0 text-slate-400 transition-transform ${
-            expanded ? 'rotate-180' : ''
-          }`}
-          aria-hidden
-        />
-      </button>
+      </div>
 
       {expanded && (
         <div className="border-t border-slate-100 px-3 pb-3 pt-2 sm:px-4">
@@ -135,7 +104,6 @@ export function TodayReportStudentAccordion({
                   ]
                 : undefined
             }
-            classNoteExtraActions={<StudentKakaoShareAction student={student} compact />}
           />
         </div>
       )}

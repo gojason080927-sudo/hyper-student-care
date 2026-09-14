@@ -255,16 +255,6 @@ export function TeacherTodayReportBulkPage() {
           </section>
 
           <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-            <h3 className="mb-2 text-sm font-bold text-navy-900">교재 준비</h3>
-            <ClassMaterialPrepBulkPanel
-              key={`pc-class-material-${date}-${className}`}
-              date={date}
-              className={className}
-              students={classStudents}
-            />
-          </section>
-
-          <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
             <h3 className="mb-2 text-sm font-bold text-navy-900">반 공통 오늘 과제</h3>
             <ClassCommonTodayAssignmentPanel
               key={`pc-class-today-hw-${date}-${className}`}
@@ -273,6 +263,16 @@ export function TeacherTodayReportBulkPage() {
               className={className}
               students={classStudents}
               classSync={classSync}
+            />
+          </section>
+
+          <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+            <h3 className="mb-2 text-sm font-bold text-navy-900">교재 준비</h3>
+            <ClassMaterialPrepBulkPanel
+              key={`pc-class-material-${date}-${className}`}
+              date={date}
+              className={className}
+              students={classStudents}
             />
           </section>
 
@@ -324,7 +324,7 @@ export function TeacherTodayReportBulkPage() {
           </section>
 
           <p className="text-xs font-medium text-slate-500">
-            재원 {classStudents.length}명 · 학생 이름을 클릭하면 특이사항을 입력합니다.
+            재원 {classStudents.length}명 · 학생 이름을 클릭하면 수업태도를 입력합니다.
           </p>
           <div className="space-y-2">
             {classStudents.map((student) => (

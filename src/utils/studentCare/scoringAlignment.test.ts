@@ -121,13 +121,43 @@ for (const route of [
 
 assert.equal(readFileSync('src/components/dailytest/WrongAnswerBankBlock.tsx', 'utf8').includes('export function WrongAnswerBankBlock'), true)
 
-const uiSources = [
-  readFileSync('src/components/todayReport/TodayReportView.tsx', 'utf8'),
-  readFileSync('src/components/todayReport/TodayReportStudentAccordion.tsx', 'utf8'),
-  readFileSync('src/pages/AttendancePage.tsx', 'utf8'),
+const todayReportView = readFileSync('src/components/todayReport/TodayReportView.tsx', 'utf8')
+assert.match(todayReportView, /computeLearningRisk/)
+assert.match(todayReportView, /LearningStatusBadge/)
+assert.match(todayReportView, /readOnly \? dayClassNote/)
+assert.doesNotMatch(todayReportView, /showSection\('classNote'\) && !readOnly/)
+
+const teacherUiFiles = [
+  'src/components/todayReport/TodayReportStudentAccordion.tsx',
+  'src/pages/AttendancePage.tsx',
+  'src/pages/teacherMobile/TeacherMobileTodayReportPage.tsx',
+  'src/components/todayReport/ClassAttendanceBulkPanel.tsx',
+  'src/components/todayReport/ClassMaterialPrepBulkPanel.tsx',
 ]
-for (const source of uiSources) {
-  assert.match(source, /computeLearningRisk/)
+for (const file of teacherUiFiles) {
+  const source = readFileSync(file, 'utf8')
+  assert.doesNotMatch(source, /LearningStatusBadge/)
+  assert.doesNotMatch(source, /computeLearningRisk/)
 }
+
+const teacherMobileToday = readFileSync('src/pages/teacherMobile/TeacherMobileTodayReportPage.tsx', 'utf8')
+assert.match(teacherMobileToday, /id: 'classTodayHomework'[\s\S]*id: 'materialPrep'[\s\S]*id: 'progress'/)
+assert.match(teacherMobileToday, /mobileSection="attitude"/)
+assert.doesNotMatch(teacherMobileToday, /강사 피드백/)
+assert.doesNotMatch(teacherMobileToday, /classNote/)
+
+const teacherHome = readFileSync('src/pages/teacherMobile/TeacherMobileDashboardPage.tsx', 'utf8')
+assert.match(teacherHome, /출결 · 숙제 · 교재준비/)
+assert.match(teacherHome, /진도 · 일일테스트 · 수업태도/)
+assert.doesNotMatch(teacherHome, /특이사항/)
+
+const attitudePicker = readFileSync('src/components/studentCare/ClassAttitudePicker.tsx', 'utf8')
+assert.match(attitudePicker, /data-attitude-state="excellent"/)
+assert.match(attitudePicker, /수업 중 확인한 내용을 간단히 입력/)
+assert.match(attitudePicker, /CLASS_ATTITUDE_ISSUE_LIST/)
+
+const parentPreview = readFileSync('src/pages/dev/ParentMobileLayoutPreviewPage.tsx', 'utf8')
+assert.match(parentPreview, /statusBadge=\{<LearningStatusBadge/)
+assert.doesNotMatch(parentPreview, /강사 피드백/)
 
 console.log('scoringAlignment OK')

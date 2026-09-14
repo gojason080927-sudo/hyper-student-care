@@ -11,8 +11,6 @@ import {
   inputClass,
 } from '../../utils/labels'
 import { AttendanceExcuseButtons, attendanceNeedsExcuse } from '../studentCare/AttendanceExcuseButtons'
-import { LearningStatusBadge } from '../studentCare/LearningStatusBadge'
-import { computeLearningRisk } from '../../utils/studentCare'
 
 type AttendanceDraft = {
   status: AttendanceStatus | ''
@@ -49,7 +47,7 @@ export function ClassAttendanceBulkPanel({
   students,
   compact = false,
 }: ClassAttendanceBulkPanelProps) {
-  const { attendance, homework, homeworkTextbookEntries, dailyTests, studentDailyCare, saveAttendanceRecordAsync, showToast } = useData()
+  const { attendance, saveAttendanceRecordAsync, showToast } = useData()
   const [saving, setSaving] = useState(false)
   const [drafts, setDrafts] = useState<Record<string, AttendanceDraft>>({})
 
@@ -248,14 +246,6 @@ export function ClassAttendanceBulkPanel({
         {students.map((student) => {
           const draft = drafts[student.id] ?? { status: '', reason: '', memo: '', excuseKind: null }
           const showReason = Boolean(draft.status && draft.status !== '출석')
-          const risk = computeLearningRisk({
-            studentId: student.id,
-            attendance,
-            homework,
-            homeworkTextbookEntries,
-            dailyTests,
-            dailyCare: studentDailyCare,
-          })
           return (
             <div key={student.id} className={compact ? 'px-2.5 py-2' : 'px-3 py-2.5'}>
               <div className="mb-1.5 flex items-center gap-2">
@@ -268,7 +258,6 @@ export function ClassAttendanceBulkPanel({
                 >
                   {student.name}
                 </p>
-                <LearningStatusBadge result={risk} compact />
               </div>
               <div className="flex flex-nowrap gap-1">
                 {ATTENDANCE_STATUSES.map((status) => {

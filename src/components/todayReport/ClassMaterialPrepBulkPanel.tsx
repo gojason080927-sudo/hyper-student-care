@@ -5,8 +5,6 @@ import type { Student } from '../../types/student'
 import { formatKoreanDate } from '../../utils/date'
 import { btnPrimary } from '../../utils/labels'
 import { MaterialPrepPicker } from '../studentCare/MaterialPrepPicker'
-import { LearningStatusBadge } from '../studentCare/LearningStatusBadge'
-import { computeLearningRisk } from '../../utils/studentCare'
 
 type ClassMaterialPrepBulkPanelProps = {
   date: string
@@ -23,10 +21,6 @@ export function ClassMaterialPrepBulkPanel({
 }: ClassMaterialPrepBulkPanelProps) {
   const {
     studentDailyCare,
-    attendance,
-    homework,
-    homeworkTextbookEntries,
-    dailyTests,
     saveStudentDailyCareRecord,
     showToast,
   } = useData()
@@ -91,21 +85,12 @@ export function ClassMaterialPrepBulkPanel({
       <div className={compact ? 'divide-y divide-[rgba(22,58,112,0.06)]' : 'divide-y divide-slate-100'}>
         {students.map((student) => {
           const current = drafts[student.id]
-          const risk = computeLearningRisk({
-            studentId: student.id,
-            attendance,
-            homework,
-            homeworkTextbookEntries,
-            dailyTests,
-            dailyCare: studentDailyCare,
-          })
           return (
             <div key={student.id} className={compact ? 'px-1 py-2' : 'px-2 py-2.5'}>
               <div className="mb-1.5 flex items-center gap-2">
                 <p className={compact ? 'text-sm font-bold text-[#163A70]' : 'text-sm font-bold text-navy-900'}>
                   {student.name}
                 </p>
-                <LearningStatusBadge result={risk} compact />
               </div>
               <MaterialPrepPicker
                 value={current?.materialPrep ?? null}

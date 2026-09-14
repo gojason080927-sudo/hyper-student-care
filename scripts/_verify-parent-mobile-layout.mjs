@@ -22,9 +22,10 @@ async function ensureDevServer() {
   } catch {
     // start below
   }
-  const child = spawn('npm', ['run', 'dev', '--', '--host', '127.0.0.1', '--port', String(PORT)], {
+  const child = spawn('npx', ['vite', '--host', '127.0.0.1', '--port', String(PORT)], {
     stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, BROWSER: 'none' },
+    detached: true,
   })
   let ready = false
   const onData = (buf) => {
@@ -44,7 +45,11 @@ async function ensureDevServer() {
     }
   }
   if (!ready) {
-    child.kill()
+    try {
+      if (child.pid) process.kill(-child.pid, 'SIGKILL')
+    } catch {
+      child.kill('SIGKILL')
+    }
     throw new Error('vite dev server failed to start')
   }
   return child
@@ -154,7 +159,17 @@ try {
   }
 } finally {
   await browser.close()
-  if (server) server.kill()
+  if (server?.pid) {
+    try {
+      process.kill(-server.pid, 'SIGKILL')
+    } catch {
+      try {
+        server.kill('SIGKILL')
+      } catch {
+        // already gone
+      }
+    }
+  }
 }
 
 writeFileSync(`${ARTIFACT_DIR}/report.json`, JSON.stringify(report, null, 2))
