@@ -127,7 +127,7 @@ try {
       )
       const evaluationTitle = (
         [...document.querySelectorAll('[data-preview-section="today-report"] p')].find((el) =>
-          (el.textContent ?? '').includes('전일 학습 종합 평가'),
+          (el.textContent ?? '').includes('일일 학습 종합 평가'),
         )?.textContent ?? ''
       ).trim()
       const evaluationBadge = (
@@ -167,7 +167,7 @@ try {
     if (JSON.stringify(metrics.homeTags) !== JSON.stringify(['출결', '오늘의 진도', '과제 수행', '일일 테스트', '수업태도'])) {
       fails.push(`HOME chips ${JSON.stringify(metrics.homeTags)}`)
     }
-    if (metrics.evaluationTitle !== '전일 학습 종합 평가') {
+    if (metrics.evaluationTitle !== '일일 학습 종합 평가') {
       fails.push(`evaluation title: ${metrics.evaluationTitle}`)
     }
     if (!/🟢 우수|🔵 양호|🟡 주의|🔴 위험/.test(metrics.evaluationBadge)) {

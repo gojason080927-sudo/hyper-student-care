@@ -129,7 +129,7 @@ assert.doesNotMatch(todayReportView, /showSection\('classNote'\) && !readOnly/)
 assert.match(readFileSync('src/utils/studentCare/risk.ts', 'utf8'), /computeLearningRisk/)
 assert.match(
   readFileSync('src/components/studentCare/LearningStatusBadge.tsx', 'utf8'),
-  /전일 학습 종합 평가/,
+  /일일 학습 종합 평가/,
 )
 
 const teacherUiFiles = [

@@ -53,7 +53,7 @@ export function PriorDayLearningGradeBadge({
         type="button"
         onClick={onClick}
         className={className}
-        aria-label={`전일 학습 종합 평가 ${grade}`}
+        aria-label={`일일 학습 종합 평가 ${grade}`}
       >
         {priorDayLearningGradeLabel(grade)}
       </button>
@@ -71,7 +71,7 @@ export function PriorDayLearningEvaluationRow({
 }) {
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-      <p className="text-xs font-semibold leading-snug text-slate-500">전일 학습 종합 평가</p>
+      <p className="text-xs font-semibold leading-snug text-slate-500">일일 학습 종합 평가</p>
       <PriorDayLearningGradeBadge grade={result.grade} onClick={onToggle} />
     </div>
   )
@@ -105,7 +105,7 @@ export function LearningRiskReasonPanel({ result }: { result: LearningRiskResult
 export function PriorDayLearningReasonPanel({ result }: { result: PriorDayLearningEvaluation }) {
   return (
     <div className="space-y-1.5 text-sm text-slate-700">
-      <p className="font-semibold text-navy-900">전일 학습 종합 평가 · {result.grade}</p>
+      <p className="font-semibold text-navy-900">일일 학습 종합 평가 · {result.grade}</p>
       <p className="text-xs text-slate-500">
         {formatKoreanDate(result.reportDate)} 수업의 출결·숙제·교재 준비·일일테스트·수업태도 기준
       </p>
