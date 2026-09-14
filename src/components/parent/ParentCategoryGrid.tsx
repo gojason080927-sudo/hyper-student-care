@@ -1,11 +1,14 @@
+import { useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { useParentStudent } from '../../contexts/ParentStudentContext'
+import { useData } from '../../hooks/useData'
 import { useParentAdmissionStrategyMaterials } from '../../hooks/useParentAdmissionStrategyMaterials'
 import { hasUnreadAdmissionStrategyMaterials } from '../../lib/db/admissionStrategyMaterial'
 import { formatKoreanDateLong, getTodayString } from '../../utils/date'
+import { hasUnreadWeeklySummary } from '../../utils/studentCare/weeklySummaryDisplay'
 import {
   isParentCategoryPathActive,
-  parentCategoryItems,
+  parentHomeCategoryItems,
   parentTodayReportItem,
 } from './parentNavItems'
 
@@ -15,9 +18,23 @@ export function ParentCategoryGrid() {
   const student = useParentStudent()
   const location = useLocation()
   const { materials } = useParentAdmissionStrategyMaterials()
+  const {
+    weeklyLearningSummaries,
+    weeklySummaryRead,
+    ensureWeeklyLearningSummaries,
+  } = useData()
   const admissionUnread = hasUnreadAdmissionStrategyMaterials(materials)
+  const weeklyUnread = hasUnreadWeeklySummary(
+    weeklyLearningSummaries,
+    student.id,
+    weeklySummaryRead,
+  )
   const basePath = `/care/${student.studentAccessKey}`
   const todayLabel = formatKoreanDateLong(getTodayString())
+
+  useEffect(() => {
+    void ensureWeeklyLearningSummaries()
+  }, [ensureWeeklyLearningSummaries])
 
   const todayPath = `${basePath}/${parentTodayReportItem.segment}`
   const TodayIcon = parentTodayReportItem.icon
@@ -52,11 +69,12 @@ export function ParentCategoryGrid() {
       </Link>
 
       <div className="grid auto-rows-fr grid-cols-2 gap-2.5 sm:gap-3 lg:max-w-2xl">
-        {parentCategoryItems.map(({ segment, label, icon: Icon, description }) => {
+        {parentHomeCategoryItems.map(({ segment, label, icon: Icon, description }) => {
           const path = `${basePath}/${segment}`
           const isActive = isParentCategoryPathActive(segment, location.pathname)
 
           const showAdmissionUnread = segment === 'admission-strategy' && admissionUnread
+          const showWeeklyUnread = segment === 'weekly-learning-summary' && weeklyUnread
 
           return (
             <Link
@@ -64,7 +82,7 @@ export function ParentCategoryGrid() {
               to={path}
               className={`pm-menu-card relative ${isActive ? 'pm-menu-card--active' : ''}`}
             >
-              {showAdmissionUnread ? (
+              {showAdmissionUnread || showWeeklyUnread ? (
                 <span
                   className="absolute right-2.5 top-2.5 h-2 w-2 shrink-0 rounded-full bg-[#FF8A3D]"
                   aria-label="확인하지 않은 새 자료"

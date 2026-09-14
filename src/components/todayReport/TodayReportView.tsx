@@ -11,8 +11,11 @@ import {
 } from '../teacherMobile/TeacherMobileDailyTestSessionForm'
 import { DailyTestSessionGrid } from '../dailytest/DailyTestSessionGrid'
 import { DailyLearningDiagnosisFields } from '../diagnosis/DailyLearningDiagnosisFields'
-import { WrongAnswerBankBlock } from '../dailytest/WrongAnswerBankBlock'
 import { ParentDailyTestDiagnosisBlock } from '../dailytest/ParentDailyTestDiagnosisBlock'
+import { AttendanceExcuseButtons, attendanceNeedsExcuse } from '../studentCare/AttendanceExcuseButtons'
+import { MaterialPrepPicker, materialPrepDisplay } from '../studentCare/MaterialPrepPicker'
+import { ClassAttitudePicker, classAttitudeDisplay } from '../studentCare/ClassAttitudePicker'
+import { LearningRiskReasonPanel, LearningStatusBadge } from '../studentCare/LearningStatusBadge'
 import { SectionTitleWithHint } from '../ui/SectionTitleWithHint'
 import { HomeworkStatusPicker } from '../homework/HomeworkStatusPicker'
 import { KoreanTextInput, KoreanTextarea } from '../ui/KoreanTextField'
@@ -23,12 +26,16 @@ import { TodayReportErrorBoundary } from './TodayReportErrorBoundary'
 import { useData } from '../../hooks/useData'
 import { useParentTodayReportAutoRefresh } from '../../hooks/useParentTodayReportAutoRefresh'
 import type {
+  AttendanceExcuseKind,
   AttendanceRecord,
   AttendanceStatus,
+  ClassAttitudeIssue,
   DailyTestRecord,
   HomeworkRecord,
   HomeworkStatus,
+  MaterialPrepStatus,
   ProgressRecord,
+  StudentDailyCareRecord,
   TestSessionResult,
   TodayAssignmentRecord,
   ClassNoteRecord,
@@ -89,7 +96,8 @@ import {
 } from '../../utils/labels'
 import { resolveCommonClassContext } from '../../utils/classCommonDataKey'
 import { getVisibleDailyTestSubjects } from '../../utils/studentGradeClass'
-
+import { attendanceDisplayLabel } from '../../utils/studentCare/scoring'
+import { computeLearningRisk } from '../../utils/studentCare'
 
 function ParentReadOnlyBody({
   hasData,
@@ -106,7 +114,14 @@ function ParentReadOnlyBody({
   return <>{children()}</>
 }
 
-type MobileReportSection = 'attendance' | 'homework' | 'progress' | 'dailyTest' | 'classNote'
+type MobileReportSection =
+  | 'attendance'
+  | 'homework'
+  | 'progress'
+  | 'dailyTest'
+  | 'classNote'
+  | 'materialPrep'
+  | 'attitude'
 
 type TodayReportViewProps = {
   student: Student
@@ -220,14 +235,19 @@ function SaveButton({
 export function StudentSummaryCard({
   student,
   compact = false,
+  statusBadge,
 }: {
   student: Student
   compact?: boolean
+  statusBadge?: ReactNode
 }) {
   if (compact) {
     return (
       <section className="rounded-xl border border-slate-200 bg-white px-3.5 py-3 shadow-sm sm:rounded-2xl sm:px-4">
-        <h1 className="text-lg font-bold text-navy-900">{student.name}</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <h1 className="text-lg font-bold text-navy-900">{student.name}</h1>
+          {statusBadge}
+        </div>
         <p className="mt-0.5 line-clamp-2 break-anywhere text-sm text-slate-600">
           {[student.school, student.grade, student.teacher].filter(Boolean).join(' · ')}
         </p>
@@ -237,7 +257,10 @@ export function StudentSummaryCard({
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm">
-      <p className="text-lg font-bold text-navy-900">{student.name} 학생</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-lg font-bold text-navy-900">{student.name} 학생</p>
+        {statusBadge}
+      </div>
       <p className="mt-1 text-sm text-slate-600">
         {student.school} · {student.grade}
       </p>
@@ -292,6 +315,7 @@ export function TodayReportView({
     dailyTests: dailyTestsRaw,
     todayAssignments: todayAssignmentsRaw,
     classNotes: classNotesRaw,
+    studentDailyCare: studentDailyCareRaw,
     homeworkTextbookEntries: homeworkTextbookEntriesRaw,
     studentTextbookSlots: studentTextbookSlotsRaw,
     classTodayReportCommon,
@@ -309,6 +333,7 @@ export function TodayReportView({
     saveDailyTestRecord,
     saveTodayAssignmentRecord,
     saveClassNoteRecord,
+    saveStudentDailyCareRecord,
     refreshTodayReport,
     showToast,
   } = useData()
@@ -319,6 +344,7 @@ export function TodayReportView({
   const dailyTests = dailyTestsRaw ?? []
   const todayAssignments = todayAssignmentsRaw ?? []
   const classNotes = classNotesRaw ?? []
+  const studentDailyCare = studentDailyCareRaw ?? []
   const homeworkTextbookEntries = homeworkTextbookEntriesRaw ?? []
   const studentTextbookSlots = studentTextbookSlotsRaw ?? []
 
@@ -440,6 +466,37 @@ export function TodayReportView({
     [classNotes, contentDate, student.id],
   )
 
+  const dayCare = useMemo(
+    () => studentDailyCare.find((record) => record.studentId === student.id && record.date === selectedDate),
+    [selectedDate, student.id, studentDailyCare],
+  )
+
+  const learningRisk = useMemo(
+    () =>
+      computeLearningRisk({
+        studentId: student.id,
+        attendance,
+        homework,
+        homeworkTextbookEntries,
+        dailyTests,
+        dailyCare: studentDailyCare,
+        progressRecords,
+        classNotes,
+      }),
+    [
+      attendance,
+      classNotes,
+      dailyTests,
+      homework,
+      homeworkTextbookEntries,
+      progressRecords,
+      student.id,
+      studentDailyCare,
+    ],
+  )
+
+  const [riskOpen, setRiskOpen] = useState(false)
+
   const studentSlots = useMemo(
     () => studentTextbookSlots.filter((slot) => slot.studentId === student.id),
     [student.id, studentTextbookSlots],
@@ -523,6 +580,7 @@ export function TodayReportView({
         todayAssignments,
         classNotes,
         classTodayReportCommon,
+        studentDailyCare,
         grade: student.grade.trim(),
         className: student.className.trim(),
       }),
@@ -537,6 +595,7 @@ export function TodayReportView({
       student.className,
       student.grade,
       student.id,
+      studentDailyCare,
       todayAssignments,
     ],
   )
@@ -608,7 +667,18 @@ export function TodayReportView({
               <p className="text-[11px] text-slate-500">최근 30일 기록 조회</p>
             )}
           </div>
-          <StudentSummaryCard student={student} compact />
+          <StudentSummaryCard
+            student={student}
+            compact
+            statusBadge={
+              <LearningStatusBadge result={learningRisk} onClick={() => setRiskOpen((open) => !open)} />
+            }
+          />
+          {riskOpen ? (
+            <div className="rounded-xl border border-slate-200 bg-white px-3.5 py-3">
+              <LearningRiskReasonPanel result={learningRisk} />
+            </div>
+          ) : null}
         </>
       ) : (
         <>
@@ -652,7 +722,15 @@ export function TodayReportView({
               )}
             </div>
           </div>
-          <StudentSummaryCard student={student} />
+          <StudentSummaryCard
+            student={student}
+            statusBadge={<LearningStatusBadge result={learningRisk} onClick={() => setRiskOpen((open) => !open)} />}
+          />
+          {riskOpen ? (
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+              <LearningRiskReasonPanel result={learningRisk} />
+            </div>
+          ) : null}
         </>
       ))}
 
@@ -737,6 +815,24 @@ export function TodayReportView({
               emptyMessage={parentEmptyMessages.homework}
             />
           ))}
+
+          {showSection('materialPrep') && (
+            <MaterialPrepSection
+              key={`material-${selectedDate}`}
+              readOnly={readOnly}
+              record={dayCare}
+              studentId={student.id}
+              date={selectedDate}
+              onSave={saveStudentDailyCareRecord}
+              teacherCompact={tc}
+              hideTitle={sectionHideTitle}
+              emptyMessage={
+                readOnly && !selectedDateIsToday
+                  ? '해당 날짜에 등록된 교재 준비 정보가 없습니다.'
+                  : '오늘 등록된 교재 준비 정보가 없습니다.'
+              }
+            />
+          )}
 
           {showSection('progress') && (useTextbookSlotProgress ? (
             <TextbookSlotProgressSection
@@ -829,6 +925,25 @@ export function TodayReportView({
             emptyMessage={parentEmptyMessages.classNote}
           />
           )}
+
+          {(showSection('attitude') || mobileSection === 'classNote') && (
+            <ClassAttitudeSection
+              key={`attitude-${selectedDate}`}
+              readOnly={readOnly}
+              record={dayCare}
+              studentId={student.id}
+              date={selectedDate}
+              onSave={saveStudentDailyCareRecord}
+              teacherCompact={tc}
+              hideTitle={sectionHideTitle && mobileSection === 'attitude'}
+              treatMissingAsExcellent={selectedDateIsToday}
+              emptyMessage={
+                readOnly && !selectedDateIsToday
+                  ? '해당 날짜에 등록된 수업태도 정보가 없습니다.'
+                  : '오늘 등록된 수업태도 정보가 없습니다.'
+              }
+            />
+          )}
             </>
           )}
         </div>
@@ -858,14 +973,17 @@ function AttendanceSection({
 }) {
   const [status, setStatus] = useState<AttendanceStatus | ''>(record?.status ?? '')
   const [reason, setReason] = useState(record?.reason ?? '')
+  const [excuseKind, setExcuseKind] = useState<AttendanceExcuseKind | null>(record?.excuseKind ?? null)
 
   useEffect(() => {
     setStatus(record?.status ?? '')
     setReason(record?.reason ?? '')
+    setExcuseKind(record?.excuseKind ?? null)
   }, [record])
 
   const handleSave = () => {
     if (!status) return
+    if (attendanceNeedsExcuse(status) && !excuseKind) return
     onSave({
       id: record?.id,
       studentId,
@@ -873,6 +991,7 @@ function AttendanceSection({
       status,
       reason: reason.trim(),
       memo: record?.memo ?? '',
+      excuseKind: attendanceNeedsExcuse(status) ? excuseKind : null,
     })
   }
 
@@ -895,6 +1014,12 @@ function AttendanceSection({
                   </div>
                 ))}
               </div>
+              {attendanceDisplayLabel(record!.status, record!.excuseKind) &&
+              attendanceDisplayLabel(record!.status, record!.excuseKind) !== record!.status ? (
+                <p className="text-sm font-semibold text-slate-700">
+                  {attendanceDisplayLabel(record!.status, record!.excuseKind)}
+                </p>
+              ) : null}
               {record!.reason && (
                 <p className="text-sm text-slate-600">
                   <span className="font-medium text-slate-700">사유:</span> {record!.reason}
@@ -910,7 +1035,10 @@ function AttendanceSection({
               <button
                 key={item}
                 type="button"
-                onClick={() => setStatus(item)}
+                onClick={() => {
+                  setStatus(item)
+                  if (!attendanceNeedsExcuse(item)) setExcuseKind(null)
+                }}
                 className={`min-h-9 flex-1 rounded-lg border px-2 py-1 text-sm font-medium ${
                   status === item
                     ? getAttendanceColor(item)
@@ -921,6 +1049,12 @@ function AttendanceSection({
               </button>
             ))}
           </div>
+          <AttendanceExcuseButtons
+            status={status}
+            excuseKind={excuseKind}
+            compact
+            onChange={setExcuseKind}
+          />
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <input
               value={reason}
@@ -929,7 +1063,12 @@ function AttendanceSection({
               className={`${compactInputClass()} min-w-0 flex-1`}
             />
             <div className="flex w-full justify-end sm:w-auto">
-              <SaveButton onClick={handleSave} disabled={!status} label="출결 저장" compact />
+              <SaveButton
+                onClick={handleSave}
+                disabled={!status || (attendanceNeedsExcuse(status) && !excuseKind)}
+                label="출결 저장"
+                compact
+              />
             </div>
           </div>
         </div>
@@ -940,7 +1079,10 @@ function AttendanceSection({
               <button
                 key={item}
                 type="button"
-                onClick={() => setStatus(item)}
+                onClick={() => {
+                  setStatus(item)
+                  if (!attendanceNeedsExcuse(item)) setExcuseKind(null)
+                }}
                 className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
                   status === item
                     ? getAttendanceColor(item)
@@ -951,6 +1093,11 @@ function AttendanceSection({
               </button>
             ))}
           </div>
+          <AttendanceExcuseButtons
+            status={status}
+            excuseKind={excuseKind}
+            onChange={setExcuseKind}
+          />
           <input
             value={reason}
             onChange={(e) => setReason(e.target.value)}
@@ -958,7 +1105,163 @@ function AttendanceSection({
             className={inputClass()}
           />
           <div className="flex justify-end">
-            <SaveButton onClick={handleSave} disabled={!status} label="출결 저장" />
+            <SaveButton
+              onClick={handleSave}
+              disabled={!status || (attendanceNeedsExcuse(status) && !excuseKind)}
+              label={
+                attendanceNeedsExcuse(status) && !excuseKind
+                  ? '인정/무단을 선택한 뒤 저장'
+                  : '출결 저장'
+              }
+            />
+          </div>
+        </div>
+      )}
+    </SectionCard>
+  )
+}
+
+function MaterialPrepSection({
+  readOnly,
+  record,
+  studentId,
+  date,
+  onSave,
+  teacherCompact = false,
+  hideTitle = false,
+  emptyMessage,
+}: {
+  readOnly: boolean
+  record?: StudentDailyCareRecord
+  studentId: string
+  date: string
+  onSave: ReturnType<typeof useData>['saveStudentDailyCareRecord']
+  teacherCompact?: boolean
+  hideTitle?: boolean
+  emptyMessage: string
+}) {
+  const [value, setValue] = useState<MaterialPrepStatus | null>(record?.materialPrep ?? null)
+
+  useEffect(() => {
+    setValue(record?.materialPrep ?? null)
+  }, [record])
+
+  const handleSave = () => {
+    if (!value) return
+    onSave({
+      id: record?.id,
+      studentId,
+      date,
+      materialPrep: value,
+      attitudeIssues: record?.attitudeIssues ?? [],
+      attitudeNote: record?.attitudeNote ?? '',
+    })
+  }
+
+  return (
+    <SectionCard title="교재 준비" teacherCompact={teacherCompact} hideTitle={hideTitle}>
+      {readOnly ? (
+        <ParentReadOnlyBody hasData={Boolean(record?.materialPrep)} emptyMessage={emptyMessage}>
+          {() => (
+            <p className="text-sm font-semibold text-slate-800">
+              {materialPrepDisplay(record?.materialPrep)}
+            </p>
+          )}
+        </ParentReadOnlyBody>
+      ) : (
+        <div className={teacherCompact ? 'space-y-2' : 'space-y-3'}>
+          <MaterialPrepPicker value={value} onChange={setValue} compact={teacherCompact} />
+          <div className="flex justify-end">
+            <SaveButton
+              onClick={handleSave}
+              disabled={!value}
+              label="교재 준비 저장"
+              compact={teacherCompact}
+            />
+          </div>
+        </div>
+      )}
+    </SectionCard>
+  )
+}
+
+function ClassAttitudeSection({
+  readOnly,
+  record,
+  studentId,
+  date,
+  onSave,
+  teacherCompact = false,
+  hideTitle = false,
+  treatMissingAsExcellent = false,
+  emptyMessage,
+}: {
+  readOnly: boolean
+  record?: StudentDailyCareRecord
+  studentId: string
+  date: string
+  onSave: ReturnType<typeof useData>['saveStudentDailyCareRecord']
+  teacherCompact?: boolean
+  hideTitle?: boolean
+  treatMissingAsExcellent?: boolean
+  emptyMessage: string
+}) {
+  const [issues, setIssues] = useState<ClassAttitudeIssue[]>(record?.attitudeIssues ?? [])
+  const [note, setNote] = useState(record?.attitudeNote ?? '')
+
+  useEffect(() => {
+    setIssues(record?.attitudeIssues ?? [])
+    setNote(record?.attitudeNote ?? '')
+  }, [record])
+
+  const handleSave = () => {
+    onSave({
+      id: record?.id,
+      studentId,
+      date,
+      materialPrep: record?.materialPrep ?? null,
+      attitudeIssues: issues,
+      attitudeNote: issues.length > 0 ? note : '',
+    })
+  }
+
+  const parentHasData = Boolean(record) || treatMissingAsExcellent
+  const parentIssues = record?.attitudeIssues ?? []
+  const parentNote = record?.attitudeNote ?? ''
+
+  return (
+    <SectionCard title="수업태도" teacherCompact={teacherCompact} hideTitle={hideTitle}>
+      {readOnly ? (
+        <ParentReadOnlyBody hasData={parentHasData} emptyMessage={emptyMessage}>
+          {() => (
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-slate-800">
+                {classAttitudeDisplay(parentIssues)}
+              </p>
+              {parentIssues.length > 0 && parentNote.trim() ? (
+                <div className="rounded-xl bg-slate-50 px-3 py-2.5">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                    강사 메모
+                  </p>
+                  <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                    {parentNote}
+                  </p>
+                </div>
+              ) : null}
+            </div>
+          )}
+        </ParentReadOnlyBody>
+      ) : (
+        <div className={teacherCompact ? 'space-y-2' : 'space-y-3'}>
+          <ClassAttitudePicker
+            issues={issues}
+            note={note}
+            onIssuesChange={setIssues}
+            onNoteChange={setNote}
+            compact={teacherCompact}
+          />
+          <div className="flex justify-end">
+            <SaveButton onClick={handleSave} label="수업태도 저장" compact={teacherCompact} />
           </div>
         </div>
       )}
@@ -1548,8 +1851,7 @@ function DailyTestParentSection({
       />
       {/* 영어: 듣기 평가 → 강사 피드백 / 수학: 오답 분석 → 피드백 → 격주간 */}
       <ParentDailyTestDiagnosisBlock record={record} classNote={classNote} />
-      {/* 오답 BANK — 수학만 (영어 구조에는 없음) */}
-      {isEnglish ? null : <WrongAnswerBankBlock memo={record.memo} />}
+      {/* 오답 BANK 데이터·기능은 유지. Today Report 학부모 화면 표시만 수업태도로 교체 */}
     </div>
   )
 }

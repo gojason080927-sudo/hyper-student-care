@@ -87,6 +87,7 @@ import { MonthlyLearningReportDetailPage } from './pages/MonthlyLearningReportDe
 import { ParentStudentQuestionsPage } from './pages/parent/ParentStudentQuestionsPage'
 
 import { ParentStudentTodayReportPage } from './pages/parent/ParentStudentTodayReportPage'
+import { ParentStudentWeeklySummaryPage } from './pages/parent/ParentStudentWeeklySummaryPage'
 
 import { EntranceExamAttemptPage } from './features/entranceExam/EntranceExamAttemptPage'
 import { EntranceExamHubPage } from './features/entranceExam/EntranceExamHubPage'
@@ -124,6 +125,8 @@ function App() {
           <Route index element={<ParentStudentHomePage />} />
 
           <Route path="today-report" element={<ParentStudentTodayReportPage />} />
+
+          <Route path="weekly-learning-summary" element={<ParentStudentWeeklySummaryPage />} />
 
           <Route path="attendance" element={<ParentStudentAttendancePage />} />
 

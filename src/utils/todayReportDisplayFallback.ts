@@ -9,6 +9,7 @@ import type {
   DailyTestRecord,
   HomeworkTextbookEntry,
   ProgressRecord,
+  StudentDailyCareRecord,
   TextbookSlotNumber,
   TextbookSubject,
   TodayAssignmentRecord,
@@ -326,6 +327,7 @@ export function studentHasReportContentOnDate(params: {
   todayAssignments: TodayAssignmentRecord[]
   classNotes: ClassNoteRecord[]
   classTodayReportCommon: ClassTodayReportCommon[]
+  studentDailyCare?: StudentDailyCareRecord[]
   grade: string
   className: string
 }): boolean {
@@ -363,6 +365,16 @@ export function studentHasReportContentOnDate(params: {
   }
   if (
     params.classNotes.some((r) => r.studentId === studentId && r.date === date)
+  ) {
+    return true
+  }
+  if (
+    params.studentDailyCare?.some(
+      (r) =>
+        r.studentId === studentId &&
+        r.date === date &&
+        (r.materialPrep != null || r.attitudeIssues.length > 0 || r.attitudeNote.trim()),
+    )
   ) {
     return true
   }

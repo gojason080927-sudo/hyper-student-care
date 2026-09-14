@@ -38,6 +38,7 @@ function emptyCurrent() {
     todayAssignments: [],
     classNotes: [],
     dailyTests: [],
+    studentDailyCare: [],
   }
 }
 

@@ -9,6 +9,9 @@ import {
   getTodayReportCompletionLabel,
   getTodayReportCompletionStatus,
 } from '../../utils/todayReportCompletionStatus'
+import { LearningStatusBadge } from '../studentCare/LearningStatusBadge'
+import { computeLearningRisk } from '../../utils/studentCare'
+import { useData } from '../../hooks/useData'
 import { findStudentDayRecords, type TodayReportLookupContext } from '../../utils/todayReportLookup'
 
 type TodayReportStudentAccordionProps = {
@@ -37,6 +40,15 @@ export function TodayReportStudentAccordion({
   omitHomeworkAndProgress = false,
   omitDailyTest = false,
 }: TodayReportStudentAccordionProps) {
+  const {
+    attendance,
+    homework,
+    homeworkTextbookEntries,
+    dailyTests,
+    studentDailyCare,
+    classNotes,
+    progressRecords,
+  } = useData()
   const records = useMemo(
     () => findStudentDayRecords(student.id, date, lookupContext),
     [date, lookupContext, student.id],
@@ -44,6 +56,29 @@ export function TodayReportStudentAccordion({
   const completionStatus = getTodayReportCompletionStatus(records, student.id, date)
   const completionLabel = getTodayReportCompletionLabel(completionStatus)
   const completionColor = getTodayReportCompletionColor(completionStatus)
+  const risk = useMemo(
+    () =>
+      computeLearningRisk({
+        studentId: student.id,
+        attendance,
+        homework,
+        homeworkTextbookEntries,
+        dailyTests,
+        dailyCare: studentDailyCare,
+        progressRecords,
+        classNotes,
+      }),
+    [
+      attendance,
+      classNotes,
+      dailyTests,
+      homework,
+      homeworkTextbookEntries,
+      progressRecords,
+      student.id,
+      studentDailyCare,
+    ],
+  )
 
   return (
     <article
@@ -59,6 +94,7 @@ export function TodayReportStudentAccordion({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
             <h3 className="text-sm font-bold text-navy-900">{student.name}</h3>
+            <LearningStatusBadge result={risk} compact />
             <span
               className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${completionColor}`}
             >

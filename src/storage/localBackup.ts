@@ -13,8 +13,10 @@ import type {
   MonthlyLearningReportRecord,
   ProgressRecord,
   QuestionRecord,
+  StudentDailyCareRecord,
   StudentTextbookSlot,
   TodayAssignmentRecord,
+  WeeklyLearningSummaryRecord,
 } from '../types/records'
 import type { Student } from '../types/student'
 import { LEGACY_STORAGE_KEYS, STORAGE_KEYS } from './keys'
@@ -38,6 +40,9 @@ export type LocalBackupData = {
   todayAssignments: TodayAssignmentRecord[]
   classNotes: ClassNoteRecord[]
   classTodayReportCommon?: ClassTodayReportCommon[]
+  studentDailyCare?: StudentDailyCareRecord[]
+  weeklyLearningSummaries?: WeeklyLearningSummaryRecord[]
+  weeklySummaryRead?: { lastReadAt: string; lastReadSummaryId: string | null } | null
 }
 
 function loadArray<T>(newKey: string, legacyKey?: string): T[] {
@@ -91,6 +96,14 @@ export function loadLocalBackup(): LocalBackupData {
     classScheduleGrids: loadArray<ClassScheduleGrid>(STORAGE_KEYS.classScheduleGrids),
     todayAssignments: loadArray<TodayAssignmentRecord>(STORAGE_KEYS.todayAssignments),
     classNotes: loadArray<ClassNoteRecord>(STORAGE_KEYS.classNotes),
+    studentDailyCare: loadArray<StudentDailyCareRecord>(STORAGE_KEYS.studentDailyCare),
+    weeklyLearningSummaries: loadArray<WeeklyLearningSummaryRecord>(
+      STORAGE_KEYS.weeklyLearningSummaries,
+    ),
+    weeklySummaryRead: loadFromStorage<{ lastReadAt: string; lastReadSummaryId: string | null } | null>(
+      STORAGE_KEYS.weeklySummaryRead,
+      null,
+    ),
   }
 }
 
@@ -112,6 +125,9 @@ export function mirrorLocalBackup(data: LocalBackupData): void {
   saveToStorage(STORAGE_KEYS.classScheduleGrids, data.classScheduleGrids ?? [])
   saveToStorage(STORAGE_KEYS.todayAssignments, data.todayAssignments)
   saveToStorage(STORAGE_KEYS.classNotes, data.classNotes)
+  saveToStorage(STORAGE_KEYS.studentDailyCare, data.studentDailyCare ?? [])
+  saveToStorage(STORAGE_KEYS.weeklyLearningSummaries, data.weeklyLearningSummaries ?? [])
+  saveToStorage(STORAGE_KEYS.weeklySummaryRead, data.weeklySummaryRead ?? null)
 }
 
 export function toLocalBackupData(
@@ -135,5 +151,8 @@ export function toLocalBackupData(
     todayAssignments: data.todayAssignments,
     classNotes: data.classNotes,
     classTodayReportCommon: data.classTodayReportCommon ?? [],
+    studentDailyCare: data.studentDailyCare ?? [],
+    weeklyLearningSummaries: data.weeklyLearningSummaries ?? [],
+    weeklySummaryRead: data.weeklySummaryRead ?? null,
   }
 }

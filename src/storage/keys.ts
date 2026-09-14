@@ -16,6 +16,9 @@ export const STORAGE_KEYS = {
   classNotes: 'hyper_class_notes',
   studentTextbookSlots: 'hyper_student_textbook_slots',
   homeworkTextbookEntries: 'hyper_homework_textbook_entries',
+  studentDailyCare: 'hyper_student_daily_care',
+  weeklyLearningSummaries: 'hyper_weekly_learning_summaries',
+  weeklySummaryRead: 'hyper_weekly_summary_read',
 } as const
 
 export const LEGACY_STORAGE_KEYS = {

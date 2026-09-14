@@ -6,6 +6,7 @@ import type {
   HomeworkRecord,
   HomeworkTextbookEntry,
   ProgressRecord,
+  StudentDailyCareRecord,
   StudentTextbookSlot,
   TodayAssignmentRecord,
 } from '../../types/records'
@@ -94,6 +95,7 @@ export type TodayReportMergeResult = {
   todayAssignments: TodayAssignmentRecord[]
   classNotes: ClassNoteRecord[]
   dailyTests: DailyTestRecord[]
+  studentDailyCare: StudentDailyCareRecord[]
 }
 
 export type TodayReportMergeScope = {
@@ -159,6 +161,15 @@ export function mergeTodayReportIntoState(
         }
         return next
       })(),
+      studentDailyCare:
+        report.studentDailyCare !== undefined
+          ? setOptionalByStudentDate(
+              current.studentDailyCare,
+              studentId,
+              date,
+              report.studentDailyCare,
+            )
+          : current.studentDailyCare,
     }
   }
 
@@ -199,6 +210,10 @@ export function mergeTodayReportIntoState(
       }
       return next
     })(),
+    studentDailyCare:
+      report.studentDailyCare
+        ? upsertByStudentDateLegacy(current.studentDailyCare, report.studentDailyCare)
+        : current.studentDailyCare,
   }
 }
 

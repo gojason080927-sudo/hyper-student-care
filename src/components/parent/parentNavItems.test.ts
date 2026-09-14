@@ -2,7 +2,12 @@
  * 실행: npx tsx src/components/parent/parentNavItems.test.ts
  */
 import assert from 'node:assert/strict'
-import { isParentCategoryPathActive, parentCategoryItems } from './parentNavItems.ts'
+import {
+  isParentCategoryPathActive,
+  parentCategoryItems,
+  parentHomeCategoryItems,
+  parentSidebarItems,
+} from './parentNavItems.ts'
 
 const labels = parentCategoryItems.map((item) => item.label.replace(/\n/g, ' '))
 assert.deepEqual(labels, [
@@ -12,6 +17,21 @@ assert.deepEqual(labels, [
   '고입 · 대입 입시전략',
   '질문하기',
 ])
+
+const homeLabels = parentHomeCategoryItems.map((item) => item.label.replace(/\n/g, ' '))
+assert.deepEqual(homeLabels, [
+  '주간 학습 SUMMARY',
+  '월말평가 결과',
+  '공지사항 · 보강계획',
+  '고입 · 대입 입시전략',
+  '질문하기',
+])
+assert.equal(
+  parentHomeCategoryItems.some((item) => item.segment === 'monthly-learning-report'),
+  false,
+)
+assert.equal(parentSidebarItems[0]?.segment, 'weekly-learning-summary')
+assert.equal(parentSidebarItems[1]?.segment, 'monthly-learning-report')
 
 assert.equal(parentCategoryItems[2]?.segment, 'notices-makeup')
 assert.equal(parentCategoryItems[2]?.description, '학원 공지 · 보강 일정')
@@ -34,6 +54,10 @@ assert.equal(
 assert.equal(isParentCategoryPathActive('notices-makeup', '/care/abc/questions'), false)
 assert.equal(
   isParentCategoryPathActive('admission-strategy', '/care/abc/admission-strategy'),
+  true,
+)
+assert.equal(
+  isParentCategoryPathActive('weekly-learning-summary', '/care/abc/weekly-learning-summary'),
   true,
 )
 assert.equal(

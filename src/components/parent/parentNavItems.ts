@@ -6,6 +6,7 @@ import {
   GraduationCap,
   MessageCircleQuestion,
   Newspaper,
+  NotebookPen,
 } from 'lucide-react'
 
 export type ParentCategoryItem = {
@@ -15,7 +16,14 @@ export type ParentCategoryItem = {
   description?: string
 }
 
-/** 학부모 홈·사이드바 공통 카테고리 (Today Report는 별도) */
+export const weeklyLearningSummaryItem: ParentCategoryItem = {
+  segment: 'weekly-learning-summary',
+  label: '주간 학습\nSUMMARY',
+  icon: NotebookPen,
+  description: '이번 주 학습관리 한눈에 보기',
+}
+
+/** 학부모 사이드바 카테고리 (월간 학습진단 유지) */
 export const parentCategoryItems: ParentCategoryItem[] = [
   {
     segment: 'monthly-learning-report',
@@ -39,8 +47,17 @@ export const parentCategoryItems: ParentCategoryItem[] = [
   { segment: 'questions', label: '질문하기', icon: MessageCircleQuestion, description: '학습 질문·답변' },
 ]
 
-/** 사이드바·더보기용 (홈 카테고리와 동일 목록) */
-export const parentSidebarItems: ParentCategoryItem[] = [...parentCategoryItems]
+/** HOME 카드: 월간 학습진단 카드 위치에 주간 SUMMARY만 노출. 월간 기능/경로는 유지. */
+export const parentHomeCategoryItems: ParentCategoryItem[] = [
+  weeklyLearningSummaryItem,
+  ...parentCategoryItems.filter((item) => item.segment !== 'monthly-learning-report'),
+]
+
+/** 사이드바·더보기용 — 주간 SUMMARY 추가, 월간 학습진단 유지 */
+export const parentSidebarItems: ParentCategoryItem[] = [
+  weeklyLearningSummaryItem,
+  ...parentCategoryItems,
+]
 
 export const parentTodayReportItem = {
   segment: 'today-report',

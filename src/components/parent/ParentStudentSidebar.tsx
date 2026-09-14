@@ -5,7 +5,7 @@ import { useParentStudent } from '../../contexts/ParentStudentContext'
 import { ParentPushOptIn } from './ParentPushOptIn'
 import {
   isParentCategoryPathActive,
-  parentCategoryItems,
+  parentSidebarItems,
   parentTodayReportItem,
 } from './parentNavItems'
 
@@ -90,7 +90,7 @@ export function ParentStudentSidebar({ isOpen, onClose }: ParentStudentSidebarPr
                 {parentTodayReportItem.label}
               </NavLink>
             </li>
-            {parentCategoryItems.map(({ segment, label, icon: Icon }) => {
+            {parentSidebarItems.map(({ segment, label, icon: Icon }) => {
               const path = `${basePath}/${segment}`
               const isActive = isParentCategoryPathActive(segment, location.pathname)
               return (

@@ -1,5 +1,8 @@
 export type AttendanceStatus = '출석' | '지각' | '결석' | '조퇴'
 
+/** 지각/결석 하위분류. 출석·조퇴·레거시 행은 null */
+export type AttendanceExcuseKind = '인정' | '무단'
+
 export type AttendanceRecord = {
   id: string
   studentId: string
@@ -7,6 +10,8 @@ export type AttendanceRecord = {
   status: AttendanceStatus
   reason: string
   memo: string
+  /** 신규 입력만 설정. 레거시 지각/결석은 null로 보존 */
+  excuseKind?: AttendanceExcuseKind | null
   createdAt: string
   updatedAt: string
 }
@@ -321,6 +326,73 @@ export type ClassNoteRecord = {
   date: string
   hasClassNote: boolean
   note: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type MaterialPrepStatus = '지참' | '부분 지참'
+
+export const CLASS_ATTITUDE_ISSUES = [
+  '집중 저하',
+  '졸음',
+  '잡담',
+  '수업방해',
+  '태도 불량',
+] as const
+
+export type ClassAttitudeIssue = (typeof CLASS_ATTITUDE_ISSUES)[number]
+
+/** 학생·날짜 단위 교재 준비·수업태도 (강사 사실값) */
+export type StudentDailyCareRecord = {
+  id: string
+  studentId: string
+  date: string
+  /** null = 미입력. 부분 지참으로 간주하지 않음 */
+  materialPrep: MaterialPrepStatus | null
+  attitudeIssues: ClassAttitudeIssue[]
+  attitudeNote: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type WeeklySummaryGrade = '우수' | '양호' | '보통' | '미흡'
+
+export type LearningRiskLevel = '우수' | '주의' | '위험'
+
+export type WeeklySummaryAreaKey =
+  | 'attendance'
+  | 'material'
+  | 'homework'
+  | 'dailyTest'
+  | 'attitude'
+
+export type WeeklySummaryAreaSnapshot = {
+  score: number | null
+  max: number
+  index: number | null
+  grade: WeeklySummaryGrade | null
+  facts: Record<string, number | string | boolean | null>
+}
+
+export type WeeklySummaryScoresSnapshot = Record<
+  WeeklySummaryAreaKey,
+  WeeklySummaryAreaSnapshot
+>
+
+/** 주간 학습 SUMMARY durable snapshot */
+export type WeeklyLearningSummaryRecord = {
+  id: string
+  studentId: string
+  weekStart: string
+  periodStart: string
+  periodEnd: string
+  asOf: string
+  totalScore: number | null
+  grade: WeeklySummaryGrade | null
+  scores: WeeklySummaryScoresSnapshot
+  goodText: string
+  checkText: string
+  teacherComment: string
   createdAt: string
   updatedAt: string
 }

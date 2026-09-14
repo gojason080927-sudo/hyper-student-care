@@ -1,6 +1,7 @@
 import type {
   AssignmentCompletionRecord,
   AttendanceRecord,
+  ClassAttitudeIssue,
   ClassNoteRecord,
   ClassScheduleGrid,
   ClassTodayReportCommon,
@@ -9,12 +10,17 @@ import type {
   HomeworkRecord,
   HomeworkTextbookEntry,
   MakeupPlanRecord,
+  MaterialPrepStatus,
   MonthlyEvaluationRecord,
   MonthlyLearningReportRecord,
   ProgressRecord,
   QuestionRecord,
+  StudentDailyCareRecord,
   StudentTextbookSlot,
   TodayAssignmentRecord,
+  WeeklyLearningSummaryRecord,
+  WeeklySummaryGrade,
+  WeeklySummaryScoresSnapshot,
 } from '../../types/records'
 import {
   normalizeDailyLearningDiagnosis,
@@ -49,6 +55,7 @@ export type AttendanceRow = {
   status: string
   reason: string
   memo: string
+  excuse_kind?: string | null
   created_at: string
   updated_at: string
 }
@@ -322,12 +329,14 @@ export function attendanceToRow(record: AttendanceRecord): AttendanceRow {
     status: record.status,
     reason: record.reason,
     memo: record.memo,
+    excuse_kind: record.excuseKind ?? null,
     created_at: record.createdAt,
     updated_at: record.updatedAt,
   }
 }
 
 export function attendanceFromRow(row: AttendanceRow): AttendanceRecord {
+  const excuse = row.excuse_kind === '인정' || row.excuse_kind === '무단' ? row.excuse_kind : null
   return {
     id: row.id,
     studentId: row.student_id,
@@ -335,6 +344,7 @@ export function attendanceFromRow(row: AttendanceRow): AttendanceRecord {
     status: row.status as AttendanceRecord['status'],
     reason: row.reason,
     memo: row.memo,
+    excuseKind: excuse,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
@@ -948,5 +958,126 @@ export function classScheduleGridFromRow(row: ClassScheduleGridRow): ClassSchedu
     isActive: row.is_active,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+  }
+}
+
+export type StudentDailyCareRow = {
+  id: string
+  student_id: string
+  date: string
+  material_prep: string | null
+  attitude_issues: string[] | null
+  attitude_note: string
+  created_at: string
+  updated_at: string
+}
+
+const ATTITUDE_ISSUE_SET = new Set<ClassAttitudeIssue>([
+  '집중 저하',
+  '졸음',
+  '잡담',
+  '수업방해',
+  '태도 불량',
+])
+
+export function studentDailyCareToRow(record: StudentDailyCareRecord): StudentDailyCareRow {
+  return {
+    id: record.id,
+    student_id: record.studentId,
+    date: record.date,
+    material_prep: record.materialPrep,
+    attitude_issues: record.attitudeIssues,
+    attitude_note: record.attitudeNote,
+    created_at: record.createdAt,
+    updated_at: record.updatedAt,
+  }
+}
+
+export function studentDailyCareFromRow(row: StudentDailyCareRow): StudentDailyCareRecord {
+  const material =
+    row.material_prep === '지참' || row.material_prep === '부분 지참'
+      ? (row.material_prep as MaterialPrepStatus)
+      : null
+  const issues = (row.attitude_issues ?? []).filter((item): item is ClassAttitudeIssue =>
+    ATTITUDE_ISSUE_SET.has(item as ClassAttitudeIssue),
+  )
+  return {
+    id: row.id,
+    studentId: row.student_id,
+    date: row.date,
+    materialPrep: material,
+    attitudeIssues: issues,
+    attitudeNote: row.attitude_note ?? '',
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+export type WeeklyLearningSummaryRow = {
+  id: string
+  student_id: string
+  week_start: string
+  period_start: string
+  period_end: string
+  as_of: string
+  total_score: number | string | null
+  grade: string | null
+  scores: WeeklySummaryScoresSnapshot | null
+  good_text: string
+  check_text: string
+  teacher_comment: string
+  created_at: string
+  updated_at: string
+}
+
+export type WeeklySummaryReadRow = {
+  student_id: string
+  last_read_at: string
+  last_read_summary_id?: string | null
+}
+
+export function weeklyLearningSummaryFromRow(
+  row: WeeklyLearningSummaryRow,
+): WeeklyLearningSummaryRecord {
+  const grade =
+    row.grade === '우수' || row.grade === '양호' || row.grade === '보통' || row.grade === '미흡'
+      ? (row.grade as WeeklySummaryGrade)
+      : null
+  return {
+    id: row.id,
+    studentId: row.student_id,
+    weekStart: row.week_start,
+    periodStart: row.period_start,
+    periodEnd: row.period_end,
+    asOf: row.as_of,
+    totalScore: row.total_score == null ? null : Number(row.total_score),
+    grade,
+    scores: (row.scores ?? {}) as WeeklySummaryScoresSnapshot,
+    goodText: row.good_text ?? '',
+    checkText: row.check_text ?? '',
+    teacherComment: row.teacher_comment ?? '',
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+export function weeklyLearningSummaryToRow(
+  record: WeeklyLearningSummaryRecord,
+): WeeklyLearningSummaryRow {
+  return {
+    id: record.id,
+    student_id: record.studentId,
+    week_start: record.weekStart,
+    period_start: record.periodStart,
+    period_end: record.periodEnd,
+    as_of: record.asOf,
+    total_score: record.totalScore,
+    grade: record.grade,
+    scores: record.scores,
+    good_text: record.goodText,
+    check_text: record.checkText,
+    teacher_comment: record.teacherComment,
+    created_at: record.createdAt,
+    updated_at: record.updatedAt,
   }
 }
