@@ -25,7 +25,9 @@ import {
   type MobileDailyTestRound,
 } from '../../utils/teacherMobileDailyTest'
 import { isFollowOnInputRequired, isStudentAbsentOnDate } from '../../utils/todayReportAbsence'
+import { applyDailyTestDrafts } from '../../utils/voiceInput/applyVoiceDraft'
 import { AbsentFollowOnHint, StudentFollowOnRowHeader } from './AbsentFollowOnBadge'
+import { SectionVoiceInput } from './SectionVoiceInput'
 
 type StudentDraft = {
   recordId?: string
@@ -283,11 +285,34 @@ export function ClassDailyTestBulkPanel({
 
   return (
     <div className={compact ? 'space-y-2' : 'space-y-3'}>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs font-medium text-slate-500">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+        <p className="min-w-0 text-xs font-medium text-slate-500">
           {formatKoreanDate(date)} / {className || grade} · {students.length}명
         </p>
-        <DailyTestPassRuleBadge />
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
+          {([1, 2, 3, 4] as const).map((round) => (
+            <SectionVoiceInput
+              key={`voice-test-${round}`}
+              label={`${round}차 일일테스트 음성 입력`}
+              chipLabel={`${round}차`}
+              compact={compact}
+              disabled={saving}
+              onApply={(transcript) => {
+                const applied = applyDailyTestDrafts(
+                  drafts,
+                  transcript,
+                  students,
+                  attendance,
+                  date,
+                  round,
+                )
+                setDrafts(applied.drafts)
+                return applied.summary
+              }}
+            />
+          ))}
+          <DailyTestPassRuleBadge />
+        </div>
       </div>
 
       <div

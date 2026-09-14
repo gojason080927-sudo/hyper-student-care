@@ -19,6 +19,8 @@ import {
 import { getTextbookName } from '../../utils/textbookSlots'
 import { EditableTextbookName } from './EditableTextbookName'
 import { SubjectGroupCard, subjectGroupTitle } from './SubjectGroupCard'
+import { SectionVoiceInput } from './SectionVoiceInput'
+import { applyProgressSlotDraft } from '../../utils/voiceInput/applyVoiceDraft'
 
 type SlotDraft = {
   currentProgress: string
@@ -317,15 +319,33 @@ export function ClassCommonProgressPanel({
                     key={key}
                     className="min-w-0 space-y-1.5 py-2.5 first:pt-0 last:pb-0"
                   >
-                    <p
-                      className={
-                        compact
-                          ? 'text-xs font-bold text-[#163A70]'
-                          : 'text-sm font-bold text-navy-900'
-                      }
-                    >
-                      {heading}
-                    </p>
+                    <div className="flex min-w-0 items-start justify-between gap-2">
+                      <p
+                        className={
+                          compact
+                            ? 'text-xs font-bold text-[#163A70]'
+                            : 'text-sm font-bold text-navy-900'
+                        }
+                      >
+                        {heading}
+                      </p>
+                      <SectionVoiceInput
+                        label={`${heading} 진도 음성 입력`}
+                        chipLabel="진도"
+                        compact={compact}
+                        disabled={saving}
+                        onApply={(transcript) => {
+                          const applied = applyProgressSlotDraft(
+                            drafts,
+                            transcript,
+                            subject,
+                            slotNumber,
+                          )
+                          setDrafts(applied.drafts)
+                          return applied.summary
+                        }}
+                      />
+                    </div>
                     <EditableTextbookName
                       compact
                       value={draft.textbookName}

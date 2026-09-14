@@ -12,6 +12,8 @@ import {
   selectAttitudeBulkSaveTargets,
   type AttitudeBulkDraft,
 } from '../../utils/todayReportAbsence'
+import { applyAttitudeDrafts } from '../../utils/voiceInput/applyVoiceDraft'
+import { SectionVoiceInput } from './SectionVoiceInput'
 
 type ClassAttitudeBulkPanelProps = {
   date: string
@@ -128,9 +130,22 @@ export function ClassAttitudeBulkPanel({
 
   return (
     <div className={compact ? 'space-y-2' : 'space-y-3'}>
-      <p className="text-xs font-medium text-slate-500">
-        {formatKoreanDate(date)} / {className} · {students.length}명
-      </p>
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+        <p className="min-w-0 text-xs font-medium text-slate-500">
+          {formatKoreanDate(date)} / {className} · {students.length}명
+        </p>
+        <SectionVoiceInput
+          label="수업태도 음성 입력"
+          chipLabel="태도"
+          compact={compact}
+          disabled={saving}
+          onApply={(transcript) => {
+            const applied = applyAttitudeDrafts(drafts, transcript, students, attendance, date)
+            setDrafts(applied.drafts)
+            return applied.summary
+          }}
+        />
+      </div>
       <div
         className={
           compact
