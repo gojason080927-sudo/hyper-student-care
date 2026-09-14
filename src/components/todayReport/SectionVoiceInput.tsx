@@ -37,6 +37,7 @@ export function SectionVoiceInput({
   const [fallbackOpen, setFallbackOpen] = useState(false)
   const [fallbackText, setFallbackText] = useState('')
   const sessionRef = useRef<LiveSpeechSession | null>(null)
+  const appliedThisSessionRef = useRef(false)
 
   useEffect(() => {
     return () => {
@@ -70,9 +71,12 @@ export function SectionVoiceInput({
     setError('')
     setSummary(null)
     setInterim('')
+    appliedThisSessionRef.current = false
     const session = startKoreanSpeechRecognition({
       onInterim: setInterim,
       onFinal: (text) => {
+        if (appliedThisSessionRef.current) return
+        appliedThisSessionRef.current = true
         applyTranscript(text)
       },
       onError: (message) => {
