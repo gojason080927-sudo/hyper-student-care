@@ -72,7 +72,7 @@ const previewRisk = computeLearningRisk({
       date: '2026-09-07',
       materialPrep: '부분 지참',
       attitudeIssues: ['졸음'],
-      attitudeNote: '',
+      attitudeNote: '전날 수면 부족으로 보이며 후반부에는 집중도 회복',
       createdAt: '',
       updatedAt: '',
     },
@@ -263,16 +263,16 @@ export function ParentMobileLayoutPreviewPage() {
               <p className="mt-2 text-sm text-slate-700">수학 · 이차방정식 · 88점</p>
             </section>
             <section className="rounded-2xl border border-slate-200 bg-white px-3.5 py-3 shadow-sm">
-              <h2 className="text-base font-bold text-navy-900">강사 피드백</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-700">
-                풀이 과정은 안정적입니다. 부호 실수만 한 번 더 확인하면 됩니다.
-              </p>
-            </section>
-            <section className="rounded-2xl border border-slate-200 bg-white px-3.5 py-3 shadow-sm">
               <h2 className="text-base font-bold text-navy-900">수업태도</h2>
               <p className="mt-2 text-sm font-semibold text-slate-800">
                 {classAttitudeDisplay(['졸음'])}
               </p>
+              <div className="mt-2 rounded-xl bg-slate-50 px-3 py-2.5">
+                <p className="text-xs font-semibold text-slate-600">강사 메모</p>
+                <p className="mt-1 text-sm leading-6 text-slate-700">
+                  전날 수면 부족으로 보이며 후반부에는 집중도 회복
+                </p>
+              </div>
             </section>
           </section>
         </div>

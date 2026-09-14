@@ -22,7 +22,7 @@ type MenuCard = {
 const featured: MenuCard = {
   to: '/teacher/mobile/today-report',
   title: 'Today Report 입력',
-  description: '출결·과제·진도·일일테스트·특이사항',
+  description: '출결 · 숙제 · 교재준비 · 진도 · 일일테스트 · 수업태도',
   icon: ClipboardList,
 }
 
@@ -83,7 +83,9 @@ export function TeacherMobileDashboardPage() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="text-lg font-bold leading-tight">{featured.title}</p>
-                  <p className="mt-1 text-[15px] leading-snug text-white/85">{featured.description}</p>
+                  <p className="mt-0.5 max-w-[18rem] text-[12px] leading-snug text-white/85 sm:text-[13px]">
+                    {featured.description}
+                  </p>
                 </div>
                 <span className="tm-featured-arrow" aria-hidden>
                   <ArrowRight className="h-5 w-5" strokeWidth={2.25} />

@@ -103,6 +103,7 @@ import { CareerTestStudentPage } from './features/careerAssessment/pages/CareerT
 import { ParentCareerResultPage } from './features/careerAssessment/pages/ParentCareerResultPage'
 import { AdmissionStrategyViewerPreviewPage } from './pages/dev/AdmissionStrategyViewerPreviewPage'
 import { ParentMobileLayoutPreviewPage } from './pages/dev/ParentMobileLayoutPreviewPage'
+import { TeacherTodayReportLayoutPreviewPage } from './pages/dev/TeacherTodayReportLayoutPreviewPage
 
 
 
@@ -121,6 +122,7 @@ function App() {
           <>
             <Route path="/dev/admission-viewer" element={<AdmissionStrategyViewerPreviewPage />} />
             <Route path="/dev/parent-mobile-layout" element={<ParentMobileLayoutPreviewPage />} />
+            <Route path="/dev/teacher-today-report-layout" element={<TeacherTodayReportLayoutPreviewPage />} />
           </>
         ) : null}
 

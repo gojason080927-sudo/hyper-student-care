@@ -1,11 +1,8 @@
 import { ChevronDown } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { SectionTitleWithHint } from '../../components/ui/SectionTitleWithHint'
 import { TeacherMobileHeader } from '../../components/teacherMobile/TeacherMobileHeader'
 import { ClassAttendanceBulkPanel } from '../../components/todayReport/ClassAttendanceBulkPanel'
-import { LearningStatusBadge } from '../../components/studentCare/LearningStatusBadge'
-import { computeLearningRisk } from '../../utils/studentCare'
 import { ClassCommonProgressPanel } from '../../components/todayReport/ClassCommonProgressPanel'
 import { ClassCommonTodayAssignmentPanel } from '../../components/todayReport/ClassCommonTodayAssignmentPanel'
 import { ClassDailyTestBulkPanel } from '../../components/todayReport/ClassDailyTestBulkPanel'
@@ -28,17 +25,17 @@ import type { Student } from '../../types/student'
 type ReportSection =
   | 'attendance'
   | 'homework'
-  | 'materialPrep'
   | 'classTodayHomework'
+  | 'materialPrep'
   | 'progress'
   | 'dailyTest'
-  | 'classNote'
+  | 'attitude'
 
 const CLASS_SCOPED_SECTIONS: { id: ReportSection; label: string }[] = [
   { id: 'attendance', label: '출결' },
   { id: 'homework', label: '숙제 수행 결과' },
-  { id: 'materialPrep', label: '교재 준비' },
   { id: 'classTodayHomework', label: '반 공통 오늘 과제' },
+  { id: 'materialPrep', label: '교재 준비' },
   { id: 'progress', label: '반 공통 오늘의 진도' },
   { id: 'dailyTest', label: '일일테스트' },
 ]
@@ -327,17 +324,11 @@ export function TeacherMobileTodayReportPage() {
             </section>
 
             <MobileSectionAccordion
-              label={
-                <SectionTitleWithHint
-                  title="강사 피드백"
-                  hint="수업을 통해 확인한 학습 상태"
-                  hintClassName="text-[11px]"
-                />
-              }
-              open={openSections.has('classNote')}
-              onToggle={() => toggleSection('classNote')}
+              label="수업태도"
+              open={openSections.has('attitude')}
+              onToggle={() => toggleSection('attitude')}
             >
-              <ClassNoteStudentList
+              <AttitudeStudentList
                 students={classStudents}
                 date={date}
                 classSync={classSync}
@@ -350,8 +341,8 @@ export function TeacherMobileTodayReportPage() {
   )
 }
 
-/** 학생 선택 UI 없이 반 학생별 특이사항을 이어서 입력 */
-function ClassNoteStudentList({
+/** 학생 선택 UI 없이 반 학생별 수업태도를 이어서 입력 */
+function AttitudeStudentList({
   students,
   date,
   classSync,
@@ -360,37 +351,12 @@ function ClassNoteStudentList({
   date: string
   classSync?: ClassTodayReportSyncContext
 }) {
-  const {
-    attendance,
-    homework,
-    homeworkTextbookEntries,
-    dailyTests,
-    studentDailyCare,
-    classNotes,
-    progressRecords,
-  } = useData()
-
   return (
     <div className="divide-y divide-[rgba(22,58,112,0.06)]">
       {students.map((student) => (
         <div key={student.id} className="py-2 first:pt-0 last:pb-0">
           <div className="mb-1.5 flex items-center justify-between gap-2">
-            <div className="flex min-w-0 items-center gap-2">
-              <p className="text-sm font-bold text-[#163A70]">{student.name}</p>
-              <LearningStatusBadge
-                compact
-                result={computeLearningRisk({
-                  studentId: student.id,
-                  attendance,
-                  homework,
-                  homeworkTextbookEntries,
-                  dailyTests,
-                  dailyCare: studentDailyCare,
-                  progressRecords,
-                  classNotes,
-                })}
-              />
-            </div>
+            <p className="text-sm font-bold text-[#163A70]">{student.name}</p>
             <StudentKakaoShareAction student={student} compact />
           </div>
           <TodayReportView
@@ -400,7 +366,7 @@ function ClassNoteStudentList({
             hideHeader
             compactTeacherInput
             classSync={classSync}
-            mobileSection="classNote"
+            mobileSection="attitude"
           />
         </div>
       ))}

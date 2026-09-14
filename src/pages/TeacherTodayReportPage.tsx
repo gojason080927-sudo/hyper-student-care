@@ -35,7 +35,7 @@ export function TeacherTodayReportPage() {
     <div className="space-y-6">
       <PageHeader
         title="Today Report"
-        description="학생별 오늘의 출결, 진도, 과제, 테스트를 통합 관리합니다."
+        description="학생별 오늘의 출결, 숙제, 교재준비, 진도, 일일테스트, 수업태도를 통합 관리합니다."
       />
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">

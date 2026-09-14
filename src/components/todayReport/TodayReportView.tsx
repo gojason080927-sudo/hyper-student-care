@@ -130,7 +130,6 @@ type TodayReportViewProps = {
   dateMode?: 'picker' | 'navigate'
   errorFallbackHomePath?: string
   hideHeader?: boolean
-  classNoteExtraActions?: ReactNode
   /** 강사용 Today Report 반별 통합입력 화면에서만 true */
   compactTeacherInput?: boolean
   /** 반별 공통 진도·과제 연동 (반별 통합입력) */
@@ -246,7 +245,7 @@ export function StudentSummaryCard({
       <section className="rounded-xl border border-slate-200 bg-white px-3.5 py-3 shadow-sm sm:rounded-2xl sm:px-4">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <h1 className="min-w-0 break-keep text-lg font-bold text-navy-900">{student.name}</h1>
-          <span className="shrink-0">{statusBadge}</span>
+          {statusBadge ? <span className="shrink-0">{statusBadge}</span> : null}
         </div>
         <p className="mt-0.5 line-clamp-2 break-anywhere text-sm text-slate-600">
           {[student.school, student.grade, student.teacher].filter(Boolean).join(' · ')}
@@ -259,7 +258,7 @@ export function StudentSummaryCard({
     <section className="rounded-2xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm">
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         <p className="min-w-0 break-keep text-lg font-bold text-navy-900">{student.name} 학생</p>
-        <span className="shrink-0">{statusBadge}</span>
+        {statusBadge ? <span className="shrink-0">{statusBadge}</span> : null}
       </div>
       <p className="mt-1 text-sm text-slate-600">
         {student.school} · {student.grade}
@@ -299,7 +298,6 @@ export function TodayReportView({
   dateMode = readOnly ? 'navigate' : 'picker',
   errorFallbackHomePath,
   hideHeader = false,
-  classNoteExtraActions,
   compactTeacherInput = false,
   classSync,
   mobileSection,
@@ -332,7 +330,6 @@ export function TodayReportView({
     saveStudentTextbookSlot,
     saveDailyTestRecord,
     saveTodayAssignmentRecord,
-    saveClassNoteRecord,
     saveStudentDailyCareRecord,
     refreshTodayReport,
     showToast,
@@ -722,15 +719,7 @@ export function TodayReportView({
               )}
             </div>
           </div>
-          <StudentSummaryCard
-            student={student}
-            statusBadge={<LearningStatusBadge result={learningRisk} onClick={() => setRiskOpen((open) => !open)} />}
-          />
-          {riskOpen ? (
-            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-              <LearningRiskReasonPanel result={learningRisk} />
-            </div>
-          ) : null}
+          <StudentSummaryCard student={student} />
         </>
       ))}
 
@@ -910,23 +899,8 @@ export function TodayReportView({
           />
           )}
 
-          {/* 학부모: 강사 피드백은 일일테스트 카드 안(오답 분석 다음)으로 이동 — 하단 중복 카드 제거 */}
-          {showSection('classNote') && !readOnly && (
-          <ClassNoteSection
-            key={`class-note-${selectedDate}`}
-            readOnly={readOnly}
-            record={dayClassNote}
-            studentId={student.id}
-            date={selectedDate}
-            onSave={saveClassNoteRecord}
-            extraActions={classNoteExtraActions}
-            teacherCompact={tc}
-            hideTitle={sectionHideTitle}
-            emptyMessage={parentEmptyMessages.classNote}
-          />
-          )}
-
-          {(showSection('attitude') || mobileSection === 'classNote') && (
+          {/* 학부모 과거 강사 피드백(class_notes)은 일일테스트 카드 안에서만 표시. 강사 Today Report 신규 입력 UI는 제거. */}
+          {showSection('attitude') && (
             <ClassAttitudeSection
               key={`attitude-${selectedDate}`}
               readOnly={readOnly}
@@ -1240,9 +1214,7 @@ function ClassAttitudeSection({
               </p>
               {parentIssues.length > 0 && parentNote.trim() ? (
                 <div className="rounded-xl bg-slate-50 px-3 py-2.5">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
-                    강사 메모
-                  </p>
+                  <p className="text-xs font-semibold text-slate-600">강사 메모</p>
                   <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-slate-700">
                     {parentNote}
                   </p>
@@ -1682,7 +1654,8 @@ function HomeworkAssignmentSection({
   )
 }
 
-function ClassNoteSection({
+/** 강사 Today Report 신규 입력에서는 사용하지 않음. 과거 class_notes 조회·표시 호환용으로 유지. */
+export function ClassNoteSection({
   readOnly,
   record,
   studentId,
