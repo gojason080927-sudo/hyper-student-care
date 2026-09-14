@@ -104,7 +104,7 @@ assert.doesNotMatch(
 )
 assert.match(sql, /REVOKE ALL ON TABLE public.student_daily_care FROM anon/)
 assert.match(sql, /REVOKE ALL ON TABLE public.weekly_learning_summaries FROM anon/)
-assert.match(sql, /REVOKE ALL ON TABLE public.weekly_summary_reads FROM anon/))
+assert.match(sql, /REVOKE ALL ON TABLE public.weekly_summary_reads FROM anon/)
 
 const app = readFileSync('src/App.tsx', 'utf8')
 for (const route of [
