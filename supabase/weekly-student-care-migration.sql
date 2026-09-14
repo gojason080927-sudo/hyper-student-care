@@ -122,7 +122,18 @@ CREATE TRIGGER trg_weekly_summary_reads_updated_at
   EXECUTE FUNCTION public.set_updated_at();
 
 -- ---------------------------------------------------------------------------
--- 5) RLS
+-- 5) RLS (최소 권한 — 구 코어 테이블의 개발용 anon USING(true)를 복사하지 않음)
+--
+-- 실제 인증 근거:
+--   강사앱: AuthContext signInWithPassword → persistSession JWT role = authenticated
+--           Today Report/출결 쓰기는 SECURITY DEFINER가 아니라 repository.ts
+--           .from(table).upsert() 직접 테이블 접근. UI는 ProtectedRoute(session 필수).
+--           운영 신규 테이블 패턴: admission_strategy_posts / entrance_exam_papers
+--           (REVOKE anon, GRANT+POLICY TO authenticated USING(true)).
+--           공용 강사 계정이라 강사 간 row 분리는 기존에도 없음.
+--   학부모앱: 로그인 없음. anon key + access_key SECURITY DEFINER RPC.
+--           신규 테이블 직접 INSERT/UPDATE/DELETE 없음.
+--           읽음 표시 패턴: parent_category_reads (RLS ON, 정책 없음, RPC만).
 -- ---------------------------------------------------------------------------
 
 ALTER TABLE public.student_daily_care ENABLE ROW LEVEL SECURITY;
@@ -147,41 +158,43 @@ BEGIN
     EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', 'dev_authenticated_insert_' || t, t);
     EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', 'dev_authenticated_update_' || t, t);
     EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', 'dev_authenticated_delete_' || t, t);
-
-    EXECUTE format(
-      'CREATE POLICY %I ON public.%I FOR SELECT TO anon USING (true)',
-      'dev_anon_select_' || t, t
-    );
-    EXECUTE format(
-      'CREATE POLICY %I ON public.%I FOR INSERT TO anon WITH CHECK (true)',
-      'dev_anon_insert_' || t, t
-    );
-    EXECUTE format(
-      'CREATE POLICY %I ON public.%I FOR UPDATE TO anon USING (true) WITH CHECK (true)',
-      'dev_anon_update_' || t, t
-    );
-    EXECUTE format(
-      'CREATE POLICY %I ON public.%I FOR DELETE TO anon USING (true)',
-      'dev_anon_delete_' || t, t
-    );
-    EXECUTE format(
-      'CREATE POLICY %I ON public.%I FOR SELECT TO authenticated USING (true)',
-      'dev_authenticated_select_' || t, t
-    );
-    EXECUTE format(
-      'CREATE POLICY %I ON public.%I FOR INSERT TO authenticated WITH CHECK (true)',
-      'dev_authenticated_insert_' || t, t
-    );
-    EXECUTE format(
-      'CREATE POLICY %I ON public.%I FOR UPDATE TO authenticated USING (true) WITH CHECK (true)',
-      'dev_authenticated_update_' || t, t
-    );
-    EXECUTE format(
-      'CREATE POLICY %I ON public.%I FOR DELETE TO authenticated USING (true)',
-      'dev_authenticated_delete_' || t, t
-    );
   END LOOP;
 END $$;
+
+DROP POLICY IF EXISTS student_daily_care_authenticated_crud ON public.student_daily_care;
+DROP POLICY IF EXISTS weekly_learning_summaries_authenticated_select
+  ON public.weekly_learning_summaries;
+
+-- 강사 Today Report: upsertStudentDailyCare (authenticated JWT만)
+REVOKE ALL ON TABLE public.student_daily_care FROM PUBLIC;
+REVOKE ALL ON TABLE public.student_daily_care FROM anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.student_daily_care TO authenticated;
+GRANT ALL ON TABLE public.student_daily_care TO service_role;
+
+CREATE POLICY student_daily_care_authenticated_crud
+  ON public.student_daily_care
+  FOR ALL
+  TO authenticated
+  USING (true)
+  WITH CHECK (true);
+
+-- 강사 fetchAllRecords SELECT만. INSERT는 generate/ensure SECURITY DEFINER 전용.
+REVOKE ALL ON TABLE public.weekly_learning_summaries FROM PUBLIC;
+REVOKE ALL ON TABLE public.weekly_learning_summaries FROM anon;
+GRANT SELECT ON TABLE public.weekly_learning_summaries TO authenticated;
+GRANT ALL ON TABLE public.weekly_learning_summaries TO service_role;
+
+CREATE POLICY weekly_learning_summaries_authenticated_select
+  ON public.weekly_learning_summaries
+  FOR SELECT
+  TO authenticated
+  USING (true);
+
+-- 학부모 열람: mark_weekly_summary_read RPC만. 테이블 직접 접근 없음.
+REVOKE ALL ON TABLE public.weekly_summary_reads FROM PUBLIC;
+REVOKE ALL ON TABLE public.weekly_summary_reads FROM anon;
+REVOKE ALL ON TABLE public.weekly_summary_reads FROM authenticated;
+GRANT ALL ON TABLE public.weekly_summary_reads TO service_role;
 
 -- ---------------------------------------------------------------------------
 -- 6) Parent RPC: care bundle + today report (기존 키 유지, 키만 추가)
@@ -515,6 +528,12 @@ BEGIN
     SELECT s.id
     FROM public.students s
     WHERE s.status = '재원'
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.weekly_learning_summaries w
+        WHERE w.student_id = s.id
+          AND w.week_start = v_week_start
+      )
   LOOP
     INSERT INTO public.weekly_learning_summaries (
       student_id, week_start, period_start, period_end, as_of,
@@ -546,8 +565,9 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.generate_weekly_learning_summaries(timestamptz) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION public.generate_weekly_learning_summaries(timestamptz) TO anon;
-GRANT EXECUTE ON FUNCTION public.generate_weekly_learning_summaries(timestamptz) TO authenticated;
+REVOKE ALL ON FUNCTION public.generate_weekly_learning_summaries(timestamptz) FROM anon;
+REVOKE ALL ON FUNCTION public.generate_weekly_learning_summaries(timestamptz) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.generate_weekly_learning_summaries(timestamptz) TO service_role;
 
 CREATE OR REPLACE FUNCTION public.ensure_weekly_learning_summaries()
 RETURNS integer
@@ -561,6 +581,7 @@ $$;
 REVOKE ALL ON FUNCTION public.ensure_weekly_learning_summaries() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.ensure_weekly_learning_summaries() TO anon;
 GRANT EXECUTE ON FUNCTION public.ensure_weekly_learning_summaries() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.ensure_weekly_learning_summaries() TO service_role;
 
 CREATE OR REPLACE FUNCTION public._attendance_index(p_status text, p_excuse text)
 RETURNS numeric
@@ -995,8 +1016,27 @@ BEGIN
 END;
 $$;
 
+-- Internal helpers are not a browser API. Default PUBLIC EXECUTE would expose them
+-- via PostgREST; generate/ensure (SECURITY DEFINER) can still call them as owner.
+REVOKE ALL ON FUNCTION public._weekly_summary_cutoff(timestamptz) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public._weekly_summary_cutoff(timestamptz) FROM anon;
+REVOKE ALL ON FUNCTION public._weekly_summary_cutoff(timestamptz) FROM authenticated;
+REVOKE ALL ON FUNCTION public._attendance_index(text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public._attendance_index(text, text) FROM anon;
+REVOKE ALL ON FUNCTION public._attendance_index(text, text) FROM authenticated;
+REVOKE ALL ON FUNCTION public._daily_test_attempt_score(public.daily_tests) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public._daily_test_attempt_score(public.daily_tests) FROM anon;
+REVOKE ALL ON FUNCTION public._daily_test_attempt_score(public.daily_tests) FROM authenticated;
+REVOKE ALL ON FUNCTION public._build_weekly_learning_summary(uuid, date, date, timestamptz) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public._build_weekly_learning_summary(uuid, date, date, timestamptz) FROM anon;
+REVOKE ALL ON FUNCTION public._build_weekly_learning_summary(uuid, date, date, timestamptz) FROM authenticated;
+REVOKE ALL ON FUNCTION public._weekly_area_payload(numeric[], numeric, jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public._weekly_area_payload(numeric[], numeric, jsonb) FROM anon;
+REVOKE ALL ON FUNCTION public._weekly_area_payload(numeric[], numeric, jsonb) FROM authenticated;
+
 -- pg_cron: Friday 23:00 UTC = Saturday 08:00 Asia/Seoul.
 -- Fallback when pg_cron is unavailable: supabase/functions/generate-weekly-summaries
+-- (service_role only — anon/authenticated cannot execute generate_weekly_learning_summaries)
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN

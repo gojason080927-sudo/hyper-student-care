@@ -18,10 +18,9 @@ Deno.serve(async (request) => {
   }
 
   const url = Deno.env.get('SUPABASE_URL')
-  const key =
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY')
+  const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
   if (!url || !key) {
-    return jsonResponse({ ok: false, error: 'Supabase env missing' }, 500)
+    return jsonResponse({ ok: false, error: 'service_role env missing' }, 500)
   }
 
   const supabase = createClient(url, key)

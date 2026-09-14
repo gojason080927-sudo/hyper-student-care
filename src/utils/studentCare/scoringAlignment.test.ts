@@ -95,6 +95,16 @@ assert.match(sql, /greatest\(60, 100 - coalesce\(array_length\(v_care\.attitude_
 assert.match(sql, /v_att_vals_idx := array_append\(v_att_vals_idx, 100\)/)
 assert.doesNotMatch(sql, /TRUNCATE TABLE/i)
 assert.doesNotMatch(sql, /DELETE FROM public\.(attendance|homework|daily_tests|monthly_learning_reports)/)
+assert.doesNotMatch(sql, /FOR INSERT TO anon WITH CHECK \(true\)/)
+assert.doesNotMatch(sql, /FOR UPDATE TO anon USING \(true\) WITH CHECK \(true\)/)
+assert.doesNotMatch(sql, /FOR DELETE TO anon USING \(true\)/)
+assert.doesNotMatch(
+  sql,
+  /GRANT EXECUTE ON FUNCTION public.generate_weekly_learning_summaries\(timestamptz\) TO anon/,
+)
+assert.match(sql, /REVOKE ALL ON TABLE public.student_daily_care FROM anon/)
+assert.match(sql, /REVOKE ALL ON TABLE public.weekly_learning_summaries FROM anon/)
+assert.match(sql, /REVOKE ALL ON TABLE public.weekly_summary_reads FROM anon/))
 
 const app = readFileSync('src/App.tsx', 'utf8')
 for (const route of [
