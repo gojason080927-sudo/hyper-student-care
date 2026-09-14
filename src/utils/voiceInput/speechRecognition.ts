@@ -24,12 +24,83 @@ type SpeechRecognitionLike = {
   abort: () => void
 }
 
-type SpeechRecognitionResultEventLike = {
+export type SpeechRecognitionResultEventLike = {
   resultIndex: number
   results: ArrayLike<{
     isFinal: boolean
     0: { transcript: string }
   }>
+}
+
+function normalizeTranscript(text: string): string {
+  return text.replace(/\s+/g, ' ').trim()
+}
+
+function compactTranscriptKey(text: string): string {
+  return text.replace(/\s+/g, '')
+}
+
+/**
+ * Android Chrome often marks growing prefixes of the same utterance as isFinal.
+ * Replace a prefix hypothesis with the longer text; keep distinct phrases.
+ * Do not strip repeated words inside a single result.
+ */
+export function mergeFinalHypotheses(committed: string[], nextRaw: string): string[] {
+  const next = normalizeTranscript(nextRaw)
+  if (!next) return committed
+  if (committed.length === 0) return [next]
+
+  const last = committed[committed.length - 1]
+  if (!last) return [...committed.slice(0, -1), next]
+
+  const lastKey = compactTranscriptKey(last)
+  const nextKey = compactTranscriptKey(next)
+  if (nextKey === lastKey) return committed
+  if (nextKey.startsWith(lastKey)) return [...committed.slice(0, -1), next]
+  if (lastKey.startsWith(nextKey)) return committed
+  return [...committed, next]
+}
+
+export function compactFinalHypotheses(pieces: Array<string | undefined>): string {
+  let committed: string[] = []
+  for (const piece of pieces) {
+    if (!piece) continue
+    committed = mergeFinalHypotheses(committed, piece)
+  }
+  return committed.join(' ').replace(/\s+/g, ' ').trim()
+}
+
+export function createSpeechTranscriptSession() {
+  const finalsByIndex: string[] = []
+  let consumed = false
+
+  return {
+    ingest(event: SpeechRecognitionResultEventLike): { display: string } {
+      let interim = ''
+      const start = Math.max(0, event.resultIndex ?? 0)
+      for (let i = start; i < event.results.length; i += 1) {
+        const piece = event.results[i]
+        const text = normalizeTranscript(piece[0]?.transcript ?? '')
+        if (!text) continue
+        if (piece.isFinal) finalsByIndex[i] = text
+        else interim += text
+      }
+      const committed = compactFinalHypotheses(finalsByIndex)
+      const display = [committed, normalizeTranscript(interim)].filter(Boolean).join(' ')
+      return { display: normalizeTranscript(display) }
+    },
+
+    peekCommitted(): string {
+      return compactFinalHypotheses(finalsByIndex)
+    },
+
+    consumeFinal(): { text: string; delivered: boolean } {
+      const text = compactFinalHypotheses(finalsByIndex)
+      if (consumed) return { text, delivered: false }
+      consumed = true
+      return { text, delivered: true }
+    },
+  }
 }
 
 type SpeechRecognitionCtor = new () => SpeechRecognitionLike
@@ -93,19 +164,12 @@ export function startKoreanSpeechRecognition(handlers: {
   recognition.maxAlternatives = 1
 
   let stopped = false
-  const finals: string[] = []
+  let ended = false
+  const transcriptSession = createSpeechTranscriptSession()
 
   recognition.onresult = (event) => {
-    let interim = ''
-    for (let i = event.resultIndex; i < event.results.length; i += 1) {
-      const piece = event.results[i]
-      const text = piece[0]?.transcript ?? ''
-      if (piece.isFinal) finals.push(text.trim())
-      else interim += text
-    }
-    handlers.onInterim?.(
-      [...finals, interim].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim(),
-    )
+    const { display } = transcriptSession.ingest(event)
+    handlers.onInterim?.(display)
   }
 
   recognition.onerror = (event) => {
@@ -115,8 +179,10 @@ export function startKoreanSpeechRecognition(handlers: {
   }
 
   recognition.onend = () => {
-    const text = finals.join(' ').replace(/\s+/g, ' ').trim()
-    if (text) handlers.onFinal?.(text)
+    if (ended) return
+    ended = true
+    const { text, delivered } = transcriptSession.consumeFinal()
+    if (delivered && text) handlers.onFinal?.(text)
     handlers.onEnd()
   }
 

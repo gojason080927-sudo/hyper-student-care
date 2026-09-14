@@ -26,7 +26,14 @@ import {
   parseMaterialVoice,
   parseSectionTextVoice,
 } from './parseVoiceTranscript.ts'
-import { detectBrowserSpeechSupport } from './speechRecognition.ts'
+import {
+  compactFinalHypotheses,
+  createSpeechTranscriptSession,
+  detectBrowserSpeechSupport,
+  mergeFinalHypotheses,
+  speechErrorMessage,
+  type SpeechRecognitionResultEventLike,
+} from './speechRecognition.ts'
 
 const DATE = '2026-09-14'
 const 김도영 = { id: 'doyoung', name: '김도영' }
@@ -483,6 +490,259 @@ assert.equal(
 assert.doesNotMatch(
   readFileSync('src/components/todayReport/SectionVoiceInput.tsx', 'utf8'),
   /MediaRecorder/,
+)
+
+function speechEvent(
+  resultIndex: number,
+  pieces: Array<{ transcript: string; isFinal: boolean }>,
+): SpeechRecognitionResultEventLike {
+  return {
+    resultIndex,
+    results: pieces.map((piece) => ({
+      isFinal: piece.isFinal,
+      0: { transcript: piece.transcript },
+    })),
+  }
+}
+
+function applySessionOnce<T>(
+  session: ReturnType<typeof createSpeechTranscriptSession>,
+  apply: (text: string) => T,
+): { applied: boolean; value: T | undefined } {
+  const { text, delivered } = session.consumeFinal()
+  if (!delivered || !text) return { applied: false, value: undefined }
+  return { applied: true, value: apply(text) }
+}
+
+// L. VOICE DEDUP — CASE A: interim prefixes must not land in the form
+{
+  const session = createSpeechTranscriptSession()
+  const first = session.ingest(speechEvent(0, [{ transcript: '문제지', isFinal: false }]))
+  assert.equal(first.display, '문제지')
+  assert.equal(session.peekCommitted(), '')
+  const second = session.ingest(speechEvent(0, [{ transcript: '문제지 43', isFinal: false }]))
+  assert.equal(second.display, '문제지 43')
+  assert.equal(session.peekCommitted(), '')
+  session.ingest(speechEvent(0, [{ transcript: '문제지 43페이지까지', isFinal: true }]))
+  const assignmentDrafts = {
+    '수학:1': { todayAssignment: '', textbookName: '' },
+    '수학:2': { todayAssignment: '유형 유지', textbookName: '' },
+  }
+  const filled = applySessionOnce(session, (text) =>
+    applyTodayAssignmentSlotDraft(assignmentDrafts, text, '수학', 1),
+  )
+  assert.equal(filled.applied, true)
+  assert.equal(filled.value?.drafts['수학:1']?.todayAssignment, '문제지 43페이지까지')
+  assert.notEqual(filled.value?.drafts['수학:1']?.todayAssignment, '문제지 문제지 문제지 43페이지까지')
+  assert.equal(filled.value?.drafts['수학:2']?.todayAssignment, '유형 유지')
+}
+
+// CASE A — Android: growing isFinal copies / repeated "문제지" finals
+{
+  const session = createSpeechTranscriptSession()
+  session.ingest(speechEvent(0, [{ transcript: '문제지', isFinal: true }]))
+  session.ingest(
+    speechEvent(0, [
+      { transcript: '문제지', isFinal: true },
+      { transcript: '문제지', isFinal: true },
+      { transcript: '문제지', isFinal: true },
+      { transcript: '문제지', isFinal: true },
+      { transcript: '문제지', isFinal: true },
+      { transcript: '문제지 43페이지까지', isFinal: true },
+    ]),
+  )
+  const { text, delivered } = session.consumeFinal()
+  assert.equal(delivered, true)
+  assert.equal(text, '문제지 43페이지까지')
+  const assignmentDrafts = {
+    '수학:1': { todayAssignment: '', textbookName: '' },
+  }
+  const filled = applyTodayAssignmentSlotDraft(assignmentDrafts, text, '수학', 1)
+  assert.equal(filled.drafts['수학:1']?.todayAssignment, '문제지 43페이지까지')
+}
+
+{
+  const sameIndex = createSpeechTranscriptSession()
+  sameIndex.ingest(speechEvent(0, [{ transcript: '문제지', isFinal: true }]))
+  sameIndex.ingest(speechEvent(0, [{ transcript: '문제지 43', isFinal: true }]))
+  sameIndex.ingest(speechEvent(0, [{ transcript: '문제지 43페이지까지', isFinal: true }]))
+  assert.equal(sameIndex.consumeFinal().text, '문제지 43페이지까지')
+}
+
+// CASE B — "2차" interim/final growing into "2차 함수"
+{
+  const session = createSpeechTranscriptSession()
+  session.ingest(speechEvent(0, [{ transcript: '2차', isFinal: false }]))
+  assert.equal(session.peekCommitted(), '')
+  session.ingest(speechEvent(0, [{ transcript: '2차 함수', isFinal: true }]))
+  const progressDrafts = {
+    '수학:1': { currentProgress: '' },
+    '수학:2': { currentProgress: '유형 기존' },
+  }
+  const filled = applySessionOnce(session, (text) =>
+    applyProgressSlotDraft(progressDrafts, text, '수학', 1),
+  )
+  assert.equal(filled.value?.drafts['수학:1']?.currentProgress, '2차 함수')
+  assert.notEqual(filled.value?.drafts['수학:1']?.currentProgress, '2차 2차 함수')
+  assert.equal(filled.value?.drafts['수학:2']?.currentProgress, '유형 기존')
+}
+
+{
+  const android = createSpeechTranscriptSession()
+  android.ingest(speechEvent(0, [{ transcript: '2차', isFinal: true }]))
+  android.ingest(speechEvent(1, [
+    { transcript: '2차', isFinal: true },
+    { transcript: '2차 함수', isFinal: true },
+  ]))
+  assert.equal(android.consumeFinal().text, '2차 함수')
+}
+
+// CASE C — duplicate final callback in the same session applies once
+{
+  const session = createSpeechTranscriptSession()
+  session.ingest(speechEvent(0, [{ transcript: '김도영 92점 계산 실수', isFinal: true }]))
+  let applyCount = 0
+  let drafts = {
+    doyoung: {
+      rounds: [
+        { round: 1 as const, score: '', passed: false },
+        { round: 2 as const, score: '', passed: false },
+        { round: 3 as const, score: '', passed: false },
+        { round: 4 as const, score: '', passed: false },
+      ],
+      learningDiagnosis: { ...emptyDiagnosis },
+    },
+  }
+  const apply = () => {
+    const result = applySessionOnce(session, (text) => {
+      applyCount += 1
+      return applyDailyTestDrafts(
+        drafts,
+        text,
+        students,
+        presentExceptMinjae,
+        DATE,
+        2,
+      )
+    })
+    if (result.value) drafts = result.value.drafts
+    return result.applied
+  }
+  assert.equal(apply(), true)
+  assert.equal(apply(), false)
+  assert.equal(applyCount, 1)
+  assert.equal(drafts.doyoung.rounds.find((row) => row.round === 2)?.score, '92')
+  assert.equal(drafts.doyoung.learningDiagnosis.calculationErrorCount, 1)
+}
+
+{
+  const session = createSpeechTranscriptSession()
+  session.ingest(speechEvent(0, [{ transcript: '관계대명사 문제', isFinal: true }]))
+  const first = session.consumeFinal()
+  const second = session.consumeFinal()
+  assert.equal(first.delivered, true)
+  assert.equal(second.delivered, false)
+  assert.equal(first.text, '관계대명사 문제')
+}
+
+// CASE D — a new voice session must still apply
+{
+  const firstSession = createSpeechTranscriptSession()
+  firstSession.ingest(speechEvent(0, [{ transcript: '문제지 43페이지까지', isFinal: true }]))
+  let drafts = {
+    '수학:1': { todayAssignment: '', textbookName: '' },
+  }
+  const first = applySessionOnce(firstSession, (text) =>
+    applyTodayAssignmentSlotDraft(drafts, text, '수학', 1),
+  )
+  drafts = first.value!.drafts
+  const secondSession = createSpeechTranscriptSession()
+  secondSession.ingest(speechEvent(0, [{ transcript: '77페이지에서 80페이지', isFinal: true }]))
+  const second = applySessionOnce(secondSession, (text) =>
+    applyTodayAssignmentSlotDraft(drafts, text, '수학', 1),
+  )
+  assert.equal(first.applied, true)
+  assert.equal(second.applied, true)
+  assert.equal(second.value?.drafts['수학:1']?.todayAssignment, '77페이지에서 80페이지')
+}
+
+// CASE E — math concept voice must not change math type slot
+{
+  const session = createSpeechTranscriptSession()
+  session.ingest(speechEvent(0, [{ transcript: '2차 함수', isFinal: true }]))
+  const drafts = {
+    '수학:1': { currentProgress: '개념 기존' },
+    '수학:2': { currentProgress: '유형 기존' },
+  }
+  const filled = applySessionOnce(session, (text) =>
+    applyProgressSlotDraft(drafts, text, '수학', 1),
+  )
+  assert.equal(filled.value?.drafts['수학:1']?.currentProgress, '2차 함수')
+  assert.equal(filled.value?.drafts['수학:2']?.currentProgress, '유형 기존')
+}
+
+{
+  const session = createSpeechTranscriptSession()
+  session.ingest(speechEvent(0, [{ transcript: '관계대명사', isFinal: true }]))
+  const drafts = {
+    '영어:1': { currentProgress: '문법기존' },
+    '영어:2': { currentProgress: '독해기존' },
+    '영어:3': { currentProgress: '단어기존' },
+  }
+  const filled = applySessionOnce(session, (text) =>
+    applyProgressSlotDraft(drafts, text, '영어', 1),
+  )
+  assert.equal(filled.value?.drafts['영어:1']?.currentProgress, '관계대명사')
+  assert.equal(filled.value?.drafts['영어:2']?.currentProgress, '독해기존')
+  assert.equal(filled.value?.drafts['영어:3']?.currentProgress, '단어기존')
+}
+
+// Distinct phrases in one session stay distinct (not prefix-stripped)
+{
+  const session = createSpeechTranscriptSession()
+  session.ingest(speechEvent(0, [{ transcript: '김도영 출석', isFinal: true }]))
+  session.ingest(
+    speechEvent(1, [
+      { transcript: '김도영 출석', isFinal: true },
+      { transcript: '김성민 결석', isFinal: true },
+    ]),
+  )
+  assert.equal(session.consumeFinal().text, '김도영 출석 김성민 결석')
+}
+
+// A single final result that already repeats a word is left unchanged
+assert.equal(
+  compactFinalHypotheses(['정말 정말 중요']),
+  '정말 정말 중요',
+)
+assert.deepEqual(mergeFinalHypotheses(['문제지'], '문제지 43페이지까지'), [
+  '문제지 43페이지까지',
+])
+
+// CASE F — unsupported / error still leaves manual parsers usable
+assert.equal(detectBrowserSpeechSupport(), 'unsupported')
+assert.equal(speechErrorMessage('not-allowed'), '마이크 권한이 필요합니다.')
+const manualStillWorks = parseSectionTextVoice('72페이지에서 76페이지')
+assert.equal(manualStillWorks.text, '72페이지에서 76페이지')
+const permissionDeniedDrafts = {
+  '수학:1': { todayAssignment: '수기 유지', textbookName: '' },
+}
+assert.equal(permissionDeniedDrafts['수학:1']?.todayAssignment, '수기 유지')
+const fallbackFill = applyTodayAssignmentSlotDraft(
+  permissionDeniedDrafts,
+  '텍스트로 입력한 과제',
+  '수학',
+  1,
+)
+assert.equal(fallbackFill.drafts['수학:1']?.todayAssignment, '텍스트로 입력한 과제')
+
+assert.match(
+  readFileSync('src/components/todayReport/SectionVoiceInput.tsx', 'utf8'),
+  /appliedThisSessionRef/,
+)
+assert.doesNotMatch(
+  readFileSync('src/utils/voiceInput/speechRecognition.ts', 'utf8'),
+  /finals\.push/,
 )
 
 console.log('voiceInput.test.ts passed')
