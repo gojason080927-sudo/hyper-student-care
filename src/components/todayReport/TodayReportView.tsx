@@ -15,7 +15,10 @@ import { ParentDailyTestDiagnosisBlock } from '../dailytest/ParentDailyTestDiagn
 import { AttendanceExcuseButtons, attendanceNeedsExcuse } from '../studentCare/AttendanceExcuseButtons'
 import { MaterialPrepPicker, materialPrepDisplay } from '../studentCare/MaterialPrepPicker'
 import { ClassAttitudePicker, classAttitudeDisplay } from '../studentCare/ClassAttitudePicker'
-import { LearningRiskReasonPanel, LearningStatusBadge } from '../studentCare/LearningStatusBadge'
+import {
+  PriorDayLearningEvaluationRow,
+  PriorDayLearningReasonPanel,
+} from '../studentCare/LearningStatusBadge'
 import { SectionTitleWithHint } from '../ui/SectionTitleWithHint'
 import { HomeworkStatusPicker } from '../homework/HomeworkStatusPicker'
 import { KoreanTextInput, KoreanTextarea } from '../ui/KoreanTextField'
@@ -97,7 +100,7 @@ import {
 import { resolveCommonClassContext } from '../../utils/classCommonDataKey'
 import { getVisibleDailyTestSubjects } from '../../utils/studentGradeClass'
 import { attendanceDisplayLabel } from '../../utils/studentCare/scoring'
-import { computeLearningRisk } from '../../utils/studentCare'
+import { computePriorDayLearningEvaluation } from '../../utils/studentCare'
 
 function ParentReadOnlyBody({
   hasData,
@@ -235,18 +238,21 @@ export function StudentSummaryCard({
   student,
   compact = false,
   statusBadge,
+  evaluation,
 }: {
   student: Student
   compact?: boolean
   statusBadge?: ReactNode
+  evaluation?: ReactNode
 }) {
   if (compact) {
     return (
       <section className="rounded-xl border border-slate-200 bg-white px-3.5 py-3 shadow-sm sm:rounded-2xl sm:px-4">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <h1 className="min-w-0 break-keep text-lg font-bold text-navy-900">{student.name}</h1>
-          {statusBadge ? <span className="shrink-0">{statusBadge}</span> : null}
+          {statusBadge && !evaluation ? <span className="shrink-0">{statusBadge}</span> : null}
         </div>
+        {evaluation ? <div className="mt-1.5">{evaluation}</div> : null}
         <p className="mt-0.5 line-clamp-2 break-anywhere text-sm text-slate-600">
           {[student.school, student.grade, student.teacher].filter(Boolean).join(' · ')}
         </p>
@@ -464,25 +470,29 @@ export function TodayReportView({
   )
 
   const dayCare = useMemo(
-    () => studentDailyCare.find((record) => record.studentId === student.id && record.date === selectedDate),
-    [selectedDate, student.id, studentDailyCare],
+    () => studentDailyCare.find((record) => record.studentId === student.id && record.date === contentDate),
+    [contentDate, student.id, studentDailyCare],
   )
 
-  const learningRisk = useMemo(
+  const priorDayEvaluation = useMemo(
     () =>
-      computeLearningRisk({
-        studentId: student.id,
-        attendance,
-        homework,
-        homeworkTextbookEntries,
-        dailyTests,
-        dailyCare: studentDailyCare,
-        progressRecords,
-        classNotes,
-      }),
+      computePriorDayLearningEvaluation(
+        {
+          studentId: student.id,
+          attendance,
+          homework,
+          homeworkTextbookEntries,
+          dailyTests,
+          dailyCare: studentDailyCare,
+          progressRecords,
+          classNotes,
+        },
+        contentDate,
+      ),
     [
       attendance,
       classNotes,
+      contentDate,
       dailyTests,
       homework,
       homeworkTextbookEntries,
@@ -667,13 +677,16 @@ export function TodayReportView({
           <StudentSummaryCard
             student={student}
             compact
-            statusBadge={
-              <LearningStatusBadge result={learningRisk} onClick={() => setRiskOpen((open) => !open)} />
+            evaluation={
+              <PriorDayLearningEvaluationRow
+                result={priorDayEvaluation}
+                onToggle={() => setRiskOpen((open) => !open)}
+              />
             }
           />
           {riskOpen ? (
             <div className="rounded-xl border border-slate-200 bg-white px-3.5 py-3">
-              <LearningRiskReasonPanel result={learningRisk} />
+              <PriorDayLearningReasonPanel result={priorDayEvaluation} />
             </div>
           ) : null}
         </>
@@ -733,6 +746,7 @@ export function TodayReportView({
           ) : (
             <>
           {showSection('attendance') && (
+          <div id="today-report-section-attendance" className="scroll-mt-24">
           <AttendanceSection
             key={`attendance-${selectedDate}`}
             readOnly={readOnly}
@@ -744,9 +758,12 @@ export function TodayReportView({
             hideTitle={sectionHideTitle}
             emptyMessage={parentEmptyMessages.attendance}
           />
+          </div>
           )}
 
-          {showSection('homework') && (useTextbookSlotHomework ? (
+          {showSection('homework') && (
+          <div id="today-report-section-homework" className="scroll-mt-24">
+          {useTextbookSlotHomework ? (
             <TextbookSlotHomeworkSection
               key={`homework-slots-${selectedDate}`}
               readOnly={readOnly}
@@ -803,7 +820,9 @@ export function TodayReportView({
               teacherCompact={tc}
               emptyMessage={parentEmptyMessages.homework}
             />
-          ))}
+          )}
+          </div>
+          )}
 
           {showSection('materialPrep') && (
             <MaterialPrepSection
@@ -823,7 +842,9 @@ export function TodayReportView({
             />
           )}
 
-          {showSection('progress') && (useTextbookSlotProgress ? (
+          {showSection('progress') && (
+          <div id="today-report-section-progress" className="scroll-mt-24">
+          {useTextbookSlotProgress ? (
             <TextbookSlotProgressSection
               key={`progress-slots-${selectedDate}`}
               readOnly={readOnly}
@@ -878,9 +899,12 @@ export function TodayReportView({
               teacherCompact={tc}
               emptyMessage={parentEmptyMessages.progress}
             />
-          ))}
+          )}
+          </div>
+          )}
 
           {showSection('dailyTest') && (
+          <div id="today-report-section-dailyTest" className="scroll-mt-24">
           <DailyTestSection
             key={`daily-test-${selectedDate}`}
             readOnly={readOnly}
@@ -897,10 +921,12 @@ export function TodayReportView({
             subjects={student.subjects}
             emptyMessage={parentEmptyMessages.dailyTest}
           />
+          </div>
           )}
 
           {/* 학부모 과거 강사 피드백(class_notes)은 일일테스트 카드 안에서만 표시. 강사 Today Report 신규 입력 UI는 제거. */}
           {showSection('attitude') && (
+            <div id="today-report-section-attitude" className="scroll-mt-24">
             <ClassAttitudeSection
               key={`attitude-${selectedDate}`}
               readOnly={readOnly}
@@ -917,6 +943,7 @@ export function TodayReportView({
                   : '오늘 등록된 수업태도 정보가 없습니다.'
               }
             />
+            </div>
           )}
             </>
           )}

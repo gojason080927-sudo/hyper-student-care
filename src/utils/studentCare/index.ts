@@ -21,7 +21,18 @@ export {
   materialPrepIndex,
   weeklyTestIndex,
 } from './scoring.ts'
-export { computeLearningRisk, riskLevelLabel, type LearningRiskResult, type RiskReason } from './risk.ts'
+export {
+  computeLearningRisk,
+  computePriorDayLearningEvaluation,
+  priorDayLearningGradeFromScore,
+  priorDayLearningGradeLabel,
+  riskLevelLabel,
+  scoreLessonRisk,
+  type LearningRiskResult,
+  type PriorDayLearningEvaluation,
+  type PriorDayLearningGrade,
+  type RiskReason,
+} from './risk.ts'
 export { collectEvaluableLessonDates, isEvaluableLessonDate } from './lessons.ts'
 export {
   buildWeeklyLearningSummary,

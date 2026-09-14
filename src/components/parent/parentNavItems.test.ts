@@ -7,6 +7,7 @@ import {
   parentCategoryItems,
   parentHomeCategoryItems,
   parentSidebarItems,
+  parentTodayReportHighlights,
 } from './parentNavItems.ts'
 
 const labels = parentCategoryItems.map((item) => item.label.replace(/\n/g, ' '))
@@ -63,6 +64,11 @@ assert.equal(
 assert.equal(
   isParentCategoryPathActive('questions', '/care/abc/notices-makeup'),
   false,
+)
+
+assert.deepEqual(
+  parentTodayReportHighlights.map((item) => item.label),
+  ['출결', '오늘의 진도', '과제 수행', '일일 테스트', '수업태도'],
 )
 
 console.log('parentNavItems OK')

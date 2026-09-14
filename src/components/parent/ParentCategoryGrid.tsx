@@ -9,10 +9,10 @@ import { hasUnreadWeeklySummary } from '../../utils/studentCare/weeklySummaryDis
 import {
   isParentCategoryPathActive,
   parentHomeCategoryItems,
+  parentTodayReportHighlights,
   parentTodayReportItem,
+  parentTodayReportSectionHash,
 } from './parentNavItems'
-
-const todayReportHighlights = ['출결', '오늘의 진도', '과제 수행', '일일 테스트'] as const
 
 export function ParentCategoryGrid() {
   const student = useParentStudent()
@@ -41,32 +41,38 @@ export function ParentCategoryGrid() {
 
   return (
     <div className="parent-home-menu space-y-3 sm:space-y-3.5">
-      <Link to={todayPath} className="pm-featured-card">
-        <div className="flex items-start gap-3.5 sm:gap-4">
-          <span className="pm-featured-icon">
-            <TodayIcon className="h-7 w-7 sm:h-8 sm:w-8" strokeWidth={2} aria-hidden />
-          </span>
-          <div className="min-w-0 flex-1 pt-0.5">
-            <span className="block text-lg font-bold leading-tight sm:text-xl">
-              {parentTodayReportItem.label}
+      <div className="pm-featured-card">
+        <Link to={todayPath} className="block text-inherit no-underline">
+          <div className="flex items-start gap-3.5 sm:gap-4">
+            <span className="pm-featured-icon">
+              <TodayIcon className="h-7 w-7 sm:h-8 sm:w-8" strokeWidth={2} aria-hidden />
             </span>
-            <span className="mt-1 block text-[15px] leading-snug text-white/90 sm:text-base">
-              {student.name} · {todayLabel}
-            </span>
-            <span className="mt-1 block text-sm leading-snug text-white/80">
-              {parentTodayReportItem.description}
-            </span>
+            <div className="min-w-0 flex-1 pt-0.5">
+              <span className="block text-lg font-bold leading-tight sm:text-xl">
+                {parentTodayReportItem.label}
+              </span>
+              <span className="mt-1 block text-[15px] leading-snug text-white/90 sm:text-base">
+                {student.name} · {todayLabel}
+              </span>
+              <span className="mt-1 block text-sm leading-snug text-white/80">
+                {parentTodayReportItem.description}
+              </span>
+            </div>
           </div>
-        </div>
+        </Link>
 
-        <div className="mt-3.5 flex flex-wrap gap-2">
-          {todayReportHighlights.map((tag) => (
-            <span key={tag} className="pm-featured-tag">
-              {tag}
-            </span>
+        <div className="mt-3.5 flex flex-wrap gap-1.5 sm:gap-2">
+          {parentTodayReportHighlights.map((tag) => (
+            <Link
+              key={tag.id}
+              to={`${todayPath}#${parentTodayReportSectionHash(tag.id)}`}
+              className="pm-featured-tag"
+            >
+              {tag.label}
+            </Link>
           ))}
         </div>
-      </Link>
+      </div>
 
       <div className="grid auto-rows-fr grid-cols-2 gap-2.5 sm:gap-3 lg:max-w-2xl">
         {parentHomeCategoryItems.map(({ segment, label, icon: Icon, description }) => {
