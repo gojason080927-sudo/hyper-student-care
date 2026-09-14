@@ -239,6 +239,7 @@ export function ClassAttendanceBulkPanel({
               setDrafts(applied.drafts)
               return applied.summary
             }}
+            onSaveCommand={() => void handleSaveAll()}
           />
           <button
             type="button"

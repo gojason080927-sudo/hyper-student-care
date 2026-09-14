@@ -148,6 +148,7 @@ export function ClassMaterialPrepBulkPanel({
             setDrafts(applied.drafts)
             return applied.summary
           }}
+          onSaveCommand={() => void handleSaveAll()}
         />
       </div>
       <div className={compact ? 'divide-y divide-[rgba(22,58,112,0.06)]' : 'divide-y divide-slate-100'}>

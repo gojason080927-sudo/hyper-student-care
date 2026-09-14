@@ -144,6 +144,7 @@ export function ClassAttitudeBulkPanel({
             setDrafts(applied.drafts)
             return applied.summary
           }}
+          onSaveCommand={() => void handleSaveAll()}
         />
       </div>
       <div

@@ -309,6 +309,7 @@ export function ClassDailyTestBulkPanel({
                 setDrafts(applied.drafts)
                 return applied.summary
               }}
+              onSaveCommand={() => void handleSaveAll()}
             />
           ))}
           <DailyTestPassRuleBadge />

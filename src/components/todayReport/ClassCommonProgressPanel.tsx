@@ -344,6 +344,7 @@ export function ClassCommonProgressPanel({
                           setDrafts(applied.drafts)
                           return applied.summary
                         }}
+                        onSaveCommand={() => void handleSave()}
                       />
                     </div>
                     <EditableTextbookName

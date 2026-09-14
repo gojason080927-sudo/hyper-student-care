@@ -316,6 +316,7 @@ export function ClassCommonTodayAssignmentPanel({
                           setDrafts(applied.drafts)
                           return applied.summary
                         }}
+                        onSaveCommand={() => void handleSave()}
                       />
                     </div>
                     <EditableTextbookName
