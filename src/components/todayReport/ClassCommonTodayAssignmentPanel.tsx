@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useData } from '../../hooks/useData'
 import type {
   HomeworkStatus,
@@ -21,6 +21,7 @@ import { EditableTextbookName } from './EditableTextbookName'
 import { SubjectGroupCard, subjectGroupTitle } from './SubjectGroupCard'
 import { SectionVoiceInput } from './SectionVoiceInput'
 import { applyTodayAssignmentSlotDraft } from '../../utils/voiceInput/applyVoiceDraft'
+import { markChangedDraftKeys, overlayLoadedDrafts } from '../../utils/todayReportDraftMerge'
 
 type SlotDraft = {
   todayAssignment: string
@@ -57,6 +58,7 @@ export function ClassCommonTodayAssignmentPanel({
   } = useData()
   const [saving, setSaving] = useState(false)
   const [drafts, setDrafts] = useState<Record<string, SlotDraft>>({})
+  const dirtyAssignmentKeysRef = useRef(new Set<string>())
   const saveClassTextbookNameForPeers = async (
     subject: TextbookSubject,
     slotNumber: TextbookSlotNumber,
@@ -114,31 +116,37 @@ export function ClassCommonTodayAssignmentPanel({
   )
 
   useEffect(() => {
-    const next: Record<string, SlotDraft> = {}
-    for (const { subject, slotNumber } of slotPlan) {
-      // Display fallback only — save still writes the selected `date`.
-      const { record: found } = findClassTodayReportCommonForDisplay(
-        classTodayReportCommon,
-        grade,
-        className,
-        date,
-        subject,
-        slotNumber,
-      )
-      const textbookName = anchorStudentId
-          ? getTextbookName(
-              studentTextbookSlots,
-              anchorStudentId,
-              subject,
-              slotNumber,
-            )
-          : ''
-      next[slotKey(subject, slotNumber)] = {
-        todayAssignment: found?.todayAssignment ?? '',
-        textbookName,
+    dirtyAssignmentKeysRef.current.clear()
+  }, [className, date, grade, slotPlanKey])
+
+  useEffect(() => {
+    setDrafts((prev) => {
+      const loaded: Record<string, SlotDraft> = {}
+      for (const { subject, slotNumber } of slotPlan) {
+        // Display fallback only — save still writes the selected `date`.
+        const { record: found } = findClassTodayReportCommonForDisplay(
+          classTodayReportCommon,
+          grade,
+          className,
+          date,
+          subject,
+          slotNumber,
+        )
+        const textbookName = anchorStudentId
+            ? getTextbookName(
+                studentTextbookSlots,
+                anchorStudentId,
+                subject,
+                slotNumber,
+              )
+            : ''
+        loaded[slotKey(subject, slotNumber)] = {
+          todayAssignment: found?.todayAssignment ?? '',
+          textbookName,
+        }
       }
-    }
-    setDrafts(next)
+      return overlayLoadedDrafts(prev, loaded, dirtyAssignmentKeysRef.current)
+    })
   }, [
     anchorStudentId,
     className,
@@ -156,6 +164,7 @@ export function ClassCommonTodayAssignmentPanel({
     patch: Partial<SlotDraft>,
   ) => {
     const key = slotKey(subject, slotNumber)
+    dirtyAssignmentKeysRef.current.add(key)
     setDrafts((prev) => ({
       ...prev,
       [key]: {
@@ -253,6 +262,7 @@ export function ClassCommonTodayAssignmentPanel({
         showToast('오늘 과제 저장에 실패했습니다.')
         return
       }
+      dirtyAssignmentKeysRef.current.clear()
       showToast('오늘 과제가 저장되었습니다.')
     } finally {
       setSaving(false)
@@ -313,6 +323,7 @@ export function ClassCommonTodayAssignmentPanel({
                             subject,
                             slotNumber,
                           )
+                          markChangedDraftKeys(drafts, applied.drafts, dirtyAssignmentKeysRef.current)
                           setDrafts(applied.drafts)
                           return applied.summary
                         }}

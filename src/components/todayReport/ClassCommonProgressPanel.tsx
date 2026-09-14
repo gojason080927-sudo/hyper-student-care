@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useData } from '../../hooks/useData'
 import type { TextbookSlotNumber, TextbookSubject } from '../../types/records'
 import type { Student } from '../../types/student'
@@ -21,6 +21,7 @@ import { EditableTextbookName } from './EditableTextbookName'
 import { SubjectGroupCard, subjectGroupTitle } from './SubjectGroupCard'
 import { SectionVoiceInput } from './SectionVoiceInput'
 import { applyProgressSlotDraft } from '../../utils/voiceInput/applyVoiceDraft'
+import { markChangedDraftKeys, overlayLoadedDrafts } from '../../utils/todayReportDraftMerge'
 
 type SlotDraft = {
   currentProgress: string
@@ -59,6 +60,7 @@ export function ClassCommonProgressPanel({
   } = useData()
   const [saving, setSaving] = useState(false)
   const [drafts, setDrafts] = useState<Record<string, SlotDraft>>({})
+  const dirtyProgressKeysRef = useRef(new Set<string>())
   const saveClassTextbookNameForPeers = async (
     subject: TextbookSubject,
     slotNumber: TextbookSlotNumber,
@@ -116,33 +118,39 @@ export function ClassCommonProgressPanel({
   )
 
   useEffect(() => {
-    const next: Record<string, SlotDraft> = {}
-    for (const { subject, slotNumber } of slotPlan) {
-      // Display fallback only — save still writes the selected `date` as a new/actual record.
-      const { record: found } = findClassTodayReportCommonForDisplay(
-        classTodayReportCommon,
-        grade,
-        className,
-        date,
-        subject,
-        slotNumber,
-      )
-      const textbookName = anchorStudentId
-          ? getTextbookName(
-              studentTextbookSlots,
-              anchorStudentId,
-              subject,
-              slotNumber,
-            )
-          : ''
-      next[slotKey(subject, slotNumber)] = {
-        currentProgress: found?.currentProgress ?? '',
-        currentPage: found?.currentPage ? String(found.currentPage) : '',
-        totalPage: found?.totalPage ? String(found.totalPage) : '',
-        textbookName,
+    dirtyProgressKeysRef.current.clear()
+  }, [className, date, grade, slotPlanKey])
+
+  useEffect(() => {
+    setDrafts((prev) => {
+      const loaded: Record<string, SlotDraft> = {}
+      for (const { subject, slotNumber } of slotPlan) {
+        // Display fallback only — save still writes the selected `date` as a new/actual record.
+        const { record: found } = findClassTodayReportCommonForDisplay(
+          classTodayReportCommon,
+          grade,
+          className,
+          date,
+          subject,
+          slotNumber,
+        )
+        const textbookName = anchorStudentId
+            ? getTextbookName(
+                studentTextbookSlots,
+                anchorStudentId,
+                subject,
+                slotNumber,
+              )
+            : ''
+        loaded[slotKey(subject, slotNumber)] = {
+          currentProgress: found?.currentProgress ?? '',
+          currentPage: found?.currentPage ? String(found.currentPage) : '',
+          totalPage: found?.totalPage ? String(found.totalPage) : '',
+          textbookName,
+        }
       }
-    }
-    setDrafts(next)
+      return overlayLoadedDrafts(prev, loaded, dirtyProgressKeysRef.current)
+    })
   }, [
     anchorStudentId,
     className,
@@ -160,6 +168,7 @@ export function ClassCommonProgressPanel({
     patch: Partial<SlotDraft>,
   ) => {
     const key = slotKey(subject, slotNumber)
+    dirtyProgressKeysRef.current.add(key)
     setDrafts((prev) => ({
       ...prev,
       [key]: {
@@ -270,6 +279,7 @@ export function ClassCommonProgressPanel({
         showToast('오늘의 진도 저장에 실패했습니다.')
         return
       }
+      dirtyProgressKeysRef.current.clear()
       showToast('오늘의 진도가 저장되었습니다.')
     } finally {
       setSaving(false)
@@ -341,6 +351,7 @@ export function ClassCommonProgressPanel({
                             subject,
                             slotNumber,
                           )
+                          markChangedDraftKeys(drafts, applied.drafts, dirtyProgressKeysRef.current)
                           setDrafts(applied.drafts)
                           return applied.summary
                         }}

@@ -40,6 +40,12 @@ import { mergeClassTodayReportCommonRecords } from '../utils/mergeClassTodayRepo
 import { findProgressRecordIndex, findProgressRecordIndexForDate } from '../utils/progressRecord'
 import { findHomeworkTextbookEntry, findTextbookSlot, slotKey, dedupeStudentTextbookSlots } from '../utils/textbookSlots'
 import {
+  findByIdOrNaturalKey,
+  mergeDailyCareWrite,
+  resolvePersistedRecordId,
+  type StudentDailyCareWriteInput,
+} from '../utils/todayReportResaveIdentity'
+import {
   deleteAssignmentCompletion,
   deleteAttendance,
   deleteDailyTest,
@@ -289,10 +295,10 @@ export type DataContextValue = {
     data: Omit<ClassNoteRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
   ) => boolean
   saveStudentDailyCareRecord: (
-    data: Omit<StudentDailyCareRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
+    data: StudentDailyCareWriteInput,
   ) => boolean
   saveStudentDailyCareRecordAsync: (
-    data: Omit<StudentDailyCareRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
+    data: StudentDailyCareWriteInput,
     options?: { silent?: boolean },
   ) => Promise<{ success: boolean; recordId?: string; error?: string }>
   ensureWeeklyLearningSummaries: () => Promise<number | null>
@@ -843,23 +849,28 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
 
       const ts = createTimestamps()
-      const snapshot = data.id ? attendance.find((r) => r.id === data.id) : undefined
-      let record: AttendanceRecord
+      const existing = findByIdOrNaturalKey(
+        attendance,
+        data.id,
+        (row) => row.studentId === data.studentId && row.date === data.date,
+      )
+      const id = resolvePersistedRecordId(data.id, existing?.id, createId)
+      const snapshot = attendance
+      const record = touchRecord({
+        ...(existing ?? { id, ...ts }),
+        ...data,
+        id,
+        createdAt: existing?.createdAt ?? ts.createdAt,
+      })
 
-      if (data.id) {
-        const existing = attendance.find((r) => r.id === data.id)
-        record = touchRecord({
-          ...(existing ?? { id: data.id, ...ts }),
-          ...data,
-          id: data.id,
-        })
-        setAttendanceRecords((prev) =>
-          prev.map((r) => (r.id === data.id ? record : r)),
+      setAttendanceRecords((prev) => {
+        const withoutDuplicate = prev.filter(
+          (row) =>
+            row.id !== id &&
+            !(row.studentId === data.studentId && row.date === data.date),
         )
-      } else {
-        record = { ...data, id: createId(), ...ts }
-        setAttendanceRecords((prev) => [...prev, record])
-      }
+        return [...withoutDuplicate, record]
+      })
 
       try {
         await upsertAttendance(record)
@@ -868,13 +879,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         return { success: true, recordId: record.id }
       } catch {
         handlePersistError('출결 기록 저장에 실패했습니다.')
-        if (data.id && snapshot) {
-          setAttendanceRecords((prev) =>
-            prev.map((r) => (r.id === data.id ? snapshot : r)),
-          )
-        } else {
-          setAttendanceRecords((prev) => prev.filter((r) => r.id !== record.id))
-        }
+        setAttendanceRecords(snapshot)
         await load({ silent: true })
         return { success: false }
       }
@@ -960,16 +965,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
         return false
       }
       const ts = createTimestamps()
-      const existing = data.id
-        ? homeworkTextbookEntries.find((record) => record.id === data.id)
-        : findHomeworkTextbookEntry(
-            homeworkTextbookEntries,
-            data.studentId,
-            data.date,
-            data.subject,
-            data.slotNumber,
-          )
-      const id = data.id ?? existing?.id ?? createId()
+      const existing =
+        findByIdOrNaturalKey(homeworkTextbookEntries, data.id, () => false) ??
+        findHomeworkTextbookEntry(
+          homeworkTextbookEntries,
+          data.studentId,
+          data.date,
+          data.subject,
+          data.slotNumber,
+        )
+      const id = resolvePersistedRecordId(data.id, existing?.id, createId)
       const record: HomeworkTextbookEntry = {
         id,
         studentId: data.studentId,
@@ -1026,16 +1031,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
 
       const ts = createTimestamps()
-      const existing = data.id
-        ? homeworkTextbookEntries.find((record) => record.id === data.id)
-        : findHomeworkTextbookEntry(
-            homeworkTextbookEntries,
-            data.studentId,
-            data.date,
-            data.subject,
-            data.slotNumber,
-          )
-      const id = data.id ?? existing?.id ?? createId()
+      const existing =
+        findByIdOrNaturalKey(homeworkTextbookEntries, data.id, () => false) ??
+        findHomeworkTextbookEntry(
+          homeworkTextbookEntries,
+          data.studentId,
+          data.date,
+          data.subject,
+          data.slotNumber,
+        )
+      const id = resolvePersistedRecordId(data.id, existing?.id, createId)
       const record: HomeworkTextbookEntry = {
         id,
         studentId: data.studentId,
@@ -1241,15 +1246,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
       }
 
       const ts = createTimestamps()
-      const existing = data.id
-        ? dailyTests.find((r) => r.id === data.id)
-        : dailyTests.find(
-            (r) =>
-              r.studentId === data.studentId &&
-              r.date === data.date &&
-              r.subject === data.subject,
-          )
-      const recordId = data.id ?? existing?.id ?? createId()
+      const existing = findByIdOrNaturalKey(
+        dailyTests,
+        data.id,
+        (row) =>
+          row.studentId === data.studentId &&
+          row.date === data.date &&
+          row.subject === data.subject,
+      )
+      const recordId = resolvePersistedRecordId(data.id, existing?.id, createId)
       const draft: DailyTestRecord = {
         id: recordId,
         studentId: data.studentId,
@@ -2516,7 +2521,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const saveStudentDailyCareRecordAsync = useCallback(
     async (
-      data: Omit<StudentDailyCareRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
+      data: StudentDailyCareWriteInput,
       options?: { silent?: boolean },
     ): Promise<{ success: boolean; recordId?: string; error?: string }> => {
       if (!validateStudent(data.studentId)) {
@@ -2525,19 +2530,20 @@ export function DataProvider({ children }: { children: ReactNode }) {
         return { success: false, error: message }
       }
       const ts = createTimestamps()
-      const existing = data.id
-        ? studentDailyCare.find((record) => record.id === data.id)
-        : studentDailyCare.find(
-            (record) => record.studentId === data.studentId && record.date === data.date,
-          )
-      const id = data.id ?? existing?.id ?? createId()
+      const existing = findByIdOrNaturalKey(
+        studentDailyCare,
+        data.id,
+        (record) => record.studentId === data.studentId && record.date === data.date,
+      )
+      const id = resolvePersistedRecordId(data.id, existing?.id, createId)
+      const merged = mergeDailyCareWrite(data, existing)
       const record: StudentDailyCareRecord = {
         id,
         studentId: data.studentId,
         date: data.date,
-        materialPrep: data.materialPrep ?? existing?.materialPrep ?? null,
-        attitudeIssues: data.attitudeIssues ?? existing?.attitudeIssues ?? [],
-        attitudeNote: (data.attitudeNote ?? existing?.attitudeNote ?? '').slice(0, 500),
+        materialPrep: merged.materialPrep,
+        attitudeIssues: merged.attitudeIssues,
+        attitudeNote: merged.attitudeNote,
         createdAt: existing?.createdAt ?? ts.createdAt,
         updatedAt: ts.updatedAt,
       }
@@ -2570,7 +2576,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const saveStudentDailyCareRecord = useCallback(
     (
-      data: Omit<StudentDailyCareRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
+      data: StudentDailyCareWriteInput,
     ) => {
       void saveStudentDailyCareRecordAsync(data)
       return true

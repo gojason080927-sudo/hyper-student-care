@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useData } from '../../hooks/useData'
 import type { MaterialPrepStatus, StudentDailyCareRecord } from '../../types/records'
 import type { Student } from '../../types/student'
@@ -8,6 +8,7 @@ import {
   isStudentAbsentOnDate,
   missingRequiredMaterialPrep,
 } from '../../utils/todayReportAbsence'
+import { markChangedDraftKeys, overlayLoadedDrafts } from '../../utils/todayReportDraftMerge'
 import { MaterialPrepPicker } from '../studentCare/MaterialPrepPicker'
 import { applyMaterialDrafts } from '../../utils/voiceInput/applyVoiceDraft'
 import { AbsentFollowOnHint, StudentFollowOnRowHeader } from './AbsentFollowOnBadge'
@@ -29,6 +30,7 @@ export function ClassMaterialPrepBulkPanel({
   const { attendance, studentDailyCare, saveStudentDailyCareRecordAsync, showToast } = useData()
   const [saving, setSaving] = useState(false)
   const [drafts, setDrafts] = useState<Record<string, StudentDailyCareRecord | undefined>>({})
+  const dirtyMaterialKeysRef = useRef(new Set<string>())
 
   const dayCareByStudent = useMemo(() => {
     const map = new Map<string, StudentDailyCareRecord>()
@@ -42,11 +44,30 @@ export function ClassMaterialPrepBulkPanel({
   const studentIdsKey = students.map((student) => student.id).join('|')
 
   useEffect(() => {
-    const next: Record<string, StudentDailyCareRecord | undefined> = {}
-    for (const student of students) {
-      next[student.id] = dayCareByStudent.get(student.id)
-    }
-    setDrafts(next)
+    dirtyMaterialKeysRef.current.clear()
+  }, [date, studentIdsKey])
+
+  useEffect(() => {
+    setDrafts((prev) => {
+      const loaded: Record<string, StudentDailyCareRecord | undefined> = {}
+      for (const student of students) {
+        loaded[student.id] = dayCareByStudent.get(student.id)
+      }
+      return overlayLoadedDrafts(
+        prev,
+        loaded,
+        dirtyMaterialKeysRef.current,
+        (local, server) => {
+          if (!local) return server
+          return {
+            ...local,
+            id: server?.id?.trim() || local.id,
+            attitudeIssues: server?.attitudeIssues ?? local.attitudeIssues,
+            attitudeNote: server?.attitudeNote ?? local.attitudeNote,
+          }
+        },
+      )
+    })
   }, [date, dayCareByStudent, studentIdsKey, students])
 
   const handleSaveAll = async () => {
@@ -81,8 +102,6 @@ export function ClassMaterialPrepBulkPanel({
               studentId: student.id,
               date,
               materialPrep: current.materialPrep,
-              attitudeIssues: current.attitudeIssues ?? [],
-              attitudeNote: current.attitudeNote ?? '',
             },
             { silent: true },
           )
@@ -105,6 +124,9 @@ export function ClassMaterialPrepBulkPanel({
       if (failures.length > 0) {
         showToast(`교재 준비 일부 저장 실패: ${failures.join(', ')} / 성공: ${saved.join(', ')}`)
         return
+      }
+      for (const student of targets) {
+        dirtyMaterialKeysRef.current.delete(student.id)
       }
       showToast('교재 준비가 저장되었습니다.')
     } finally {
@@ -145,6 +167,7 @@ export function ClassMaterialPrepBulkPanel({
                 updatedAt: prev?.updatedAt ?? '',
               }),
             )
+            markChangedDraftKeys(drafts, applied.drafts, dirtyMaterialKeysRef.current)
             setDrafts(applied.drafts)
             return applied.summary
           }}
@@ -170,19 +193,23 @@ export function ClassMaterialPrepBulkPanel({
                   compact={compact}
                   disabled={saving}
                   onChange={(value: MaterialPrepStatus) => {
-                    setDrafts((prev) => ({
-                      ...prev,
-                      [student.id]: {
-                        id: current?.id ?? '',
-                        studentId: student.id,
-                        date,
-                        materialPrep: value,
-                        attitudeIssues: current?.attitudeIssues ?? [],
-                        attitudeNote: current?.attitudeNote ?? '',
-                        createdAt: current?.createdAt ?? '',
-                        updatedAt: current?.updatedAt ?? '',
-                      },
-                    }))
+                    dirtyMaterialKeysRef.current.add(student.id)
+                    setDrafts((prev) => {
+                      const currentDraft = prev[student.id]
+                      return {
+                        ...prev,
+                        [student.id]: {
+                          id: currentDraft?.id ?? '',
+                          studentId: student.id,
+                          date,
+                          materialPrep: value,
+                          attitudeIssues: currentDraft?.attitudeIssues ?? [],
+                          attitudeNote: currentDraft?.attitudeNote ?? '',
+                          createdAt: currentDraft?.createdAt ?? '',
+                          updatedAt: currentDraft?.updatedAt ?? '',
+                        },
+                      }
+                    })
                   }}
                 />
               )}

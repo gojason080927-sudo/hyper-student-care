@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useData } from '../../hooks/useData'
 import type { AttendanceExcuseKind, AttendanceRecord, AttendanceStatus } from '../../types/records'
 import type { Student } from '../../types/student'
@@ -12,6 +12,7 @@ import {
 } from '../../utils/labels'
 import { AttendanceExcuseButtons, attendanceNeedsExcuse } from '../studentCare/AttendanceExcuseButtons'
 import { applyAttendanceDrafts } from '../../utils/voiceInput/applyVoiceDraft'
+import { markChangedDraftKeys, overlayLoadedDrafts } from '../../utils/todayReportDraftMerge'
 import { SectionVoiceInput } from './SectionVoiceInput'
 
 type AttendanceDraft = {
@@ -52,6 +53,7 @@ export function ClassAttendanceBulkPanel({
   const { attendance, saveAttendanceRecordAsync, showToast } = useData()
   const [saving, setSaving] = useState(false)
   const [drafts, setDrafts] = useState<Record<string, AttendanceDraft>>({})
+  const dirtyAttendanceKeysRef = useRef(new Set<string>())
 
   const dayRecordsByStudent = useMemo(() => {
     const map = new Map<string, AttendanceRecord>()
@@ -68,14 +70,29 @@ export function ClassAttendanceBulkPanel({
   )
 
   useEffect(() => {
-    const next: Record<string, AttendanceDraft> = {}
-    for (const student of students) {
-      next[student.id] = draftFromRecord(dayRecordsByStudent.get(student.id))
-    }
-    setDrafts(next)
+    dirtyAttendanceKeysRef.current.clear()
+  }, [date, studentIdsKey])
+
+  useEffect(() => {
+    setDrafts((prev) => {
+      const loaded: Record<string, AttendanceDraft> = {}
+      for (const student of students) {
+        loaded[student.id] = draftFromRecord(dayRecordsByStudent.get(student.id))
+      }
+      return overlayLoadedDrafts(
+        prev,
+        loaded,
+        dirtyAttendanceKeysRef.current,
+        (local, server) => ({
+          ...local,
+          recordId: server?.recordId ?? local.recordId,
+        }),
+      )
+    })
   }, [date, dayRecordsByStudent, studentIdsKey, students])
 
   const setStatus = (studentId: string, status: AttendanceStatus) => {
+    dirtyAttendanceKeysRef.current.add(studentId)
     setDrafts((prev) => {
       const current = prev[studentId] ?? { status: '', reason: '', memo: '', excuseKind: null }
       return {
@@ -91,6 +108,7 @@ export function ClassAttendanceBulkPanel({
   }
 
   const setReason = (studentId: string, reason: string) => {
+    dirtyAttendanceKeysRef.current.add(studentId)
     setDrafts((prev) => {
       const current = prev[studentId] ?? { status: '', reason: '', memo: '', excuseKind: null }
       return {
@@ -104,6 +122,7 @@ export function ClassAttendanceBulkPanel({
     setDrafts((prev) => {
       const next: Record<string, AttendanceDraft> = { ...prev }
       for (const student of students) {
+        dirtyAttendanceKeysRef.current.add(student.id)
         const current = next[student.id] ?? { status: '', reason: '', memo: '', excuseKind: null }
         next[student.id] = {
           ...current,
@@ -187,6 +206,7 @@ export function ClassAttendanceBulkPanel({
           continue
         }
         if (result.recordId) {
+          dirtyAttendanceKeysRef.current.delete(result.student.id)
           setDrafts((prev) => ({
             ...prev,
             [result.student.id]: {
@@ -236,6 +256,7 @@ export function ClassAttendanceBulkPanel({
             disabled={saving}
             onApply={(transcript) => {
               const applied = applyAttendanceDrafts(drafts, transcript, students)
+              markChangedDraftKeys(drafts, applied.drafts, dirtyAttendanceKeysRef.current)
               setDrafts(applied.drafts)
               return applied.summary
             }}
@@ -303,6 +324,7 @@ export function ClassAttendanceBulkPanel({
                     compact
                     disabled={saving}
                     onChange={(excuseKind) => {
+                      dirtyAttendanceKeysRef.current.add(student.id)
                       setDrafts((prev) => {
                         const current = prev[student.id] ?? {
                           status: '',
