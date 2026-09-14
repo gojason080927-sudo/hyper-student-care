@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../components/ui/PageHeader'
 import { ClassAttendanceBulkPanel } from '../components/todayReport/ClassAttendanceBulkPanel'
+import { ClassAttitudeBulkPanel } from '../components/todayReport/ClassAttitudeBulkPanel'
 import { ClassCommonProgressPanel } from '../components/todayReport/ClassCommonProgressPanel'
 import { ClassCommonTodayAssignmentPanel } from '../components/todayReport/ClassCommonTodayAssignmentPanel'
 import { ClassDailyTestBulkPanel } from '../components/todayReport/ClassDailyTestBulkPanel'
@@ -300,6 +301,16 @@ export function TeacherTodayReportBulkPage() {
           </section>
 
           <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+            <h3 className="mb-2 text-sm font-bold text-navy-900">수업태도</h3>
+            <ClassAttitudeBulkPanel
+              key={`pc-class-attitude-${date}-${className}`}
+              date={date}
+              className={className}
+              students={classStudents}
+            />
+          </section>
+
+          <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
             <h3 className="mb-2 text-sm font-bold text-navy-900">입력 완료</h3>
             <p className="mb-3 text-xs text-slate-500">
               출결·과제·진도·일일테스트를 저장한 뒤, 학생별로 눌러 학부모 알림을 보냅니다. 하루에
@@ -324,7 +335,7 @@ export function TeacherTodayReportBulkPage() {
           </section>
 
           <p className="text-xs font-medium text-slate-500">
-            재원 {classStudents.length}명 · 학생 이름을 클릭하면 수업태도를 입력합니다.
+            재원 {classStudents.length}명
           </p>
           <div className="space-y-2">
             {classStudents.map((student) => (
@@ -339,6 +350,7 @@ export function TeacherTodayReportBulkPage() {
                 omitAttendance
                 omitHomeworkAndProgress
                 omitDailyTest
+                omitAttitude
               />
             ))}
           </div>

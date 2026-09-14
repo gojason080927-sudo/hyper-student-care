@@ -31,6 +31,7 @@ type HomeworkStatusButtonsProps = {
   labelClassName?: string
   error?: string
   compact?: boolean
+  disabled?: boolean
 }
 
 export function HomeworkStatusButtons({
@@ -40,6 +41,7 @@ export function HomeworkStatusButtons({
   labelClassName,
   error,
   compact = false,
+  disabled = false,
 }: HomeworkStatusButtonsProps) {
   // Empty/unset must not look selected as 미완료 (normalize maps empty → 미완료)
   const current = resolveSelectedHomeworkStatus(value)
@@ -66,8 +68,9 @@ export function HomeworkStatusButtons({
               key={status}
               type="button"
               aria-pressed={selected}
+              disabled={disabled}
               onClick={() => onChange(status)}
-              className={`flex cursor-pointer items-center justify-center gap-1.5 rounded-lg border font-medium transition ${
+              className={`flex items-center justify-center gap-1.5 rounded-lg border font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${
                 compact
                   ? 'min-h-9 flex-1 px-2.5 py-1.5 text-sm sm:flex-none sm:min-w-[5.5rem]'
                   : 'min-h-[44px] gap-2 rounded-xl px-3 py-2.5 text-sm'

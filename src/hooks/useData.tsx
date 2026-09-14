@@ -291,6 +291,10 @@ export type DataContextValue = {
   saveStudentDailyCareRecord: (
     data: Omit<StudentDailyCareRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
   ) => boolean
+  saveStudentDailyCareRecordAsync: (
+    data: Omit<StudentDailyCareRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
+    options?: { silent?: boolean },
+  ) => Promise<{ success: boolean; recordId?: string; error?: string }>
   ensureWeeklyLearningSummaries: () => Promise<number | null>
   markWeeklySummaryRead: (accessKey: string) => Promise<void>
   isLoading: boolean
@@ -2510,13 +2514,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [classNotes, handlePersistError, showToast, validateStudent],
   )
 
-  const saveStudentDailyCareRecord = useCallback(
-    (
+  const saveStudentDailyCareRecordAsync = useCallback(
+    async (
       data: Omit<StudentDailyCareRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
-    ) => {
+      options?: { silent?: boolean },
+    ): Promise<{ success: boolean; recordId?: string; error?: string }> => {
       if (!validateStudent(data.studentId)) {
-        showToast('존재하지 않는 학생입니다.')
-        return false
+        const message = '존재하지 않는 학생입니다.'
+        if (!options?.silent) showToast(message)
+        return { success: false, error: message }
       }
       const ts = createTimestamps()
       const existing = data.id
@@ -2535,6 +2541,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         createdAt: existing?.createdAt ?? ts.createdAt,
         updatedAt: ts.updatedAt,
       }
+      const snapshot = studentDailyCare
       setStudentDailyCare((prev) => {
         const withoutDuplicate = prev.filter(
           (item) =>
@@ -2543,15 +2550,32 @@ export function DataProvider({ children }: { children: ReactNode }) {
         )
         return [...withoutDuplicate, record]
       })
-      void persistWithReload(
-        () => upsertStudentDailyCare(record),
-        '교재 준비·수업태도 저장에 실패했습니다.',
-        { type: 'todayReport', studentId: record.studentId, date: record.date },
-      )
-      showToast('학습관리 항목이 저장되었습니다.')
+      try {
+        await upsertStudentDailyCare(record)
+        await refreshTodayReport(record.studentId, record.date)
+        if (!options?.silent) showToast('학습관리 항목이 저장되었습니다.')
+        return { success: true, recordId: record.id }
+      } catch (error) {
+        setStudentDailyCare(snapshot)
+        const message = '교재 준비·수업태도 저장에 실패했습니다.'
+        handlePersistError(message)
+        await load({ silent: true })
+        const detail = error instanceof Error ? error.message : message
+        if (!options?.silent) showToast(message)
+        return { success: false, error: detail }
+      }
+    },
+    [handlePersistError, load, refreshTodayReport, showToast, studentDailyCare, validateStudent],
+  )
+
+  const saveStudentDailyCareRecord = useCallback(
+    (
+      data: Omit<StudentDailyCareRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
+    ) => {
+      void saveStudentDailyCareRecordAsync(data)
       return true
     },
-    [handlePersistError, showToast, studentDailyCare, validateStudent],
+    [saveStudentDailyCareRecordAsync],
   )
 
   const weeklyEnsureRef = useRef({
@@ -2704,6 +2728,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       saveTodayAssignmentRecord,
       saveClassNoteRecord,
       saveStudentDailyCareRecord,
+      saveStudentDailyCareRecordAsync,
       ensureWeeklyLearningSummaries,
       markWeeklySummaryRead,
       isLoading,
@@ -2765,6 +2790,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       saveAttendanceRecordAsync,
       saveClassNoteRecord,
       saveStudentDailyCareRecord,
+      saveStudentDailyCareRecordAsync,
       ensureWeeklyLearningSummaries,
       markWeeklySummaryRead,
       saveClassScheduleGrid,

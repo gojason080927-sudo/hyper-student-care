@@ -147,7 +147,8 @@ for (const file of teacherUiFiles) {
 
 const teacherMobileToday = readFileSync('src/pages/teacherMobile/TeacherMobileTodayReportPage.tsx', 'utf8')
 assert.match(teacherMobileToday, /id: 'classTodayHomework'[\s\S]*id: 'materialPrep'[\s\S]*id: 'progress'/)
-assert.match(teacherMobileToday, /mobileSection="attitude"/)
+assert.match(teacherMobileToday, /ClassAttitudeBulkPanel/)
+assert.match(teacherMobileToday, /수업태도/)
 assert.doesNotMatch(teacherMobileToday, /강사 피드백/)
 assert.doesNotMatch(teacherMobileToday, /classNote/)
 
@@ -160,6 +161,11 @@ const attitudePicker = readFileSync('src/components/studentCare/ClassAttitudePic
 assert.match(attitudePicker, /data-attitude-state="excellent"/)
 assert.match(attitudePicker, /수업 중 확인한 내용을 간단히 입력/)
 assert.match(attitudePicker, /CLASS_ATTITUDE_ISSUE_LIST/)
+
+const diagnosisFields = readFileSync('src/components/diagnosis/DailyLearningDiagnosisFields.tsx', 'utf8')
+assert.doesNotMatch(diagnosisFields, /격주간 오답 재시험/)
+assert.doesNotMatch(diagnosisFields, /재시험 오답 수/)
+assert.match(diagnosisFields, /강사의 피드백/)
 
 const parentPreview = readFileSync('src/pages/dev/ParentMobileLayoutPreviewPage.tsx', 'utf8')
 assert.match(parentPreview, /PriorDayLearningEvaluationRow/)

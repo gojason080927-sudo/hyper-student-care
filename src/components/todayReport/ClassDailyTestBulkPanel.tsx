@@ -24,6 +24,8 @@ import {
   updateBulkScoreDraft,
   type MobileDailyTestRound,
 } from '../../utils/teacherMobileDailyTest'
+import { isFollowOnInputRequired, isStudentAbsentOnDate } from '../../utils/todayReportAbsence'
+import { AbsentFollowOnHint, StudentFollowOnRowHeader } from './AbsentFollowOnBadge'
 
 type StudentDraft = {
   recordId?: string
@@ -56,7 +58,7 @@ export function ClassDailyTestBulkPanel({
   students,
   compact = false,
 }: ClassDailyTestBulkPanelProps) {
-  const { dailyTests, saveDailyTestRecordAsync, showToast } = useData()
+  const { attendance, dailyTests, saveDailyTestRecordAsync, showToast } = useData()
   const [saving, setSaving] = useState(false)
   const [testName, setTestName] = useState(() => defaultDailyTestNameForDate(date))
   const [subject, setSubject] = useState('수학')
@@ -161,6 +163,7 @@ export function ClassDailyTestBulkPanel({
     if (saving || students.length === 0) return
 
     const targets = students.filter((student) => {
+      if (!isFollowOnInputRequired(attendance, student.id, date)) return false
       const draft = drafts[student.id]
       return (
         draft &&
@@ -173,6 +176,13 @@ export function ClassDailyTestBulkPanel({
     })
 
     if (targets.length === 0) {
+      const required = students.filter((student) =>
+        isFollowOnInputRequired(attendance, student.id, date),
+      )
+      if (required.length === 0) {
+        showToast('결석 학생은 일일테스트 입력 대상이 아닙니다.')
+        return
+      }
       showToast('저장할 일일테스트가 없습니다.')
       return
     }
@@ -329,21 +339,19 @@ export function ClassDailyTestBulkPanel({
           const draft = drafts[student.id] ?? emptyStudentDraft()
           const passRound =
             draft.rounds.find((round) => round.passed)?.round ?? null
+          const excluded = isStudentAbsentOnDate(attendance, student.id, date)
 
           return (
             <div
               key={student.id}
               className={compact ? 'px-2.5 py-2' : 'px-3 py-2.5'}
+              data-absent-excluded={excluded ? 'true' : 'false'}
             >
-              <p
-                className={
-                  compact
-                    ? 'mb-1.5 text-sm font-bold text-[#163A70]'
-                    : 'mb-1.5 text-sm font-bold text-navy-900'
-                }
-              >
-                {student.name}
-              </p>
+              <StudentFollowOnRowHeader name={student.name} excluded={excluded} compact={compact} />
+              {excluded ? (
+                <AbsentFollowOnHint compact={compact} />
+              ) : (
+              <>
               {subject.includes('영어') ? (
                 <p
                   className={
@@ -413,8 +421,11 @@ export function ClassDailyTestBulkPanel({
                   value={draft.learningDiagnosis}
                   onChange={(next) => updateLearningDiagnosis(student.id, next)}
                   compact
+                  disabled={saving}
                 />
               </div>
+              </>
+              )}
             </div>
           )
         })}

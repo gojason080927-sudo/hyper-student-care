@@ -3,14 +3,13 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { TeacherMobileHeader } from '../../components/teacherMobile/TeacherMobileHeader'
 import { ClassAttendanceBulkPanel } from '../../components/todayReport/ClassAttendanceBulkPanel'
+import { ClassAttitudeBulkPanel } from '../../components/todayReport/ClassAttitudeBulkPanel'
 import { ClassCommonProgressPanel } from '../../components/todayReport/ClassCommonProgressPanel'
 import { ClassCommonTodayAssignmentPanel } from '../../components/todayReport/ClassCommonTodayAssignmentPanel'
 import { ClassDailyTestBulkPanel } from '../../components/todayReport/ClassDailyTestBulkPanel'
 import { ClassHomeworkStatusBulkPanel } from '../../components/todayReport/ClassHomeworkStatusBulkPanel'
 import { ClassMaterialPrepBulkPanel } from '../../components/todayReport/ClassMaterialPrepBulkPanel'
-import { TodayReportView } from '../../components/todayReport/TodayReportView'
 import { TodayReportCompleteButton } from '../../components/todayReport/TodayReportCompleteButton'
-import { StudentKakaoShareAction } from '../../components/students/StudentKakaoShareAction'
 import { useData } from '../../hooks/useData'
 import { formatKoreanDate, getTodayString } from '../../utils/date'
 import { GRADES, inputClass } from '../../utils/labels'
@@ -20,7 +19,6 @@ import {
   parseGradeFromClassName,
 } from '../../utils/studentGradeClass'
 import type { ClassTodayReportSyncContext } from '../../utils/classTodayReportCommon'
-import type { Student } from '../../types/student'
 
 type ReportSection =
   | 'attendance'
@@ -328,10 +326,12 @@ export function TeacherMobileTodayReportPage() {
               open={openSections.has('attitude')}
               onToggle={() => toggleSection('attitude')}
             >
-              <AttitudeStudentList
-                students={classStudents}
+              <ClassAttitudeBulkPanel
+                key={`class-attitude-${date}-${className}`}
                 date={date}
-                classSync={classSync}
+                className={className}
+                students={classStudents}
+                compact
               />
             </MobileSectionAccordion>
           </>
@@ -341,35 +341,3 @@ export function TeacherMobileTodayReportPage() {
   )
 }
 
-/** 학생 선택 UI 없이 반 학생별 수업태도를 이어서 입력 */
-function AttitudeStudentList({
-  students,
-  date,
-  classSync,
-}: {
-  students: Student[]
-  date: string
-  classSync?: ClassTodayReportSyncContext
-}) {
-  return (
-    <div className="divide-y divide-[rgba(22,58,112,0.06)]">
-      {students.map((student) => (
-        <div key={student.id} className="py-2 first:pt-0 last:pb-0">
-          <div className="mb-1.5 flex items-center justify-between gap-2">
-            <p className="text-sm font-bold text-[#163A70]">{student.name}</p>
-            <StudentKakaoShareAction student={student} compact />
-          </div>
-          <TodayReportView
-            student={student}
-            readOnly={false}
-            initialDate={date}
-            hideHeader
-            compactTeacherInput
-            classSync={classSync}
-            mobileSection="attitude"
-          />
-        </div>
-      ))}
-    </div>
-  )
-}
