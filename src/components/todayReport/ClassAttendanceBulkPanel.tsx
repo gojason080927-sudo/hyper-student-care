@@ -11,6 +11,8 @@ import {
   inputClass,
 } from '../../utils/labels'
 import { AttendanceExcuseButtons, attendanceNeedsExcuse } from '../studentCare/AttendanceExcuseButtons'
+import { applyAttendanceDrafts } from '../../utils/voiceInput/applyVoiceDraft'
+import { SectionVoiceInput } from './SectionVoiceInput'
 
 type AttendanceDraft = {
   status: AttendanceStatus | ''
@@ -226,14 +228,27 @@ export function ClassAttendanceBulkPanel({
         <p className="text-xs font-medium text-slate-500">
           {formatKoreanDate(date)} / {className || `${grade}`} · {students.length}명
         </p>
-        <button
-          type="button"
-          onClick={markAllPresent}
-          disabled={saving}
-          className={`${btnSecondary} min-h-9 px-3 py-1.5 text-xs`}
-        >
-          전체 출석
-        </button>
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
+          <SectionVoiceInput
+            label="출결 음성 입력"
+            chipLabel="출결"
+            compact={compact}
+            disabled={saving}
+            onApply={(transcript) => {
+              const applied = applyAttendanceDrafts(drafts, transcript, students)
+              setDrafts(applied.drafts)
+              return applied.summary
+            }}
+          />
+          <button
+            type="button"
+            onClick={markAllPresent}
+            disabled={saving}
+            className={`${btnSecondary} min-h-9 px-3 py-1.5 text-xs`}
+          >
+            전체 출석
+          </button>
+        </div>
       </div>
 
       <div

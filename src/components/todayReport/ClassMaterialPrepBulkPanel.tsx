@@ -9,7 +9,9 @@ import {
   missingRequiredMaterialPrep,
 } from '../../utils/todayReportAbsence'
 import { MaterialPrepPicker } from '../studentCare/MaterialPrepPicker'
+import { applyMaterialDrafts } from '../../utils/voiceInput/applyVoiceDraft'
 import { AbsentFollowOnHint, StudentFollowOnRowHeader } from './AbsentFollowOnBadge'
+import { SectionVoiceInput } from './SectionVoiceInput'
 
 type ClassMaterialPrepBulkPanelProps = {
   date: string
@@ -116,9 +118,38 @@ export function ClassMaterialPrepBulkPanel({
 
   return (
     <div className={compact ? 'space-y-2' : 'space-y-3'}>
-      <p className="text-xs font-medium text-slate-500">
-        {formatKoreanDate(date)} / {className} · {students.length}명
-      </p>
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+        <p className="min-w-0 text-xs font-medium text-slate-500">
+          {formatKoreanDate(date)} / {className} · {students.length}명
+        </p>
+        <SectionVoiceInput
+          label="교재 준비 음성 입력"
+          chipLabel="교재"
+          compact={compact}
+          disabled={saving}
+          onApply={(transcript) => {
+            const applied = applyMaterialDrafts(
+              drafts,
+              transcript,
+              students,
+              attendance,
+              date,
+              (student, prev, status) => ({
+                id: prev?.id ?? '',
+                studentId: student.id,
+                date,
+                materialPrep: status,
+                attitudeIssues: prev?.attitudeIssues ?? [],
+                attitudeNote: prev?.attitudeNote ?? '',
+                createdAt: prev?.createdAt ?? '',
+                updatedAt: prev?.updatedAt ?? '',
+              }),
+            )
+            setDrafts(applied.drafts)
+            return applied.summary
+          }}
+        />
+      </div>
       <div className={compact ? 'divide-y divide-[rgba(22,58,112,0.06)]' : 'divide-y divide-slate-100'}>
         {students.map((student) => {
           const current = drafts[student.id]

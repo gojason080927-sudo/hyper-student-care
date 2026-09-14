@@ -19,7 +19,9 @@ import { isHomeworkStatusSelected } from '../../utils/homework'
 import { getTextbookName } from '../../utils/textbookSlots'
 import { findHomeworkTextbookEntryForDisplay } from '../../utils/todayReportDisplayFallback'
 import { isFollowOnInputRequired, isStudentAbsentOnDate } from '../../utils/todayReportAbsence'
+import { applyHomeworkDrafts } from '../../utils/voiceInput/applyVoiceDraft'
 import { AbsentFollowOnHint, StudentFollowOnRowHeader } from './AbsentFollowOnBadge'
+import { SectionVoiceInput } from './SectionVoiceInput'
 import { SubjectGroupCard, subjectGroupTitle } from './SubjectGroupCard'
 
 type SlotDraft = {
@@ -325,14 +327,45 @@ export function ClassHomeworkStatusBulkPanel({
         <p className="text-xs font-medium text-slate-500">
           {formatKoreanDate(date)} / {className || grade} · {students.length}명
         </p>
-        <button
-          type="button"
-          onClick={markAllComplete}
-          disabled={saving}
-          className={`${btnSecondary} min-h-9 px-3 py-1.5 text-xs`}
-        >
-          전체 완료
-        </button>
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
+          {slotPlan.map(({ subject, slotNumber }) => {
+            const heading =
+              getTextbookSlotHeading(subject, slotNumber) ?? `${subject} ${slotNumber}`
+            return (
+              <SectionVoiceInput
+                key={`voice-hw-${subject}-${slotNumber}`}
+                label={`${heading} 숙제 음성 입력`}
+                chipLabel={heading}
+                compact={compact}
+                disabled={saving}
+                onApply={(transcript) => {
+                  const applied = applyHomeworkDrafts(
+                    drafts,
+                    transcript,
+                    students,
+                    attendance,
+                    date,
+                    subject,
+                    slotNumber,
+                  )
+                  for (const key of applied.dirtyKeys) {
+                    dirtyStatusKeysRef.current.add(key)
+                  }
+                  setDrafts(applied.drafts)
+                  return applied.summary
+                }}
+              />
+            )
+          })}
+          <button
+            type="button"
+            onClick={markAllComplete}
+            disabled={saving}
+            className={`${btnSecondary} min-h-9 px-3 py-1.5 text-xs`}
+          >
+            전체 완료
+          </button>
+        </div>
       </div>
 
       <div

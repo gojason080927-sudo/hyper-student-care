@@ -5,6 +5,7 @@ import { TeacherMobileBottomNav } from '../../components/teacherMobile/TeacherMo
 import { TeacherMobileHeader } from '../../components/teacherMobile/TeacherMobileHeader'
 import { HyperFeaturedCardWave } from '../../components/ui/HyperFeaturedCardWave'
 import { AttendanceExcuseButtons } from '../../components/studentCare/AttendanceExcuseButtons'
+import { SectionVoiceInput } from '../../components/todayReport/SectionVoiceInput'
 import type { ClassAttitudeIssue } from '../../types/records'
 import '../../styles/teacherMobileTheme.css'
 
@@ -71,7 +72,20 @@ export function TeacherTodayReportLayoutPreviewPage() {
 
           <section className="tm-card px-3 py-3" data-preview-block="attendance">
             <h2 className="mb-2 text-sm font-bold text-[#163A70]">출결</h2>
-            <p className="mb-2 text-sm font-bold text-[#163A70]">김하이퍼</p>
+            <div className="mb-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-bold text-[#163A70]">김하이퍼</p>
+              <SectionVoiceInput
+                label="출결 음성 입력"
+                chipLabel="출결"
+                compact
+                onApply={() => ({
+                  appliedCount: 0,
+                  excludedAbsentCount: 0,
+                  needsReviewCount: 0,
+                  needsReview: [],
+                })}
+              />
+            </div>
             <div className="flex flex-nowrap gap-1">
               {['출석', '지각', '결석', '조퇴'].map((status) => (
                 <span
