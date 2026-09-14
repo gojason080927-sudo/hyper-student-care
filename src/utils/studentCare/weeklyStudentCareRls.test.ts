@@ -138,4 +138,10 @@ assert.match(
 assert.doesNotMatch(edge, /SUPABASE_ANON_KEY/)
 assert.match(edge, /SUPABASE_SERVICE_ROLE_KEY/)
 
-console.log('weeklyStudentCareRls OK')
+const repo = readFileSync('src/lib/db/repository.ts', 'utf8')
+assert.match(repo, /function isPermissionDeniedError/)
+assert.match(repo, /isSafeSelectSkipError/)
+
+const dataHook = readFileSync('src/hooks/useData.tsx', 'utf8')
+assert.match(dataHook, /sessionUserId/)
+assert.match(dataHook, /\[load, sessionUserId\]/)
