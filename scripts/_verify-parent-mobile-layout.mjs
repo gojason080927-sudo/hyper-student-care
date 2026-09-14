@@ -76,7 +76,7 @@ try {
     const metrics = await page.evaluate(() => {
       const root = document.documentElement
       const badges = [...document.querySelectorAll('span, button')].filter((el) =>
-        /🟢 우수|🟡 주의|🔴 위험/.test(el.textContent ?? ''),
+        /🟢 우수|🔵 양호|🟡 주의|🔴 위험/.test(el.textContent ?? ''),
       )
       const clippedBadges = badges
         .filter((el) => {
@@ -122,6 +122,20 @@ try {
         }
       }
 
+      const homeTags = [...document.querySelectorAll('[data-preview-section="home"] .pm-featured-tag')].map(
+        (el) => (el.textContent ?? '').trim(),
+      )
+      const evaluationTitle = (
+        [...document.querySelectorAll('[data-preview-section="today-report"] p')].find((el) =>
+          (el.textContent ?? '').includes('일일 학습 종합 평가'),
+        )?.textContent ?? ''
+      ).trim()
+      const evaluationBadge = (
+        [...document.querySelectorAll('[data-preview-section="today-report"] span, [data-preview-section="today-report"] button')].find(
+          (el) => /🟢 우수|🔵 양호|🟡 주의|🔴 위험/.test(el.textContent ?? ''),
+        )?.textContent ?? ''
+      ).trim()
+
       return {
         innerWidth: window.innerWidth,
         scrollWidth: Math.max(root.scrollWidth, document.body.scrollWidth),
@@ -132,6 +146,9 @@ try {
         homeworkTitleText: homeworkTitle?.textContent?.trim() ?? '',
         progressTitleText: progressTitle?.textContent?.trim() ?? '',
         largeGaps,
+        homeTags,
+        evaluationTitle,
+        evaluationBadge,
       }
     })
 
@@ -147,6 +164,15 @@ try {
       )
     }
     for (const gap of metrics.largeGaps) fails.push(`large empty gap: ${gap}`)
+    if (JSON.stringify(metrics.homeTags) !== JSON.stringify(['출결', '오늘의 진도', '과제 수행', '일일 테스트', '수업태도'])) {
+      fails.push(`HOME chips ${JSON.stringify(metrics.homeTags)}`)
+    }
+    if (metrics.evaluationTitle !== '일일 학습 종합 평가') {
+      fails.push(`evaluation title: ${metrics.evaluationTitle}`)
+    }
+    if (!/🟢 우수|🔵 양호|🟡 주의|🔴 위험/.test(metrics.evaluationBadge)) {
+      fails.push(`evaluation badge: ${metrics.evaluationBadge}`)
+    }
 
     const screenshotPath = `${ARTIFACT_DIR}/parent-mobile-${width}.png`
     await page.screenshot({ path: screenshotPath, fullPage: true })

@@ -1,4 +1,4 @@
-import { LearningStatusBadge } from '../../components/studentCare/LearningStatusBadge'
+import { PriorDayLearningEvaluationRow } from '../../components/studentCare/LearningStatusBadge'
 import { ParentStudentInfoCard } from '../../components/parent/ParentStudentComponents'
 import {
   ParentHomeworkSlotCard,
@@ -9,10 +9,10 @@ import { StudentSummaryCard } from '../../components/todayReport/TodayReportView
 import { classAttitudeDisplay } from '../../components/studentCare/ClassAttitudePicker'
 import { materialPrepDisplay } from '../../components/studentCare/MaterialPrepPicker'
 import { WeeklySummaryDetail } from '../parent/ParentStudentWeeklySummaryPage'
-import { parentHomeCategoryItems, parentTodayReportItem } from '../../components/parent/parentNavItems'
+import { parentHomeCategoryItems, parentTodayReportHighlights, parentTodayReportItem } from '../../components/parent/parentNavItems'
 import type { Student } from '../../types/student'
 import type { WeeklyLearningSummaryRecord } from '../../types/records'
-import { computeLearningRisk } from '../../utils/studentCare'
+import { computePriorDayLearningEvaluation } from '../../utils/studentCare'
 import '../../styles/parentMobileTheme.css'
 
 const previewStudent: Student = {
@@ -34,52 +34,55 @@ const previewStudent: Student = {
   updatedAt: '',
 }
 
-const previewRisk = computeLearningRisk({
-  studentId: previewStudent.id,
-  attendance: [
-    {
-      id: 'a1',
-      studentId: previewStudent.id,
-      date: '2026-09-07',
-      status: '지각',
-      reason: '',
-      memo: '',
-      excuseKind: '무단',
-      createdAt: '',
-      updatedAt: '',
-    },
-  ],
-  homework: [],
-  homeworkTextbookEntries: [
-    {
-      id: 'h1',
-      studentId: previewStudent.id,
-      date: '2026-09-07',
-      subject: '수학',
-      slotNumber: 1,
-      previousAssignment: 'p. 32~35',
-      todayAssignment: 'p. 36~40',
-      status: '부분 완료',
-      createdAt: '',
-      updatedAt: '',
-    },
-  ],
-  dailyTests: [],
-  dailyCare: [
-    {
-      id: 'c1',
-      studentId: previewStudent.id,
-      date: '2026-09-07',
-      materialPrep: '부분 지참',
-      attitudeIssues: ['졸음'],
-      attitudeNote: '전날 수면 부족으로 보이며 후반부에는 집중도 회복',
-      createdAt: '',
-      updatedAt: '',
-    },
-  ],
-  progressRecords: [],
-  classNotes: [],
-})
+const previewEvaluation = computePriorDayLearningEvaluation(
+  {
+    studentId: previewStudent.id,
+    attendance: [
+      {
+        id: 'a1',
+        studentId: previewStudent.id,
+        date: '2026-09-07',
+        status: '지각',
+        reason: '',
+        memo: '',
+        excuseKind: '무단',
+        createdAt: '',
+        updatedAt: '',
+      },
+    ],
+    homework: [],
+    homeworkTextbookEntries: [
+      {
+        id: 'h1',
+        studentId: previewStudent.id,
+        date: '2026-09-07',
+        subject: '수학',
+        slotNumber: 1,
+        previousAssignment: 'p. 32~35',
+        todayAssignment: 'p. 36~40',
+        status: '부분 완료',
+        createdAt: '',
+        updatedAt: '',
+      },
+    ],
+    dailyTests: [],
+    dailyCare: [
+      {
+        id: 'c1',
+        studentId: previewStudent.id,
+        date: '2026-09-07',
+        materialPrep: '부분 지참',
+        attitudeIssues: ['졸음'],
+        attitudeNote: '전날 수면 부족으로 보이며 후반부에는 집중도 회복',
+        createdAt: '',
+        updatedAt: '',
+      },
+    ],
+    progressRecords: [],
+    classNotes: [],
+  },
+  '2026-09-07',
+)
 
 const previewSummary: WeeklyLearningSummaryRecord = {
   id: 'sum-preview',
@@ -171,10 +174,10 @@ export function ParentMobileLayoutPreviewPage() {
                       </span>
                     </div>
                   </div>
-                  <div className="mt-3.5 flex flex-wrap gap-2">
-                    {['출결', '오늘의 진도', '과제 수행', '일일 테스트'].map((tag) => (
-                      <span key={tag} className="pm-featured-tag">
-                        {tag}
+                  <div className="mt-3.5 flex flex-wrap gap-1.5">
+                    {parentTodayReportHighlights.map((tag) => (
+                      <span key={tag.id} className="pm-featured-tag">
+                        {tag.label}
                       </span>
                     ))}
                   </div>
@@ -213,7 +216,7 @@ export function ParentMobileLayoutPreviewPage() {
             <StudentSummaryCard
               student={previewStudent}
               compact
-              statusBadge={<LearningStatusBadge result={previewRisk} />}
+              evaluation={<PriorDayLearningEvaluationRow result={previewEvaluation} />}
             />
             <section className="rounded-2xl border border-slate-200 bg-white px-3.5 py-3 shadow-sm">
               <h2 className="text-base font-bold text-navy-900">숙제 수행 결과</h2>

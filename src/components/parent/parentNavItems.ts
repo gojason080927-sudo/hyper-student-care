@@ -66,6 +66,18 @@ export const parentTodayReportItem = {
   description: '오늘의 학습 한눈에 보기',
 } as const
 
+export const parentTodayReportHighlights = [
+  { id: 'attendance', label: '출결' },
+  { id: 'progress', label: '오늘의 진도' },
+  { id: 'homework', label: '과제 수행' },
+  { id: 'dailyTest', label: '일일 테스트' },
+  { id: 'attitude', label: '수업태도' },
+] as const
+
+export function parentTodayReportSectionHash(id: (typeof parentTodayReportHighlights)[number]['id']): string {
+  return `today-report-section-${id}`
+}
+
 /** 홈 카드·사이드바 활성 표시. 구 경로(공지/보강)도 통합 메뉴로 취급한다. */
 export function isParentCategoryPathActive(segment: string, pathname: string): boolean {
   if (segment === 'notices-makeup') {

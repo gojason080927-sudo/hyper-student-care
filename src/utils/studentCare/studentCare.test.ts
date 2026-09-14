@@ -9,7 +9,11 @@ import type {
   StudentDailyCareRecord,
 } from '../../types/records.ts'
 import { weeklyGradeFromScore } from './constants.ts'
-import { computeLearningRisk } from './risk.ts'
+import {
+  computeLearningRisk,
+  computePriorDayLearningEvaluation,
+  priorDayLearningGradeFromScore,
+} from './risk.ts'
 import {
   attendanceIndex,
   attitudeLessonIndex,
@@ -281,6 +285,67 @@ const danger = computeLearningRisk({
 })
 assert.equal(danger.level, '위험')
 assert.ok(danger.score >= 4)
+
+assert.equal(priorDayLearningGradeFromScore(0, false), '우수')
+assert.equal(priorDayLearningGradeFromScore(1, false), '양호')
+assert.equal(priorDayLearningGradeFromScore(2, false), '주의')
+assert.equal(priorDayLearningGradeFromScore(3, false), '주의')
+assert.equal(priorDayLearningGradeFromScore(4, false), '위험')
+assert.equal(priorDayLearningGradeFromScore(0, true), '위험')
+
+const priorGood = computePriorDayLearningEvaluation(
+  {
+    studentId: 'stu-1',
+    attendance: [attendance('2026-09-11', '출석')],
+    homework: [],
+    homeworkTextbookEntries: [homework('2026-09-11', '부분 완료')],
+    dailyTests: [],
+    dailyCare: [],
+  },
+  '2026-09-11',
+)
+assert.equal(priorGood.grade, '주의')
+assert.equal(priorGood.score, 2)
+assert.equal(priorGood.reportDate, '2026-09-11')
+
+const priorFair = computePriorDayLearningEvaluation(
+  {
+    studentId: 'stu-1',
+    attendance: [attendance('2026-09-11', '출석')],
+    homework: [],
+    homeworkTextbookEntries: [],
+    dailyTests: [],
+    dailyCare: [care('2026-09-11', { materialPrep: '부분 지참' })],
+  },
+  '2026-09-11',
+)
+assert.equal(priorFair.grade, '양호')
+assert.equal(priorFair.score, 1)
+
+const priorAbsent = computePriorDayLearningEvaluation(
+  {
+    studentId: 'stu-1',
+    attendance: [attendance('2026-09-11', '결석', '무단')],
+    homework: [],
+    homeworkTextbookEntries: [],
+    dailyTests: [],
+    dailyCare: [],
+  },
+  '2026-09-11',
+)
+assert.equal(priorAbsent.grade, '위험')
+assert.equal(priorAbsent.unexcusedAbsent, true)
+
+const threeLessonCaution = computeLearningRisk({
+  studentId: 'stu-1',
+  attendance: [attendance('2026-09-11', '출석')],
+  homework: [],
+  homeworkTextbookEntries: [],
+  dailyTests: [],
+  dailyCare: [care('2026-09-11', { materialPrep: '부분 지참' })],
+})
+assert.equal(threeLessonCaution.level, '주의')
+assert.equal(threeLessonCaution.score, 1)
 
 assert.deepEqual(
   weeklyAreaFactLines('attendance', {

@@ -122,10 +122,15 @@ for (const route of [
 assert.equal(readFileSync('src/components/dailytest/WrongAnswerBankBlock.tsx', 'utf8').includes('export function WrongAnswerBankBlock'), true)
 
 const todayReportView = readFileSync('src/components/todayReport/TodayReportView.tsx', 'utf8')
-assert.match(todayReportView, /computeLearningRisk/)
-assert.match(todayReportView, /LearningStatusBadge/)
+assert.match(todayReportView, /computePriorDayLearningEvaluation/)
+assert.match(todayReportView, /PriorDayLearningEvaluationRow/)
 assert.match(todayReportView, /readOnly \? dayClassNote/)
 assert.doesNotMatch(todayReportView, /showSection\('classNote'\) && !readOnly/)
+assert.match(readFileSync('src/utils/studentCare/risk.ts', 'utf8'), /computeLearningRisk/)
+assert.match(
+  readFileSync('src/components/studentCare/LearningStatusBadge.tsx', 'utf8'),
+  /일일 학습 종합 평가/,
+)
 
 const teacherUiFiles = [
   'src/components/todayReport/TodayReportStudentAccordion.tsx',
@@ -157,7 +162,12 @@ assert.match(attitudePicker, /수업 중 확인한 내용을 간단히 입력/)
 assert.match(attitudePicker, /CLASS_ATTITUDE_ISSUE_LIST/)
 
 const parentPreview = readFileSync('src/pages/dev/ParentMobileLayoutPreviewPage.tsx', 'utf8')
-assert.match(parentPreview, /statusBadge=\{<LearningStatusBadge/)
+assert.match(parentPreview, /PriorDayLearningEvaluationRow/)
+assert.match(parentPreview, /parentTodayReportHighlights/)
 assert.doesNotMatch(parentPreview, /강사 피드백/)
+
+const parentHome = readFileSync('src/components/parent/ParentCategoryGrid.tsx', 'utf8')
+assert.match(parentHome, /parentTodayReportHighlights/)
+assert.match(readFileSync('src/components/parent/parentNavItems.ts', 'utf8'), /label: '수업태도'/)
 
 console.log('scoringAlignment OK')
