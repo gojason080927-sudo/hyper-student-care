@@ -232,7 +232,10 @@ export function SectionVoiceInput({
         </p>
       ) : null}
       {listening && interim ? (
-        <p className="mt-1 w-full min-w-0 max-w-full whitespace-normal break-words text-[11px] leading-4 text-slate-500 [overflow-wrap:anywhere]">
+        <p
+          data-live-transcript=""
+          className="mt-1 max-h-24 w-full min-w-0 max-w-full overflow-y-auto whitespace-pre-wrap break-keep text-[11px] leading-4 text-slate-500 [overflow-wrap:anywhere]"
+        >
           듣는 중: {interim}
         </p>
       ) : null}

@@ -226,6 +226,55 @@ try {
       fails.push(`horizontal overflow ${overflow.scrollWidth} > ${overflow.innerWidth}`)
     }
 
+    const liveTranscript = await page.evaluate(() => {
+      const live = document.querySelector('[data-live-transcript]')
+      const name = [...document.querySelectorAll('p')].find((el) => (el.textContent ?? '').trim() === '류정현')
+      const nav = document.querySelector('nav[aria-label="강사용 모바일 메뉴"]')
+      const score = [...document.querySelectorAll('span')].find((el) => (el.textContent ?? '').trim() === '1차')
+      if (!live) return { error: 'missing live transcript' }
+      const rect = live.getBoundingClientRect()
+      const clipped =
+        live.scrollWidth > live.clientWidth + 2 && getComputedStyle(live).overflowX === 'visible'
+      let nameOverlap = false
+      if (name) {
+        const a = name.getBoundingClientRect()
+        const overlapW = Math.min(rect.right, a.right) - Math.max(rect.left, a.left)
+        const overlapH = Math.min(rect.bottom, a.bottom) - Math.max(rect.top, a.top)
+        nameOverlap = overlapW > 2 && overlapH > 2
+      }
+      let scoreOverlap = false
+      if (score) {
+        const a = score.getBoundingClientRect()
+        const overlapW = Math.min(rect.right, a.right) - Math.max(rect.left, a.left)
+        const overlapH = Math.min(rect.bottom, a.bottom) - Math.max(rect.top, a.top)
+        scoreOverlap = overlapW > 2 && overlapH > 2
+      }
+      let navOverlap = false
+      if (nav) {
+        const a = nav.getBoundingClientRect()
+        const overlapW = Math.min(rect.right, a.right) - Math.max(rect.left, a.left)
+        const overlapH = Math.min(rect.bottom, a.bottom) - Math.max(rect.top, a.top)
+        navOverlap = overlapW > 2 && overlapH > 2
+      }
+      return {
+        text: (live.textContent ?? '').trim(),
+        overflowX: live.scrollWidth > window.innerWidth + 1,
+        clipped,
+        nameOverlap,
+        scoreOverlap,
+        navOverlap,
+      }
+    })
+    if (liveTranscript.error) fails.push(liveTranscript.error)
+    if (liveTranscript.text && !liveTranscript.text.includes('1차 30점')) {
+      fails.push(`live transcript missing scores: ${liveTranscript.text}`)
+    }
+    if (liveTranscript.overflowX) fails.push('live transcript horizontal overflow')
+    if (liveTranscript.clipped) fails.push('live transcript clipped')
+    if (liveTranscript.nameOverlap) fails.push('live transcript overlaps student name')
+    if (liveTranscript.scoreOverlap) fails.push('live transcript overlaps score cards')
+    if (liveTranscript.navOverlap) fails.push('live transcript overlaps bottom nav')
+
     await page.locator('button', { hasText: '수업태도 일괄 저장' }).scrollIntoViewIfNeeded()
     await page.waitForTimeout(150)
 
