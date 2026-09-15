@@ -46,15 +46,8 @@ function compactTranscriptKey(text: string): string {
   return text.replace(/\s+/g, '')
 }
 
-function isHypothesisAbsorbed(committed: string, fragment: string): boolean {
-  const next = normalizeTranscript(fragment)
-  if (!next) return true
-  const committedKey = compactTranscriptKey(committed)
-  const fragmentKey = compactTranscriptKey(next)
-  if (!fragmentKey) return true
-  if (compactFinalHypotheses([committed, next]) === committed) return true
-  return fragmentKey.length >= 4 && committedKey.includes(fragmentKey)
-}
+const LOGICAL_OVERLAP_MIN = 4
+const LOGICAL_CONTAINED_MIN = 3
 
 function commonCompactPrefixLength(prev: string, next: string): number {
   const prevKey = compactTranscriptKey(prev)
@@ -62,6 +55,70 @@ function commonCompactPrefixLength(prev: string, next: string): number {
   let i = 0
   while (i < prevKey.length && i < nextKey.length && prevKey[i] === nextKey[i]) i += 1
   return i
+}
+
+function longestCompactSuffixPrefixOverlap(prevKey: string, nextKey: string): number {
+  const max = Math.min(prevKey.length, nextKey.length)
+  for (let size = max; size >= LOGICAL_OVERLAP_MIN; size -= 1) {
+    if (prevKey.slice(-size) === nextKey.slice(0, size)) return size
+  }
+  return 0
+}
+
+function incomingRemainderAfterCompactPrefix(incoming: string, compactSkip: number): string {
+  let consumed = 0
+  let index = 0
+  while (index < incoming.length && consumed < compactSkip) {
+    if (!/\s/u.test(incoming[index] ?? '')) consumed += 1
+    index += 1
+  }
+  return incoming.slice(index).replace(/\s+/g, ' ').trim()
+}
+
+/**
+ * WebKit recognition generations are transport boundaries, not utterances.
+ * One mic press → many generations → one logical transcript.
+ * Operates on hypothesis overlap, not per-token unique().
+ */
+export function reconcileLogicalTranscript(existingRaw: string, incomingRaw: string): string {
+  const existing = normalizeTranscript(existingRaw)
+  const incoming = normalizeTranscript(incomingRaw)
+  if (!incoming) return existing
+  if (!existing) return incoming
+
+  const prevKey = compactTranscriptKey(existing)
+  const nextKey = compactTranscriptKey(incoming)
+  if (nextKey === prevKey) return existing
+  if (nextKey.startsWith(prevKey)) return incoming
+  if (prevKey.startsWith(nextKey)) return existing
+  if (nextKey.length >= 2 && prevKey.endsWith(nextKey)) return existing
+  if (prevKey.length >= 2 && nextKey.endsWith(prevKey) && nextKey.length > prevKey.length) {
+    return incoming
+  }
+  if (nextKey.length >= LOGICAL_CONTAINED_MIN && prevKey.includes(nextKey)) return existing
+  if (prevKey.length >= LOGICAL_CONTAINED_MIN && nextKey.includes(prevKey)) return incoming
+
+  const overlap = longestCompactSuffixPrefixOverlap(prevKey, nextKey)
+  if (overlap >= LOGICAL_OVERLAP_MIN) {
+    const rest = incomingRemainderAfterCompactPrefix(incoming, overlap)
+    return rest ? `${existing} ${rest}`.replace(/\s+/g, ' ').trim() : existing
+  }
+
+  const shared = commonCompactPrefixLength(existing, incoming)
+  const shorter = Math.min(prevKey.length, nextKey.length)
+  if (shared >= LOGICAL_OVERLAP_MIN && shared >= Math.ceil(shorter / 2)) return incoming
+
+  return `${existing} ${incoming}`.replace(/\s+/g, ' ').trim()
+}
+
+function isHypothesisAbsorbed(committed: string, fragment: string): boolean {
+  const next = normalizeTranscript(fragment)
+  if (!next) return true
+  const committedKey = compactTranscriptKey(committed)
+  const fragmentKey = compactTranscriptKey(next)
+  if (!fragmentKey) return true
+  if (reconcileLogicalTranscript(committed, next) === committed) return true
+  return fragmentKey.length >= 4 && committedKey.includes(fragmentKey)
 }
 
 /**
@@ -98,30 +155,17 @@ export function reconcileSameIndexHypothesis(prevRaw: string | undefined, nextRa
 export function mergeFinalHypotheses(committed: string[], nextRaw: string): string[] {
   const next = normalizeTranscript(nextRaw)
   if (!next) return committed
-  if (committed.length === 0) return [next]
-
-  const last = committed[committed.length - 1]
-  if (!last) return [...committed.slice(0, -1), next]
-
-  const lastKey = compactTranscriptKey(last)
-  const nextKey = compactTranscriptKey(next)
-  if (nextKey === lastKey) return committed
-  if (nextKey.startsWith(lastKey)) return [...committed.slice(0, -1), next]
-  if (lastKey.startsWith(nextKey)) return committed
-  if (nextKey.length >= 2 && lastKey.endsWith(nextKey)) return committed
-  if (lastKey.length >= 2 && nextKey.endsWith(lastKey) && nextKey.length > lastKey.length) {
-    return [...committed.slice(0, -1), next]
-  }
-  return [...committed, next]
+  const logical = reconcileLogicalTranscript(committed.join(' '), next)
+  return logical ? [logical] : committed
 }
 
 export function compactFinalHypotheses(pieces: Array<string | undefined>): string {
-  let committed: string[] = []
+  let logical = ''
   for (const piece of pieces) {
     if (!piece) continue
-    committed = mergeFinalHypotheses(committed, piece)
+    logical = reconcileLogicalTranscript(logical, piece)
   }
-  return committed.join(' ').replace(/\s+/g, ' ').trim()
+  return logical
 }
 
 export const HELD_SPEECH_MAX_RESTARTS = 40
@@ -163,7 +207,7 @@ export function isFatalHeldSpeechError(code: string): boolean {
 }
 
 export function accumulateHeldFragments(prev: string, next: string): string {
-  return compactFinalHypotheses([prev, next])
+  return reconcileLogicalTranscript(prev, next)
 }
 
 export function shouldRestartHeldSpeech(state: HeldSpeechState, maxRestarts = HELD_SPEECH_MAX_RESTARTS): boolean {
@@ -283,12 +327,23 @@ export function createSpeechTranscriptSession() {
   const finalsByIndex: string[] = []
   let lastInterim = ''
   let consumed = false
+  let generationLogical = ''
+
+  const snapshotFromEngine = () => {
+    const committed = compactFinalHypotheses(finalsByIndex)
+    if (lastInterim && isHypothesisAbsorbed(committed, lastInterim)) lastInterim = ''
+    return lastInterim ? reconcileLogicalTranscript(committed, lastInterim) : committed
+  }
 
   return {
     ingest(event: SpeechRecognitionResultEventLike): { display: string } {
+      const resultCount = event.results.length
+      if (finalsByIndex.length > resultCount) {
+        finalsByIndex.length = resultCount
+      }
       let interim = ''
       const start = Math.max(0, event.resultIndex ?? 0)
-      for (let i = start; i < event.results.length; i += 1) {
+      for (let i = start; i < resultCount; i += 1) {
         const piece = event.results[i]
         const text = normalizeTranscript(piece[0]?.transcript ?? '')
         if (!text) continue
@@ -299,17 +354,14 @@ export function createSpeechTranscriptSession() {
         } else interim += text
       }
       const eventInterim = normalizeTranscript(interim)
-      const committed = compactFinalHypotheses(finalsByIndex)
       if (eventInterim) {
         lastInterim = lastInterim
           ? reconcileSameIndexHypothesis(lastInterim, eventInterim)
           : eventInterim
       }
-      if (lastInterim && isHypothesisAbsorbed(committed, lastInterim)) lastInterim = ''
-      const display = lastInterim
-        ? compactFinalHypotheses([committed, lastInterim])
-        : committed
-      return { display: normalizeTranscript(display) }
+      const fromEngine = snapshotFromEngine()
+      generationLogical = reconcileLogicalTranscript(generationLogical, fromEngine)
+      return { display: normalizeTranscript(generationLogical) }
     },
 
     peekCommitted(): string {
@@ -318,13 +370,11 @@ export function createSpeechTranscriptSession() {
 
     /** WebKit/iOS often ends a session with interim-only results (isFinal never set). */
     peekHoldTranscript(): string {
-      const committed = compactFinalHypotheses(finalsByIndex)
-      if (!lastInterim || isHypothesisAbsorbed(committed, lastInterim)) return committed
-      return compactFinalHypotheses([committed, lastInterim])
+      return generationLogical || snapshotFromEngine()
     },
 
     consumeFinal(): { text: string; delivered: boolean } {
-      const text = compactFinalHypotheses(finalsByIndex)
+      const text = generationLogical || compactFinalHypotheses(finalsByIndex)
       if (consumed) return { text, delivered: false }
       consumed = true
       return { text, delivered: true }
@@ -492,9 +542,12 @@ export function startKoreanSpeechRecognition(
     }
   }
 
-  const displayHeld = (interim = '') => {
-    const committed = accumulateHeldFragments(held.accumulated, held.currentCommitted)
-    handlers.onInterim?.(normalizeTranscript([committed, interim].filter(Boolean).join(' ')))
+  const displayHeld = (generationText = '') => {
+    const logical = reconcileLogicalTranscript(
+      held.accumulated,
+      generationText || held.currentCommitted,
+    )
+    handlers.onInterim?.(logical)
   }
 
   const foldCurrentSession = () => {
@@ -619,8 +672,7 @@ export function startKoreanSpeechRecognition(
         committed,
       }),
     })
-    const interim = normalizeTranscript(display.slice(committed.length))
-    displayHeld(interim)
+    displayHeld(committed || display)
   }
 
   recognition.onerror = (event) => {

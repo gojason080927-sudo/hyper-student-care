@@ -258,6 +258,12 @@ export function TeacherTodayReportLayoutPreviewPage() {
               </div>
             </div>
             <p
+              data-live-transcript=""
+              className="mt-1 max-h-24 w-full min-w-0 max-w-full overflow-y-auto whitespace-pre-wrap break-keep text-[11px] leading-4 text-slate-500 [overflow-wrap:anywhere]"
+            >
+              듣는 중: 1차 30점 2차 50점 3차 100점 나날이 속도가 빨라지고 정확도가 높아지고 있음
+            </p>
+            <p
               data-voice-summary="true"
               className="mb-1 w-full min-w-0 max-w-full whitespace-normal break-words text-[11px] leading-4 text-slate-600 [overflow-wrap:anywhere]"
             >
