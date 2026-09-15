@@ -42,7 +42,7 @@ export function StudentFollowOnRowHeader({
         {name}
       </p>
       {excluded ? <AbsentFollowOnBadge compact={compact} /> : null}
-      {extra ? <div className="ml-auto shrink-0">{extra}</div> : null}
+      {extra ? <div className="ml-auto min-w-0 max-w-full flex-1">{extra}</div> : null}
     </div>
   )
 }
