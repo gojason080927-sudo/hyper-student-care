@@ -101,6 +101,8 @@ import { resolveCommonClassContext } from '../../utils/classCommonDataKey'
 import { getVisibleDailyTestSubjects } from '../../utils/studentGradeClass'
 import { attendanceDisplayLabel } from '../../utils/studentCare/scoring'
 import { computePriorDayLearningEvaluation } from '../../utils/studentCare'
+import { parentAttitudeNoteForSelectedDate } from '../../utils/parentAttitudeTeacherComment'
+import { ParentAttitudeTeacherComment } from './ParentAttitudeTeacherComment'
 import { isAbsentAttendanceRecord } from '../../utils/todayReportAbsence'
 import { AbsentFollowOnBadge, AbsentFollowOnHint } from './AbsentFollowOnBadge'
 
@@ -474,6 +476,16 @@ export function TodayReportView({
   const dayCare = useMemo(
     () => studentDailyCare.find((record) => record.studentId === student.id && record.date === contentDate),
     [contentDate, student.id, studentDailyCare],
+  )
+
+  const exactDateCareNote = useMemo(
+    () =>
+      parentAttitudeNoteForSelectedDate({
+        records: studentDailyCare,
+        studentId: student.id,
+        selectedDate,
+      }),
+    [selectedDate, student.id, studentDailyCare],
   )
 
   const priorDayEvaluation = useMemo(
@@ -935,6 +947,7 @@ export function TodayReportView({
               key={`attitude-${selectedDate}`}
               readOnly={readOnly}
               record={dayCare}
+              exactDateAttitudeNote={exactDateCareNote}
               studentId={student.id}
               date={selectedDate}
               onSave={saveStudentDailyCareRecord}
@@ -1199,6 +1212,7 @@ function MaterialPrepSection({
 function ClassAttitudeSection({
   readOnly,
   record,
+  exactDateAttitudeNote = '',
   studentId,
   date,
   onSave,
@@ -1210,6 +1224,7 @@ function ClassAttitudeSection({
 }: {
   readOnly: boolean
   record?: StudentDailyCareRecord
+  exactDateAttitudeNote?: string
   studentId: string
   date: string
   onSave: ReturnType<typeof useData>['saveStudentDailyCareRecord']
@@ -1240,7 +1255,6 @@ function ClassAttitudeSection({
 
   const parentHasData = Boolean(record) || treatMissingAsExcellent
   const parentIssues = record?.attitudeIssues ?? []
-  const parentNote = record?.attitudeNote ?? ''
 
   return (
     <SectionCard title="수업태도" teacherCompact={teacherCompact} hideTitle={hideTitle}>
@@ -1251,14 +1265,7 @@ function ClassAttitudeSection({
               <p className="text-sm font-semibold text-slate-800">
                 {classAttitudeDisplay(parentIssues)}
               </p>
-              {parentIssues.length > 0 && parentNote.trim() ? (
-                <div className="rounded-xl bg-slate-50 px-3 py-2.5">
-                  <p className="text-xs font-semibold text-slate-600">강사 메모</p>
-                  <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-                    {parentNote}
-                  </p>
-                </div>
-              ) : null}
+              <ParentAttitudeTeacherComment note={exactDateAttitudeNote} />
             </div>
           )}
         </ParentReadOnlyBody>

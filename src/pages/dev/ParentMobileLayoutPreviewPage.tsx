@@ -7,6 +7,7 @@ import {
 } from '../../components/todayReport/parentTextbookDisplay'
 import { StudentSummaryCard } from '../../components/todayReport/TodayReportView'
 import { classAttitudeDisplay } from '../../components/studentCare/ClassAttitudePicker'
+import { ParentAttitudeTeacherComment } from '../../components/todayReport/ParentAttitudeTeacherComment'
 import { materialPrepDisplay } from '../../components/studentCare/MaterialPrepPicker'
 import { WeeklySummaryDetail } from '../parent/ParentStudentWeeklySummaryPage'
 import { parentHomeCategoryItems, parentTodayReportHighlights, parentTodayReportItem } from '../../components/parent/parentNavItems'
@@ -265,16 +266,28 @@ export function ParentMobileLayoutPreviewPage() {
               <h2 className="text-base font-bold text-navy-900">일일테스트</h2>
               <p className="mt-2 text-sm text-slate-700">수학 · 이차방정식 · 88점</p>
             </section>
-            <section className="rounded-2xl border border-slate-200 bg-white px-3.5 py-3 shadow-sm">
+            <section
+              className="rounded-2xl border border-slate-200 bg-white px-3.5 py-3 shadow-sm"
+              data-preview-attitude="with-comment"
+            >
               <h2 className="text-base font-bold text-navy-900">수업태도</h2>
-              <p className="mt-2 text-sm font-semibold text-slate-800">
-                {classAttitudeDisplay(['졸음'])}
-              </p>
-              <div className="mt-2 rounded-xl bg-slate-50 px-3 py-2.5">
-                <p className="text-xs font-semibold text-slate-600">강사 메모</p>
-                <p className="mt-1 text-sm leading-6 text-slate-700">
-                  전날 수면 부족으로 보이며 후반부에는 집중도 회복
+              <div className="mt-2 space-y-2">
+                <p className="text-sm font-semibold text-slate-800">
+                  {classAttitudeDisplay(['졸음'])}
                 </p>
+                <ParentAttitudeTeacherComment note="오늘 수업에서는 이차함수 개념에 대한 이해가 좋아졌고 질문에도 적극적으로 대답했습니다. 후반부에도 집중력을 잘 유지했습니다." />
+              </div>
+            </section>
+            <section
+              className="rounded-2xl border border-slate-200 bg-white px-3.5 py-3 shadow-sm"
+              data-preview-attitude="no-comment"
+            >
+              <h2 className="text-base font-bold text-navy-900">수업태도</h2>
+              <div className="mt-2 space-y-2">
+                <p className="text-sm font-semibold text-slate-800">
+                  {classAttitudeDisplay([])}
+                </p>
+                <ParentAttitudeTeacherComment note="" />
               </div>
             </section>
           </section>

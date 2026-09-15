@@ -125,6 +125,9 @@ const todayReportView = readFileSync('src/components/todayReport/TodayReportView
 assert.match(todayReportView, /computePriorDayLearningEvaluation/)
 assert.match(todayReportView, /PriorDayLearningEvaluationRow/)
 assert.match(todayReportView, /readOnly \? dayClassNote/)
+assert.match(todayReportView, /parentAttitudeNoteForSelectedDate/)
+assert.match(todayReportView, /ParentAttitudeTeacherComment/)
+assert.doesNotMatch(todayReportView, /parentIssues\.length > 0 && parentNote/)
 assert.doesNotMatch(todayReportView, /showSection\('classNote'\) && !readOnly/)
 assert.match(readFileSync('src/utils/studentCare/risk.ts', 'utf8'), /computeLearningRisk/)
 assert.match(
