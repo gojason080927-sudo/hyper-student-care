@@ -651,4 +651,37 @@ for (let i = 0; i < 8; i += 1) {
   expectMixedParse(run.finals[0] ?? '')
 }
 
+{
+  const session = createSpeechTranscriptSession()
+  session.ingest(speechEvent(0, [{ transcript: MIXED, isFinal: false }]))
+  session.ingest(speechEvent(0, [{ transcript: MIXED_PREFIX, isFinal: true }]))
+  assert.equal(session.peekHoldTranscript(), MIXED)
+}
+
+{
+  const session = createSpeechTranscriptSession()
+  session.ingest(speechEvent(0, [{ transcript: MIXED_PREFIX, isFinal: false }]))
+  session.ingest(
+    speechEvent(0, [
+      { transcript: MIXED_PREFIX, isFinal: true },
+      { transcript: '2차 90점 합격 나날이 발전하고 있다', isFinal: false },
+    ]),
+  )
+  session.ingest(speechEvent(0, [{ transcript: MIXED_PREFIX, isFinal: true }]))
+  assert.equal(session.peekHoldTranscript(), MIXED)
+}
+
+{
+  const session = createSpeechTranscriptSession()
+  session.ingest(speechEvent(0, [{ transcript: '1차 50점 합격', isFinal: true }]))
+  session.ingest(speechEvent(0, [{ transcript: '1차 50점 불합격', isFinal: true }]))
+  assert.equal(session.peekHoldTranscript(), '1차 50점 불합격')
+}
+
+{
+  const session = createSpeechTranscriptSession()
+  session.ingest(speechEvent(0, [{ transcript: '불합격2차 90점 합격', isFinal: true }]))
+  assert.equal(session.peekHoldTranscript(), '불합격 2차 90점 합격')
+}
+
 console.log('iosHeldSpeechSession.test.ts passed')

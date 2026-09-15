@@ -2,6 +2,7 @@ import { formatVoiceSummary } from './parseVoiceTranscript.ts'
 import type { StudentDailyTestParseResult } from './parseStudentDailyTestVoice.ts'
 import type { VoiceApplySummary } from './types.ts'
 import { routeVoiceTranscript, type VoiceTranscriptRoute } from './voiceSaveCommand.ts'
+import type { HeldSpeechTrace } from './speechRecognition.ts'
 
 export type DailyTestVoiceDiagnosticKind = 'form-fill' | 'save-command' | 'none'
 
@@ -23,6 +24,11 @@ export type DailyTestVoiceDiagnosticSnapshot = {
   needsReviewCount: number
   needsReviewReason: string
   summaryText: string
+  listenCycleId?: number
+  recognitionGeneration?: number
+  eventSeq?: number
+  lifecycleLog?: string
+  voiceApplyCount?: number
 }
 
 function emptySummary(): VoiceApplySummary {
@@ -77,14 +83,22 @@ export function formatDailyTestVoiceApplyResult(
   }
 }
 
+export function formatHeldSpeechLifecycle(trace: HeldSpeechTrace | null | undefined): string {
+  const lines = trace?.lifecycle
+  if (!lines?.length) return ''
+  return lines.join('\n')
+}
+
 export function buildDailyTestVoiceDiagnostic(args: {
   accumulatedRaw: string
   routed: VoiceTranscriptRoute
   summary: VoiceApplySummary | null
   parseResult?: StudentDailyTestParseResult | null
   endReason: string
+  heldTrace?: HeldSpeechTrace | null
+  voiceApplyCount?: number
 }): DailyTestVoiceDiagnosticSnapshot {
-  const { accumulatedRaw, routed, summary, parseResult, endReason } = args
+  const { accumulatedRaw, routed, summary, parseResult, endReason, heldTrace, voiceApplyCount } = args
   if (routed.kind === 'save-command') {
     return {
       accumulatedRaw,
@@ -100,6 +114,11 @@ export function buildDailyTestVoiceDiagnostic(args: {
       needsReviewCount: 0,
       needsReviewReason: '',
       summaryText: '저장 명령 · 차시 점수 입력 아님',
+      listenCycleId: heldTrace?.listenCycleId,
+      recognitionGeneration: heldTrace?.recognitionGeneration,
+      eventSeq: heldTrace?.eventSeq,
+      lifecycleLog: formatHeldSpeechLifecycle(heldTrace),
+      voiceApplyCount: voiceApplyCount ?? 0,
     }
   }
   if (routed.kind === 'none') {
@@ -117,6 +136,11 @@ export function buildDailyTestVoiceDiagnostic(args: {
       needsReviewCount: 0,
       needsReviewReason: '인식된 내용이 없습니다',
       summaryText: '인식된 내용이 없습니다',
+      listenCycleId: heldTrace?.listenCycleId,
+      recognitionGeneration: heldTrace?.recognitionGeneration,
+      eventSeq: heldTrace?.eventSeq,
+      lifecycleLog: formatHeldSpeechLifecycle(heldTrace),
+      voiceApplyCount: voiceApplyCount ?? 0,
     }
   }
   const next = summary ?? emptySummary()
@@ -138,6 +162,11 @@ export function buildDailyTestVoiceDiagnostic(args: {
     needsReviewCount: next.needsReviewCount,
     needsReviewReason: reason,
     summaryText: reason ? `${formatVoiceSummary(next)} — ${reason}` : formatVoiceSummary(next),
+    listenCycleId: heldTrace?.listenCycleId,
+    recognitionGeneration: heldTrace?.recognitionGeneration,
+    eventSeq: heldTrace?.eventSeq,
+    lifecycleLog: formatHeldSpeechLifecycle(heldTrace),
+    voiceApplyCount: voiceApplyCount ?? (next.appliedCount > 0 ? 1 : 0),
   }
 }
 
@@ -147,6 +176,8 @@ export function buildDailyTestVoiceDiagnosticFromRaw(
   extras?: {
     parseResult?: StudentDailyTestParseResult | null
     endReason?: string
+    heldTrace?: HeldSpeechTrace | null
+    voiceApplyCount?: number
   },
 ): DailyTestVoiceDiagnosticSnapshot {
   return buildDailyTestVoiceDiagnostic({
@@ -155,6 +186,8 @@ export function buildDailyTestVoiceDiagnosticFromRaw(
     summary,
     parseResult: extras?.parseResult,
     endReason: extras?.endReason ?? formatHeldSpeechEndReason({ source: 'speech', userStopped: true }),
+    heldTrace: extras?.heldTrace,
+    voiceApplyCount: extras?.voiceApplyCount,
   })
 }
 

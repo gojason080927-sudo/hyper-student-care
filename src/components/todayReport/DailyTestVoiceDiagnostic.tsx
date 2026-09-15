@@ -39,6 +39,21 @@ export function DailyTestVoiceDiagnostic({
         <p data-voice-end-reason="true" className={`${wrapClass} text-slate-700`}>
           {snapshot.endReason}
         </p>
+        {snapshot.lifecycleLog ? (
+          <details className="mt-1 min-w-0 max-w-full">
+            <summary className="cursor-pointer text-[10px] font-medium text-slate-500">
+              음성 이벤트
+              {snapshot.listenCycleId != null ? ` · cycle ${snapshot.listenCycleId}` : ''}
+              {snapshot.recognitionGeneration != null
+                ? ` · gen ${snapshot.recognitionGeneration}`
+                : ''}
+              {snapshot.voiceApplyCount != null ? ` · apply ${snapshot.voiceApplyCount}` : ''}
+            </summary>
+            <p data-voice-lifecycle="true" className={`${wrapClass} mt-1 text-slate-700`}>
+              {snapshot.lifecycleLog}
+            </p>
+          </details>
+        ) : null}
       </div>
     </div>
   )
