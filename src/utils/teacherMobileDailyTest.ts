@@ -1,15 +1,16 @@
-import type { TestSessionResult } from '../types/records'
+import type { TestSessionResult, TestSessionStatus } from '../types/records'
 import {
   DAILY_TEST_FULL_SCORE,
-  DAILY_TEST_PASS_SCORE,
   getSelectedPassRound,
   getSessionScoreOnFullScale,
+  getStatusFromPercentage,
   normalizeSessionResultsForForm,
   parseScoreDraftToNumber,
   selectFinalPassSession,
   syncLegacyFieldsFromSessions,
   type DailyTestFormData,
 } from './dailyTest'
+import { calcPercentage } from './calc'
 import { EMPTY_DAILY_LEARNING_DIAGNOSIS } from './learningDiagnosis'
 
 export type MobileDailyTestRound = {
@@ -153,9 +154,34 @@ export function selectBulkPassRound(
 }
 
 /**
+ * Score draft → on-screen 합격/불합격. Empty/invalid is neutral.
+ * Reuses the existing 85-point source of truth (percentage on 100).
+ */
+export function visualStatusFromScoreDraft(
+  score: string,
+): Exclude<TestSessionStatus, '미응시'> | null {
+  const numeric = parseScoreDraftToNumber(score)
+  if (numeric === undefined) return null
+  return getStatusFromPercentage(calcPercentage(numeric, DAILY_TEST_FULL_SCORE))
+}
+
+/** 점수가 있는 차시 중 가장 높은 합격 차시만 최종 합격으로 둔다. */
+export function syncBulkPassFromScores(
+  rounds: MobileDailyTestRound[],
+): MobileDailyTestRound[] {
+  const passing = rounds
+    .filter((item) => visualStatusFromScoreDraft(item.score) === '합격')
+    .map((item) => item.round)
+  if (passing.length === 0) {
+    return rounds.map((item) => ({ ...item, passed: false }))
+  }
+  const finalPass = Math.max(...passing) as 1 | 2 | 3 | 4
+  return selectBulkPassRound(rounds, finalPass)
+}
+
+/**
  * 점수 draft 변경.
- * 85점 이상이면 해당 차시를 자동 합격 선택(단일).
- * 합격 차시 점수가 85 미만이 되면 합격 해제.
+ * 기존 85점 기준으로 최종 합격 차시를 다시 고른다.
  */
 export function updateBulkScoreDraft(
   rounds: MobileDailyTestRound[],
@@ -165,15 +191,7 @@ export function updateBulkScoreDraft(
   const next = rounds.map((item) =>
     item.round === round ? { ...item, score } : item,
   )
-  const numeric = parseScoreDraftToNumber(score)
-  if (numeric !== undefined && numeric >= DAILY_TEST_PASS_SCORE) {
-    return selectBulkPassRound(next, round)
-  }
-  return next.map((item) => {
-    if (item.round !== round) return item
-    if (!item.passed) return item
-    return { ...item, passed: false }
-  })
+  return syncBulkPassFromScores(next)
 }
 
 /** 반 전체 저장용 — 전 차시 점수 유지 + 최종 합격 차시 1개 */

@@ -1,6 +1,7 @@
 import type { DailyLearningDiagnosisData, HomeworkStatus } from '../../types/records'
 import { isStudentAbsentOnDate } from '../todayReportAbsence'
 import type { AttendanceRecord } from '../../types/records'
+import { updateBulkScoreDraft } from '../teacherMobileDailyTest'
 import {
   formatVoiceSummary,
   parseAttendanceVoice,
@@ -10,6 +11,7 @@ import {
   parseMaterialVoice,
   parseSectionTextVoice,
 } from './parseVoiceTranscript'
+import { parseStudentDailyTestVoice } from './parseStudentDailyTestVoice'
 import type {
   AttendanceVoiceAssignment,
   AttitudeVoiceAssignment,
@@ -243,6 +245,79 @@ function patchDailyTestDraft<T extends {
   }
   if (row.teacherFeedback) {
     diagnosis.teacherFeedback = row.teacherFeedback
+  }
+  return { ...current, rounds, learningDiagnosis: diagnosis }
+}
+
+export function applyStudentDailyTestDraft<T extends {
+  rounds: Array<{ round: 1 | 2 | 3 | 4; score: string; passed: boolean }>
+  learningDiagnosis: DailyLearningDiagnosisData
+}>(
+  drafts: Record<string, T>,
+  transcript: string,
+  cardStudent: VoiceStudentRef,
+  students: VoiceStudentRef[],
+  attendance: AttendanceRecord[],
+  date: string,
+): { drafts: Record<string, T>; summary: VoiceApplySummary } {
+  const absent = isStudentAbsentOnDate(attendance, cardStudent.id, date)
+  const parsed = parseStudentDailyTestVoice(transcript, cardStudent, students, absent)
+  const next = { ...drafts }
+  if (!parsed.apply) {
+    return {
+      drafts: next,
+      summary: toSummary(0, parsed.skippedAbsent ? [cardStudent.id] : [], parsed.needsReview),
+    }
+  }
+  const current = next[cardStudent.id]
+  if (!current) {
+    return {
+      drafts: next,
+      summary: toSummary(0, [], parsed.needsReview),
+    }
+  }
+  next[cardStudent.id] = patchStudentDailyTestDraft(current, parsed)
+  const appliedCount =
+    parsed.attempts.length +
+    (parsed.conceptLackCount !== undefined ? 1 : 0) +
+    (parsed.calculationErrorCount !== undefined ? 1 : 0) +
+    (parsed.applicationLackCount !== undefined ? 1 : 0) +
+    (parsed.teacherFeedback ? 1 : 0)
+  return {
+    drafts: next,
+    summary: toSummary(appliedCount, [], parsed.needsReview),
+  }
+}
+
+function patchStudentDailyTestDraft<T extends {
+  rounds: Array<{ round: 1 | 2 | 3 | 4; score: string; passed: boolean }>
+  learningDiagnosis: DailyLearningDiagnosisData
+}>(
+  current: T,
+  parsed: {
+    attempts: Array<{ round: 1 | 2 | 3 | 4; score: string }>
+    conceptLackCount?: number
+    calculationErrorCount?: number
+    applicationLackCount?: number
+    teacherFeedback?: string
+  },
+): T {
+  let rounds = current.rounds
+  for (const attempt of parsed.attempts) {
+    rounds = updateBulkScoreDraft(rounds, attempt.round, attempt.score)
+  }
+  const diagnosis = { ...current.learningDiagnosis }
+  if (parsed.conceptLackCount !== undefined) {
+    diagnosis.conceptLackCount = parsed.conceptLackCount
+  }
+  if (parsed.calculationErrorCount !== undefined) {
+    diagnosis.calculationErrorCount = parsed.calculationErrorCount
+  }
+  if (parsed.applicationLackCount !== undefined) {
+    diagnosis.applicationLackCount = parsed.applicationLackCount
+  }
+  if (parsed.teacherFeedback) {
+    diagnosis.teacherFeedback = parsed.teacherFeedback
   }
   return { ...current, rounds, learningDiagnosis: diagnosis }
 }
