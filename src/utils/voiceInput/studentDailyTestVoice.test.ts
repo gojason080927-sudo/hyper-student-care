@@ -186,11 +186,86 @@ function caseOf(text: string) {
 
 {
   const parsed = caseOf('피드백 계산 실수가 많이 줄었고 응용 문제를 더 연습할 것')
+  assert.equal(parsed.apply, true)
   assert.equal(parsed.attempts.length, 0)
   assert.equal(
     parsed.teacherFeedback,
     '계산 실수가 많이 줄었고 응용 문제를 더 연습할 것',
   )
+  assert.equal(parsed.calculationErrorCount, undefined)
+  assert.equal(parsed.applicationLackCount, undefined)
+  const applied = applyCard('피드백 계산 실수가 많이 줄었고 응용 문제를 더 연습할 것')
+  assert.equal(
+    applied.drafts.nagyeong?.learningDiagnosis.teacherFeedback,
+    '계산 실수가 많이 줄었고 응용 문제를 더 연습할 것',
+  )
+  assert.equal(applied.summary.needsReviewCount, 0)
+}
+
+{
+  const parsed = caseOf('강사 피드백 계산 실수가 많이 줄었습니다')
+  assert.equal(parsed.teacherFeedback, '계산 실수가 많이 줄었습니다')
+}
+
+{
+  const parsed = caseOf('강사의 피드백 응용 문제를 더 연습할 것')
+  assert.equal(parsed.teacherFeedback, '응용 문제를 더 연습할 것')
+}
+
+{
+  const parsed = caseOf('피드 백 계산 실수가 많이 줄었고 응용 문제를 더 연습할 것')
+  assert.equal(parsed.teacherFeedback, '계산 실수가 많이 줄었고 응용 문제를 더 연습할 것')
+}
+
+{
+  const parsed = caseOf(
+    '1차 80점 불합격, 2차 90점 합격, 피드백 계산 실수가 많이 줄었고 응용 문제를 더 연습할 것',
+  )
+  assert.deepEqual(
+    parsed.attempts.map((row) => [row.round, row.score]),
+    [
+      [1, '80'],
+      [2, '90'],
+    ],
+  )
+  assert.equal(
+    parsed.teacherFeedback,
+    '계산 실수가 많이 줄었고 응용 문제를 더 연습할 것',
+  )
+  const applied = applyCard(
+    '1차 80점 불합격, 2차 90점 합격, 피드백 계산 실수가 많이 줄었고 응용 문제를 더 연습할 것',
+  )
+  assert.equal(applied.drafts.nagyeong?.rounds[0]?.score, '80')
+  assert.equal(applied.drafts.nagyeong?.rounds[1]?.score, '90')
+  assert.equal(visualStatusFromScoreDraft('80'), '불합격')
+  assert.equal(visualStatusFromScoreDraft('90'), '합격')
+  assert.equal(applied.drafts.nagyeong?.rounds.find((row) => row.passed)?.round, 2)
+  assert.equal(
+    applied.drafts.nagyeong?.learningDiagnosis.teacherFeedback,
+    '계산 실수가 많이 줄었고 응용 문제를 더 연습할 것',
+  )
+}
+
+{
+  const parsed = caseOf('아주 아주 좋아졌습니다'.replace(/^/, '피드백 '))
+  assert.equal(parsed.teacherFeedback, '아주 아주 좋아졌습니다')
+}
+
+{
+  const parsed = caseOf('피드백')
+  assert.equal(parsed.apply, false)
+  const drafts = {
+    nagyeong: {
+      rounds: emptyRounds(),
+      learningDiagnosis: {
+        ...EMPTY_DAILY_LEARNING_DIAGNOSIS,
+        teacherFeedback: '기존 피드백',
+      },
+    },
+    doyoung: emptyDraft(),
+  }
+  const applied = applyCard('피드백', drafts)
+  assert.equal(applied.drafts.nagyeong?.learningDiagnosis.teacherFeedback, '기존 피드백')
 }
 
 {
@@ -342,6 +417,14 @@ assert.equal(visualStatusFromScoreDraft('-1'), null)
   assert.equal(applied.drafts.nagyeong?.rounds[1]?.score, '100')
   assert.equal(applied.drafts.nagyeong?.learningDiagnosis.applicationLackCount, 2)
   assert.equal(applied.drafts.nagyeong?.learningDiagnosis.teacherFeedback, '기존 피드백')
+  const feedbackOnly = applyCard('피드백 계산 실수가 많이 줄었고 응용 문제를 더 연습할 것', drafts)
+  assert.equal(feedbackOnly.drafts.nagyeong?.rounds[0]?.score, '80')
+  assert.equal(feedbackOnly.drafts.nagyeong?.rounds[1]?.score, '100')
+  assert.equal(feedbackOnly.drafts.nagyeong?.learningDiagnosis.applicationLackCount, 2)
+  assert.equal(
+    feedbackOnly.drafts.nagyeong?.learningDiagnosis.teacherFeedback,
+    '계산 실수가 많이 줄었고 응용 문제를 더 연습할 것',
+  )
   assert.equal(applied.drafts.doyoung?.rounds[0]?.score, '90')
   assert.equal(applied.drafts.nagyeong?.rounds.find((row) => row.passed)?.round, 2)
 }

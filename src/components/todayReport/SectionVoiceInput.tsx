@@ -17,6 +17,8 @@ type SectionVoiceInputProps = {
   onApply: (transcript: string) => VoiceApplySummary
   /** Existing section bulk-save handler. Voice never writes to DB itself. */
   onSaveCommand?: () => void
+  /** Daily-test student mic: user taps again to stop; browser onend does not apply. */
+  explicitStop?: boolean
 }
 
 /**
@@ -30,6 +32,7 @@ export function SectionVoiceInput({
   disabled = false,
   onApply,
   onSaveCommand,
+  explicitStop = false,
 }: SectionVoiceInputProps) {
   const reactId = useId()
   const fallbackId = `${reactId}-fallback`
@@ -90,6 +93,7 @@ export function SectionVoiceInput({
     setInterim('')
     appliedThisSessionRef.current = false
     const session = startKoreanSpeechRecognition({
+      holdUntilExplicitStop: explicitStop,
       onInterim: setInterim,
       onFinal: (text) => {
         if (appliedThisSessionRef.current) return
@@ -147,7 +151,11 @@ export function SectionVoiceInput({
             ) : (
               <Mic className="h-3.5 w-3.5 shrink-0" aria-hidden />
             )}
-            {chipLabel ? <span className="max-w-[5.5rem] truncate">{chipLabel}</span> : null}
+            {listening && explicitStop ? (
+              <span className="shrink-0">듣는 중 · 종료</span>
+            ) : chipLabel ? (
+              <span className="max-w-[5.5rem] truncate">{chipLabel}</span>
+            ) : null}
           </button>
         ) : (
           <span className="text-[11px] font-medium text-slate-500">음성 미지원</span>
@@ -163,6 +171,11 @@ export function SectionVoiceInput({
           텍스트
         </button>
       </div>
+      {listening && explicitStop ? (
+        <p className="mt-1 w-full min-w-0 max-w-full whitespace-normal break-words text-[11px] leading-4 text-rose-800 [overflow-wrap:anywhere]">
+          🔴 듣는 중 · 다 말한 뒤 종료를 누르세요
+        </p>
+      ) : null}
       {listening && interim ? (
         <p className="mt-1 w-full min-w-0 max-w-full whitespace-normal break-words text-[11px] leading-4 text-slate-500 [overflow-wrap:anywhere]">
           듣는 중: {interim}
