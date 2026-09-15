@@ -1,5 +1,5 @@
 /**
- * 강사 Today Report 모바일 레이아웃 360/390/430 실측.
+ * 강사 Today Report 모바일 레이아웃 360/390/430 + iPhone-representative viewports 실측.
  * 실행: node scripts/_verify-teacher-today-report-layout.mjs
  */
 import { spawn } from 'node:child_process'
@@ -8,7 +8,13 @@ import { chromium } from 'playwright'
 
 const PORT = 5175
 const URL = `http://127.0.0.1:${PORT}/dev/teacher-today-report-layout`
-const WIDTHS = [360, 390, 430]
+const VIEWPORTS = [
+  { width: 360, height: 800 },
+  { width: 390, height: 844 },
+  { width: 430, height: 932 },
+  { width: 375, height: 812 },
+  { width: 393, height: 852 },
+]
 const ARTIFACT_DIR = '/opt/cursor/artifacts/teacher-today-report-layout'
 const EXPECTED_ORDER = [
   '출결',
@@ -71,9 +77,9 @@ const browser = await chromium.launch({ headless: true })
 const report = []
 
 try {
-  for (const width of WIDTHS) {
+  for (const { width, height } of VIEWPORTS) {
     const page = await browser.newPage({
-      viewport: { width, height: 844 },
+      viewport: { width, height },
       deviceScaleFactor: 2,
     })
     await page.goto(URL, { waitUntil: 'domcontentloaded', timeout: 60000 })
@@ -158,6 +164,12 @@ try {
       if (voiceOverflowText.includes('확인 필요') && voiceOverflowText.length > 400) {
         fails.push('voice status text unexpectedly long')
       }
+    }
+    const dailyCard = await page.locator('[data-preview-block="daily-test"]').innerText()
+    if (!dailyCard.includes('음성입력')) fails.push('daily-test mic chip missing')
+    if (!dailyCard.includes('강사의 피드백')) fails.push('daily-test feedback label missing')
+    if (!dailyCard.includes('2차 함수에 대한 이해가 늦는 거 같다')) {
+      fails.push('daily-test feedback textarea missing Samsung sentence')
     }
 
     const homeworkOk =

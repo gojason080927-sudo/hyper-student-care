@@ -112,6 +112,28 @@ assert.equal(isFatalHeldSpeechError('no-speech'), false)
   assert.equal(result.restartCountSeen, 1)
 }
 
+{
+  const result = run([
+    { type: 'committed', text: '2차 함수에 대한 이해가 늦는 거 같다' },
+    { type: 'browser-end' },
+    { type: 'restart-blocked' },
+    { type: 'browser-end' },
+  ])
+  assert.equal(result.lastApply, null)
+  assert.equal(result.restartCountSeen, 1)
+  assert.equal(result.state.restartDisabled, true)
+  assert.equal(result.state.applied, false)
+  const stopped = run([
+    { type: 'committed', text: '2차 함수에 대한 이해가 늦는 거 같다' },
+    { type: 'browser-end' },
+    { type: 'restart-blocked' },
+    { type: 'user-stop' },
+    { type: 'browser-end' },
+  ])
+  assert.equal(stopped.lastApply, '2차 함수에 대한 이해가 늦는 거 같다')
+  assert.equal(stopped.state.applied, true)
+}
+
 // I unmount prevents restart and does not apply
 {
   const result = run([
