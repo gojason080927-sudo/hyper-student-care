@@ -25,8 +25,6 @@ export type StudentDailyTestParseResult = {
 }
 
 const FEEDBACK_RE = /(?:강사의\s*피드백|강사\s*피드백|피\s*드\s*백)\s*[:：,]?\s*/
-const ATTEMPT_SPLIT_RE =
-  /(?=[1-4]\s*회?\s*차|[1-4]\s*차시|일차|이차|삼차|사차|일\s*차|이\s*차|삼\s*차|사\s*차|첫\s*번째|첫번째|두\s*번째|두번째|세\s*번째|세번째|네\s*번째|네번째)/
 const ATTEMPT_HEAD_RE =
   /^([1-4]\s*회?\s*차|[1-4]\s*차시|일차|이차|삼차|사차|일\s*차|이\s*차|삼\s*차|사\s*차|첫\s*번째|첫번째|두\s*번째|두번째|세\s*번째|세번째|네\s*번째|네번째)/
 
@@ -44,6 +42,8 @@ function roundFromMarker(marker: string): 1 | 2 | 3 | 4 | null {
 
 export const SAMSUNG_RYU_DAILY_TEST_TRANSCRIPT =
   '류정현 1차 80 불합격 2차 95 합격 2차 함수 부분을 부분에 이해가 늦는 거 같다'
+export const SAMSUNG_RYU_FEEDBACK_ONLY_TRANSCRIPT =
+  '2차 함수에 대한 이해가 늦는 거 같다'
 
 function splitFeedback(transcript: string): { structured: string; feedback?: string } {
   const match = transcript.match(FEEDBACK_RE)
@@ -57,16 +57,6 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-function stripCardStudentName(text: string, cardStudent: VoiceStudentRef): string {
-  const name = cardStudent.name.replace(/\s+/g, '')
-  if (name.length < 2) return text
-  const pattern = name
-    .split('')
-    .map((ch) => escapeRegExp(ch))
-    .join('\\s*')
-  return text.replace(new RegExp(pattern, 'g'), ' ').replace(/\s+/g, ' ').trim()
-}
-
 function stripSidTokens(text: string): string {
   return text.replace(SID_RE, ' ').replace(/\s+/g, ' ').trim()
 }
@@ -75,49 +65,61 @@ function trimResidual(text: string): string {
   return text.replace(/^[\s,，.．。、;；:：~…·]+/, '').replace(/[\s,，.．。、;；:：~…·]+$/, '').trim()
 }
 
-/** Attempt head without score/status is not a valid attempt payload. */
-function splitAttemptHeadAndRest(piece: string): {
-  head: string
+const ATTEMPT_HEAD_GLOBAL = new RegExp(ATTEMPT_HEAD_RE.source.slice(1), 'g')
+/** Digits may omit 점; Korean numerals require 점 so "이해가" is not a score. */
+const ATTEMPT_PAYLOAD_RE =
+  /^\s*(?:\d{1,3}(?:\s*점)?|[영공일이삼사오육륙칠팔구십백]{1,4}\s*점)(?:\s*(?:불합격|합격))?(?=\s|$|,|，)/
+
+type AttemptSpan = {
+  start: number
+  end: number
   round: 1 | 2 | 3 | 4
-  rest: string
-} | null {
-  const head = piece.match(ATTEMPT_HEAD_RE)
-  if (!head?.[1]) return null
-  const round = roundFromMarker(head[1])
-  if (!round) return null
-  return { head: head[1], round, rest: piece.slice(head[0].length) }
+  score: { score: string; invalid: boolean }
+  spoken: string
 }
 
-function consumeAttemptPayload(piece: string): {
-  consumed: string
-  residual: string
-  score: { score: string; invalid: boolean } | null
-} {
-  const split = splitAttemptHeadAndRest(piece)
-  if (!split) {
-    return { consumed: '', residual: piece, score: null }
-  }
-  const headLen = piece.length - split.rest.length
-  const score = extractAttemptScore(piece)
-  const payload = score
-    ? split.rest.match(
-        /^\s*(?:\d{1,3}|[영공일이삼사오육륙칠팔구십백]{1,4})(?:\s*점)?\s*(?:불합격|합격)?/,
-      )
-    : null
-  if (!score || !payload) {
-    const ws = split.rest.match(/^\s*/)?.[0] ?? ''
-    return {
-      consumed: piece.slice(0, headLen + ws.length),
-      residual: split.rest.slice(ws.length),
-      score: null,
+/** 1차/2차 heads are attempt commands only when a score payload follows. */
+function collectValidAttemptSpans(text: string): AttemptSpan[] {
+  const spans: AttemptSpan[] = []
+  const re = new RegExp(ATTEMPT_HEAD_GLOBAL.source, 'g')
+  let match: RegExpExecArray | null = re.exec(text)
+  while (match) {
+    const head = match[0]
+    const round = roundFromMarker(head)
+    const start = match.index
+    const after = text.slice(start + head.length)
+    const payload = after.match(ATTEMPT_PAYLOAD_RE)
+    if (!round || !payload) {
+      match = re.exec(text)
+      continue
     }
+    const spoken = `${head}${payload[0]}`
+    const score = extractAttemptScore(spoken)
+    if (!score) {
+      match = re.exec(text)
+      continue
+    }
+    const end = start + head.length + payload[0].length
+    spans.push({ start, end, round, score, spoken })
+    re.lastIndex = end
+    match = re.exec(text)
   }
-  const consumed = piece.slice(0, headLen + payload[0].length)
-  return {
-    consumed,
-    residual: piece.slice(consumed.length),
-    score,
+  return spans
+}
+
+function stripLeadingCardName(text: string, cardStudent: VoiceStudentRef): string {
+  const name = cardStudent.name.replace(/\s+/g, '')
+  if (name.length < 2) return text
+  const pattern = new RegExp(`^${name.split('').map((ch) => escapeRegExp(ch)).join('\\s*')}\\s*`)
+  return text.replace(pattern, '')
+}
+
+function maskRanges(text: string, ranges: Array<{ start: number; end: number }>): string {
+  let next = text
+  for (const range of [...ranges].sort((a, b) => b.start - a.start)) {
+    next = `${next.slice(0, range.start)} ${next.slice(range.end)}`
   }
+  return next.replace(/\s+/g, ' ').trim()
 }
 
 const ERROR_SPAN_RE =
@@ -175,13 +177,6 @@ function isFillerResidual(text: string): boolean {
 }
 
 function residualHasUnresolvedStructured(text: string): boolean {
-  if (
-    /(?:^|\s)(?:[1-4]\s*회?\s*차|[1-4]\s*차시|일차|이차|삼차|사차|일\s*차|이\s*차|삼\s*차|사\s*차)(?:\s|$)/.test(
-      text,
-    )
-  ) {
-    return true
-  }
   if (/\d{1,3}\s*점/.test(text)) return true
   if (/불합격|합격/.test(text)) return true
   if (/점수/.test(text)) return true
@@ -322,46 +317,39 @@ export function parseStudentDailyTestVoice(
   }
 
   const attempts: StudentDailyTestAttemptPatch[] = []
-  const residualParts: string[] = []
-  const pieces = structuredNorm.split(ATTEMPT_SPLIT_RE).map((part) => part.trim()).filter(Boolean)
-  for (const piece of pieces) {
-    const split = splitAttemptHeadAndRest(piece)
-    if (!split) {
-      residualParts.push(
-        stripCardStudentName(stripSidTokens(piece), cardStudent),
-      )
-      continue
-    }
-    const consumed = consumeAttemptPayload(piece)
-    if (!consumed.score) {
-      residualParts.push(consumed.residual)
-      continue
-    }
-    if (consumed.score.invalid) {
+  const attemptSpans = collectValidAttemptSpans(structuredNorm)
+  for (const span of attemptSpans) {
+    if (span.score.invalid) {
       needsReview.push({
-        label: `${cardStudent.name} ${split.round}차`,
+        label: `${cardStudent.name} ${span.round}차`,
         reason: '점수 범위 확인 필요',
       })
       continue
     }
-    const result = spokenResult(consumed.consumed)
-    const derived = visualStatusFromScoreDraft(consumed.score.score)
+    const result = spokenResult(span.spoken)
+    const derived = visualStatusFromScoreDraft(span.score.score)
     const conflict =
       (result === '합격' && derived !== '합격') ||
       (result === '불합격' && derived !== '불합격')
     if (conflict) {
       needsReview.push({
-        label: `${cardStudent.name} ${split.round}차`,
-        reason: `${consumed.score.score}점은 기존 85점 기준과 말한 합격/불합격이 다름`,
+        label: `${cardStudent.name} ${span.round}차`,
+        reason: `${span.score.score}점은 기존 85점 기준과 말한 합격/불합격이 다름`,
       })
       continue
     }
-    attempts.push({ round: split.round, score: consumed.score.score, conflict: false })
-    residualParts.push(consumed.residual)
+    attempts.push({ round: span.round, score: span.score.score, conflict: false })
   }
 
-  const residualAfterAttempts = trimResidual(residualParts.filter(Boolean).join(' '))
-  const errorSpans = extractErrorAnalysisSpans(residualAfterAttempts)
+  const afterAttempts = maskRanges(
+    structuredNorm,
+    attemptSpans.map((span) => ({ start: span.start, end: span.end })),
+  )
+  const withoutLeadingName = stripLeadingCardName(
+    stripSidTokens(afterAttempts),
+    cardStudent,
+  )
+  const errorSpans = extractErrorAnalysisSpans(withoutLeadingName)
   const mentionOnly = consumeMentionOnlyErrorPhrase(errorSpans.rest)
   let conceptLackCount = errorSpans.conceptLackCount
   let calculationErrorCount = errorSpans.calculationErrorCount
@@ -374,14 +362,28 @@ export function parseStudentDailyTestVoice(
     applicationLackCount = mentionOnly.applicationLackCount
   }
 
-  const residual = trimResidual(mentionOnly.rest)
+  const residual = trimResidual(stripLeadingCardName(mentionOnly.rest, cardStudent))
   const hasStructuredItem =
     attempts.length > 0 ||
     conceptLackCount !== undefined ||
     calculationErrorCount !== undefined ||
     applicationLackCount !== undefined
 
-  const hasStructured = hasStructuredItem || Boolean(feedback)
+  let teacherFeedback = feedback?.slice(0, 500)
+  if (!teacherFeedback) {
+    if (residualHasUnresolvedStructured(residual)) {
+      if (hasStructuredItem) {
+        needsReview.push({
+          label: cardStudent.name,
+          reason: '점수·오답분석·피드백을 확인해야 합니다',
+        })
+      }
+    } else if (!isFillerResidual(residual)) {
+      teacherFeedback = residual.slice(0, 500)
+    }
+  }
+
+  const hasStructured = hasStructuredItem || Boolean(teacherFeedback)
 
   if (!hasStructured) {
     needsReview.push({
@@ -389,18 +391,6 @@ export function parseStudentDailyTestVoice(
       reason: '점수·오답분석·피드백을 확인해야 합니다',
     })
     return { apply: false, skippedAbsent: false, attempts: [], needsReview }
-  }
-
-  let teacherFeedback = feedback?.slice(0, 500)
-  if (!teacherFeedback && hasStructuredItem && residual) {
-    if (residualHasUnresolvedStructured(residual)) {
-      needsReview.push({
-        label: cardStudent.name,
-        reason: '점수·오답분석·피드백을 확인해야 합니다',
-      })
-    } else if (!isFillerResidual(residual)) {
-      teacherFeedback = residual.slice(0, 500)
-    }
   }
 
   return {
