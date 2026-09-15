@@ -149,6 +149,7 @@ export function ClassMaterialPrepBulkPanel({
           chipLabel="교재"
           compact={compact}
           disabled={saving}
+          explicitStop
           onApply={(transcript) => {
             const applied = applyMaterialDrafts(
               drafts,

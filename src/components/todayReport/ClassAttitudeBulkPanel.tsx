@@ -150,6 +150,7 @@ export function ClassAttitudeBulkPanel({
           chipLabel="태도"
           compact={compact}
           disabled={saving}
+          explicitStop
           onApply={(transcript) => {
             const applied = applyAttitudeDrafts(drafts, transcript, students, attendance, date)
             markChangedDraftKeys(drafts, applied.drafts, dirtyAttitudeKeysRef.current)

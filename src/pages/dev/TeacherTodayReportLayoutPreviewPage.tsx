@@ -78,6 +78,7 @@ export function TeacherTodayReportLayoutPreviewPage() {
                 label="출결 음성 입력"
                 chipLabel="출결"
                 compact
+                explicitStop
                 onApply={() => ({
                   appliedCount: 0,
                   excludedAbsentCount: 0,
@@ -112,7 +113,21 @@ export function TeacherTodayReportLayoutPreviewPage() {
 
           <section className="tm-card px-3 py-3" data-preview-block="homework">
             <h2 className="mb-2 text-sm font-bold text-[#163A70]">숙제 수행 결과</h2>
-            <p className="mb-2 text-sm font-bold text-[#163A70]">김하이퍼</p>
+            <div className="mb-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-bold text-[#163A70]">김하이퍼</p>
+              <SectionVoiceInput
+                label="수학 개념 숙제 음성 입력"
+                chipLabel="숙제"
+                compact
+                explicitStop
+                onApply={() => ({
+                  appliedCount: 0,
+                  excludedAbsentCount: 0,
+                  needsReviewCount: 0,
+                  needsReview: [],
+                })}
+              />
+            </div>
             <div className="flex flex-wrap gap-1.5">
               {['완료', '부분 완료'].map((status) => (
                 <span
@@ -125,13 +140,49 @@ export function TeacherTodayReportLayoutPreviewPage() {
             </div>
           </section>
 
+          <section className="tm-card px-3 py-3" data-preview-block="assignment">
+            <h2 className="mb-2 text-sm font-bold text-[#163A70]">반 공통 오늘 과제</h2>
+            <div className="flex min-w-0 items-start justify-between gap-2">
+              <p className="text-xs font-bold text-[#163A70]">수학 개념</p>
+              <SectionVoiceInput
+                label="수학 개념 오늘 과제 음성 입력"
+                chipLabel="과제"
+                compact
+                explicitStop
+                onApply={() => ({
+                  appliedCount: 0,
+                  excludedAbsentCount: 0,
+                  needsReviewCount: 0,
+                  needsReview: [],
+                })}
+              />
+            </div>
+            <div className="mt-1.5 min-h-[2.5rem] w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm text-slate-800">
+              77페이지에서 80페이지
+            </div>
+          </section>
+
           <section className="tm-card px-3 py-3" data-preview-block="absent-excluded">
             <h2 className="mb-2 text-sm font-bold text-[#163A70]">교재 준비</h2>
-            <div className="mb-1.5 flex min-w-0 flex-wrap items-center gap-1.5">
-              <p className="min-w-0 text-sm font-bold text-[#163A70]">김민재</p>
-              <span className="inline-flex shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
-                결석 · 입력 제외
-              </span>
+            <div className="mb-1.5 flex min-w-0 flex-wrap items-center justify-between gap-2">
+              <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                <p className="min-w-0 text-sm font-bold text-[#163A70]">김민재</p>
+                <span className="inline-flex shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
+                  결석 · 입력 제외
+                </span>
+              </div>
+              <SectionVoiceInput
+                label="교재 준비 음성 입력"
+                chipLabel="교재"
+                compact
+                explicitStop
+                onApply={() => ({
+                  appliedCount: 0,
+                  excludedAbsentCount: 0,
+                  needsReviewCount: 0,
+                  needsReview: [],
+                })}
+              />
             </div>
             <p className="text-[11px] leading-5 text-slate-500">
               결석으로 저장되어 이 날짜의 수업 참여 항목에서 제외됩니다.
@@ -149,6 +200,7 @@ export function TeacherTodayReportLayoutPreviewPage() {
                 label="수학 개념 진도 음성 입력"
                 chipLabel="진도"
                 compact
+                explicitStop
                 onApply={() => ({
                   appliedCount: 2,
                   excludedAbsentCount: 0,
@@ -265,13 +317,28 @@ export function TeacherTodayReportLayoutPreviewPage() {
             <h2 className="mb-2 text-sm font-bold text-[#163A70]">수업태도</h2>
             <div className="mb-1.5 flex min-w-0 flex-wrap items-center gap-1.5">
               <p className="min-w-0 text-sm font-bold text-[#163A70]">김하이퍼</p>
-              <button
-                type="button"
-                className="ml-auto inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700"
-              >
-                <MessageCircle className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                카카오
-              </button>
+              <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1">
+                <SectionVoiceInput
+                  label="수업태도 음성 입력"
+                  chipLabel="태도"
+                  compact
+                  explicitStop
+                  hideStatus
+                  onApply={() => ({
+                    appliedCount: 0,
+                    excludedAbsentCount: 0,
+                    needsReviewCount: 0,
+                    needsReview: [],
+                  })}
+                />
+                <button
+                  type="button"
+                  className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700"
+                >
+                  <MessageCircle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  카카오
+                </button>
+              </div>
             </div>
             <ClassAttitudePicker
               issues={issues}
