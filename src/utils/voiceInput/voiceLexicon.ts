@@ -213,6 +213,28 @@ export function parseKoreanScoreToken(token: string): number | null {
   return null
 }
 
+/** Safe classroom page numerals. Unknown patterns return null; does not invent values. */
+export function parseKoreanPageToken(token: string): number | null {
+  const compact = compactText(token)
+  if (!compact) return null
+  const score = parseKoreanScoreToken(compact)
+  if (score != null) return score
+  const idx = compact.indexOf('백')
+  if (idx < 0) return null
+  const left = compact.slice(0, idx)
+  const right = compact.slice(idx + 1)
+  const hundreds = left === '' ? 1 : parseKoreanScoreToken(left)
+  if (hundreds == null || hundreds < 1 || hundreds > 9) return null
+  let rest = 0
+  if (right) {
+    const parsed = parseKoreanScoreToken(right)
+    if (parsed == null) return null
+    rest = parsed
+  }
+  const n = hundreds * 100 + rest
+  return n >= 1 && n <= 2000 ? n : null
+}
+
 export function replaceKoreanScores(clause: string): string {
   return clause.replace(/([영공일이삼사오육륙칠팔구십백]{1,4})\s*점/g, (full, token: string) => {
     const n = parseKoreanScoreToken(token)

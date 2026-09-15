@@ -141,6 +141,42 @@ export function TeacherTodayReportLayoutPreviewPage() {
             </button>
           </section>
 
+          <section className="tm-card px-3 py-3" data-preview-block="progress">
+            <h2 className="mb-2 text-sm font-bold text-[#163A70]">반 공통 오늘의 진도</h2>
+            <div className="flex min-w-0 items-start justify-between gap-2">
+              <p className="text-xs font-bold text-[#163A70]">수학 개념</p>
+              <SectionVoiceInput
+                label="수학 개념 진도 음성 입력"
+                chipLabel="진도"
+                compact
+                onApply={() => ({
+                  appliedCount: 2,
+                  excludedAbsentCount: 0,
+                  needsReviewCount: 0,
+                  needsReview: [],
+                })}
+              />
+            </div>
+            <label className="mb-0.5 mt-1.5 block text-[11px] font-semibold text-slate-600">현재 진도</label>
+            <div className="min-h-[2.5rem] w-full rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm text-slate-800">
+              이차함수 최대최소
+            </div>
+            <div className="mt-1.5 grid min-w-0 grid-cols-2 gap-1.5">
+              <div className="min-w-0">
+                <label className="mb-0.5 block text-[11px] font-semibold text-slate-600">현재 페이지</label>
+                <div className="min-h-9 rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm text-slate-800">
+                  35
+                </div>
+              </div>
+              <div className="min-w-0">
+                <label className="mb-0.5 block text-[11px] font-semibold text-slate-600">전체 페이지</label>
+                <div className="min-h-9 rounded-lg border border-slate-200 bg-white px-2 py-1 text-sm text-slate-800">
+                  180
+                </div>
+              </div>
+            </div>
+          </section>
+
           <section className="tm-card px-3 py-3" data-preview-block="daily-test">
             <h2 className="mb-2 text-sm font-bold text-[#163A70]">일일테스트</h2>
             <p className="mb-1.5 text-xs font-semibold text-slate-700">시험명</p>
@@ -240,10 +276,47 @@ export function TeacherTodayReportLayoutPreviewPage() {
             <ClassAttitudePicker
               issues={issues}
               note={note}
+              hideNote
               onIssuesChange={setIssues}
               onNoteChange={setNote}
               compact
             />
+            <div data-attitude-comment="true" className="mt-1.5 min-w-0">
+              <div className="mb-0.5 flex min-w-0 items-center justify-between gap-1">
+                <label className="block text-xs font-semibold text-slate-600">강사의 의견</label>
+                <SectionVoiceInput
+                  label="김하이퍼 강사의 의견 음성 입력"
+                  chipLabel="의견"
+                  compact
+                  hideStatus
+                  explicitStop
+                  onApply={() => ({
+                    appliedCount: 1,
+                    excludedAbsentCount: 0,
+                    needsReviewCount: 0,
+                    needsReview: [],
+                  })}
+                />
+              </div>
+              <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value.slice(0, 500))}
+                rows={2}
+                placeholder="오늘 수업에서 확인한 의견을 입력"
+                className="w-full min-w-0 max-w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800"
+              />
+            </div>
+            <div className="mt-3 border-t border-[rgba(22,58,112,0.06)] pt-2.5" data-absent-excluded="true">
+              <div className="mb-1 flex min-w-0 flex-wrap items-center gap-1.5">
+                <p className="min-w-0 text-sm font-bold text-[#163A70]">김민재</p>
+                <span className="inline-flex shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500">
+                  결석 · 입력 제외
+                </span>
+              </div>
+              <p className="text-[11px] leading-5 text-slate-500">
+                결석으로 저장되어 이 날짜의 수업 참여 항목에서 제외됩니다.
+              </p>
+            </div>
             <button type="button" className="tm-btn-primary mt-2 w-full min-h-11 text-sm font-semibold">
               수업태도 일괄 저장
             </button>

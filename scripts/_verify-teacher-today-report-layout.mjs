@@ -127,14 +127,13 @@ try {
     }
 
     await page.getByRole('button', { name: '졸음', exact: true }).click()
-    await page.waitForSelector('[data-attitude-note]')
-    const placeholder = await page.locator('[data-attitude-note] textarea').getAttribute('placeholder')
-    if (placeholder !== '수업 중 확인한 내용을 간단히 입력') {
-      fails.push(`memo placeholder: ${placeholder}`)
+    const commentBox = page.locator('[data-attitude-comment] textarea')
+    if ((await commentBox.count()) === 0) fails.push('강사의 의견 textarea missing')
+    const commentPlaceholder = await commentBox.getAttribute('placeholder')
+    if (commentPlaceholder !== '오늘 수업에서 확인한 의견을 입력') {
+      fails.push(`comment placeholder: ${commentPlaceholder}`)
     }
-    await page.locator('[data-attitude-note] textarea').fill(
-      '전날 수면 부족으로 보이며 후반부에는 집중도 회복',
-    )
+    await commentBox.fill('전날 수면 부족으로 보이며 후반부에는 집중도 회복')
     await page.screenshot({
       path: `${ARTIFACT_DIR}/teacher-today-report-${name}-attitude-memo.png`,
       fullPage: true,
@@ -143,7 +142,32 @@ try {
     await page.getByRole('button', { name: '졸음', exact: true }).click()
     await page.waitForSelector('[data-attitude-state="excellent"]')
     if ((await page.locator('[data-attitude-note]').count()) !== 0) {
-      fails.push('memo still visible after collapse')
+      fails.push('issue-gated memo still visible after collapse')
+    }
+    if ((await page.locator('[data-attitude-comment]').count()) === 0) {
+      fails.push('강사의 의견 missing after collapse')
+    }
+
+    const progressBlock = await page.locator('[data-preview-block="progress"]').innerText()
+    if (!progressBlock.includes('현재 진도')) fails.push('progress current text missing')
+    if (!progressBlock.includes('현재 페이지')) fails.push('progress current page missing')
+    if (!progressBlock.includes('전체 페이지')) fails.push('progress total page missing')
+    if ((await page.locator('[data-preview-block="progress"] button:text-is("진도")').count()) === 0) {
+      fails.push('progress mic chip missing')
+    }
+
+    const attitudeBlock = await page.locator('[data-preview-block="attitude"]').innerText()
+    if (!attitudeBlock.includes('강사의 의견')) fails.push('attitude comment label missing')
+    if (!attitudeBlock.includes('카카오')) fails.push('Kakao missing')
+    if ((await page.locator('[data-preview-block="attitude"] button:text-is("의견")').count()) === 0) {
+      fails.push('attitude comment mic missing')
+    }
+    if (!attitudeBlock.includes('결석 · 입력 제외')) fails.push('attitude absent row missing')
+    if ((await page.locator('[data-preview-block="attitude"] [data-absent-excluded="true"]').count()) === 0) {
+      fails.push('attitude absent exclusion marker missing')
+    }
+    if ((await page.locator('[data-preview-block="attitude"] [data-attitude-comment]').count()) !== 1) {
+      fails.push('attitude comment should exist only for attending student')
     }
 
     const attendanceOk =
@@ -169,6 +193,13 @@ try {
     const dailyCard = await page.locator('[data-preview-block="daily-test"]').innerText()
     if (!dailyCard.includes('음성입력')) fails.push('daily-test mic chip missing')
     if (!dailyCard.includes('강사의 피드백')) fails.push('daily-test feedback label missing')
+    if (!dailyCard.includes('오답 분석')) fails.push('daily-test error analysis missing')
+    if (!dailyCard.includes('개념 부족')) fails.push('daily-test concept error missing')
+    if (!dailyCard.includes('계산 실수')) fails.push('daily-test calculation error missing')
+    if (!dailyCard.includes('응용 능력 부족')) fails.push('daily-test application error missing')
+    for (const round of ['1차', '2차', '3차', '4차']) {
+      if (!dailyCard.includes(round)) fails.push(`daily-test ${round} missing`)
+    }
     if (!dailyCard.includes('2차 함수에 대한 이해가 늦는 거 같다')) {
       fails.push('daily-test feedback textarea missing Samsung sentence')
     }

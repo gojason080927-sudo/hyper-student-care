@@ -48,7 +48,7 @@ function splitClauses(tokenized: string): string[] {
 }
 
 function extractMemo(clause: string): { clause: string; memo: string } {
-  const memoMatch = clause.match(/(?:메모|노트|피드백)\s*[:：]?\s*(.+)$/)
+  const memoMatch = clause.match(/(?:강사의\s*의견|강사\s*의견|의견|메모|노트|피드백)\s*[:：]?\s*(.+)$/)
   if (!memoMatch) return { clause, memo: '' }
   const idx = memoMatch.index ?? -1
   if (idx < 0) return { clause, memo: '' }

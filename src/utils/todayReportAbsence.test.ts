@@ -132,6 +132,19 @@ assert.equal(
   false,
 )
 
+const noteOnlyTargets = selectAttitudeBulkSaveTargets(
+  [김도영, 김민재],
+  [attendance('doyoung', '출석'), attendance('minjae', '결석', '인정')],
+  DATE,
+  {
+    doyoung: { issues: [], note: '오늘 집중력이 좋았다' },
+    minjae: { issues: ['졸음'], note: '결석 의견은 저장하면 안 됨' },
+  },
+)
+assert.deepEqual(noteOnlyTargets, [
+  { student: 김도영, attitudeIssues: [], attitudeNote: '오늘 집중력이 좋았다' },
+])
+
 // CASE E — 결석 → 출석 수정 후 다시 후속 입력 대상
 const afterPresent = [attendance('minjae', '출석')]
 assert.equal(isFollowOnInputRequired(afterPresent, 'minjae', DATE), true)
@@ -186,6 +199,10 @@ assert.match(attitudePanel, /수업태도 일괄 저장/)
 assert.match(attitudePanel, /StudentFollowOnRowHeader/)
 assert.match(attitudePanel, /selectAttitudeBulkSaveTargets/)
 assert.match(attitudePanel, /StudentKakaoShareAction/)
+assert.match(attitudePanel, /applyStudentAttitudeDraft/)
+assert.match(attitudePanel, /강사의 의견/)
+assert.match(attitudePanel, /data-attitude-comment/)
+assert.doesNotMatch(attitudePanel, /from '@supabase/)
 
 const materialPanel = readFileSync('src/components/todayReport/ClassMaterialPrepBulkPanel.tsx', 'utf8')
 assert.match(materialPanel, /missingRequiredMaterialPrep/)
