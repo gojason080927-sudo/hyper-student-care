@@ -151,13 +151,14 @@ export function TeacherTodayReportLayoutPreviewPage() {
             <div className="mb-2 min-h-10 rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-800">
               수학
             </div>
-            <div className="mb-2 flex min-w-0 max-w-full flex-wrap items-center justify-between gap-2">
+            <div className="mb-1.5 flex min-w-0 max-w-full flex-wrap items-center gap-1.5">
               <p className="min-w-0 text-sm font-bold text-[#163A70]">김도영</p>
-              <div className="min-w-0 max-w-full flex-1">
+              <div className="ml-auto shrink-0">
                 <SectionVoiceInput
                   label="김도영 일일테스트 음성 입력"
                   chipLabel="음성입력"
                   compact
+                  explicitStop
                   onApply={() => ({
                     appliedCount: 0,
                     excludedAbsentCount: 0,
@@ -167,9 +168,12 @@ export function TeacherTodayReportLayoutPreviewPage() {
                 />
               </div>
             </div>
+            <p className="mb-1 w-full min-w-0 max-w-full whitespace-normal break-words text-[11px] leading-4 text-rose-800 [overflow-wrap:anywhere]">
+              🔴 듣는 중 · 다 말한 뒤 종료를 누르세요
+            </p>
             <p
               data-voice-summary="true"
-              className="mb-2 w-full min-w-0 max-w-full whitespace-normal break-words text-[11px] leading-4 text-slate-600 [overflow-wrap:anywhere]"
+              className="mb-2 w-full min-w-0 max-w-full whitespace-normal break-all text-[11px] leading-4 text-slate-600 [overflow-wrap:anywhere]"
             >
               음성 입력 완료 · 확인 필요 1건 — 류정현 점수·오답분석·피드백을 확인해야 합니다
             </p>

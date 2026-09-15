@@ -70,6 +70,144 @@ export function compactFinalHypotheses(pieces: Array<string | undefined>): strin
   return committed.join(' ').replace(/\s+/g, ' ').trim()
 }
 
+export const HELD_SPEECH_MAX_RESTARTS = 40
+
+export type HeldSpeechState = {
+  userStopped: boolean
+  unmounted: boolean
+  fatalError: boolean
+  restartCount: number
+  accumulated: string
+  currentCommitted: string
+  applied: boolean
+}
+
+export function createHeldSpeechState(): HeldSpeechState {
+  return {
+    userStopped: false,
+    unmounted: false,
+    fatalError: false,
+    restartCount: 0,
+    accumulated: '',
+    currentCommitted: '',
+    applied: false,
+  }
+}
+
+export function isFatalHeldSpeechError(code: string): boolean {
+  return (
+    code === 'not-allowed' ||
+    code === 'service-not-allowed' ||
+    code === 'audio-capture' ||
+    code === 'language-not-supported' ||
+    code === 'bad-grammar'
+  )
+}
+
+export function accumulateHeldFragments(prev: string, next: string): string {
+  return compactFinalHypotheses([prev, next])
+}
+
+export function shouldRestartHeldSpeech(state: HeldSpeechState, maxRestarts = HELD_SPEECH_MAX_RESTARTS): boolean {
+  return (
+    !state.userStopped &&
+    !state.unmounted &&
+    !state.fatalError &&
+    state.restartCount < maxRestarts
+  )
+}
+
+export type HeldSpeechEvent =
+  | { type: 'committed'; text: string }
+  | { type: 'browser-end' }
+  | { type: 'user-stop' }
+  | { type: 'unmount' }
+  | { type: 'error'; code: string }
+
+export function reduceHeldSpeech(
+  state: HeldSpeechState,
+  event: HeldSpeechEvent,
+  maxRestarts = HELD_SPEECH_MAX_RESTARTS,
+): {
+  state: HeldSpeechState
+  restart: boolean
+  apply: string | null
+  showError: boolean
+} {
+  if (event.type === 'committed') {
+    return {
+      state: { ...state, currentCommitted: event.text },
+      restart: false,
+      apply: null,
+      showError: false,
+    }
+  }
+  if (event.type === 'user-stop') {
+    return {
+      state: { ...state, userStopped: true },
+      restart: false,
+      apply: null,
+      showError: false,
+    }
+  }
+  if (event.type === 'unmount') {
+    return {
+      state: { ...state, unmounted: true, userStopped: true },
+      restart: false,
+      apply: null,
+      showError: false,
+    }
+  }
+  if (event.type === 'error') {
+    if (isFatalHeldSpeechError(event.code)) {
+      return {
+        state: { ...state, fatalError: true },
+        restart: false,
+        apply: null,
+        showError: true,
+      }
+    }
+    return { state, restart: false, apply: null, showError: false }
+  }
+
+  const accumulated = accumulateHeldFragments(state.accumulated, state.currentCommitted)
+  const merged: HeldSpeechState = { ...state, accumulated, currentCommitted: '' }
+  if (merged.unmounted) {
+    return { state: merged, restart: false, apply: null, showError: false }
+  }
+  if (merged.userStopped) {
+    if (merged.applied) {
+      return { state: merged, restart: false, apply: null, showError: false }
+    }
+    return {
+      state: { ...merged, applied: true },
+      restart: false,
+      apply: accumulated,
+      showError: false,
+    }
+  }
+  if (merged.fatalError) {
+    return { state: merged, restart: false, apply: null, showError: false }
+  }
+  if (!shouldRestartHeldSpeech(merged, maxRestarts)) {
+    if (!merged.applied && accumulated) {
+      return {
+        state: { ...merged, applied: true },
+        restart: false,
+        apply: accumulated,
+        showError: false,
+      }
+    }
+    return { state: merged, restart: false, apply: null, showError: false }
+  }
+  return {
+    state: { ...merged, restartCount: merged.restartCount + 1 },
+    restart: true,
+    apply: null,
+    showError: false,
+  }
+}
+
 export function createSpeechTranscriptSession() {
   const finalsByIndex: string[] = []
   let consumed = false
@@ -153,6 +291,7 @@ export function startKoreanSpeechRecognition(handlers: {
   onFinal?: (text: string) => void
   onError: (message: string, code: string) => void
   onEnd: () => void
+  holdUntilExplicitStop?: boolean
 }): LiveSpeechSession | null {
   const Ctor = getSpeechRecognitionCtor()
   if (!Ctor) return null
@@ -163,22 +302,64 @@ export function startKoreanSpeechRecognition(handlers: {
   recognition.interimResults = true
   recognition.maxAlternatives = 1
 
+  const hold = Boolean(handlers.holdUntilExplicitStop)
   let stopped = false
   let ended = false
-  const transcriptSession = createSpeechTranscriptSession()
+  let transcriptSession = createSpeechTranscriptSession()
+  let held = createHeldSpeechState()
+
+  const displayHeld = (interim = '') => {
+    const committed = accumulateHeldFragments(held.accumulated, held.currentCommitted)
+    handlers.onInterim?.(normalizeTranscript([committed, interim].filter(Boolean).join(' ')))
+  }
 
   recognition.onresult = (event) => {
     const { display } = transcriptSession.ingest(event)
-    handlers.onInterim?.(display)
+    if (!hold) {
+      handlers.onInterim?.(display)
+      return
+    }
+    const committed = transcriptSession.peekCommitted()
+    held = reduceHeldSpeech(held, { type: 'committed', text: committed }).state
+    const interim = normalizeTranscript(display.slice(committed.length))
+    displayHeld(interim)
   }
 
   recognition.onerror = (event) => {
     const code = String(event.error ?? 'unknown')
+    if (hold) {
+      const next = reduceHeldSpeech(held, { type: 'error', code })
+      held = next.state
+      if (code === 'aborted' && stopped) return
+      if (next.showError) handlers.onError(speechErrorMessage(code), code)
+      return
+    }
     if (code === 'aborted' && stopped) return
     handlers.onError(speechErrorMessage(code), code)
   }
 
   recognition.onend = () => {
+    if (hold) {
+      held = reduceHeldSpeech(held, {
+        type: 'committed',
+        text: transcriptSession.peekCommitted(),
+      }).state
+      const next = reduceHeldSpeech(held, { type: 'browser-end' })
+      held = next.state
+      if (next.apply != null) handlers.onFinal?.(next.apply)
+      if (next.restart && !stopped) {
+        transcriptSession = createSpeechTranscriptSession()
+        try {
+          recognition.start()
+        } catch {
+          handlers.onError('음성 인식을 시작할 수 없습니다.', 'unknown')
+          handlers.onEnd()
+        }
+        return
+      }
+      handlers.onEnd()
+      return
+    }
     if (ended) return
     ended = true
     const { text, delivered } = transcriptSession.consumeFinal()
@@ -196,12 +377,20 @@ export function startKoreanSpeechRecognition(handlers: {
   return {
     stop: () => {
       stopped = true
+      if (hold) {
+        held = reduceHeldSpeech(held, { type: 'user-stop' }).state
+      }
       try {
         recognition.stop()
       } catch {
         try {
           recognition.abort()
         } catch {
+          if (hold) {
+            const next = reduceHeldSpeech(held, { type: 'browser-end' })
+            held = next.state
+            if (next.apply != null) handlers.onFinal?.(next.apply)
+          }
           handlers.onEnd()
         }
       }

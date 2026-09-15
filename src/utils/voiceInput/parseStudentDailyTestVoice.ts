@@ -26,7 +26,7 @@ export type StudentDailyTestParseResult = {
   needsReview: VoiceReviewItem[]
 }
 
-const FEEDBACK_RE = /(?:강사의\s*피드백|강사\s*피드백|피드백)\s*[:：,]?\s*/
+const FEEDBACK_RE = /(?:강사의\s*피드백|강사\s*피드백|피\s*드\s*백)\s*[:：,]?\s*/
 const ATTEMPT_SPLIT_RE =
   /(?=[1-4]\s*회?\s*차|[1-4]\s*차시|일차|이차|삼차|사차|일\s*차|이\s*차|삼\s*차|사\s*차|첫\s*번째|첫번째|두\s*번째|두번째|세\s*번째|세번째|네\s*번째|네번째)/
 const ATTEMPT_HEAD_RE =
@@ -186,7 +186,7 @@ export function parseStudentDailyTestVoice(
   }
 
   const { structured, feedback } = splitFeedback(raw)
-  const structuredNorm = normalizeStudentDailyTestAttemptSpeech(structured || raw)
+  const structuredNorm = normalizeStudentDailyTestAttemptSpeech(structured)
   const { tokenized, duplicateReviews } = markStudentTokens(structuredNorm, roster)
   needsReview.push(...duplicateReviews)
   const namedIds = collectSids(tokenized)

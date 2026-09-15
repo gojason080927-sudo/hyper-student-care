@@ -383,6 +383,7 @@ export function ClassDailyTestBulkPanel({
                       chipLabel="음성입력"
                       compact={compact}
                       disabled={saving}
+                      explicitStop
                       onApply={(transcript) => {
                         const applied = applyStudentDailyTestDraft(
                           drafts,
