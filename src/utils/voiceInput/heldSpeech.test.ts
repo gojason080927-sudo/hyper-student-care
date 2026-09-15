@@ -169,6 +169,7 @@ assert.equal(
 const voiceUi = readFileSync('src/components/todayReport/SectionVoiceInput.tsx', 'utf8')
 assert.match(voiceUi, /explicitStop/)
 assert.match(voiceUi, /holdUntilExplicitStop/)
+assert.match(voiceUi, /onHeldTrace/)
 assert.match(voiceUi, /듣는 중 · 종료/)
 assert.match(voiceUi, /다 말한 뒤 종료를 누르세요/)
 

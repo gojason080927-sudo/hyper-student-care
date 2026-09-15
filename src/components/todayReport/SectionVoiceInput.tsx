@@ -3,11 +3,24 @@ import { useEffect, useId, useRef, useState } from 'react'
 import {
   detectBrowserSpeechSupport,
   startKoreanSpeechRecognition,
+  type HeldSpeechTrace,
   type LiveSpeechSession,
 } from '../../utils/voiceInput/speechRecognition'
 import { formatVoiceSummary } from '../../utils/voiceInput/parseVoiceTranscript'
-import { routeVoiceTranscript } from '../../utils/voiceInput/voiceSaveCommand'
+import {
+  routeVoiceTranscript,
+  type VoiceTranscriptRoute,
+} from '../../utils/voiceInput/voiceSaveCommand'
 import type { VoiceApplySummary } from '../../utils/voiceInput/types'
+import { formatHeldSpeechEndReason } from '../../utils/voiceInput/dailyTestVoiceDiagnostic'
+
+export type VoiceSessionDiagnosticPayload = {
+  rawTranscript: string
+  routed: VoiceTranscriptRoute
+  summary: VoiceApplySummary | null
+  endReason: string
+  heldTrace: HeldSpeechTrace | null
+}
 
 type SectionVoiceInputProps = {
   label: string
@@ -19,6 +32,9 @@ type SectionVoiceInputProps = {
   onSaveCommand?: () => void
   /** Daily-test student mic: user taps again to stop; browser onend does not apply. */
   explicitStop?: boolean
+  /** Hide inline confirmation; parent (daily-test) renders diagnostic full-width. */
+  hideStatus?: boolean
+  onDiagnostic?: (payload: VoiceSessionDiagnosticPayload) => void
 }
 
 /**
@@ -33,6 +49,8 @@ export function SectionVoiceInput({
   onApply,
   onSaveCommand,
   explicitStop = false,
+  hideStatus = false,
+  onDiagnostic,
 }: SectionVoiceInputProps) {
   const reactId = useId()
   const fallbackId = `${reactId}-fallback`
@@ -45,9 +63,12 @@ export function SectionVoiceInput({
   const [fallbackText, setFallbackText] = useState('')
   const sessionRef = useRef<LiveSpeechSession | null>(null)
   const appliedThisSessionRef = useRef(false)
+  const heldTraceRef = useRef<HeldSpeechTrace | null>(null)
   const onSaveCommandRef = useRef(onSaveCommand)
+  const onDiagnosticRef = useRef(onDiagnostic)
   const disabledRef = useRef(disabled)
   onSaveCommandRef.current = onSaveCommand
+  onDiagnosticRef.current = onDiagnostic
   disabledRef.current = disabled
 
   useEffect(() => {
@@ -57,14 +78,36 @@ export function SectionVoiceInput({
     }
   }, [])
 
-  const applyTranscript = (raw: string) => {
+  const emitDiagnostic = (
+    raw: string,
+    routed: VoiceTranscriptRoute,
+    summaryValue: VoiceApplySummary | null,
+    source: 'speech' | 'typed',
+  ) => {
+    const held = source === 'speech' ? heldTraceRef.current : null
+    onDiagnosticRef.current?.({
+      rawTranscript: raw,
+      routed,
+      summary: summaryValue,
+      heldTrace: held,
+      endReason: formatHeldSpeechEndReason({
+        source,
+        userStopped: held?.userStopped ?? source === 'speech',
+        restartCount: held?.restartCount ?? 0,
+      }),
+    })
+  }
+
+  const applyTranscript = (raw: string, source: 'speech' | 'typed' = 'speech') => {
     const routed = routeVoiceTranscript(raw)
     if (routed.kind === 'none') {
+      emitDiagnostic(raw, routed, null, source)
       setError('인식된 내용이 없습니다. 텍스트로 입력할 수 있습니다.')
       setFallbackOpen(true)
       return
     }
     if (routed.kind === 'save-command') {
+      emitDiagnostic(raw, routed, null, source)
       setSummary(null)
       setError('')
       setFallbackText('')
@@ -74,6 +117,7 @@ export function SectionVoiceInput({
       return
     }
     const next = onApply(routed.transcript)
+    emitDiagnostic(raw, routed, next, source)
     setSummary(next)
     setError('')
     setFallbackText('')
@@ -92,13 +136,17 @@ export function SectionVoiceInput({
     setSummary(null)
     setInterim('')
     appliedThisSessionRef.current = false
+    heldTraceRef.current = null
     const session = startKoreanSpeechRecognition({
       holdUntilExplicitStop: explicitStop,
       onInterim: setInterim,
+      onHeldTrace: (trace) => {
+        heldTraceRef.current = trace
+      },
       onFinal: (text) => {
         if (appliedThisSessionRef.current) return
         appliedThisSessionRef.current = true
-        applyTranscript(text)
+        applyTranscript(text, 'speech')
       },
       onError: (message) => {
         setError(message)
@@ -121,7 +169,7 @@ export function SectionVoiceInput({
   }
 
   const submitFallback = () => {
-    applyTranscript(fallbackText)
+    applyTranscript(fallbackText, 'typed')
   }
 
   const btn = compact
@@ -186,7 +234,7 @@ export function SectionVoiceInput({
           {error}
         </p>
       ) : null}
-      {summary ? (
+      {summary && !hideStatus ? (
         <p
           data-voice-summary="true"
           className="mt-1 w-full min-w-0 max-w-full whitespace-normal break-words text-[11px] leading-4 text-slate-600 [overflow-wrap:anywhere]"
