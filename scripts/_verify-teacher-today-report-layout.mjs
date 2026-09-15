@@ -152,14 +152,14 @@ try {
     if (!progressBlock.includes('현재 진도')) fails.push('progress current text missing')
     if (!progressBlock.includes('현재 페이지')) fails.push('progress current page missing')
     if (!progressBlock.includes('전체 페이지')) fails.push('progress total page missing')
-    if ((await page.locator('[data-preview-block="progress"] button:text-is("진도")').count()) === 0) {
+    if ((await page.getByRole('button', { name: '수학 개념 진도 음성 입력' }).count()) === 0) {
       fails.push('progress mic chip missing')
     }
 
     const attitudeBlock = await page.locator('[data-preview-block="attitude"]').innerText()
     if (!attitudeBlock.includes('강사의 의견')) fails.push('attitude comment label missing')
     if (!attitudeBlock.includes('카카오')) fails.push('Kakao missing')
-    if ((await page.locator('[data-preview-block="attitude"] button:text-is("의견")').count()) === 0) {
+    if ((await page.getByRole('button', { name: '김하이퍼 강사의 의견 음성 입력' }).count()) === 0) {
       fails.push('attitude comment mic missing')
     }
     if (!attitudeBlock.includes('결석 · 입력 제외')) fails.push('attitude absent row missing')
