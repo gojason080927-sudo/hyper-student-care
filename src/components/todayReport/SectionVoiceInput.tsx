@@ -125,8 +125,8 @@ export function SectionVoiceInput({
     : 'inline-flex min-h-9 items-center justify-center gap-1 rounded-lg border px-2.5 text-xs font-semibold'
 
   return (
-    <div className="min-w-0 max-w-full" data-voice-input="true">
-      <div className="flex min-w-0 flex-wrap items-center gap-1">
+    <div className="min-w-0 w-full max-w-full" data-voice-input="true">
+      <div className="flex min-w-0 max-w-full flex-wrap items-center gap-1">
         {support === 'supported' ? (
           <button
             type="button"
@@ -164,13 +164,20 @@ export function SectionVoiceInput({
         </button>
       </div>
       {listening && interim ? (
-        <p className="mt-1 break-words text-[11px] leading-4 text-slate-500">듣는 중: {interim}</p>
+        <p className="mt-1 w-full min-w-0 max-w-full whitespace-normal break-words text-[11px] leading-4 text-slate-500 [overflow-wrap:anywhere]">
+          듣는 중: {interim}
+        </p>
       ) : null}
       {error ? (
-        <p className="mt-1 break-words text-[11px] leading-4 text-amber-800">{error}</p>
+        <p className="mt-1 w-full min-w-0 max-w-full whitespace-normal break-words text-[11px] leading-4 text-amber-800 [overflow-wrap:anywhere]">
+          {error}
+        </p>
       ) : null}
       {summary ? (
-        <p className="mt-1 break-words text-[11px] leading-4 text-slate-600">
+        <p
+          data-voice-summary="true"
+          className="mt-1 w-full min-w-0 max-w-full whitespace-normal break-words text-[11px] leading-4 text-slate-600 [overflow-wrap:anywhere]"
+        >
           {formatVoiceSummary(summary)}
           {summary.needsReview[0]
             ? ` — ${summary.needsReview[0].label} ${summary.needsReview[0].reason}`

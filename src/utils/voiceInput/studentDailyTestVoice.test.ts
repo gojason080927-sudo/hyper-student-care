@@ -9,7 +9,11 @@ import { EMPTY_DAILY_LEARNING_DIAGNOSIS } from '../learningDiagnosis.ts'
 import { overlayLoadedDrafts } from '../todayReportDraftMerge.ts'
 import { visualStatusFromScoreDraft } from '../teacherMobileDailyTest.ts'
 import { applyStudentDailyTestDraft } from './applyVoiceDraft.ts'
-import { parseStudentDailyTestVoice } from './parseStudentDailyTestVoice.ts'
+import {
+  normalizeStudentDailyTestAttemptSpeech,
+  parseStudentDailyTestVoice,
+} from './parseStudentDailyTestVoice.ts'
+import { formatVoiceSummary } from './parseVoiceTranscript.ts'
 import { isVoiceBulkSaveCommand, routeVoiceTranscript } from './voiceSaveCommand.ts'
 import {
   compactFinalHypotheses,
@@ -440,6 +444,70 @@ function speechEvent(
   assert.equal(parsed.attempts[0]?.score, '85')
 }
 
+function expectCoreSamsungPhrase(text: string) {
+  corpus.push(text)
+  const parsed = parseCard(text)
+  assert.equal(parsed.apply, true, text)
+  assert.deepEqual(
+    parsed.attempts.map((row) => [row.round, row.score]),
+    [
+      [1, '80'],
+      [2, '100'],
+    ],
+    text,
+  )
+  assert.equal(
+    parsed.needsReview.some((row) => row.reason.includes('점수·오답분석·피드백')),
+    false,
+    text,
+  )
+  const applied = applyCard(text)
+  assert.equal(applied.drafts.nagyeong?.rounds[0]?.score, '80', text)
+  assert.equal(applied.drafts.nagyeong?.rounds[1]?.score, '100', text)
+  assert.equal(applied.drafts.nagyeong?.rounds[2]?.score, '', text)
+  assert.equal(applied.drafts.nagyeong?.rounds[3]?.score, '', text)
+  assert.equal(visualStatusFromScoreDraft(applied.drafts.nagyeong?.rounds[0]?.score ?? ''), '불합격')
+  assert.equal(visualStatusFromScoreDraft(applied.drafts.nagyeong?.rounds[1]?.score ?? ''), '합격')
+  assert.equal(applied.drafts.nagyeong?.rounds.find((row) => row.passed)?.round, 2)
+  assert.equal(applied.summary.appliedCount > 0, true, text)
+  assert.doesNotMatch(formatVoiceSummary(applied.summary), /확인 필요/)
+}
+
+const samsungCore = [
+  '1차 80점 불합격, 2차 100점 합격',
+  '1. 차 80점 불합격, 2. 차 100점 합격',
+  '1.차 80점 불합격, 2.차 100점 합격',
+  '1. 80점 불합격, 2. 100점 합격',
+  '일 차 80점 불합격, 이 차 100점 합격',
+  '1회차 80점 불합격, 2회차 100점 합격',
+  '1 회차 80점 불합격, 2 회차 100점 합격',
+  '1자 80점 불합격, 2자 100점 합격',
+  '1차 80 불합격, 2차 100 합격',
+  '１차 80점 불합격, ２차 100점 합격',
+  '1, 차 80점 불합격, 2, 차 100점 합격',
+]
+for (const phrase of samsungCore) {
+  expectCoreSamsungPhrase(phrase)
+}
+
+assert.equal(
+  normalizeStudentDailyTestAttemptSpeech('1. 80점 불합격, 2. 100점 합격').includes('1차'),
+  true,
+)
+assert.equal(normalizeStudentDailyTestAttemptSpeech('3.14점').includes('3차'), false)
+
+{
+  const parsed = parseCard('1. 80점 합격')
+  assert.equal(parsed.attempts.length, 0)
+  assert.ok(parsed.needsReview.some((row) => row.reason.includes('85점')))
+}
+
+{
+  const parsed = parseCard('1차')
+  assert.equal(parsed.apply, false)
+  assert.ok(parsed.needsReview.some((row) => row.reason.includes('점수·오답분석·피드백')))
+}
+
 const panel = readFileSync('src/components/todayReport/ClassDailyTestBulkPanel.tsx', 'utf8')
 assert.match(panel, /chipLabel="음성입력"/)
 assert.match(panel, /applyStudentDailyTestDraft/)
@@ -451,5 +519,14 @@ assert.match(panel, /DailyLearningDiagnosisFields/)
 assert.match(readFileSync('src/utils/voiceInput/applyVoiceDraft.ts', 'utf8'), /parseStudentDailyTestVoice/)
 assert.doesNotMatch(readFileSync('src/utils/voiceInput/applyVoiceDraft.ts', 'utf8'), /saveDailyTestRecord/)
 assert.doesNotMatch(readFileSync('src/utils/voiceInput/parseStudentDailyTestVoice.ts', 'utf8'), /from '@supabase/)
+
+const header = readFileSync('src/components/todayReport/AbsentFollowOnBadge.tsx', 'utf8')
+assert.match(header, /ml-auto min-w-0 max-w-full flex-1/)
+assert.doesNotMatch(header, /extra \? <div className="ml-auto shrink-0">/)
+
+const voiceUi = readFileSync('src/components/todayReport/SectionVoiceInput.tsx', 'utf8')
+assert.match(voiceUi, /data-voice-summary="true"/)
+assert.match(voiceUi, /\[overflow-wrap:anywhere\]/)
+assert.match(voiceUi, /min-w-0 w-full max-w-full/)
 
 console.log(`studentDailyTestVoice.test.ts passed (${corpus.length} corpus phrases)`)
