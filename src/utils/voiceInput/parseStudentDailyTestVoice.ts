@@ -123,7 +123,7 @@ function maskRanges(text: string, ranges: Array<{ start: number; end: number }>)
 }
 
 const ERROR_SPAN_RE =
-  /(?:개념(?:이|이해)?\s*부족|계산\s*실수|응용(?:\s*능력)?\s*부족)\s*\d+\s*개/g
+  /(?:개념(?:이|이해)?\s*부족|계산\s*실수|응용(?:\s*능력)?\s*부족)\s*\d{1,3}\s*개?/g
 
 function extractErrorAnalysisSpans(text: string): {
   rest: string
@@ -143,7 +143,7 @@ function extractErrorAnalysisSpans(text: string): {
     return ' '
   })
   return {
-    rest: trimResidual(rest.replace(/\s+/g, ' ')),
+    rest: trimResidual(rest.replace(/오답\s*분석/g, ' ').replace(/\s+/g, ' ')),
     conceptLackCount,
     calculationErrorCount,
     applicationLackCount,

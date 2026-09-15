@@ -95,7 +95,7 @@ export function selectAttitudeBulkSaveTargets<T extends { id: string; name: stri
     return {
       student,
       attitudeIssues,
-      attitudeNote: attitudeIssues.length > 0 ? (draft?.note ?? '').trim().slice(0, 500) : '',
+      attitudeNote: (draft?.note ?? '').trim().slice(0, 500),
     }
   })
 }

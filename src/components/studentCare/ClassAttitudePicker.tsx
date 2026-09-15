@@ -9,6 +9,7 @@ type ClassAttitudePickerProps = {
   onNoteChange: (note: string) => void
   compact?: boolean
   disabled?: boolean
+  hideNote?: boolean
 }
 
 export function ClassAttitudePicker({
@@ -18,6 +19,7 @@ export function ClassAttitudePicker({
   onNoteChange,
   compact = false,
   disabled = false,
+  hideNote = false,
 }: ClassAttitudePickerProps) {
   const [expanded, setExpanded] = useState(issues.length > 0)
 
@@ -27,7 +29,7 @@ export function ClassAttitudePicker({
 
   const collapseToExcellent = () => {
     if (issues.length > 0) onIssuesChange([])
-    if (note) onNoteChange('')
+    if (note && !hideNote) onNoteChange('')
     setExpanded(false)
   }
 
@@ -36,7 +38,7 @@ export function ClassAttitudePicker({
       const next = issues.filter((item) => item !== issue)
       onIssuesChange(next)
       if (next.length === 0) {
-        if (note) onNoteChange('')
+        if (note && !hideNote) onNoteChange('')
         setExpanded(false)
       }
       return
@@ -98,7 +100,7 @@ export function ClassAttitudePicker({
           )
         })}
       </div>
-      {issues.length > 0 ? (
+      {!hideNote && issues.length > 0 ? (
         <div data-attitude-note="">
           <label className="mb-0.5 block text-xs font-semibold text-slate-600">강사 메모</label>
           <textarea

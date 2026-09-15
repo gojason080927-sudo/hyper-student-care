@@ -95,6 +95,93 @@ const explicitWipe = mergeDailyCareWrite(
 assert.equal(explicitWipe.materialPrep, '부분 지참')
 assert.deepEqual(explicitWipe.attitudeIssues, [])
 
+const noteWithoutIssues = mergeDailyCareWrite(
+  { attitudeIssues: [], attitudeNote: '오늘 집중력이 좋았다' },
+  { materialPrep: '지참', attitudeIssues: [], attitudeNote: '' },
+)
+assert.equal(noteWithoutIssues.materialPrep, '지참')
+assert.deepEqual(noteWithoutIssues.attitudeIssues, [])
+assert.equal(noteWithoutIssues.attitudeNote, '오늘 집중력이 좋았다')
+
+const sameDayNoteEdit = mergeDailyCareWrite(
+  { attitudeIssues: [], attitudeNote: '수정된 의견' },
+  noteWithoutIssues,
+)
+assert.equal(sameDayNoteEdit.attitudeNote, '수정된 의견')
+assert.equal(resolvePersistedRecordId(undefined, 'care-ryu-0915', () => 'new-row'), 'care-ryu-0915')
+
+const progressHydrated = overlayLoadedDrafts(
+  {},
+  {
+    '수학:1': {
+      currentProgress: '이차함수 최대최소',
+      currentPage: '35',
+      totalPage: '180',
+    },
+  },
+  new Set(),
+)
+assert.equal(progressHydrated['수학:1']?.currentProgress, '이차함수 최대최소')
+assert.equal(progressHydrated['수학:1']?.currentPage, '35')
+assert.equal(progressHydrated['수학:1']?.totalPage, '180')
+
+const progressDirty = overlayLoadedDrafts(
+  {
+    '수학:1': {
+      currentProgress: '이차함수 최대최소',
+      currentPage: '40',
+      totalPage: '180',
+    },
+  },
+  {
+    '수학:1': {
+      currentProgress: '이차함수 최대최소',
+      currentPage: '35',
+      totalPage: '180',
+    },
+  },
+  new Set(['수학:1']),
+)
+assert.equal(progressDirty['수학:1']?.currentPage, '40')
+
+const diagnosisHydrated = overlayLoadedDrafts(
+  {},
+  {
+    nagyeong: {
+      learningDiagnosis: {
+        conceptLackCount: 2,
+        calculationErrorCount: 1,
+        applicationLackCount: 3,
+        teacherFeedback: '계산 과정은 좋아지고 있다',
+      },
+    },
+  },
+  new Set(),
+)
+assert.equal(diagnosisHydrated.nagyeong?.learningDiagnosis.conceptLackCount, 2)
+assert.equal(diagnosisHydrated.nagyeong?.learningDiagnosis.calculationErrorCount, 1)
+assert.equal(diagnosisHydrated.nagyeong?.learningDiagnosis.applicationLackCount, 3)
+assert.equal(
+  diagnosisHydrated.nagyeong?.learningDiagnosis.teacherFeedback,
+  '계산 과정은 좋아지고 있다',
+)
+
+const attitudeHydrated = overlayLoadedDrafts(
+  {},
+  { ryu: { issues: [], note: '오늘 집중력이 좋았다' } },
+  new Set(),
+)
+assert.equal(attitudeHydrated.ryu?.note, '오늘 집중력이 좋았다')
+assert.deepEqual(attitudeHydrated.ryu?.issues, [])
+
+const attitudeDirtyResave = overlayLoadedDrafts(
+  { ryu: { issues: ['집중 저하'], note: '수정된 의견' } },
+  { ryu: { issues: [], note: '오늘 집중력이 좋았다' } },
+  new Set(['ryu']),
+)
+assert.deepEqual(attitudeDirtyResave.ryu?.issues, ['집중 저하'])
+assert.equal(attitudeDirtyResave.ryu?.note, '수정된 의견')
+
 // Same-day homework: 강나경 부분완료 저장 → 음성 “강나경 완료” → reload must keep 완료
 const nagyeongKey = homeworkDraftKey('nagyeong', '수학', 1)
 const doyoungKey = homeworkDraftKey('doyoung', '수학', 1)
@@ -185,7 +272,19 @@ const attitudeSource = readFileSync(
   'utf8',
 )
 assert.match(attitudeSource, /attitudeIssues,/)
+assert.match(attitudeSource, /attitudeNote/)
 assert.doesNotMatch(attitudeSource, /materialPrep:/)
+assert.match(attitudeSource, /applyStudentAttitudeDraft/)
+assert.doesNotMatch(attitudeSource, /from '@supabase/)
+
+const progressSource = readFileSync(
+  'src/components/todayReport/ClassCommonProgressPanel.tsx',
+  'utf8',
+)
+assert.match(progressSource, /applyProgressSlotDraft/)
+assert.match(progressSource, /currentPage/)
+assert.match(progressSource, /totalPage/)
+assert.doesNotMatch(progressSource, /from '@supabase/)
 
 const voiceApply = readFileSync('src/utils/voiceInput/applyVoiceDraft.ts', 'utf8')
 assert.doesNotMatch(voiceApply, /saveStudentDailyCare/)

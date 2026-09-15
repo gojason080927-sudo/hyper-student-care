@@ -981,6 +981,209 @@ for (const variant of [
   assert.ok(parsed.needsReview.some((row) => row.reason.includes('다른 학생')))
 }
 
+{
+  const parsed = caseOf('개념 부족 2개')
+  assert.equal(parsed.conceptLackCount, 2)
+  assert.equal(parsed.calculationErrorCount, undefined)
+  assert.equal(parsed.applicationLackCount, undefined)
+}
+
+{
+  const parsed = caseOf('계산 실수 1개')
+  assert.equal(parsed.calculationErrorCount, 1)
+  assert.equal(parsed.conceptLackCount, undefined)
+}
+
+{
+  const parsed = caseOf('응용 능력 부족 3개')
+  assert.equal(parsed.applicationLackCount, 3)
+}
+
+{
+  const parsed = caseOf('개념 부족 2개 계산 실수 1개 응용 능력 부족 3개')
+  assert.equal(parsed.conceptLackCount, 2)
+  assert.equal(parsed.calculationErrorCount, 1)
+  assert.equal(parsed.applicationLackCount, 3)
+}
+
+{
+  const parsed = caseOf('오답 분석 개념 부족 2개 계산 실수 1개 응용 능력 부족 3개')
+  assert.equal(parsed.conceptLackCount, 2)
+  assert.equal(parsed.calculationErrorCount, 1)
+  assert.equal(parsed.applicationLackCount, 3)
+  assert.equal(parsed.teacherFeedback, undefined)
+}
+
+{
+  const parsed = caseOf('개념 부족 2 계산 실수 1')
+  assert.equal(parsed.conceptLackCount, 2)
+  assert.equal(parsed.calculationErrorCount, 1)
+  assert.equal(parsed.applicationLackCount, undefined)
+}
+
+{
+  const parsed = caseOf('계산 실수 0개')
+  assert.equal(parsed.calculationErrorCount, 0)
+  const applied = applyCard('계산 실수 0개')
+  assert.equal(applied.drafts.nagyeong?.learningDiagnosis.calculationErrorCount, 0)
+}
+
+{
+  const seeded = {
+    nagyeong: {
+      rounds: emptyRounds(),
+      learningDiagnosis: {
+        ...EMPTY_DAILY_LEARNING_DIAGNOSIS,
+        conceptLackCount: 2,
+        calculationErrorCount: 1,
+        applicationLackCount: 3,
+      },
+    },
+    doyoung: emptyDraft(),
+  }
+  const applied = applyCard('계산 실수 4개', seeded)
+  assert.equal(applied.drafts.nagyeong?.learningDiagnosis.conceptLackCount, 2)
+  assert.equal(applied.drafts.nagyeong?.learningDiagnosis.calculationErrorCount, 4)
+  assert.equal(applied.drafts.nagyeong?.learningDiagnosis.applicationLackCount, 3)
+  assert.equal(applied.drafts.doyoung?.learningDiagnosis.calculationErrorCount, 0)
+}
+
+{
+  const parsed = caseOf(
+    '1차 70점 불합격 개념 부족 2개 계산 실수 1개 응용 능력 부족 3개',
+  )
+  assert.equal(parsed.apply, true)
+  assert.deepEqual(
+    parsed.attempts.map((row) => [row.round, row.score]),
+    [[1, '70']],
+  )
+  assert.equal(parsed.conceptLackCount, 2)
+  assert.equal(parsed.calculationErrorCount, 1)
+  assert.equal(parsed.applicationLackCount, 3)
+  const applied = applyCard(
+    '1차 70점 불합격 개념 부족 2개 계산 실수 1개 응용 능력 부족 3개',
+  )
+  assert.equal(applied.drafts.nagyeong?.rounds[0]?.score, '70')
+  assert.equal(applied.drafts.nagyeong?.rounds[0]?.passed, false)
+  assert.equal(visualStatusFromScoreDraft('70'), '불합격')
+  assert.equal(applied.drafts.nagyeong?.learningDiagnosis.conceptLackCount, 2)
+  assert.equal(applied.drafts.nagyeong?.learningDiagnosis.calculationErrorCount, 1)
+  assert.equal(applied.drafts.nagyeong?.learningDiagnosis.applicationLackCount, 3)
+}
+
+{
+  const seeded = {
+    nagyeong: {
+      rounds: emptyRounds(),
+      learningDiagnosis: {
+        ...EMPTY_DAILY_LEARNING_DIAGNOSIS,
+        applicationLackCount: 3,
+        teacherFeedback: '기존 피드백',
+      },
+    },
+    doyoung: emptyDraft(),
+  }
+  const parsed = caseOf(
+    '1차 70점 불합격 개념 부족 2개 계산 실수 1개 피드백 계산 과정은 좋아지고 있다',
+  )
+  assert.equal(parsed.attempts[0]?.score, '70')
+  assert.equal(parsed.conceptLackCount, 2)
+  assert.equal(parsed.calculationErrorCount, 1)
+  assert.equal(parsed.applicationLackCount, undefined)
+  assert.equal(parsed.teacherFeedback, '계산 과정은 좋아지고 있다')
+  const applied = applyCard(
+    '1차 70점 불합격 개념 부족 2개 계산 실수 1개 피드백 계산 과정은 좋아지고 있다',
+    seeded,
+  )
+  assert.equal(applied.drafts.nagyeong?.rounds[0]?.score, '70')
+  assert.equal(applied.drafts.nagyeong?.learningDiagnosis.conceptLackCount, 2)
+  assert.equal(applied.drafts.nagyeong?.learningDiagnosis.calculationErrorCount, 1)
+  assert.equal(applied.drafts.nagyeong?.learningDiagnosis.applicationLackCount, 3)
+  assert.equal(
+    applied.drafts.nagyeong?.learningDiagnosis.teacherFeedback,
+    '계산 과정은 좋아지고 있다',
+  )
+}
+
+{
+  const parsed = caseOf('2차 90점 합격 응용 능력 부족 2개 나날이 발전하고 있다')
+  assert.deepEqual(
+    parsed.attempts.map((row) => [row.round, row.score]),
+    [[2, '90']],
+  )
+  assert.equal(visualStatusFromScoreDraft('90'), '합격')
+  assert.equal(parsed.applicationLackCount, 2)
+  assert.equal(parsed.conceptLackCount, undefined)
+  assert.equal(parsed.teacherFeedback, '나날이 발전하고 있다')
+  assert.equal(parsed.needsReview.length, 0)
+}
+
+{
+  const parsed = caseOf('개념 부족 2개 피드백 계산 과정은 좋아지고 있다')
+  assert.equal(parsed.conceptLackCount, 2)
+  assert.equal(parsed.calculationErrorCount, undefined)
+  assert.equal(parsed.teacherFeedback, '계산 과정은 좋아지고 있다')
+}
+
+{
+  const seeded = {
+    nagyeong: {
+      rounds: emptyRounds(),
+      learningDiagnosis: {
+        ...EMPTY_DAILY_LEARNING_DIAGNOSIS,
+        conceptLackCount: 2,
+        calculationErrorCount: 1,
+        applicationLackCount: 3,
+      },
+    },
+    doyoung: emptyDraft(),
+  }
+  const parsed = caseOf('피드백 계산 실수가 많이 줄었음')
+  assert.equal(parsed.calculationErrorCount, undefined)
+  assert.equal(parsed.teacherFeedback, '계산 실수가 많이 줄었음')
+  const applied = applyCard('피드백 계산 실수가 많이 줄었음', seeded)
+  assert.equal(applied.drafts.nagyeong?.learningDiagnosis.conceptLackCount, 2)
+  assert.equal(applied.drafts.nagyeong?.learningDiagnosis.calculationErrorCount, 1)
+  assert.equal(applied.drafts.nagyeong?.learningDiagnosis.applicationLackCount, 3)
+  assert.equal(
+    applied.drafts.nagyeong?.learningDiagnosis.teacherFeedback,
+    '계산 실수가 많이 줄었음',
+  )
+}
+
+{
+  const parsed = caseOf('오답이 좀 많다')
+  assert.equal(parsed.conceptLackCount, undefined)
+  assert.equal(parsed.calculationErrorCount, undefined)
+  assert.equal(parsed.applicationLackCount, undefined)
+}
+
+{
+  const parsed = caseOf('계산 실수가 있었다')
+  assert.equal(parsed.calculationErrorCount, undefined)
+  assert.equal(parsed.conceptLackCount, undefined)
+  assert.equal(parsed.applicationLackCount, undefined)
+}
+
+{
+  const seeded = {
+    nagyeong: {
+      rounds: emptyRounds(),
+      learningDiagnosis: {
+        ...EMPTY_DAILY_LEARNING_DIAGNOSIS,
+        conceptLackCount: 2,
+        calculationErrorCount: 1,
+        applicationLackCount: 3,
+      },
+    },
+    doyoung: emptyDraft(),
+  }
+  const applied = applyCard('오답이 좀 많다', seeded)
+  assert.equal(applied.drafts.nagyeong?.learningDiagnosis.conceptLackCount, 2)
+  assert.equal(applied.drafts.nagyeong?.learningDiagnosis.calculationErrorCount, 1)
+  assert.equal(applied.drafts.nagyeong?.learningDiagnosis.applicationLackCount, 3)
+}
+
 const panel = readFileSync('src/components/todayReport/ClassDailyTestBulkPanel.tsx', 'utf8')
 assert.match(panel, /chipLabel="음성입력"/)
 assert.match(panel, /applyStudentDailyTestDraft/)

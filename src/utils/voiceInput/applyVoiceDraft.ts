@@ -11,7 +11,9 @@ import {
   parseMaterialVoice,
   parseSectionTextVoice,
 } from './parseVoiceTranscript'
-import { parseStudentDailyTestVoice } from './parseStudentDailyTestVoice'
+import { parseProgressSlotVoice } from './parseProgressSlotVoice.ts'
+import { parseStudentAttitudeVoice } from './parseStudentAttitudeVoice.ts'
+import { parseStudentDailyTestVoice } from './parseStudentDailyTestVoice.ts'
 import type {
   AttendanceVoiceAssignment,
   AttitudeVoiceAssignment,
@@ -146,7 +148,7 @@ export function applyAttitudeDrafts<T extends { issues: AttitudeVoiceAssignment[
     next[row.studentId] = {
       ...current,
       issues: row.issues,
-      note: row.issues.length > 0 ? row.note : '',
+      note: row.note ? row.note : current.note,
     }
   }
   return {
@@ -159,21 +161,38 @@ export function slotDraftKey(subject: string, slotNumber: number): string {
   return `${subject}:${slotNumber}`
 }
 
-export function applyProgressSlotDraft<T extends { currentProgress: string }>(
+export function applyProgressSlotDraft<
+  T extends { currentProgress: string; currentPage?: string; totalPage?: string },
+>(
   drafts: Record<string, T>,
   transcript: string,
   subject: string,
   slotNumber: number,
 ): { drafts: Record<string, T>; summary: VoiceApplySummary } {
-  const parsed = parseSectionTextVoice(transcript)
+  const parsed = parseProgressSlotVoice(transcript)
   const key = slotDraftKey(subject, slotNumber)
   const next = { ...drafts }
-  if (parsed.text && next[key]) {
-    next[key] = { ...next[key], currentProgress: parsed.text }
+  const current = next[key]
+  let appliedCount = 0
+  if (current) {
+    const patch: T = { ...current }
+    if (parsed.currentProgress !== undefined) {
+      patch.currentProgress = parsed.currentProgress
+      appliedCount += 1
+    }
+    if (parsed.currentPage !== undefined && 'currentPage' in current) {
+      patch.currentPage = String(parsed.currentPage)
+      appliedCount += 1
+    }
+    if (parsed.totalPage !== undefined && 'totalPage' in current) {
+      patch.totalPage = String(parsed.totalPage)
+      appliedCount += 1
+    }
+    next[key] = patch
   }
   return {
     drafts: next,
-    summary: toSummary(parsed.text && drafts[key] ? 1 : 0, [], parsed.needsReview),
+    summary: toSummary(appliedCount, [], parsed.needsReview),
   }
 }
 
@@ -320,6 +339,40 @@ function patchStudentDailyTestDraft<T extends {
     diagnosis.teacherFeedback = parsed.teacherFeedback
   }
   return { ...current, rounds, learningDiagnosis: diagnosis }
+}
+
+export function applyStudentAttitudeDraft<T extends { issues: AttitudeVoiceAssignment['issues']; note: string }>(
+  drafts: Record<string, T>,
+  transcript: string,
+  cardStudent: VoiceStudentRef,
+  students: VoiceStudentRef[],
+  attendance: AttendanceRecord[],
+  date: string,
+): { drafts: Record<string, T>; summary: VoiceApplySummary } {
+  const absent = isStudentAbsentOnDate(attendance, cardStudent.id, date)
+  const parsed = parseStudentAttitudeVoice(transcript, cardStudent, students, absent)
+  const next = { ...drafts }
+  if (!parsed.apply) {
+    return {
+      drafts: next,
+      summary: toSummary(0, parsed.skippedAbsent ? [cardStudent.id] : [], parsed.needsReview),
+    }
+  }
+  const current = next[cardStudent.id]
+  if (!current) {
+    return { drafts: next, summary: toSummary(0, [], parsed.needsReview) }
+  }
+  next[cardStudent.id] = {
+    ...current,
+    issues: parsed.issues !== undefined ? parsed.issues : current.issues,
+    note: parsed.note !== undefined ? parsed.note.slice(0, 500) : current.note,
+  }
+  const appliedCount =
+    (parsed.issues !== undefined ? 1 : 0) + (parsed.note !== undefined ? 1 : 0)
+  return {
+    drafts: next,
+    summary: toSummary(appliedCount, [], parsed.needsReview),
+  }
 }
 
 export { formatVoiceSummary }

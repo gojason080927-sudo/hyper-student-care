@@ -13,7 +13,7 @@ import {
   type AttitudeBulkDraft,
 } from '../../utils/todayReportAbsence'
 import { markChangedDraftKeys, overlayLoadedDrafts } from '../../utils/todayReportDraftMerge'
-import { applyAttitudeDrafts } from '../../utils/voiceInput/applyVoiceDraft'
+import { applyAttitudeDrafts, applyStudentAttitudeDraft } from '../../utils/voiceInput/applyVoiceDraft'
 import { SectionVoiceInput } from './SectionVoiceInput'
 
 type ClassAttitudeBulkPanelProps = {
@@ -179,19 +179,61 @@ export function ClassAttitudeBulkPanel({
                 name={student.name}
                 excluded={excluded}
                 compact={compact}
-                extra={<StudentKakaoShareAction student={student} compact />}
+                extra={
+                  <div className="flex min-w-0 flex-wrap items-center justify-end gap-1">
+                    <StudentKakaoShareAction student={student} compact />
+                  </div>
+                }
               />
               {excluded ? (
                 <AbsentFollowOnHint compact={compact} />
               ) : (
-                <ClassAttitudePicker
-                  issues={current.issues}
-                  note={current.note}
-                  onIssuesChange={(issues) => setDraft(student.id, { issues, note: issues.length > 0 ? current.note : '' })}
-                  onNoteChange={(note) => setDraft(student.id, { note })}
-                  compact={compact}
-                  disabled={saving}
-                />
+                <div className="min-w-0 space-y-1.5">
+                  <ClassAttitudePicker
+                    issues={current.issues}
+                    note={current.note}
+                    hideNote
+                    onIssuesChange={(issues) => setDraft(student.id, { issues })}
+                    onNoteChange={(note) => setDraft(student.id, { note })}
+                    compact={compact}
+                    disabled={saving}
+                  />
+                  <div data-attitude-comment="true" className="min-w-0">
+                    <div className="mb-0.5 flex min-w-0 items-center justify-between gap-1">
+                      <label className="block text-xs font-semibold text-slate-600">강사의 의견</label>
+                      <SectionVoiceInput
+                        label={`${student.name} 강사의 의견 음성 입력`}
+                        chipLabel="의견"
+                        compact={compact}
+                        disabled={saving}
+                        explicitStop
+                        hideStatus
+                        onApply={(transcript) => {
+                          const applied = applyStudentAttitudeDraft(
+                            drafts,
+                            transcript,
+                            student,
+                            students,
+                            attendance,
+                            date,
+                          )
+                          markChangedDraftKeys(drafts, applied.drafts, dirtyAttitudeKeysRef.current)
+                          setDrafts(applied.drafts)
+                          return applied.summary
+                        }}
+                        onSaveCommand={() => void handleSaveAll()}
+                      />
+                    </div>
+                    <textarea
+                      value={current.note}
+                      disabled={saving}
+                      onChange={(e) => setDraft(student.id, { note: e.target.value.slice(0, 500) })}
+                      rows={compact ? 2 : 3}
+                      placeholder="오늘 수업에서 확인한 의견을 입력"
+                      className="w-full min-w-0 max-w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800"
+                    />
+                  </div>
+                </div>
               )}
             </div>
           )
