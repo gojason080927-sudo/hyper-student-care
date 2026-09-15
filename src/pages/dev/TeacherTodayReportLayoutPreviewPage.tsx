@@ -6,6 +6,7 @@ import { TeacherMobileHeader } from '../../components/teacherMobile/TeacherMobil
 import { HyperFeaturedCardWave } from '../../components/ui/HyperFeaturedCardWave'
 import { AttendanceExcuseButtons } from '../../components/studentCare/AttendanceExcuseButtons'
 import { SectionVoiceInput } from '../../components/todayReport/SectionVoiceInput'
+import { DailyTestVoiceDiagnostic } from '../../components/todayReport/DailyTestVoiceDiagnostic'
 import type { ClassAttitudeIssue } from '../../types/records'
 import '../../styles/teacherMobileTheme.css'
 
@@ -151,28 +152,40 @@ export function TeacherTodayReportLayoutPreviewPage() {
             <div className="mb-2 min-h-10 rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-800">
               수학
             </div>
-            <div className="mb-2 flex min-w-0 max-w-full flex-wrap items-center justify-between gap-2">
+            <div className="mb-1.5 flex min-w-0 max-w-full flex-wrap items-center gap-1.5">
               <p className="min-w-0 text-sm font-bold text-[#163A70]">김도영</p>
-              <div className="min-w-0 max-w-full flex-1">
+              <div className="ml-auto shrink-0">
                 <SectionVoiceInput
                   label="김도영 일일테스트 음성 입력"
                   chipLabel="음성입력"
                   compact
+                  hideStatus
                   onApply={() => ({
                     appliedCount: 0,
                     excludedAbsentCount: 0,
-                    needsReviewCount: 0,
-                    needsReview: [],
+                    needsReviewCount: 1,
+                    needsReview: [
+                      {
+                        label: '류정현',
+                        reason: '점수·오답분석·피드백을 확인해야 합니다',
+                      },
+                    ],
                   })}
                 />
               </div>
             </div>
-            <p
-              data-voice-summary="true"
-              className="mb-2 w-full min-w-0 max-w-full whitespace-normal break-words text-[11px] leading-4 text-slate-600 [overflow-wrap:anywhere]"
-            >
-              음성 입력 완료 · 확인 필요 1건 — 류정현 점수·오답분석·피드백을 확인해야 합니다
-            </p>
+            <DailyTestVoiceDiagnostic
+              snapshot={{
+                rawTranscript: '1차 80점 불합격, 2차 100점 합격',
+                parserInput: '1차 80점 불합격, 2차 100점 합격',
+                kind: 'form-fill',
+                appliedCount: 0,
+                needsReviewCount: 1,
+                needsReviewReason: '류정현 점수·오답분석·피드백을 확인해야 합니다',
+                summaryText:
+                  '음성 입력 완료 · 확인 필요 1건 — 류정현 점수·오답분석·피드백을 확인해야 합니다',
+              }}
+            />
             <div className="grid grid-cols-2 gap-1.5">
               <div className="flex min-w-0 items-center gap-1 rounded-lg border border-slate-200 bg-slate-50/50 px-1.5 py-1">
                 <span className="w-7 shrink-0 text-[11px] font-semibold text-slate-600">1차</span>

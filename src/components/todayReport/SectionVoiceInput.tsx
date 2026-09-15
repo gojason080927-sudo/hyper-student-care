@@ -6,8 +6,17 @@ import {
   type LiveSpeechSession,
 } from '../../utils/voiceInput/speechRecognition'
 import { formatVoiceSummary } from '../../utils/voiceInput/parseVoiceTranscript'
-import { routeVoiceTranscript } from '../../utils/voiceInput/voiceSaveCommand'
+import {
+  routeVoiceTranscript,
+  type VoiceTranscriptRoute,
+} from '../../utils/voiceInput/voiceSaveCommand'
 import type { VoiceApplySummary } from '../../utils/voiceInput/types'
+
+type VoiceSessionDiagnosticPayload = {
+  rawTranscript: string
+  routed: VoiceTranscriptRoute
+  summary: VoiceApplySummary | null
+}
 
 type SectionVoiceInputProps = {
   label: string
@@ -17,6 +26,9 @@ type SectionVoiceInputProps = {
   onApply: (transcript: string) => VoiceApplySummary
   /** Existing section bulk-save handler. Voice never writes to DB itself. */
   onSaveCommand?: () => void
+  /** Hide inline confirmation; parent (daily-test) renders it full-width. */
+  hideStatus?: boolean
+  onDiagnostic?: (payload: VoiceSessionDiagnosticPayload) => void
 }
 
 /**
@@ -30,6 +42,8 @@ export function SectionVoiceInput({
   disabled = false,
   onApply,
   onSaveCommand,
+  hideStatus = false,
+  onDiagnostic,
 }: SectionVoiceInputProps) {
   const reactId = useId()
   const fallbackId = `${reactId}-fallback`
@@ -43,8 +57,10 @@ export function SectionVoiceInput({
   const sessionRef = useRef<LiveSpeechSession | null>(null)
   const appliedThisSessionRef = useRef(false)
   const onSaveCommandRef = useRef(onSaveCommand)
+  const onDiagnosticRef = useRef(onDiagnostic)
   const disabledRef = useRef(disabled)
   onSaveCommandRef.current = onSaveCommand
+  onDiagnosticRef.current = onDiagnostic
   disabledRef.current = disabled
 
   useEffect(() => {
@@ -57,11 +73,21 @@ export function SectionVoiceInput({
   const applyTranscript = (raw: string) => {
     const routed = routeVoiceTranscript(raw)
     if (routed.kind === 'none') {
+      onDiagnosticRef.current?.({
+        rawTranscript: raw,
+        routed,
+        summary: null,
+      })
       setError('인식된 내용이 없습니다. 텍스트로 입력할 수 있습니다.')
       setFallbackOpen(true)
       return
     }
     if (routed.kind === 'save-command') {
+      onDiagnosticRef.current?.({
+        rawTranscript: raw,
+        routed,
+        summary: null,
+      })
       setSummary(null)
       setError('')
       setFallbackText('')
@@ -71,6 +97,11 @@ export function SectionVoiceInput({
       return
     }
     const next = onApply(routed.transcript)
+    onDiagnosticRef.current?.({
+      rawTranscript: raw,
+      routed,
+      summary: next,
+    })
     setSummary(next)
     setError('')
     setFallbackText('')
@@ -173,7 +204,7 @@ export function SectionVoiceInput({
           {error}
         </p>
       ) : null}
-      {summary ? (
+      {summary && !hideStatus ? (
         <p
           data-voice-summary="true"
           className="mt-1 w-full min-w-0 max-w-full whitespace-normal break-words text-[11px] leading-4 text-slate-600 [overflow-wrap:anywhere]"
