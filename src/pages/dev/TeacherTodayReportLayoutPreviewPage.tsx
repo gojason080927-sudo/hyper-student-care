@@ -6,7 +6,6 @@ import { TeacherMobileHeader } from '../../components/teacherMobile/TeacherMobil
 import { HyperFeaturedCardWave } from '../../components/ui/HyperFeaturedCardWave'
 import { AttendanceExcuseButtons } from '../../components/studentCare/AttendanceExcuseButtons'
 import { SectionVoiceInput } from '../../components/todayReport/SectionVoiceInput'
-import { DailyTestVoiceDiagnostic } from '../../components/todayReport/DailyTestVoiceDiagnostic'
 import type { ClassAttitudeIssue } from '../../types/records'
 import '../../styles/teacherMobileTheme.css'
 
@@ -162,81 +161,20 @@ export function TeacherTodayReportLayoutPreviewPage() {
                   hideStatus
                   explicitStop
                   onApply={() => ({
-                    appliedCount: 0,
+                    appliedCount: 3,
                     excludedAbsentCount: 0,
-                    needsReviewCount: 1,
-                    needsReview: [
-                      {
-                        label: '류정현',
-                        reason: '점수·오답분석·피드백을 확인해야 합니다',
-                      },
-                    ],
+                    needsReviewCount: 0,
+                    needsReview: [],
                   })}
                 />
               </div>
             </div>
-            <DailyTestVoiceDiagnostic
-              snapshot={{
-                accumulatedRaw:
-                  '피드백 계산 실수가 많이 줄었고 응용 문제를 더 연습할 것',
-                parserInput:
-                  '피드백 계산 실수가 많이 줄었고 응용 문제를 더 연습할 것',
-                parsedFeedback: '계산 실수가 많이 줄었고 응용 문제를 더 연습할 것',
-                applyResultText:
-                  '차시 적용: 0 · 오답분석 적용: 0 · 피드백 적용: 1 · 확인 필요: 0',
-                endReason: '브라우저 자동 종료 → 재시작 → 사용자 종료',
-                kind: 'form-fill',
-                attemptApplyCount: 0,
-                wrongCauseApplyCount: 0,
-                feedbackApplyCount: 1,
-                appliedCount: 1,
-                needsReviewCount: 0,
-                needsReviewReason: '',
-                summaryText: '음성 입력 완료 · 1건 반영',
-              }}
-            />
-            <div className="mb-1.5 mt-2 flex min-w-0 max-w-full flex-wrap items-center gap-1.5">
-              <p className="min-w-0 text-sm font-bold text-[#163A70]">김도영</p>
-              <div className="ml-auto shrink-0">
-                <SectionVoiceInput
-                  label="김도영 일일테스트 음성 입력"
-                  chipLabel="음성입력"
-                  compact
-                  hideStatus
-                  explicitStop
-                  onApply={() => ({
-                    appliedCount: 0,
-                    excludedAbsentCount: 0,
-                    needsReviewCount: 1,
-                    needsReview: [
-                      {
-                        label: '김도영',
-                        reason: '점수·오답분석·피드백을 확인해야 합니다',
-                      },
-                    ],
-                  })}
-                />
-              </div>
-            </div>
-            <DailyTestVoiceDiagnostic
-              snapshot={{
-                accumulatedRaw: '강사 피드백이 인식되지 않은 실제 삼성 문장 예시입니다',
-                parserInput: '강사 피드백이 인식되지 않은 실제 삼성 문장 예시입니다',
-                parsedFeedback: '없음',
-                applyResultText:
-                  '차시 적용: 0 · 오답분석 적용: 0 · 피드백 적용: 0 · 확인 필요: 1',
-                endReason: '사용자 종료',
-                kind: 'form-fill',
-                attemptApplyCount: 0,
-                wrongCauseApplyCount: 0,
-                feedbackApplyCount: 0,
-                appliedCount: 0,
-                needsReviewCount: 1,
-                needsReviewReason: '김도영 점수·오답분석·피드백을 확인해야 합니다',
-                summaryText:
-                  '음성 입력 완료 · 확인 필요 1건 — 김도영 점수·오답분석·피드백을 확인해야 합니다',
-              }}
-            />
+            <p
+              data-voice-summary="true"
+              className="mb-1 w-full min-w-0 max-w-full whitespace-normal break-words text-[11px] leading-4 text-slate-600 [overflow-wrap:anywhere]"
+            >
+              음성 입력 완료 · 3건 반영
+            </p>
             <div className="grid grid-cols-2 gap-1.5">
               <div className="flex min-w-0 items-center gap-1 rounded-lg border border-slate-200 bg-slate-50/50 px-1.5 py-1">
                 <span className="w-7 shrink-0 text-[11px] font-semibold text-slate-600">1차</span>
@@ -279,7 +217,9 @@ export function TeacherTodayReportLayoutPreviewPage() {
               ))}
             </div>
             <p className="mt-2 text-sm font-semibold text-slate-700">강사의 피드백</p>
-            <div className="mt-1 min-h-[5.5rem] rounded-lg border border-slate-200 bg-white" />
+            <div className="mt-1 min-h-[5.5rem] w-full min-w-0 max-w-full whitespace-pre-wrap break-all rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 [overflow-wrap:anywhere]">
+              함수 부분을 부분에 이해가 늦는 거 같다
+            </div>
             <button type="button" className="tm-btn-primary mt-2 w-full min-h-11 text-sm font-semibold">
               일일테스트 전체 저장
             </button>

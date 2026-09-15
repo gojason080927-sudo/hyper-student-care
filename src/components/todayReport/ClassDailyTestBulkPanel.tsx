@@ -26,6 +26,8 @@ import {
 import { isFollowOnInputRequired, isStudentAbsentOnDate } from '../../utils/todayReportAbsence'
 import { markChangedDraftKeys, overlayLoadedDrafts } from '../../utils/todayReportDraftMerge'
 import { applyStudentDailyTestDraft } from '../../utils/voiceInput/applyVoiceDraft'
+import { formatVoiceSummary } from '../../utils/voiceInput/parseVoiceTranscript'
+import type { VoiceApplySummary } from '../../utils/voiceInput/types'
 import {
   buildDailyTestVoiceDiagnostic,
   setStudentVoiceDiagnostic,
@@ -74,6 +76,9 @@ export function ClassDailyTestBulkPanel({
   const [drafts, setDrafts] = useState<Record<string, StudentDraft>>({})
   const [voiceDiagnostics, setVoiceDiagnostics] = useState<
     Record<string, DailyTestVoiceDiagnosticSnapshot>
+  >({})
+  const [voiceConfirmations, setVoiceConfirmations] = useState<
+    Record<string, VoiceApplySummary>
   >({})
   const dirtyDailyTestKeysRef = useRef(new Set<string>())
   const dirtyTestNameRef = useRef(false)
@@ -406,6 +411,10 @@ export function ClassDailyTestBulkPanel({
                         )
                         markChangedDraftKeys(drafts, applied.drafts, dirtyDailyTestKeysRef.current)
                         setDrafts(applied.drafts)
+                        setVoiceConfirmations((prev) => ({
+                          ...prev,
+                          [student.id]: applied.summary,
+                        }))
                         return applied.summary
                       }}
                       onSaveCommand={() => void handleSaveAll()}
@@ -438,7 +447,18 @@ export function ClassDailyTestBulkPanel({
                   )
                 }
               />
-              {!excluded && voiceDiagnostics[student.id] ? (
+              {!excluded && voiceConfirmations[student.id] ? (
+                <p
+                  data-voice-summary="true"
+                  className="mb-1 w-full min-w-0 max-w-full whitespace-normal break-words text-[11px] leading-4 text-slate-600 [overflow-wrap:anywhere]"
+                >
+                  {formatVoiceSummary(voiceConfirmations[student.id]!)}
+                  {voiceConfirmations[student.id]!.needsReview[0]
+                    ? ` — ${voiceConfirmations[student.id]!.needsReview[0]!.label} ${voiceConfirmations[student.id]!.needsReview[0]!.reason}`
+                    : ''}
+                </p>
+              ) : null}
+              {import.meta.env.DEV && !excluded && voiceDiagnostics[student.id] ? (
                 <DailyTestVoiceDiagnostic snapshot={voiceDiagnostics[student.id]!} />
               ) : null}
               {excluded ? (
