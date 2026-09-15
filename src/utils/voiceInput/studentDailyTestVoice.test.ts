@@ -12,6 +12,7 @@ import { applyStudentDailyTestDraft } from './applyVoiceDraft.ts'
 import {
   normalizeStudentDailyTestAttemptSpeech,
   parseStudentDailyTestVoice,
+  SAMSUNG_RYU_DAILY_TEST_TRANSCRIPT,
 } from './parseStudentDailyTestVoice.ts'
 import { formatVoiceSummary } from './parseVoiceTranscript.ts'
 import { isVoiceBulkSaveCommand, routeVoiceTranscript } from './voiceSaveCommand.ts'
@@ -25,7 +26,8 @@ const DATE = '2026-09-15'
 const 강나경 = { id: 'nagyeong', name: '강나경' }
 const 김도영 = { id: 'doyoung', name: '김도영' }
 const 김민재 = { id: 'minjae', name: '김민재' }
-const roster = [강나경, 김도영, 김민재]
+const 류정현 = { id: 'ryujeonghyeon', name: '류정현' }
+const roster = [강나경, 김도영, 김민재, 류정현]
 
 function emptyRounds() {
   return [
@@ -76,6 +78,13 @@ function applyCard(
   student = 강나경,
 ) {
   return applyStudentDailyTestDraft(drafts, text, student, roster, present, DATE)
+}
+
+function applyRyu(
+  text: string,
+  drafts = { nagyeong: emptyDraft(), doyoung: emptyDraft(), ryujeonghyeon: emptyDraft() },
+) {
+  return applyStudentDailyTestDraft(drafts, text, 류정현, roster, present, DATE)
 }
 
 const corpus: string[] = []
@@ -591,6 +600,148 @@ assert.equal(normalizeStudentDailyTestAttemptSpeech('3.14점').includes('3차'),
   assert.ok(parsed.needsReview.some((row) => row.reason.includes('점수·오답분석·피드백')))
 }
 
+function parseRyu(text: string) {
+  return parseStudentDailyTestVoice(text, 류정현, roster, false)
+}
+
+{
+  assert.equal(
+    SAMSUNG_RYU_DAILY_TEST_TRANSCRIPT,
+    '류정현 1차 80 불합격 2차 95 합격 2차 함수 부분을 부분에 이해가 늦는 거 같다',
+  )
+  const parsed = parseRyu(SAMSUNG_RYU_DAILY_TEST_TRANSCRIPT)
+  assert.equal(parsed.apply, true)
+  assert.deepEqual(
+    parsed.attempts.map((row) => [row.round, row.score]),
+    [
+      [1, '80'],
+      [2, '95'],
+    ],
+  )
+  assert.equal(parsed.attempts.length, 2)
+  assert.equal(visualStatusFromScoreDraft('80'), '불합격')
+  assert.equal(visualStatusFromScoreDraft('95'), '합격')
+  assert.equal(parsed.teacherFeedback, '함수 부분을 부분에 이해가 늦는 거 같다')
+  assert.equal(parsed.needsReview.length, 0)
+  const applied = applyRyu(SAMSUNG_RYU_DAILY_TEST_TRANSCRIPT)
+  assert.equal(applied.drafts.ryujeonghyeon?.rounds[0]?.score, '80')
+  assert.equal(applied.drafts.ryujeonghyeon?.rounds[1]?.score, '95')
+  assert.equal(applied.drafts.ryujeonghyeon?.rounds.find((row) => row.passed)?.round, 2)
+  assert.equal(
+    applied.drafts.ryujeonghyeon?.learningDiagnosis.teacherFeedback,
+    '함수 부분을 부분에 이해가 늦는 거 같다',
+  )
+  assert.equal(applied.summary.needsReviewCount, 0)
+  assert.equal(applied.drafts.nagyeong?.rounds[0]?.score, '')
+}
+
+{
+  const parsed = parseRyu('류정현 1차 80 불합격 2차 95 합격 함수 부분에 이해가 늦는 것 같다')
+  assert.equal(parsed.teacherFeedback, '함수 부분에 이해가 늦는 것 같다')
+  assert.deepEqual(
+    parsed.attempts.map((row) => row.score),
+    ['80', '95'],
+  )
+}
+
+{
+  const prev = {
+    nagyeong: emptyDraft(),
+    doyoung: emptyDraft(),
+    ryujeonghyeon: {
+      ...emptyDraft(),
+      learningDiagnosis: {
+        ...EMPTY_DAILY_LEARNING_DIAGNOSIS,
+        teacherFeedback: '기존 피드백',
+      },
+    },
+  }
+  const parsed = parseRyu('1차 80 불합격 2차 95 합격')
+  assert.equal(parsed.teacherFeedback, undefined)
+  const applied = applyRyu('1차 80점 불합격, 2차 95점 합격', prev)
+  assert.equal(applied.drafts.ryujeonghyeon?.rounds[0]?.score, '80')
+  assert.equal(applied.drafts.ryujeonghyeon?.rounds[1]?.score, '95')
+  assert.equal(visualStatusFromScoreDraft('80'), '불합격')
+  assert.equal(visualStatusFromScoreDraft('95'), '합격')
+  assert.equal(applied.drafts.ryujeonghyeon?.learningDiagnosis.teacherFeedback, '기존 피드백')
+}
+
+{
+  const parsed = parseRyu('1차 80 불합격 2차 95 합격 피드백 함수 부분에 이해가 늦다')
+  assert.equal(parsed.teacherFeedback, '함수 부분에 이해가 늦다')
+  assert.equal(parsed.attempts.length, 2)
+}
+
+{
+  const prev = {
+    nagyeong: emptyDraft(),
+    doyoung: emptyDraft(),
+    ryujeonghyeon: {
+      ...emptyDraft(),
+      learningDiagnosis: {
+        ...EMPTY_DAILY_LEARNING_DIAGNOSIS,
+        teacherFeedback: '기존 피드백',
+      },
+    },
+  }
+  const parsed = parseRyu('1차 80 불합격 2차 95 합격 응용 능력 부족 2개')
+  assert.equal(parsed.applicationLackCount, 2)
+  assert.equal(parsed.teacherFeedback, undefined)
+  const applied = applyRyu('1차 80 불합격 2차 95 합격 응용 능력 부족 2개', prev)
+  assert.equal(applied.drafts.ryujeonghyeon?.learningDiagnosis.applicationLackCount, 2)
+  assert.equal(applied.drafts.ryujeonghyeon?.learningDiagnosis.teacherFeedback, '기존 피드백')
+}
+
+{
+  const parsed = parseRyu(
+    '1차 80 불합격 응용 능력 부족 2개 함수 응용 문제에 대한 이해가 늦다',
+  )
+  assert.equal(parsed.attempts[0]?.score, '80')
+  assert.equal(parsed.applicationLackCount, 2)
+  assert.equal(parsed.teacherFeedback, '함수 응용 문제에 대한 이해가 늦다')
+  const applied = applyRyu(
+    '1차 80 불합격 응용 능력 부족 2개 함수 응용 문제에 대한 이해가 늦다',
+  )
+  assert.equal(applied.drafts.ryujeonghyeon?.rounds[0]?.score, '80')
+  assert.equal(applied.drafts.ryujeonghyeon?.learningDiagnosis.applicationLackCount, 2)
+  assert.equal(
+    applied.drafts.ryujeonghyeon?.learningDiagnosis.teacherFeedback,
+    '함수 응용 문제에 대한 이해가 늦다',
+  )
+}
+
+{
+  const parsed = parseCard(SAMSUNG_RYU_DAILY_TEST_TRANSCRIPT, 강나경)
+  assert.equal(parsed.apply, false)
+  assert.equal(parsed.attempts.length, 0)
+  assert.ok(parsed.needsReview.some((row) => row.reason.includes('다른 학생')))
+}
+
+{
+  const parsed = parseRyu('1차 80 불합격 2차 95 합격 점수를 다시 보자')
+  assert.equal(parsed.apply, true)
+  assert.equal(parsed.teacherFeedback, undefined)
+  assert.ok(parsed.needsReview.length > 0)
+}
+
+{
+  const parsed = parseRyu(
+    '류정현 1차 80 불합격 2차 95 합격 함수 부분을 부분에 이해가 늦는 거 같다',
+  )
+  assert.equal(parsed.teacherFeedback, '함수 부분을 부분에 이해가 늦는 거 같다')
+  const repeated = parseRyu('피드백 계산 계산 실수가 많이 줄었다')
+  assert.equal(repeated.teacherFeedback, '계산 계산 실수가 많이 줄었다')
+}
+
+{
+  const parsed = parseRyu('피드백 계산 실수가 많이 줄었고 응용 문제를 더 연습할 것')
+  assert.equal(parsed.apply, true)
+  assert.equal(
+    parsed.teacherFeedback,
+    '계산 실수가 많이 줄었고 응용 문제를 더 연습할 것',
+  )
+}
+
 const panel = readFileSync('src/components/todayReport/ClassDailyTestBulkPanel.tsx', 'utf8')
 assert.match(panel, /chipLabel="음성입력"/)
 assert.match(panel, /applyStudentDailyTestDraft/)
@@ -600,8 +751,10 @@ assert.doesNotMatch(panel, /voice-test-\$\{round\}/)
 assert.match(panel, /onSaveCommand=\{\(\) => void handleSaveAll\(\)\}/)
 assert.match(panel, /DailyLearningDiagnosisFields/)
 assert.match(panel, /DailyTestVoiceDiagnostic/)
+assert.match(panel, /import.meta.env.DEV/)
 assert.match(panel, /hideStatus/)
 assert.match(panel, /onDiagnostic/)
+assert.match(panel, /data-voice-summary="true"/)
 assert.match(readFileSync('src/utils/voiceInput/applyVoiceDraft.ts', 'utf8'), /parseStudentDailyTestVoice/)
 assert.doesNotMatch(readFileSync('src/utils/voiceInput/applyVoiceDraft.ts', 'utf8'), /saveDailyTestRecord/)
 assert.doesNotMatch(readFileSync('src/utils/voiceInput/parseStudentDailyTestVoice.ts', 'utf8'), /from '@supabase/)

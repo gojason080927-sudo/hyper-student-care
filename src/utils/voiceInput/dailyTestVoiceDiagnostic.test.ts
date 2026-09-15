@@ -310,6 +310,7 @@ assert.notEqual(stored.nagyeong?.accumulatedRaw, failText)
 {
   const panel = readFileSync('src/components/todayReport/ClassDailyTestBulkPanel.tsx', 'utf8')
   assert.match(panel, /!excluded && voiceDiagnostics/)
+  assert.match(panel, /import.meta.env.DEV/)
   assert.match(panel, /hideStatus/)
   assert.match(panel, /DailyTestVoiceDiagnostic/)
   assert.match(panel, /onDiagnostic/)

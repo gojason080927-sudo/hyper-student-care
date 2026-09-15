@@ -4,8 +4,6 @@ import {
   compactText,
   extractScoreValue,
   parseKoreanScoreToken,
-  parseWrongCausePhrases,
-  replaceKoreanScores,
 } from './voiceLexicon.ts'
 import type { VoiceReviewItem, VoiceStudentRef } from './types.ts'
 
@@ -44,12 +42,150 @@ function roundFromMarker(marker: string): 1 | 2 | 3 | 4 | null {
   return null
 }
 
+export const SAMSUNG_RYU_DAILY_TEST_TRANSCRIPT =
+  '류정현 1차 80 불합격 2차 95 합격 2차 함수 부분을 부분에 이해가 늦는 거 같다'
+
 function splitFeedback(transcript: string): { structured: string; feedback?: string } {
   const match = transcript.match(FEEDBACK_RE)
   if (!match || match.index == null) return { structured: transcript.trim() }
   const structured = transcript.slice(0, match.index).trim()
   const feedback = transcript.slice(match.index + match[0].length).trim()
   return { structured, feedback: feedback || undefined }
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function stripCardStudentName(text: string, cardStudent: VoiceStudentRef): string {
+  const name = cardStudent.name.replace(/\s+/g, '')
+  if (name.length < 2) return text
+  const pattern = name
+    .split('')
+    .map((ch) => escapeRegExp(ch))
+    .join('\\s*')
+  return text.replace(new RegExp(pattern, 'g'), ' ').replace(/\s+/g, ' ').trim()
+}
+
+function stripSidTokens(text: string): string {
+  return text.replace(SID_RE, ' ').replace(/\s+/g, ' ').trim()
+}
+
+function trimResidual(text: string): string {
+  return text.replace(/^[\s,，.．。、;；:：~…·]+/, '').replace(/[\s,，.．。、;；:：~…·]+$/, '').trim()
+}
+
+/** Attempt head without score/status is not a valid attempt payload. */
+function splitAttemptHeadAndRest(piece: string): {
+  head: string
+  round: 1 | 2 | 3 | 4
+  rest: string
+} | null {
+  const head = piece.match(ATTEMPT_HEAD_RE)
+  if (!head?.[1]) return null
+  const round = roundFromMarker(head[1])
+  if (!round) return null
+  return { head: head[1], round, rest: piece.slice(head[0].length) }
+}
+
+function consumeAttemptPayload(piece: string): {
+  consumed: string
+  residual: string
+  score: { score: string; invalid: boolean } | null
+} {
+  const split = splitAttemptHeadAndRest(piece)
+  if (!split) {
+    return { consumed: '', residual: piece, score: null }
+  }
+  const headLen = piece.length - split.rest.length
+  const score = extractAttemptScore(piece)
+  const payload = score
+    ? split.rest.match(
+        /^\s*(?:\d{1,3}|[영공일이삼사오육륙칠팔구십백]{1,4})(?:\s*점)?\s*(?:불합격|합격)?/,
+      )
+    : null
+  if (!score || !payload) {
+    const ws = split.rest.match(/^\s*/)?.[0] ?? ''
+    return {
+      consumed: piece.slice(0, headLen + ws.length),
+      residual: split.rest.slice(ws.length),
+      score: null,
+    }
+  }
+  const consumed = piece.slice(0, headLen + payload[0].length)
+  return {
+    consumed,
+    residual: piece.slice(consumed.length),
+    score,
+  }
+}
+
+const ERROR_SPAN_RE =
+  /(?:개념(?:이|이해)?\s*부족|계산\s*실수|응용(?:\s*능력)?\s*부족)\s*\d+\s*개/g
+
+function extractErrorAnalysisSpans(text: string): {
+  rest: string
+  conceptLackCount?: number
+  calculationErrorCount?: number
+  applicationLackCount?: number
+} {
+  let conceptLackCount: number | undefined
+  let calculationErrorCount: number | undefined
+  let applicationLackCount: number | undefined
+  const rest = text.replace(ERROR_SPAN_RE, (full) => {
+    const n = Number(full.match(/(\d+)/)?.[1])
+    if (!Number.isInteger(n) || n < 0) return ' '
+    if (/개념/.test(full)) conceptLackCount = n
+    else if (/계산/.test(full)) calculationErrorCount = n
+    else applicationLackCount = n
+    return ' '
+  })
+  return {
+    rest: trimResidual(rest.replace(/\s+/g, ' ')),
+    conceptLackCount,
+    calculationErrorCount,
+    applicationLackCount,
+  }
+}
+
+function consumeMentionOnlyErrorPhrase(text: string): {
+  rest: string
+  conceptLackCount?: number
+  calculationErrorCount?: number
+  applicationLackCount?: number
+} {
+  const compact = compactText(text)
+  if (/^(개념(?:이|이해)?부족|개념문제)$/.test(compact)) {
+    return { rest: '', conceptLackCount: 1 }
+  }
+  if (/^(계산실수|계산틀림|연산실수)$/.test(compact)) {
+    return { rest: '', calculationErrorCount: 1 }
+  }
+  if (/^(응용(?:능력)?부족|응용이약|응용못함|응용도부족)$/.test(compact)) {
+    return { rest: '', applicationLackCount: 1 }
+  }
+  return { rest: text }
+}
+
+function isFillerResidual(text: string): boolean {
+  const compact = compactText(text).replace(/[^\uac00-\ud7a3a-zA-Z0-9]/g, '')
+  if (compact.length < 4) return true
+  if (/^(음+|어+|그+|아+|네+|요|입니다|것|거|같다)+$/.test(compact)) return true
+  return false
+}
+
+function residualHasUnresolvedStructured(text: string): boolean {
+  if (
+    /(?:^|\s)(?:[1-4]\s*회?\s*차|[1-4]\s*차시|일차|이차|삼차|사차|일\s*차|이\s*차|삼\s*차|사\s*차)(?:\s|$)/.test(
+      text,
+    )
+  ) {
+    return true
+  }
+  if (/\d{1,3}\s*점/.test(text)) return true
+  if (/불합격|합격/.test(text)) return true
+  if (/점수/.test(text)) return true
+  return false
 }
 
 function spokenResult(clause: string): '합격' | '불합격' | null {
@@ -119,30 +255,6 @@ function extractAttemptScore(piece: string): { score: string; invalid: boolean }
   return null
 }
 
-function parseCategoryCount(text: string, kind: 'concept' | 'calc' | 'app'): number | undefined {
-  const compact = compactText(replaceKoreanScores(text))
-  const patterns: RegExp[] =
-    kind === 'concept'
-      ? [/개념(?:이|이해)?부족(\d+)개/, /(\d+)개개념/]
-      : kind === 'calc'
-        ? [/계산실수(\d+)개/, /(\d+)개계산/]
-        : [/응용(?:능력)?부족(\d+)개/, /(\d+)개응용/]
-  for (const re of patterns) {
-    const hit = compact.match(re)
-    if (hit?.[1]) {
-      const n = Number(hit[1])
-      if (Number.isInteger(n) && n >= 0) return n
-    }
-  }
-  const mentioned =
-    kind === 'concept'
-      ? parseWrongCausePhrases(text).conceptLackDelta > 0
-      : kind === 'calc'
-        ? parseWrongCausePhrases(text).calculationErrorDelta > 0
-        : parseWrongCausePhrases(text).applicationLackDelta > 0
-  return mentioned ? 1 : undefined
-}
-
 function collectSids(tokenized: string): string[] {
   const ids: string[] = []
   const re = new RegExp(SID_RE.source, 'g')
@@ -210,49 +322,66 @@ export function parseStudentDailyTestVoice(
   }
 
   const attempts: StudentDailyTestAttemptPatch[] = []
+  const residualParts: string[] = []
   const pieces = structuredNorm.split(ATTEMPT_SPLIT_RE).map((part) => part.trim()).filter(Boolean)
   for (const piece of pieces) {
-    const head = piece.match(ATTEMPT_HEAD_RE)
-    if (!head?.[1]) continue
-    const round = roundFromMarker(head[1])
-    if (!round) {
-      needsReview.push({ label: cardStudent.name, reason: '차시를 확인해야 합니다' })
+    const split = splitAttemptHeadAndRest(piece)
+    if (!split) {
+      residualParts.push(
+        stripCardStudentName(stripSidTokens(piece), cardStudent),
+      )
       continue
     }
-    const scoreParsed = extractAttemptScore(piece)
-    if (!scoreParsed) continue
-    if (scoreParsed.invalid) {
+    const consumed = consumeAttemptPayload(piece)
+    if (!consumed.score) {
+      residualParts.push(consumed.residual)
+      continue
+    }
+    if (consumed.score.invalid) {
       needsReview.push({
-        label: `${cardStudent.name} ${round}차`,
+        label: `${cardStudent.name} ${split.round}차`,
         reason: '점수 범위 확인 필요',
       })
       continue
     }
-    const result = spokenResult(piece)
-    const derived = visualStatusFromScoreDraft(scoreParsed.score)
+    const result = spokenResult(consumed.consumed)
+    const derived = visualStatusFromScoreDraft(consumed.score.score)
     const conflict =
       (result === '합격' && derived !== '합격') ||
       (result === '불합격' && derived !== '불합격')
     if (conflict) {
       needsReview.push({
-        label: `${cardStudent.name} ${round}차`,
-        reason: `${scoreParsed.score}점은 기존 85점 기준과 말한 합격/불합격이 다름`,
+        label: `${cardStudent.name} ${split.round}차`,
+        reason: `${consumed.score.score}점은 기존 85점 기준과 말한 합격/불합격이 다름`,
       })
       continue
     }
-    attempts.push({ round, score: scoreParsed.score, conflict: false })
+    attempts.push({ round: split.round, score: consumed.score.score, conflict: false })
+    residualParts.push(consumed.residual)
   }
 
-  const conceptLackCount = parseCategoryCount(structuredNorm, 'concept')
-  const calculationErrorCount = parseCategoryCount(structuredNorm, 'calc')
-  const applicationLackCount = parseCategoryCount(structuredNorm, 'app')
+  const residualAfterAttempts = trimResidual(residualParts.filter(Boolean).join(' '))
+  const errorSpans = extractErrorAnalysisSpans(residualAfterAttempts)
+  const mentionOnly = consumeMentionOnlyErrorPhrase(errorSpans.rest)
+  let conceptLackCount = errorSpans.conceptLackCount
+  let calculationErrorCount = errorSpans.calculationErrorCount
+  let applicationLackCount = errorSpans.applicationLackCount
+  if (mentionOnly.conceptLackCount !== undefined) conceptLackCount = mentionOnly.conceptLackCount
+  if (mentionOnly.calculationErrorCount !== undefined) {
+    calculationErrorCount = mentionOnly.calculationErrorCount
+  }
+  if (mentionOnly.applicationLackCount !== undefined) {
+    applicationLackCount = mentionOnly.applicationLackCount
+  }
 
-  const hasStructured =
+  const residual = trimResidual(mentionOnly.rest)
+  const hasStructuredItem =
     attempts.length > 0 ||
     conceptLackCount !== undefined ||
     calculationErrorCount !== undefined ||
-    applicationLackCount !== undefined ||
-    Boolean(feedback)
+    applicationLackCount !== undefined
+
+  const hasStructured = hasStructuredItem || Boolean(feedback)
 
   if (!hasStructured) {
     needsReview.push({
@@ -262,6 +391,18 @@ export function parseStudentDailyTestVoice(
     return { apply: false, skippedAbsent: false, attempts: [], needsReview }
   }
 
+  let teacherFeedback = feedback?.slice(0, 500)
+  if (!teacherFeedback && hasStructuredItem && residual) {
+    if (residualHasUnresolvedStructured(residual)) {
+      needsReview.push({
+        label: cardStudent.name,
+        reason: '점수·오답분석·피드백을 확인해야 합니다',
+      })
+    } else if (!isFillerResidual(residual)) {
+      teacherFeedback = residual.slice(0, 500)
+    }
+  }
+
   return {
     apply: true,
     skippedAbsent: false,
@@ -269,7 +410,7 @@ export function parseStudentDailyTestVoice(
     conceptLackCount,
     calculationErrorCount,
     applicationLackCount,
-    teacherFeedback: feedback?.slice(0, 500),
+    teacherFeedback,
     needsReview,
   }
 }
