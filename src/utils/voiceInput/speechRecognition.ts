@@ -1,3 +1,24 @@
+import {
+  DEFAULT_RECONCILE_PROTECTIONS,
+  mergeUtteranceHypotheses,
+  normalizeHypothesisText,
+  type ReconcileProtections,
+} from './utteranceHypothesisMerge.ts'
+import {
+  createSpeechForensicRecorder,
+  isSpeechForensicEnabled,
+  nextSpeechLogicalSessionId,
+  type SpeechForensicRecorder,
+} from './speechForensic.ts'
+
+export type { ReconcileProtections } from './utteranceHypothesisMerge.ts'
+export {
+  DEFAULT_RECONCILE_PROTECTIONS,
+  mergeUtteranceHypotheses,
+  withoutProtection,
+} from './utteranceHypothesisMerge.ts'
+export { createSpeechForensicRecorder, isSpeechForensicEnabled } from './speechForensic.ts'
+
 export type BrowserSpeechSupport = 'supported' | 'unsupported'
 
 export type SpeechRecognitionErrorCode =
@@ -34,117 +55,29 @@ export type SpeechRecognitionResultEventLike = {
 }
 
 function normalizeTranscript(text: string): string {
-  return text
-    .replace(/\s+/g, ' ')
-    .replace(/(불합격|합격)(?=[1-4])/g, '$1 ')
-    .replace(/([1-4]\s*차)(?=\d)/g, '$1 ')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
-function compactTranscriptKey(text: string): string {
-  return text.replace(/\s+/g, '')
-}
-
-const LOGICAL_OVERLAP_MIN = 4
-const LOGICAL_CONTAINED_MIN = 3
-
-function commonCompactPrefixLength(prev: string, next: string): number {
-  const prevKey = compactTranscriptKey(prev)
-  const nextKey = compactTranscriptKey(next)
-  let i = 0
-  while (i < prevKey.length && i < nextKey.length && prevKey[i] === nextKey[i]) i += 1
-  return i
-}
-
-function longestCompactSuffixPrefixOverlap(prevKey: string, nextKey: string): number {
-  const max = Math.min(prevKey.length, nextKey.length)
-  for (let size = max; size >= LOGICAL_OVERLAP_MIN; size -= 1) {
-    if (prevKey.slice(-size) === nextKey.slice(0, size)) return size
-  }
-  return 0
-}
-
-function incomingRemainderAfterCompactPrefix(incoming: string, compactSkip: number): string {
-  let consumed = 0
-  let index = 0
-  while (index < incoming.length && consumed < compactSkip) {
-    if (!/\s/u.test(incoming[index] ?? '')) consumed += 1
-    index += 1
-  }
-  return incoming.slice(index).replace(/\s+/g, ' ').trim()
+  return normalizeHypothesisText(text)
 }
 
 /**
  * WebKit recognition generations are transport boundaries, not utterances.
- * One mic press → many generations → one logical transcript.
- * Operates on hypothesis overlap, not per-token unique().
+ * Stable committed prefix + mutable current hypothesis.
+ * Compact space-stripping is not a semantic equality test.
  */
-export function reconcileLogicalTranscript(existingRaw: string, incomingRaw: string): string {
-  const existing = normalizeTranscript(existingRaw)
-  const incoming = normalizeTranscript(incomingRaw)
-  if (!incoming) return existing
-  if (!existing) return incoming
-
-  const prevKey = compactTranscriptKey(existing)
-  const nextKey = compactTranscriptKey(incoming)
-  if (nextKey === prevKey) return existing
-  if (nextKey.startsWith(prevKey)) return incoming
-  if (prevKey.startsWith(nextKey)) return existing
-  if (nextKey.length >= 2 && prevKey.endsWith(nextKey)) return existing
-  if (prevKey.length >= 2 && nextKey.endsWith(prevKey) && nextKey.length > prevKey.length) {
-    return incoming
-  }
-  if (nextKey.length >= LOGICAL_CONTAINED_MIN && prevKey.includes(nextKey)) return existing
-  if (prevKey.length >= LOGICAL_CONTAINED_MIN && nextKey.includes(prevKey)) return incoming
-
-  const overlap = longestCompactSuffixPrefixOverlap(prevKey, nextKey)
-  if (overlap >= LOGICAL_OVERLAP_MIN) {
-    const rest = incomingRemainderAfterCompactPrefix(incoming, overlap)
-    return rest ? `${existing} ${rest}`.replace(/\s+/g, ' ').trim() : existing
-  }
-
-  const shared = commonCompactPrefixLength(existing, incoming)
-  const shorter = Math.min(prevKey.length, nextKey.length)
-  if (shared >= LOGICAL_OVERLAP_MIN && shared >= Math.ceil(shorter / 2)) return incoming
-
-  return `${existing} ${incoming}`.replace(/\s+/g, ' ').trim()
-}
-
-function isHypothesisAbsorbed(committed: string, fragment: string): boolean {
-  const next = normalizeTranscript(fragment)
-  if (!next) return true
-  const committedKey = compactTranscriptKey(committed)
-  const fragmentKey = compactTranscriptKey(next)
-  if (!fragmentKey) return true
-  if (reconcileLogicalTranscript(committed, next) === committed) return true
-  return fragmentKey.length >= 4 && committedKey.includes(fragmentKey)
+export function reconcileLogicalTranscript(
+  existingRaw: string,
+  incomingRaw: string,
+  protections: ReconcileProtections = DEFAULT_RECONCILE_PROTECTIONS,
+): string {
+  return mergeUtteranceHypotheses(existingRaw, incomingRaw, protections)
 }
 
 /**
  * Same Web Speech resultIndex is a replacement slot, not a new utterance.
  * Growing/shrinking prefixes keep the longer text (PR #31).
- * Divergent hypotheses that still share a substantial prefix are corrections:
- * take the newest. Non-overlapping text is treated as iOS index reuse and concatenated.
+ * Sibling tokenizations replace the mutable hypothesis; they do not append.
  */
 export function reconcileSameIndexHypothesis(prevRaw: string | undefined, nextRaw: string): string {
-  const prev = normalizeTranscript(prevRaw ?? '')
-  const next = normalizeTranscript(nextRaw)
-  if (!next) return prev
-  if (!prev) return next
-  const prevKey = compactTranscriptKey(prev)
-  const nextKey = compactTranscriptKey(next)
-  if (nextKey === prevKey) return prev
-  if (nextKey.startsWith(prevKey)) return next
-  if (prevKey.startsWith(nextKey)) return prev
-  if (nextKey.length >= 2 && prevKey.endsWith(nextKey)) return prev
-  if (prevKey.length >= 2 && nextKey.endsWith(prevKey) && nextKey.length > prevKey.length) {
-    return next
-  }
-  const shared = commonCompactPrefixLength(prev, next)
-  const shorter = Math.min(prevKey.length, nextKey.length)
-  if (shared >= 4 && shared >= Math.ceil(shorter / 2)) return next
-  return compactFinalHypotheses([prev, next])
+  return reconcileLogicalTranscript(prevRaw ?? '', nextRaw)
 }
 
 /**
@@ -159,11 +92,14 @@ export function mergeFinalHypotheses(committed: string[], nextRaw: string): stri
   return logical ? [logical] : committed
 }
 
-export function compactFinalHypotheses(pieces: Array<string | undefined>): string {
+export function compactFinalHypotheses(
+  pieces: Array<string | undefined>,
+  protections: ReconcileProtections = DEFAULT_RECONCILE_PROTECTIONS,
+): string {
   let logical = ''
   for (const piece of pieces) {
     if (!piece) continue
-    logical = reconcileLogicalTranscript(logical, piece)
+    logical = reconcileLogicalTranscript(logical, piece, protections)
   }
   return logical
 }
@@ -206,8 +142,12 @@ export function isFatalHeldSpeechError(code: string): boolean {
   )
 }
 
-export function accumulateHeldFragments(prev: string, next: string): string {
-  return reconcileLogicalTranscript(prev, next)
+export function accumulateHeldFragments(
+  prev: string,
+  next: string,
+  protections: ReconcileProtections = DEFAULT_RECONCILE_PROTECTIONS,
+): string {
+  return reconcileLogicalTranscript(prev, next, protections)
 }
 
 export function shouldRestartHeldSpeech(state: HeldSpeechState, maxRestarts = HELD_SPEECH_MAX_RESTARTS): boolean {
@@ -323,63 +263,132 @@ export function reduceHeldSpeech(
   }
 }
 
-export function createSpeechTranscriptSession() {
-  const finalsByIndex: string[] = []
-  let lastInterim = ''
-  let consumed = false
-  let generationLogical = ''
+export type SpeechTranscriptSessionOptions = {
+  protections?: ReconcileProtections
+  forensic?: SpeechForensicRecorder
+  logicalSessionId?: number
+  generationId?: number
+}
 
-  const snapshotFromEngine = () => {
-    const committed = compactFinalHypotheses(finalsByIndex)
-    if (lastInterim && isHypothesisAbsorbed(committed, lastInterim)) lastInterim = ''
-    return lastInterim ? reconcileLogicalTranscript(committed, lastInterim) : committed
+export function createSpeechTranscriptSession(options: SpeechTranscriptSessionOptions = {}) {
+  const protections = options.protections ?? DEFAULT_RECONCILE_PROTECTIONS
+  const forensic = options.forensic
+  const logicalSessionId = options.logicalSessionId ?? 0
+  const generationId = options.generationId ?? 0
+  const finalsByIndex: string[] = []
+  const interimsByIndex: string[] = []
+  let consumed = false
+  let mutableHypothesis = ''
+
+  const snapshotFromSlots = () => {
+    const count = Math.max(finalsByIndex.length, interimsByIndex.length)
+    const slots: string[] = []
+    for (let i = 0; i < count; i += 1) {
+      const text = normalizeTranscript(finalsByIndex[i] || interimsByIndex[i] || '')
+      if (text) slots.push(text)
+    }
+    if (slots.length <= 1) return slots[0] ?? ''
+    const best = slots.reduce((winner, slot) =>
+      hypothesisQualitySafe(slot) >= hypothesisQualitySafe(winner) ? slot : winner,
+    )
+    const overlapping = slots.every(
+      (slot) => best.startsWith(slot) || slot.startsWith(best) || best.includes(slot) || slot.includes(best),
+    )
+    if (overlapping) return best
+    return compactFinalHypotheses(slots, protections)
   }
 
+  const snapshotFromEngine = () => snapshotFromSlots()
+
   return {
-    ingest(event: SpeechRecognitionResultEventLike): { display: string } {
+    ingest(
+      event: SpeechRecognitionResultEventLike,
+      meta: { generationId?: number } = {},
+    ): { display: string } {
+      if (
+        protections.staleGenerationGuard &&
+        meta.generationId != null &&
+        meta.generationId !== generationId
+      ) {
+        forensic?.record({
+          kind: 'result',
+          logicalSessionId,
+          recognitionGenerationId: generationId,
+          note: `ignored stale generation ${meta.generationId}`,
+          liveTranscript: mutableHypothesis,
+          generationLogical: mutableHypothesis,
+        })
+        return { display: normalizeTranscript(mutableHypothesis) }
+      }
+
+      const finalsBefore = [...finalsByIndex]
+      const interimsBefore = [...interimsByIndex]
       const resultCount = event.results.length
-      if (finalsByIndex.length > resultCount) {
+      if (protections.slotTruncation && finalsByIndex.length > resultCount) {
         finalsByIndex.length = resultCount
       }
-      let interim = ''
+      if (protections.slotTruncation && interimsByIndex.length > resultCount) {
+        interimsByIndex.length = resultCount
+      }
       const start = Math.max(0, event.resultIndex ?? 0)
       for (let i = start; i < resultCount; i += 1) {
         const piece = event.results[i]
         const text = normalizeTranscript(piece[0]?.transcript ?? '')
         if (!text) continue
         if (piece.isFinal) {
-          // Same resultIndex is a replacement slot. Reconcile; do not blindly overwrite
-          // a longer final with a later prefix (PR #31) or concatenate a word correction.
           finalsByIndex[i] = reconcileSameIndexHypothesis(finalsByIndex[i], text)
-        } else interim += text
-      }
-      const eventInterim = normalizeTranscript(interim)
-      if (eventInterim) {
-        lastInterim = lastInterim
-          ? reconcileSameIndexHypothesis(lastInterim, eventInterim)
-          : eventInterim
+          interimsByIndex[i] = ''
+        } else {
+          interimsByIndex[i] = text
+        }
       }
       const fromEngine = snapshotFromEngine()
-      generationLogical = reconcileLogicalTranscript(generationLogical, fromEngine)
-      return { display: normalizeTranscript(generationLogical) }
+      mutableHypothesis = reconcileLogicalTranscript(mutableHypothesis, fromEngine, protections)
+      const display = normalizeTranscript(mutableHypothesis)
+      forensic?.record({
+        kind: 'result',
+        logicalSessionId,
+        recognitionGenerationId: generationId,
+        resultIndex: event.resultIndex ?? 0,
+        resultsLength: resultCount,
+        slots: Array.from({ length: resultCount }, (_, index) => ({
+          index,
+          isFinal: Boolean(event.results[index]?.isFinal),
+          rawTranscript: event.results[index]?.[0]?.transcript ?? '',
+        })),
+        finalsByIndexBefore: finalsBefore,
+        finalsByIndexAfter: [...finalsByIndex],
+        interimsByIndexBefore: interimsBefore,
+        interimsByIndexAfter: [...interimsByIndex],
+        generationLogical: mutableHypothesis,
+        committedLogical: compactFinalHypotheses(finalsByIndex, protections),
+        liveTranscript: display,
+      })
+      return { display }
     },
 
     peekCommitted(): string {
-      return compactFinalHypotheses(finalsByIndex)
+      return compactFinalHypotheses(finalsByIndex, protections)
     },
 
-    /** WebKit/iOS often ends a session with interim-only results (isFinal never set). */
     peekHoldTranscript(): string {
-      return generationLogical || snapshotFromEngine()
+      return mutableHypothesis || snapshotFromEngine()
     },
 
     consumeFinal(): { text: string; delivered: boolean } {
-      const text = generationLogical || compactFinalHypotheses(finalsByIndex)
+      const text = mutableHypothesis || compactFinalHypotheses(finalsByIndex, protections)
       if (consumed) return { text, delivered: false }
       consumed = true
       return { text, delivered: true }
     },
   }
+}
+
+function hypothesisQualitySafe(text: string): number {
+  const rounds = new Set(
+    [...text.matchAll(/([1-4]\s*차)\s*\d{1,3}/g)].map((match) => match[1]),
+  )
+  return rounds.size * 1000 + text.length
 }
 
 type SpeechRecognitionCtor = new () => SpeechRecognitionLike
@@ -444,6 +453,8 @@ export type SpeechRecognitionEngineDeps = {
   getCtor?: () => SpeechRecognitionCtor | null
   schedule?: (fn: () => void, ms: number) => ReturnType<typeof setTimeout>
   cancelSchedule?: (id: ReturnType<typeof setTimeout>) => void
+  protections?: ReconcileProtections
+  forensic?: SpeechForensicRecorder
 }
 
 function errorName(err: unknown): string {
@@ -492,6 +503,8 @@ export function startKoreanSpeechRecognition(
     onError: (message: string, code: string) => void
     onEnd: () => void
     holdUntilExplicitStop?: boolean
+    protections?: ReconcileProtections
+    forensic?: SpeechForensicRecorder
   },
   deps: SpeechRecognitionEngineDeps = {},
 ): LiveSpeechSession | null {
@@ -508,8 +521,15 @@ export function startKoreanSpeechRecognition(
   recognition.maxAlternatives = 1
 
   const hold = Boolean(handlers.holdUntilExplicitStop)
+  const protections = handlers.protections ?? deps.protections ?? DEFAULT_RECONCILE_PROTECTIONS
+  const forensic =
+    handlers.forensic ??
+    deps.forensic ??
+    (isSpeechForensicEnabled() ? createSpeechForensicRecorder() : undefined)
+  const logicalSessionId = nextSpeechLogicalSessionId()
   const listenCycleId = nextListenCycleId++
   let recognitionGeneration = 0
+  let generationReady = true
   let eventSeq = 0
   const lifecycle: string[] = []
   let stopped = false
@@ -517,8 +537,33 @@ export function startKoreanSpeechRecognition(
   let engineActive = false
   let hadSuccessfulStart = false
   let restartTimer: ReturnType<typeof setTimeout> | null = null
-  let transcriptSession = createSpeechTranscriptSession()
+  let transcriptSession = createSpeechTranscriptSession({
+    protections,
+    forensic,
+    logicalSessionId,
+    generationId: recognitionGeneration,
+  })
   let held = createHeldSpeechState()
+
+  const beginGeneration = (reason: string) => {
+    recognitionGeneration += 1
+    generationReady = protections.staleGenerationGuard ? false : true
+    transcriptSession = createSpeechTranscriptSession({
+      protections,
+      forensic,
+      logicalSessionId,
+      generationId: recognitionGeneration,
+    })
+    recordLifecycle(reason)
+    forensic?.record({
+      kind: 'restart-success',
+      logicalSessionId,
+      recognitionGenerationId: recognitionGeneration,
+      committedLogical: held.accumulated,
+      liveTranscript: held.accumulated,
+      note: reason,
+    })
+  }
 
   const recordLifecycle = (line: string) => {
     eventSeq += 1
@@ -546,7 +591,17 @@ export function startKoreanSpeechRecognition(
     const logical = reconcileLogicalTranscript(
       held.accumulated,
       generationText || held.currentCommitted,
+      protections,
     )
+    forensic?.record({
+      kind: 'result',
+      logicalSessionId,
+      recognitionGenerationId: recognitionGeneration,
+      liveTranscript: logical,
+      committedLogical: held.accumulated,
+      generationLogical: generationText || held.currentCommitted,
+      note: 'live-display',
+    })
     handlers.onInterim?.(logical)
   }
 
@@ -594,12 +649,16 @@ export function startKoreanSpeechRecognition(
     if (held.applied || held.restartDisabled) return
     if (stopped && !stopAfterRestart) return
     recordLifecycle('restart attempt')
+    forensic?.record({
+      kind: 'restart-request',
+      logicalSessionId,
+      recognitionGenerationId: recognitionGeneration,
+      committedLogical: held.accumulated,
+      liveTranscript: held.accumulated,
+    })
     const begin = tryStartEngine(false)
     if (begin === 'started') {
-      foldCurrentSession()
-      recognitionGeneration += 1
-      transcriptSession = createSpeechTranscriptSession()
-      recordLifecycle('restart ok')
+      beginGeneration('restart ok')
       if (stopAfterRestart) {
         try {
           recognition.stop()
@@ -617,10 +676,7 @@ export function startKoreanSpeechRecognition(
         if (stopped && !stopAfterRestart) return
         const second = tryStartEngine(true)
         if (second === 'started') {
-          foldCurrentSession()
-          recognitionGeneration += 1
-          transcriptSession = createSpeechTranscriptSession()
-          recordLifecycle('restart ok delayed')
+          beginGeneration('restart ok delayed')
           if (stopAfterRestart) {
             try {
               recognition.stop()
@@ -631,12 +687,24 @@ export function startKoreanSpeechRecognition(
           return
         }
         recordLifecycle('restart fail delayed')
+        forensic?.record({
+          kind: 'restart-failure',
+          logicalSessionId,
+          recognitionGenerationId: recognitionGeneration,
+          note: 'restart fail delayed',
+        })
         held = reduceHeldSpeech(held, { type: 'restart-blocked' }).state
         if (stopAfterRestart) finishStoppedSession()
       }, HELD_SPEECH_RESTART_RETRY_MS)
       return
     }
     recordLifecycle('restart fail')
+    forensic?.record({
+      kind: 'restart-failure',
+      logicalSessionId,
+      recognitionGenerationId: recognitionGeneration,
+      note: 'restart fail',
+    })
     held = reduceHeldSpeech(held, { type: 'restart-blocked' }).state
     if (stopAfterRestart) finishStoppedSession()
   }
@@ -644,11 +712,29 @@ export function startKoreanSpeechRecognition(
   recognition.onstart = () => {
     engineActive = true
     hadSuccessfulStart = true
+    generationReady = true
   }
 
   recognition.onresult = (event) => {
     if (held.applied) return
-    const { display } = transcriptSession.ingest(event)
+    if (protections.staleGenerationGuard && !generationReady) {
+      const lateText = normalizeTranscript(event.results[event.resultIndex ?? 0]?.[0]?.transcript ?? '')
+      held = {
+        ...held,
+        accumulated: accumulateHeldFragments(held.accumulated, lateText, protections),
+      }
+      forensic?.record({
+        kind: 'result',
+        logicalSessionId,
+        recognitionGenerationId: recognitionGeneration,
+        note: 'stale-or-pre-onstart absorbed into stable',
+        liveTranscript: held.accumulated,
+        committedLogical: held.accumulated,
+      })
+      displayHeld(held.accumulated)
+      return
+    }
+    const { display } = transcriptSession.ingest(event, { generationId: recognitionGeneration })
     const first = event.results[event.resultIndex ?? 0]
     recordLifecycle(
       `result idx=${event.resultIndex ?? 0} final=${Boolean(first?.isFinal)} raw=${display}`,
@@ -705,6 +791,18 @@ export function startKoreanSpeechRecognition(
         return
       }
       recordLifecycle('onend')
+      forensic?.record({
+        kind: 'onend',
+        logicalSessionId,
+        recognitionGenerationId: recognitionGeneration,
+        committedLogical: transcriptSession.peekHoldTranscript(),
+        generationLogical: transcriptSession.peekHoldTranscript(),
+        liveTranscript: accumulateHeldFragments(
+          held.accumulated,
+          transcriptSession.peekHoldTranscript(),
+          protections,
+        ),
+      })
       held = reduceHeldSpeech(held, {
         type: 'committed',
         text: transcriptSession.peekHoldTranscript(),
@@ -745,6 +843,18 @@ export function startKoreanSpeechRecognition(
       stopped = true
       if (hold) {
         recordLifecycle('user-stop')
+        forensic?.record({
+          kind: 'explicit-stop',
+          logicalSessionId,
+          recognitionGenerationId: recognitionGeneration,
+          committedLogical: held.accumulated,
+          generationLogical: transcriptSession.peekHoldTranscript(),
+          liveTranscript: accumulateHeldFragments(
+            held.accumulated,
+            transcriptSession.peekHoldTranscript(),
+            protections,
+          ),
+        })
         held = reduceHeldSpeech(held, { type: 'user-stop' }).state
       }
       if (hold && restartTimer != null) {
