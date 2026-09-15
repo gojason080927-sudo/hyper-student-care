@@ -9,11 +9,12 @@ import { chromium } from 'playwright'
 const PORT = 5175
 const URL = `http://127.0.0.1:${PORT}/dev/teacher-today-report-layout`
 const VIEWPORTS = [
-  { width: 360, height: 800 },
-  { width: 390, height: 844 },
-  { width: 430, height: 932 },
-  { width: 375, height: 812 },
-  { width: 393, height: 852 },
+  { name: '360', width: 360, height: 800 },
+  { name: '375x812', width: 375, height: 812 },
+  { name: '390', width: 390, height: 800 },
+  { name: '390x844', width: 390, height: 844 },
+  { name: '393x852', width: 393, height: 852 },
+  { name: '430', width: 430, height: 932 },
 ]
 const ARTIFACT_DIR = '/opt/cursor/artifacts/teacher-today-report-layout'
 const EXPECTED_ORDER = [
@@ -77,7 +78,7 @@ const browser = await chromium.launch({ headless: true })
 const report = []
 
 try {
-  for (const { width, height } of VIEWPORTS) {
+  for (const { name, width, height } of VIEWPORTS) {
     const page = await browser.newPage({
       viewport: { width, height },
       deviceScaleFactor: 2,
@@ -135,7 +136,7 @@ try {
       '전날 수면 부족으로 보이며 후반부에는 집중도 회복',
     )
     await page.screenshot({
-      path: `${ARTIFACT_DIR}/teacher-today-report-${width}-attitude-memo.png`,
+      path: `${ARTIFACT_DIR}/teacher-today-report-${name}-attitude-memo.png`,
       fullPage: true,
     })
 
@@ -206,13 +207,13 @@ try {
     })
     if (navOverlap) fails.push(navOverlap)
 
-    const screenshotPath = `${ARTIFACT_DIR}/teacher-today-report-${width}.png`
+    const screenshotPath = `${ARTIFACT_DIR}/teacher-today-report-${name}.png`
     await page.screenshot({ path: screenshotPath, fullPage: true })
     await page.screenshot({
-      path: `/tmp/teacher-today-report-layout/teacher-today-report-${width}.png`,
+      path: `/tmp/teacher-today-report-layout/${name}.png`,
       fullPage: true,
     })
-    report.push({ width, fails, screenshotPath, overflow })
+    report.push({ name, width, height, fails, screenshotPath, overflow })
     await page.close()
   }
 } finally {

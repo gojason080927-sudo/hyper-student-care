@@ -68,12 +68,20 @@ class FakeSpeechRecognition {
   running = false
   throwOnStart: Error | null = null
   throwAfterStarts = 0
+  throwOnStartCount: number | null = null
   stopThrows = false
   abortThrows = false
 
   start() {
     this.startCount += 1
-    if (this.throwOnStart && this.startCount > this.throwAfterStarts) {
+    if (this.throwOnStart && this.throwOnStartCount != null && this.startCount === this.throwOnStartCount) {
+      throw this.throwOnStart
+    }
+    if (
+      this.throwOnStart &&
+      this.throwOnStartCount == null &&
+      this.startCount > this.throwAfterStarts
+    ) {
       throw this.throwOnStart
     }
     this.running = true
@@ -110,6 +118,7 @@ class FakeSpeechRecognition {
 function holdSession(options?: {
   throwOnStart?: Error | null
   throwAfterStarts?: number
+  throwOnStartCount?: number | null
   stopThrows?: boolean
   abortThrows?: boolean
   getCtor?: () => (new () => FakeSpeechRecognition) | null
@@ -125,6 +134,7 @@ function holdSession(options?: {
       rec = this
       this.throwOnStart = options?.throwOnStart ?? null
       this.throwAfterStarts = options?.throwAfterStarts ?? 0
+      this.throwOnStartCount = options?.throwOnStartCount ?? null
       this.stopThrows = Boolean(options?.stopThrows)
       this.abortThrows = Boolean(options?.abortThrows)
     }
@@ -416,5 +426,229 @@ assert.match(
   readFileSync('src/utils/voiceInput/parseStudentDailyTestVoice.ts', 'utf8'),
   /SAMSUNG_RYU_FEEDBACK_ONLY_TRANSCRIPT/,
 )
+
+const MIXED = '1차 50점 불합격 2차 90점 합격 나날이 발전하고 있다'
+const MIXED_PREFIX = '1차 50점 불합격'
+
+function expectMixedParse(text: string) {
+  const parsed = parseStudentDailyTestVoice(text, 류정현, roster, false)
+  assert.equal(parsed.apply, true, text)
+  assert.equal(parsed.attempts.find((row) => row.round === 1)?.score, '50', text)
+  assert.equal(parsed.attempts.find((row) => row.round === 2)?.score, '90', text)
+  assert.equal(visualStatusFromScoreDraft('50'), '불합격')
+  assert.equal(visualStatusFromScoreDraft('90'), '합격')
+  assert.equal(parsed.teacherFeedback, '나날이 발전하고 있다', text)
+  assert.equal(parsed.needsReview.length, 0, text)
+  assert.doesNotMatch(parsed.teacherFeedback ?? '', /1차 50|2차 90|50점|90점/)
+  return parsed
+}
+
+// MIXED CASE A — one final result
+{
+  const run = holdSession()
+  run.rec()?.emitResult(speechEvent(0, [{ transcript: MIXED, isFinal: true }]))
+  run.session?.stop()
+  assert.equal(run.finals[0], MIXED)
+  expectMixedParse(run.finals[0] ?? '')
+}
+
+// MIXED CASE B — growing interim then one final
+{
+  const session = createSpeechTranscriptSession()
+  session.ingest(speechEvent(0, [{ transcript: MIXED_PREFIX, isFinal: false }]))
+  session.ingest(speechEvent(0, [{ transcript: '1차 50점 불합격 2차 90점', isFinal: false }]))
+  session.ingest(speechEvent(0, [{ transcript: MIXED, isFinal: true }]))
+  assert.equal(session.peekHoldTranscript(), MIXED)
+
+  const run = holdSession()
+  run.rec()?.emitResult(speechEvent(0, [{ transcript: '1차 50점', isFinal: false }]))
+  run.rec()?.emitResult(speechEvent(0, [{ transcript: MIXED_PREFIX, isFinal: false }]))
+  run.rec()?.emitResult(speechEvent(0, [{ transcript: '1차 50점 불합격 2차 90점', isFinal: false }]))
+  run.rec()?.emitResult(speechEvent(0, [{ transcript: MIXED, isFinal: true }]))
+  run.session?.stop()
+  assert.equal(run.finals[0], MIXED)
+  expectMixedParse(run.finals[0] ?? '')
+}
+
+// MIXED CASE C — interim prefix, onend/restart, then remainder final
+{
+  const run = holdSession()
+  run.rec()?.emitResult(speechEvent(0, [{ transcript: MIXED_PREFIX, isFinal: false }]))
+  run.rec()?.emitEnd()
+  run.rec()?.emitResult(
+    speechEvent(0, [{ transcript: '2차 90점 합격 나날이 발전하고 있다', isFinal: true }]),
+  )
+  run.session?.stop()
+  assert.equal(run.finals[0], MIXED)
+  expectMixedParse(run.finals[0] ?? '')
+}
+
+// MIXED CASE D — session1 final + session2 final
+{
+  const run = holdSession()
+  run.rec()?.emitResult(speechEvent(0, [{ transcript: MIXED_PREFIX, isFinal: true }]))
+  run.rec()?.emitEnd()
+  run.rec()?.emitResult(
+    speechEvent(0, [{ transcript: '2차 90점 합격 나날이 발전하고 있다', isFinal: true }]),
+  )
+  run.session?.stop()
+  assert.equal(run.finals[0], MIXED)
+  expectMixedParse(run.finals[0] ?? '')
+}
+
+// MIXED CASE E — resultIndex resets to 0 after restart; keep both fragments
+{
+  const run = holdSession()
+  run.rec()?.emitResult(speechEvent(0, [{ transcript: MIXED_PREFIX, isFinal: true }]))
+  run.rec()?.emitEnd()
+  assert.equal(run.rec()?.startCount, 2)
+  run.rec()?.emitResult(
+    speechEvent(0, [{ transcript: '2차 90점 합격 나날이 발전하고 있다', isFinal: true }]),
+  )
+  run.session?.stop()
+  assert.equal(run.finals[0], MIXED)
+}
+
+// MIXED CASE F — same-session resultIndex 0 growing prefix replaces, does not duplicate
+{
+  const run = holdSession()
+  run.rec()?.emitResult(speechEvent(0, [{ transcript: MIXED_PREFIX, isFinal: true }]))
+  run.rec()?.emitResult(speechEvent(0, [{ transcript: MIXED, isFinal: true }]))
+  run.session?.stop()
+  assert.equal(run.finals[0], MIXED)
+  expectMixedParse(run.finals[0] ?? '')
+}
+
+// MIXED CASE G — restart session resultIndex 0 must not overwrite previous session slot
+{
+  const run = holdSession()
+  run.rec()?.emitResult(speechEvent(0, [{ transcript: MIXED_PREFIX, isFinal: true }]))
+  run.rec()?.emitEnd()
+  run.rec()?.emitResult(speechEvent(0, [{ transcript: '2차 90점 합격 나날이 발전하고 있다', isFinal: true }]))
+  run.session?.stop()
+  assert.equal(run.finals[0], MIXED)
+  assert.notEqual(run.finals[0], MIXED_PREFIX)
+}
+
+// MIXED CASE H — user stop while interim contains the full sentence
+{
+  const run = holdSession()
+  run.rec()?.emitResult(speechEvent(0, [{ transcript: MIXED, isFinal: false }]))
+  run.session?.stop()
+  assert.equal(run.finals[0], MIXED)
+  expectMixedParse(run.finals[0] ?? '')
+}
+
+// MIXED CASE I — full final then late prefix (final or interim): no duplicate
+{
+  const session = createSpeechTranscriptSession()
+  session.ingest(speechEvent(0, [{ transcript: MIXED, isFinal: true }]))
+  session.ingest(speechEvent(0, [{ transcript: MIXED_PREFIX, isFinal: true }]))
+  assert.equal(session.peekCommitted(), MIXED)
+  assert.equal(session.peekHoldTranscript(), MIXED)
+
+  const runFinal = holdSession()
+  runFinal.rec()?.emitResult(speechEvent(0, [{ transcript: MIXED, isFinal: true }]))
+  runFinal.rec()?.emitResult(speechEvent(0, [{ transcript: MIXED_PREFIX, isFinal: true }]))
+  runFinal.session?.stop()
+  assert.equal(runFinal.finals[0], MIXED)
+  expectMixedParse(runFinal.finals[0] ?? '')
+
+  const runInterim = holdSession()
+  runInterim.rec()?.emitResult(speechEvent(0, [{ transcript: MIXED, isFinal: true }]))
+  runInterim.rec()?.emitResult(speechEvent(0, [{ transcript: MIXED_PREFIX, isFinal: false }]))
+  runInterim.session?.stop()
+  assert.equal(runInterim.finals[0], MIXED)
+}
+
+// MIXED CASE J — onend then user stop: apply once
+{
+  const run = holdSession()
+  run.rec()?.emitResult(speechEvent(0, [{ transcript: MIXED, isFinal: true }]))
+  run.rec()?.emitEnd()
+  run.session?.stop()
+  assert.deepEqual(run.finals, [MIXED])
+}
+
+// MIXED CASE K — user stop then late onend: apply once
+{
+  const run = holdSession()
+  run.rec()?.emitResult(speechEvent(0, [{ transcript: MIXED, isFinal: true }]))
+  run.session?.stop()
+  run.rec()?.emitEnd()
+  assert.deepEqual(run.finals, [MIXED])
+}
+
+// MIXED CASE L — duplicate onend: no reapply
+{
+  const run = holdSession()
+  run.rec()?.emitResult(speechEvent(0, [{ transcript: MIXED, isFinal: true }]))
+  run.session?.stop()
+  run.rec()?.emitEnd()
+  run.rec()?.emitEnd()
+  assert.deepEqual(run.finals, [MIXED])
+}
+
+// MIXED CASE M — InvalidStateError delayed retry then remainder fragment
+{
+  const run = holdSession({
+    throwOnStart: namedError('InvalidStateError'),
+    throwOnStartCount: 2,
+  })
+  run.rec()?.emitResult(speechEvent(0, [{ transcript: MIXED_PREFIX, isFinal: true }]))
+  run.rec()?.emitEnd()
+  assert.equal(run.queued[0]?.ms, HELD_SPEECH_RESTART_RETRY_MS)
+  run.flush()
+  assert.equal(run.rec()?.startCount, 3)
+  run.rec()?.emitResult(
+    speechEvent(0, [{ transcript: '2차 90점 합격 나날이 발전하고 있다', isFinal: true }]),
+  )
+  run.session?.stop()
+  assert.equal(run.finals[0], MIXED)
+  expectMixedParse(run.finals[0] ?? '')
+}
+
+// MIXED CASE N — restartDisabled (NotAllowedError) fallback still applies accumulated
+{
+  const run = holdSession({
+    throwOnStart: namedError('NotAllowedError'),
+    throwAfterStarts: 1,
+  })
+  run.rec()?.emitResult(speechEvent(0, [{ transcript: MIXED, isFinal: true }]))
+  run.rec()?.emitEnd()
+  run.session?.stop()
+  assert.equal(run.finals[0], MIXED)
+  expectMixedParse(run.finals[0] ?? '')
+}
+
+// MIXED CASE O — legitimate repeated Korean words preserved
+{
+  const run = holdSession()
+  run.rec()?.emitResult(
+    speechEvent(0, [{ transcript: '계산 계산 실수가 많이 줄었다', isFinal: true }]),
+  )
+  run.session?.stop()
+  assert.equal(run.finals[0], '계산 계산 실수가 많이 줄었다')
+}
+
+// MIXED CASE P — Samsung auto-end → restart → user stop still combines once
+{
+  const run = holdSession()
+  run.rec()?.emitResult(speechEvent(0, [{ transcript: '2차 함수에 대한', isFinal: true }]))
+  run.rec()?.emitEnd()
+  run.rec()?.emitResult(speechEvent(0, [{ transcript: '이해가 늦는 거 같다', isFinal: true }]))
+  run.session?.stop()
+  assert.equal(run.finals[0], '2차 함수에 대한 이해가 늦는 거 같다')
+}
+
+for (let i = 0; i < 8; i += 1) {
+  const run = holdSession()
+  run.rec()?.emitResult(speechEvent(0, [{ transcript: MIXED, isFinal: true }]))
+  if (i % 2 === 0) {
+    run.rec()?.emitResult(speechEvent(0, [{ transcript: MIXED_PREFIX, isFinal: true }]))
+  }
+  run.session?.stop()
+  expectMixedParse(run.finals[0] ?? '')
+}
 
 console.log('iosHeldSpeechSession.test.ts passed')

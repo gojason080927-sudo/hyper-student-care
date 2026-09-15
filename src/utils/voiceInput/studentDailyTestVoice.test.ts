@@ -776,6 +776,96 @@ function parseRyu(text: string) {
 }
 
 {
+  const mixed = '1차 50점 불합격 2차 90점 합격 나날이 발전하고 있다'
+  const parsed = parseRyu(mixed)
+  assert.equal(parsed.apply, true)
+  assert.equal(parsed.attempts.find((row) => row.round === 1)?.score, '50')
+  assert.equal(parsed.attempts.find((row) => row.round === 2)?.score, '90')
+  assert.equal(visualStatusFromScoreDraft('50'), '불합격')
+  assert.equal(visualStatusFromScoreDraft('90'), '합격')
+  assert.equal(parsed.teacherFeedback, '나날이 발전하고 있다')
+  assert.equal(parsed.needsReview.length, 0)
+  const applied = applyRyu(mixed, {
+    nagyeong: emptyDraft(),
+    doyoung: emptyDraft(),
+    ryujeonghyeon: {
+      ...emptyDraft(),
+      learningDiagnosis: {
+        ...EMPTY_DAILY_LEARNING_DIAGNOSIS,
+        teacherFeedback: '',
+      },
+    },
+  })
+  assert.equal(applied.drafts.ryujeonghyeon?.rounds[0]?.score, '50')
+  assert.equal(applied.drafts.ryujeonghyeon?.rounds[0]?.passed, false)
+  assert.equal(applied.drafts.ryujeonghyeon?.rounds[1]?.score, '90')
+  assert.equal(applied.drafts.ryujeonghyeon?.rounds[1]?.passed, true)
+  assert.equal(applied.drafts.ryujeonghyeon?.learningDiagnosis.teacherFeedback, '나날이 발전하고 있다')
+  assert.equal(applied.summary.needsReviewCount, 0)
+}
+
+{
+  const prev = {
+    nagyeong: emptyDraft(),
+    doyoung: emptyDraft(),
+    ryujeonghyeon: {
+      ...emptyDraft(),
+      learningDiagnosis: {
+        ...EMPTY_DAILY_LEARNING_DIAGNOSIS,
+        teacherFeedback: '기존 피드백',
+      },
+    },
+  }
+  const parsed = parseRyu('1차 50점 불합격')
+  assert.equal(parsed.attempts[0]?.round, 1)
+  assert.equal(parsed.attempts[0]?.score, '50')
+  assert.equal(parsed.teacherFeedback, undefined)
+  const applied = applyRyu('1차 50점 불합격', prev)
+  assert.equal(applied.drafts.ryujeonghyeon?.rounds[0]?.score, '50')
+  assert.equal(applied.drafts.ryujeonghyeon?.learningDiagnosis.teacherFeedback, '기존 피드백')
+}
+
+{
+  const parsed = parseRyu('2차 90점 합격')
+  assert.equal(parsed.attempts[0]?.round, 2)
+  assert.equal(parsed.attempts[0]?.score, '90')
+  assert.equal(parsed.teacherFeedback, undefined)
+}
+
+{
+  const parsed = parseRyu('나날이 발전하고 있다')
+  assert.equal(parsed.attempts.length, 0)
+  assert.equal(parsed.teacherFeedback, '나날이 발전하고 있다')
+}
+
+{
+  const parsed = parseRyu('1차 50점 불합격 2차 90점 합격')
+  assert.equal(parsed.teacherFeedback, undefined)
+  const applied = applyRyu('1차 50점 불합격 2차 90점 합격', {
+    nagyeong: emptyDraft(),
+    doyoung: emptyDraft(),
+    ryujeonghyeon: {
+      ...emptyDraft(),
+      learningDiagnosis: {
+        ...EMPTY_DAILY_LEARNING_DIAGNOSIS,
+        teacherFeedback: '기존 피드백',
+      },
+    },
+  })
+  assert.equal(applied.drafts.ryujeonghyeon?.learningDiagnosis.teacherFeedback, '기존 피드백')
+}
+
+for (const variant of [
+  '1차 50점 불합격 2차 90점 합격 나날이 발전하고 있다',
+  '1차 50점 불합격 1차 50점 불합격 2차 90점 합격 나날이 발전하고 있다',
+  '1차 50점 불합격 2차 90점 합격 나날이 발전하고 있다 1차 50점 불합격',
+]) {
+  const parsed = parseRyu(variant)
+  assert.equal(parsed.teacherFeedback, '나날이 발전하고 있다', variant)
+  assert.equal(parsed.needsReview.length, 0, variant)
+}
+
+{
   const parsed = parseRyu('함수에 대한 이해가 늦는 거 같다')
   assert.equal(parsed.teacherFeedback, '함수에 대한 이해가 늦는 거 같다')
   assert.equal(parsed.attempts.length, 0)

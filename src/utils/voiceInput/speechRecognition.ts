@@ -59,6 +59,10 @@ export function mergeFinalHypotheses(committed: string[], nextRaw: string): stri
   if (nextKey === lastKey) return committed
   if (nextKey.startsWith(lastKey)) return [...committed.slice(0, -1), next]
   if (lastKey.startsWith(nextKey)) return committed
+  if (nextKey.length >= 2 && lastKey.endsWith(nextKey)) return committed
+  if (lastKey.length >= 2 && nextKey.endsWith(lastKey) && nextKey.length > lastKey.length) {
+    return [...committed.slice(0, -1), next]
+  }
   return [...committed, next]
 }
 
@@ -239,8 +243,11 @@ export function createSpeechTranscriptSession() {
         const piece = event.results[i]
         const text = normalizeTranscript(piece[0]?.transcript ?? '')
         if (!text) continue
-        if (piece.isFinal) finalsByIndex[i] = text
-        else interim += text
+        if (piece.isFinal) {
+          // WebKit reuses resultIndex (often 0). Merge, do not overwrite:
+          // a later prefix must not replace an already-committed longer final.
+          finalsByIndex[i] = compactFinalHypotheses([finalsByIndex[i], text])
+        } else interim += text
       }
       lastInterim = normalizeTranscript(interim)
       const committed = compactFinalHypotheses(finalsByIndex)
@@ -398,12 +405,18 @@ export function startKoreanSpeechRecognition(
     handlers.onInterim?.(normalizeTranscript([committed, interim].filter(Boolean).join(' ')))
   }
 
-  const finalizeHoldApply = () => {
-    if (held.applied) return
+  const foldCurrentSession = () => {
     held = reduceHeldSpeech(held, {
       type: 'committed',
       text: transcriptSession.peekHoldTranscript(),
     }).state
+    const accumulated = accumulateHeldFragments(held.accumulated, held.currentCommitted)
+    held = { ...held, accumulated, currentCommitted: '' }
+  }
+
+  const finalizeHoldApply = () => {
+    if (held.applied) return
+    foldCurrentSession()
     const next = reduceHeldSpeech(held, { type: 'browser-end' })
     held = next.state
     if (next.apply != null) emitHeldApply(handlers, next.state, next.apply)
@@ -422,23 +435,55 @@ export function startKoreanSpeechRecognition(
     }
   }
 
+  let stopAfterRestart = false
+
+  const finishStoppedSession = () => {
+    finalizeHoldApply()
+    handlers.onEnd()
+  }
+
   const scheduleRestart = () => {
-    if (stopped || held.applied || held.restartDisabled) return
-    transcriptSession = createSpeechTranscriptSession()
-    const first = tryStartEngine(false)
-    if (first === 'started') return
-    if (first === 'retry') {
+    if (held.applied || held.restartDisabled) return
+    if (stopped && !stopAfterRestart) return
+    const begin = tryStartEngine(false)
+    if (begin === 'started') {
+      foldCurrentSession()
+      transcriptSession = createSpeechTranscriptSession()
+      if (stopAfterRestart) {
+        try {
+          recognition.stop()
+        } catch {
+          finishStoppedSession()
+        }
+      }
+      return
+    }
+    if (begin === 'retry') {
       clearRestartTimer()
       restartTimer = schedule(() => {
         restartTimer = null
-        if (stopped || held.applied || held.restartDisabled) return
+        if (held.applied || held.restartDisabled) return
+        if (stopped && !stopAfterRestart) return
         const second = tryStartEngine(true)
-        if (second === 'started') return
+        if (second === 'started') {
+          foldCurrentSession()
+          transcriptSession = createSpeechTranscriptSession()
+          if (stopAfterRestart) {
+            try {
+              recognition.stop()
+            } catch {
+              finishStoppedSession()
+            }
+          }
+          return
+        }
         held = reduceHeldSpeech(held, { type: 'restart-blocked' }).state
+        if (stopAfterRestart) finishStoppedSession()
       }, HELD_SPEECH_RESTART_RETRY_MS)
       return
     }
     held = reduceHeldSpeech(held, { type: 'restart-blocked' }).state
+    if (stopAfterRestart) finishStoppedSession()
   }
 
   recognition.onstart = () => {
@@ -522,13 +567,16 @@ export function startKoreanSpeechRecognition(
   return {
     stop: () => {
       stopped = true
-      clearRestartTimer()
       if (hold) {
         held = reduceHeldSpeech(held, { type: 'user-stop' }).state
       }
+      if (hold && restartTimer != null) {
+        stopAfterRestart = true
+        return
+      }
+      clearRestartTimer()
       if (hold && !engineActive) {
-        finalizeHoldApply()
-        handlers.onEnd()
+        finishStoppedSession()
         return
       }
       try {
