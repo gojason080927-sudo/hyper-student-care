@@ -282,6 +282,13 @@ export type LiveSpeechSession = {
   stop: () => void
 }
 
+/** Observational held-speech snapshot. Does not change restart/apply timing. */
+export type HeldSpeechTrace = {
+  accumulated: string
+  restartCount: number
+  userStopped: boolean
+}
+
 /**
  * Browser Web Speech API only. No audio recording, no remote STT provider, no secrets.
  * Callers must treat unsupported / error as a fallback-to-text path.
@@ -289,6 +296,8 @@ export type LiveSpeechSession = {
 export function startKoreanSpeechRecognition(handlers: {
   onInterim?: (text: string) => void
   onFinal?: (text: string) => void
+  /** Fires with the same accumulated text as onFinal in hold mode. Timing unchanged. */
+  onHeldTrace?: (trace: HeldSpeechTrace) => void
   onError: (message: string, code: string) => void
   onEnd: () => void
   holdUntilExplicitStop?: boolean
@@ -346,7 +355,14 @@ export function startKoreanSpeechRecognition(handlers: {
       }).state
       const next = reduceHeldSpeech(held, { type: 'browser-end' })
       held = next.state
-      if (next.apply != null) handlers.onFinal?.(next.apply)
+      if (next.apply != null) {
+        handlers.onHeldTrace?.({
+          accumulated: next.apply,
+          restartCount: next.state.restartCount,
+          userStopped: next.state.userStopped,
+        })
+        handlers.onFinal?.(next.apply)
+      }
       if (next.restart && !stopped) {
         transcriptSession = createSpeechTranscriptSession()
         try {
@@ -389,7 +405,14 @@ export function startKoreanSpeechRecognition(handlers: {
           if (hold) {
             const next = reduceHeldSpeech(held, { type: 'browser-end' })
             held = next.state
-            if (next.apply != null) handlers.onFinal?.(next.apply)
+            if (next.apply != null) {
+              handlers.onHeldTrace?.({
+                accumulated: next.apply,
+                restartCount: next.state.restartCount,
+                userStopped: next.state.userStopped,
+              })
+              handlers.onFinal?.(next.apply)
+            }
           }
           handlers.onEnd()
         }

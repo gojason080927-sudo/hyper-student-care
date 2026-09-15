@@ -6,6 +6,7 @@ import { TeacherMobileHeader } from '../../components/teacherMobile/TeacherMobil
 import { HyperFeaturedCardWave } from '../../components/ui/HyperFeaturedCardWave'
 import { AttendanceExcuseButtons } from '../../components/studentCare/AttendanceExcuseButtons'
 import { SectionVoiceInput } from '../../components/todayReport/SectionVoiceInput'
+import { DailyTestVoiceDiagnostic } from '../../components/todayReport/DailyTestVoiceDiagnostic'
 import type { ClassAttitudeIssue } from '../../types/records'
 import '../../styles/teacherMobileTheme.css'
 
@@ -152,31 +153,90 @@ export function TeacherTodayReportLayoutPreviewPage() {
               수학
             </div>
             <div className="mb-1.5 flex min-w-0 max-w-full flex-wrap items-center gap-1.5">
+              <p className="min-w-0 text-sm font-bold text-[#163A70]">류정현</p>
+              <div className="ml-auto shrink-0">
+                <SectionVoiceInput
+                  label="류정현 일일테스트 음성 입력"
+                  chipLabel="음성입력"
+                  compact
+                  hideStatus
+                  explicitStop
+                  onApply={() => ({
+                    appliedCount: 0,
+                    excludedAbsentCount: 0,
+                    needsReviewCount: 1,
+                    needsReview: [
+                      {
+                        label: '류정현',
+                        reason: '점수·오답분석·피드백을 확인해야 합니다',
+                      },
+                    ],
+                  })}
+                />
+              </div>
+            </div>
+            <DailyTestVoiceDiagnostic
+              snapshot={{
+                accumulatedRaw:
+                  '피드백 계산 실수가 많이 줄었고 응용 문제를 더 연습할 것',
+                parserInput:
+                  '피드백 계산 실수가 많이 줄었고 응용 문제를 더 연습할 것',
+                parsedFeedback: '계산 실수가 많이 줄었고 응용 문제를 더 연습할 것',
+                applyResultText:
+                  '차시 적용: 0 · 오답분석 적용: 0 · 피드백 적용: 1 · 확인 필요: 0',
+                endReason: '브라우저 자동 종료 → 재시작 → 사용자 종료',
+                kind: 'form-fill',
+                attemptApplyCount: 0,
+                wrongCauseApplyCount: 0,
+                feedbackApplyCount: 1,
+                appliedCount: 1,
+                needsReviewCount: 0,
+                needsReviewReason: '',
+                summaryText: '음성 입력 완료 · 1건 반영',
+              }}
+            />
+            <div className="mb-1.5 mt-2 flex min-w-0 max-w-full flex-wrap items-center gap-1.5">
               <p className="min-w-0 text-sm font-bold text-[#163A70]">김도영</p>
               <div className="ml-auto shrink-0">
                 <SectionVoiceInput
                   label="김도영 일일테스트 음성 입력"
                   chipLabel="음성입력"
                   compact
+                  hideStatus
                   explicitStop
                   onApply={() => ({
                     appliedCount: 0,
                     excludedAbsentCount: 0,
-                    needsReviewCount: 0,
-                    needsReview: [],
+                    needsReviewCount: 1,
+                    needsReview: [
+                      {
+                        label: '김도영',
+                        reason: '점수·오답분석·피드백을 확인해야 합니다',
+                      },
+                    ],
                   })}
                 />
               </div>
             </div>
-            <p className="mb-1 w-full min-w-0 max-w-full whitespace-normal break-words text-[11px] leading-4 text-rose-800 [overflow-wrap:anywhere]">
-              🔴 듣는 중 · 다 말한 뒤 종료를 누르세요
-            </p>
-            <p
-              data-voice-summary="true"
-              className="mb-2 w-full min-w-0 max-w-full whitespace-normal break-all text-[11px] leading-4 text-slate-600 [overflow-wrap:anywhere]"
-            >
-              음성 입력 완료 · 확인 필요 1건 — 류정현 점수·오답분석·피드백을 확인해야 합니다
-            </p>
+            <DailyTestVoiceDiagnostic
+              snapshot={{
+                accumulatedRaw: '강사 피드백이 인식되지 않은 실제 삼성 문장 예시입니다',
+                parserInput: '강사 피드백이 인식되지 않은 실제 삼성 문장 예시입니다',
+                parsedFeedback: '없음',
+                applyResultText:
+                  '차시 적용: 0 · 오답분석 적용: 0 · 피드백 적용: 0 · 확인 필요: 1',
+                endReason: '사용자 종료',
+                kind: 'form-fill',
+                attemptApplyCount: 0,
+                wrongCauseApplyCount: 0,
+                feedbackApplyCount: 0,
+                appliedCount: 0,
+                needsReviewCount: 1,
+                needsReviewReason: '김도영 점수·오답분석·피드백을 확인해야 합니다',
+                summaryText:
+                  '음성 입력 완료 · 확인 필요 1건 — 김도영 점수·오답분석·피드백을 확인해야 합니다',
+              }}
+            />
             <div className="grid grid-cols-2 gap-1.5">
               <div className="flex min-w-0 items-center gap-1 rounded-lg border border-slate-200 bg-slate-50/50 px-1.5 py-1">
                 <span className="w-7 shrink-0 text-[11px] font-semibold text-slate-600">1차</span>
@@ -190,7 +250,7 @@ export function TeacherTodayReportLayoutPreviewPage() {
               <div className="flex min-w-0 items-center gap-1 rounded-lg border border-slate-200 bg-slate-50/50 px-1.5 py-1">
                 <span className="w-7 shrink-0 text-[11px] font-semibold text-slate-600">2차</span>
                 <span className="min-h-7 min-w-0 flex-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-center text-sm text-slate-800">
-                  100
+                  95
                 </span>
                 <span className="inline-flex min-h-7 min-w-[2.8rem] items-center justify-center rounded-md border border-emerald-500 bg-emerald-50 text-[10px] font-semibold text-emerald-800">
                   합격
