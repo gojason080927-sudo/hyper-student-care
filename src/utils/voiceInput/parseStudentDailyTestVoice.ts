@@ -5,6 +5,7 @@ import {
   extractScoreValue,
   parseKoreanScoreToken,
 } from './voiceLexicon.ts'
+import { preferCompleteScore } from './utteranceHypothesisMerge.ts'
 import type { VoiceReviewItem, VoiceStudentRef } from './types.ts'
 
 export type StudentDailyTestAttemptPatch = {
@@ -69,6 +70,8 @@ const ATTEMPT_HEAD_GLOBAL = new RegExp(ATTEMPT_HEAD_RE.source.slice(1), 'g')
 /** Digits may omit 점; Korean numerals require 점 so "이해가" is not a score. */
 const ATTEMPT_PAYLOAD_RE =
   /^\s*(?:\d{1,3}(?:\s*점)?|[영공일이삼사오육륙칠팔구십백]{1,4}\s*점)(?:\s*(?:불합격|합격))?(?=\s|$|,|，)/
+const SCOREISH_TAIL_RE =
+  /^\s*(?:\d{1,3}\s*차\s*)?(?:[일이삼사]\s*차\s*)?(?:\d{1,3}(?:\s*점)?|[영공일이삼사오육륙칠팔구십백]{1,4}(?:\s*점)?)?(?:\s*(?:불합격|합격))?/
 
 type AttemptSpan = {
   start: number
@@ -114,9 +117,20 @@ function stripLeadingCardName(text: string, cardStudent: VoiceStudentRef): strin
   return text.replace(pattern, '')
 }
 
+function mergeRanges(ranges: Array<{ start: number; end: number }>): Array<{ start: number; end: number }> {
+  const sorted = [...ranges].sort((a, b) => a.start - b.start)
+  const merged: Array<{ start: number; end: number }> = []
+  for (const range of sorted) {
+    const last = merged[merged.length - 1]
+    if (!last || range.start > last.end) merged.push({ ...range })
+    else last.end = Math.max(last.end, range.end)
+  }
+  return merged
+}
+
 function maskRanges(text: string, ranges: Array<{ start: number; end: number }>): string {
   let next = text
-  for (const range of [...ranges].sort((a, b) => b.start - a.start)) {
+  for (const range of [...mergeRanges(ranges)].sort((a, b) => b.start - a.start)) {
     next = `${next.slice(0, range.start)} ${next.slice(range.end)}`
   }
   return next.replace(/\s+/g, ' ').trim()
@@ -181,6 +195,84 @@ function residualHasUnresolvedStructured(text: string): boolean {
   if (/불합격|합격/.test(text)) return true
   if (/점수/.test(text)) return true
   return false
+}
+
+function followingIsLexicalProse(after: string): boolean {
+  const next = after.trim()
+  if (!next) return false
+  return /^(함수|방정식|문제|이해|부분|단원|개념|응용|계산)/.test(next)
+}
+
+export function collectIncompleteAttemptRegions(
+  text: string,
+  validSpans: Array<{ start: number; end: number }>,
+): Array<{ start: number; end: number }> {
+  const covered = (index: number) => validSpans.some((span) => index >= span.start && index < span.end)
+  const regions: Array<{ start: number; end: number }> = []
+  const re = new RegExp(ATTEMPT_HEAD_GLOBAL.source, 'g')
+  let match: RegExpExecArray | null = re.exec(text)
+  while (match) {
+    const start = match.index
+    if (covered(start)) {
+      match = re.exec(text)
+      continue
+    }
+    const after = text.slice(start + match[0].length)
+    if (followingIsLexicalProse(after)) {
+      match = re.exec(text)
+      continue
+    }
+    const tail = after.match(SCOREISH_TAIL_RE)?.[0] ?? ''
+    const end = start + match[0].length + tail.length
+    regions.push({ start, end: Math.max(end, start + match[0].length) })
+    re.lastIndex = Math.max(end, start + match[0].length)
+    match = re.exec(text)
+  }
+  return regions
+}
+
+function residualHasUnresolvedAttemptDebris(text: string): boolean {
+  if (residualHasUnresolvedStructured(text)) return true
+  if (collectIncompleteAttemptRegions(text, []).length > 0) return true
+  if (/(?:^|\s)(?:일|이|삼|사)\s+[1-4]\s*차/.test(text)) return true
+  if (/(?:^|\s)[1-4]\s*차(?:\s+[1-4]\s*차)+/.test(text)) return true
+  return false
+}
+
+function stripLeadingScoreDebris(text: string): string {
+  return text.replace(/^(?:[일이삼사오차점]\s+)+/u, '').trim()
+}
+
+function uniqueProseFeedback(text: string): string {
+  const normalized = stripLeadingScoreDebris(text.replace(/\s+/g, ' ').trim())
+    .replace(/나날이\s*이발\s*/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  const tokens = normalized.split(' ').filter(Boolean)
+  if (tokens.length >= 4 && tokens.length % 2 === 0) {
+    const mid = tokens.length / 2
+    if (tokens.slice(0, mid).join(' ') === tokens.slice(mid).join(' ')) {
+      return tokens.slice(0, mid).join(' ')
+    }
+  }
+  const compact = compactText(normalized)
+  if (compact.length >= 8 && compact.length % 2 === 0) {
+    const half = compact.length / 2
+    if (compact.slice(0, half) === compact.slice(half)) {
+      const mid = Math.floor(tokens.length / 2)
+      return tokens.slice(0, Math.max(1, mid)).join(' ')
+    }
+  }
+  const clause = normalized.match(/^(.+?(?:고\s*있음|하고\s*있음|있음|같다|이다|습니다))(?:\s+.+)?$/)
+  if (clause?.[1] && compactText(clause[1]).length >= 6) {
+    const rest = normalized.slice(clause[1].length).trim()
+    const restKey = compactText(rest)
+    const clauseKey = compactText(clause[1])
+    if (!rest || restKey.length <= 8 || clauseKey.includes(restKey) || restKey.includes(clauseKey)) {
+      return clause[1].replace(/\s+/g, ' ').trim()
+    }
+  }
+  return normalized
 }
 
 function spokenResult(clause: string): '합격' | '불합격' | null {
@@ -271,6 +363,10 @@ function cleanVoiceText(transcript: string): string {
     .trim()
 }
 
+export type DailyTestParseOptions = {
+  confidenceGate?: boolean
+}
+
 /**
  * Student-card daily-test voice. Name may be omitted (card context)
  * or must exactly match this student. Other roster names are never applied.
@@ -280,7 +376,9 @@ export function parseStudentDailyTestVoice(
   cardStudent: VoiceStudentRef,
   roster: VoiceStudentRef[],
   absent: boolean,
+  options: DailyTestParseOptions = {},
 ): StudentDailyTestParseResult {
+  const confidenceGate = options.confidenceGate !== false
   const needsReview: VoiceReviewItem[] = []
   const raw = cleanVoiceText(transcript)
   if (!raw) {
@@ -318,6 +416,7 @@ export function parseStudentDailyTestVoice(
 
   const attempts: StudentDailyTestAttemptPatch[] = []
   const attemptSpans = collectValidAttemptSpans(structuredNorm)
+  const seenRounds = new Map<1 | 2 | 3 | 4, string>()
   for (const span of attemptSpans) {
     if (span.score.invalid) {
       needsReview.push({
@@ -338,13 +437,25 @@ export function parseStudentDailyTestVoice(
       })
       continue
     }
-    attempts.push({ round: span.round, score: span.score.score, conflict: false })
+    const prevScore = seenRounds.get(span.round)
+    const chosen = preferCompleteScore(prevScore, span.score.score)
+    if (prevScore && chosen === prevScore && prevScore !== span.score.score) {
+      continue
+    }
+    seenRounds.set(span.round, chosen)
   }
+  for (const [round, score] of seenRounds) {
+    attempts.push({ round, score, conflict: false })
+  }
+  attempts.sort((a, b) => a.round - b.round)
 
-  const afterAttempts = maskRanges(
-    structuredNorm,
-    attemptSpans.map((span) => ({ start: span.start, end: span.end })),
-  )
+  const incompleteRegions = confidenceGate
+    ? collectIncompleteAttemptRegions(structuredNorm, attemptSpans)
+    : []
+  const afterAttempts = maskRanges(structuredNorm, [
+    ...attemptSpans.map((span) => ({ start: span.start, end: span.end })),
+    ...incompleteRegions,
+  ])
   const withoutLeadingName = stripLeadingCardName(
     stripSidTokens(afterAttempts),
     cardStudent,
@@ -362,7 +473,9 @@ export function parseStudentDailyTestVoice(
     applicationLackCount = mentionOnly.applicationLackCount
   }
 
-  const residual = trimResidual(stripLeadingCardName(mentionOnly.rest, cardStudent))
+  const residual = stripLeadingScoreDebris(
+    trimResidual(stripLeadingCardName(mentionOnly.rest, cardStudent)),
+  )
   const hasStructuredItem =
     attempts.length > 0 ||
     conceptLackCount !== undefined ||
@@ -370,8 +483,10 @@ export function parseStudentDailyTestVoice(
     applicationLackCount !== undefined
 
   let teacherFeedback = feedback?.slice(0, 500)
+  const confidenceBlocked =
+    confidenceGate && !teacherFeedback && residualHasUnresolvedAttemptDebris(residual)
   if (!teacherFeedback) {
-    if (residualHasUnresolvedStructured(residual)) {
+    if (confidenceBlocked || (!confidenceGate && residualHasUnresolvedStructured(residual))) {
       if (hasStructuredItem) {
         needsReview.push({
           label: cardStudent.name,
@@ -379,7 +494,9 @@ export function parseStudentDailyTestVoice(
         })
       }
     } else if (!isFillerResidual(residual)) {
-      teacherFeedback = residual.slice(0, 500)
+      teacherFeedback = confidenceGate
+        ? uniqueProseFeedback(residual.slice(0, 500))
+        : residual.slice(0, 500)
     }
   }
 
