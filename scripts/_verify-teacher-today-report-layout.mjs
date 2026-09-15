@@ -179,17 +179,23 @@ try {
       (await page.locator('text=무단').count()) > 0
     if (!attendanceOk) fails.push('attendance 인정/무단 not visible')
 
-    const voiceUi =
-      (await page.locator('[data-voice-input]').count()) > 0 &&
-      (await page.locator('button:text-is("텍스트")').count()) > 0
-    if (!voiceUi) {
-      fails.push('section voice input UI missing')
-    } else {
-      const voiceOverflowText = await page.locator('[data-voice-input]').first().innerText()
-      if (voiceOverflowText.includes('확인 필요') && voiceOverflowText.length > 400) {
-        fails.push('voice status text unexpectedly long')
+    const holdMics = await page.locator('[data-hold-until-stop="true"]').count()
+    if (holdMics < 8) fails.push(`hold-until-stop mics: ${holdMics}`)
+    if ((await page.locator('[data-voice-listening="false"]').count()) !== holdMics) {
+      fails.push('idle mics should not be in listening state')
+    }
+    for (const chip of ['출결', '숙제', '과제', '교재', '진도', '태도', '의견', '음성입력']) {
+      if ((await page.locator(`button:has-text("${chip}")`).count()) === 0) {
+        fails.push(`idle mic chip missing: ${chip}`)
       }
     }
+
+    const homeworkMic = await page.locator('[data-preview-block="homework"] [data-hold-until-stop="true"]').count()
+    if (homeworkMic === 0) fails.push('homework mic missing')
+    const assignmentMic = await page.locator('[data-preview-block="assignment"] [data-hold-until-stop="true"]').count()
+    if (assignmentMic === 0) fails.push('assignment mic missing')
+    const materialMic = await page.locator('[data-preview-block="absent-excluded"] [data-hold-until-stop="true"]').count()
+    if (materialMic === 0) fails.push('material mic missing')
     const dailyCard = await page.locator('[data-preview-block="daily-test"]').innerText()
     if (!dailyCard.includes('음성입력')) fails.push('daily-test mic chip missing')
     if (!dailyCard.includes('강사의 피드백')) fails.push('daily-test feedback label missing')

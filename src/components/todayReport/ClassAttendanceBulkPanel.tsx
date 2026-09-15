@@ -254,6 +254,7 @@ export function ClassAttendanceBulkPanel({
             chipLabel="출결"
             compact={compact}
             disabled={saving}
+            explicitStop
             onApply={(transcript) => {
               const applied = applyAttendanceDrafts(drafts, transcript, students)
               markChangedDraftKeys(drafts, applied.drafts, dirtyAttendanceKeysRef.current)

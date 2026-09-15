@@ -344,6 +344,7 @@ export function ClassCommonProgressPanel({
                         chipLabel="진도"
                         compact={compact}
                         disabled={saving}
+                        explicitStop
                         onApply={(transcript) => {
                           const applied = applyProgressSlotDraft(
                             drafts,

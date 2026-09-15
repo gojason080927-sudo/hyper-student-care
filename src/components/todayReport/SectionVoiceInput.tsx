@@ -30,7 +30,10 @@ type SectionVoiceInputProps = {
   onApply: (transcript: string) => VoiceApplySummary
   /** Existing section bulk-save handler. Voice never writes to DB itself. */
   onSaveCommand?: () => void
-  /** Daily-test student mic: user taps again to stop; browser onend does not apply. */
+  /**
+   * Today Report long-listen (daily-test reference). Always on: browser onend
+   * restarts when possible; only the 종료 tap finalizes/applies.
+   */
   explicitStop?: boolean
   /** Hide inline confirmation; parent (daily-test) renders diagnostic full-width. */
   hideStatus?: boolean
@@ -40,6 +43,7 @@ type SectionVoiceInputProps = {
 /**
  * Section-aware mic. Form-fill stays on the current draft.
  * “일괄 저장” calls this section’s existing save handler only — no direct DB write.
+ * All Today Report mics share the daily-test holdUntilExplicitStop session.
  */
 export function SectionVoiceInput({
   label,
@@ -48,7 +52,7 @@ export function SectionVoiceInput({
   disabled = false,
   onApply,
   onSaveCommand,
-  explicitStop = false,
+  explicitStop = true,
   hideStatus = false,
   onDiagnostic,
 }: SectionVoiceInputProps) {
@@ -138,7 +142,7 @@ export function SectionVoiceInput({
     appliedThisSessionRef.current = false
     heldTraceRef.current = null
     const session = startKoreanSpeechRecognition({
-      holdUntilExplicitStop: explicitStop,
+      holdUntilExplicitStop: true,
       onInterim: setInterim,
       onHeldTrace: (trace) => {
         heldTraceRef.current = trace
@@ -183,6 +187,9 @@ export function SectionVoiceInput({
           <button
             type="button"
             aria-label={listening ? `${label} 중지` : label}
+            data-hold-until-stop="true"
+            data-voice-listening={listening ? 'true' : 'false'}
+            data-explicit-stop={explicitStop ? 'true' : 'false'}
             disabled={disabled}
             onClick={() => {
               if (listening) stopListening()
@@ -199,7 +206,7 @@ export function SectionVoiceInput({
             ) : (
               <Mic className="h-3.5 w-3.5 shrink-0" aria-hidden />
             )}
-            {listening && explicitStop ? (
+            {listening ? (
               <span className="shrink-0">듣는 중 · 종료</span>
             ) : chipLabel ? (
               <span className="max-w-[5.5rem] truncate">{chipLabel}</span>
@@ -219,7 +226,7 @@ export function SectionVoiceInput({
           텍스트
         </button>
       </div>
-      {listening && explicitStop ? (
+      {listening ? (
         <p className="mt-1 w-full min-w-0 max-w-full whitespace-normal break-words text-[11px] leading-4 text-rose-800 [overflow-wrap:anywhere]">
           🔴 듣는 중 · 다 말한 뒤 종료를 누르세요
         </p>

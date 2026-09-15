@@ -338,6 +338,7 @@ export function ClassHomeworkStatusBulkPanel({
                 chipLabel={heading}
                 compact={compact}
                 disabled={saving}
+                explicitStop
                 onApply={(transcript) => {
                   const applied = applyHomeworkDrafts(
                     drafts,

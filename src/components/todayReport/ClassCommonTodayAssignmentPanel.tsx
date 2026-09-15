@@ -316,6 +316,7 @@ export function ClassCommonTodayAssignmentPanel({
                         chipLabel="과제"
                         compact={compact}
                         disabled={saving}
+                        explicitStop
                         onApply={(transcript) => {
                           const applied = applyTodayAssignmentSlotDraft(
                             drafts,

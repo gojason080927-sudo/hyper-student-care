@@ -189,21 +189,25 @@ assert.equal(
 }
 
 const voiceUi = readFileSync('src/components/todayReport/SectionVoiceInput.tsx', 'utf8')
-assert.match(voiceUi, /explicitStop/)
-assert.match(voiceUi, /holdUntilExplicitStop/)
+assert.match(voiceUi, /explicitStop = true/)
+assert.match(voiceUi, /holdUntilExplicitStop: true/)
 assert.match(voiceUi, /onHeldTrace/)
 assert.match(voiceUi, /듣는 중 · 종료/)
 assert.match(voiceUi, /다 말한 뒤 종료를 누르세요/)
+assert.match(voiceUi, /data-hold-until-stop/)
 
-const dailyPanel = readFileSync('src/components/todayReport/ClassDailyTestBulkPanel.tsx', 'utf8')
-assert.match(dailyPanel, /explicitStop/)
-assert.match(
-  readFileSync('src/components/todayReport/ClassAttendanceBulkPanel.tsx', 'utf8'),
-  /SectionVoiceInput/,
-)
-assert.doesNotMatch(
-  readFileSync('src/components/todayReport/ClassAttendanceBulkPanel.tsx', 'utf8'),
-  /explicitStop/,
-)
+for (const file of [
+  'src/components/todayReport/ClassAttendanceBulkPanel.tsx',
+  'src/components/todayReport/ClassHomeworkStatusBulkPanel.tsx',
+  'src/components/todayReport/ClassMaterialPrepBulkPanel.tsx',
+  'src/components/todayReport/ClassCommonProgressPanel.tsx',
+  'src/components/todayReport/ClassCommonTodayAssignmentPanel.tsx',
+  'src/components/todayReport/ClassAttitudeBulkPanel.tsx',
+  'src/components/todayReport/ClassDailyTestBulkPanel.tsx',
+]) {
+  const source = readFileSync(file, 'utf8')
+  assert.match(source, /SectionVoiceInput/)
+  assert.match(source, /explicitStop/)
+}
 
 console.log('heldSpeech.test.ts passed')
