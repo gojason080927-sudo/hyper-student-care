@@ -26,7 +26,13 @@ import {
 import { isFollowOnInputRequired, isStudentAbsentOnDate } from '../../utils/todayReportAbsence'
 import { markChangedDraftKeys, overlayLoadedDrafts } from '../../utils/todayReportDraftMerge'
 import { applyStudentDailyTestDraft } from '../../utils/voiceInput/applyVoiceDraft'
+import {
+  buildDailyTestVoiceDiagnostic,
+  setStudentVoiceDiagnostic,
+  type DailyTestVoiceDiagnosticSnapshot,
+} from '../../utils/voiceInput/dailyTestVoiceDiagnostic'
 import { AbsentFollowOnHint, StudentFollowOnRowHeader } from './AbsentFollowOnBadge'
+import { DailyTestVoiceDiagnostic } from './DailyTestVoiceDiagnostic'
 import { SectionVoiceInput } from './SectionVoiceInput'
 
 type StudentDraft = {
@@ -65,6 +71,9 @@ export function ClassDailyTestBulkPanel({
   const [testName, setTestName] = useState(() => defaultDailyTestNameForDate(date))
   const [subject, setSubject] = useState('수학')
   const [drafts, setDrafts] = useState<Record<string, StudentDraft>>({})
+  const [voiceDiagnostics, setVoiceDiagnostics] = useState<
+    Record<string, DailyTestVoiceDiagnosticSnapshot>
+  >({})
   const dirtyDailyTestKeysRef = useRef(new Set<string>())
   const dirtyTestNameRef = useRef(false)
 
@@ -383,6 +392,7 @@ export function ClassDailyTestBulkPanel({
                       chipLabel="음성입력"
                       compact={compact}
                       disabled={saving}
+                      hideStatus
                       onApply={(transcript) => {
                         const applied = applyStudentDailyTestDraft(
                           drafts,
@@ -397,10 +407,26 @@ export function ClassDailyTestBulkPanel({
                         return applied.summary
                       }}
                       onSaveCommand={() => void handleSaveAll()}
+                      onDiagnostic={(payload) => {
+                        setVoiceDiagnostics((prev) =>
+                          setStudentVoiceDiagnostic(
+                            prev,
+                            student.id,
+                            buildDailyTestVoiceDiagnostic({
+                              rawTranscript: payload.rawTranscript,
+                              routed: payload.routed,
+                              summary: payload.summary,
+                            }),
+                          ),
+                        )
+                      }}
                     />
                   )
                 }
               />
+              {!excluded && voiceDiagnostics[student.id] ? (
+                <DailyTestVoiceDiagnostic snapshot={voiceDiagnostics[student.id]!} />
+              ) : null}
               {excluded ? (
                 <AbsentFollowOnHint compact={compact} />
               ) : (

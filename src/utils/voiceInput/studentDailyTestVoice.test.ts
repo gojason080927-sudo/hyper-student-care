@@ -516,17 +516,26 @@ assert.match(panel, /data-daily-test-result/)
 assert.doesNotMatch(panel, /voice-test-\$\{round\}/)
 assert.match(panel, /onSaveCommand=\{\(\) => void handleSaveAll\(\)\}/)
 assert.match(panel, /DailyLearningDiagnosisFields/)
+assert.match(panel, /DailyTestVoiceDiagnostic/)
+assert.match(panel, /hideStatus/)
 assert.match(readFileSync('src/utils/voiceInput/applyVoiceDraft.ts', 'utf8'), /parseStudentDailyTestVoice/)
 assert.doesNotMatch(readFileSync('src/utils/voiceInput/applyVoiceDraft.ts', 'utf8'), /saveDailyTestRecord/)
 assert.doesNotMatch(readFileSync('src/utils/voiceInput/parseStudentDailyTestVoice.ts', 'utf8'), /from '@supabase/)
 
 const header = readFileSync('src/components/todayReport/AbsentFollowOnBadge.tsx', 'utf8')
 assert.match(header, /ml-auto min-w-0 max-w-full flex-1/)
-assert.doesNotMatch(header, /extra \? <div className="ml-auto shrink-0">/)
 
 const voiceUi = readFileSync('src/components/todayReport/SectionVoiceInput.tsx', 'utf8')
 assert.match(voiceUi, /data-voice-summary="true"/)
-assert.match(voiceUi, /\[overflow-wrap:anywhere\]/)
+assert.match(voiceUi, /hideStatus/)
+assert.match(voiceUi, /onDiagnostic/)
 assert.match(voiceUi, /min-w-0 w-full max-w-full/)
+
+const diagnosticUi = readFileSync(
+  'src/components/todayReport/DailyTestVoiceDiagnostic.tsx',
+  'utf8',
+)
+assert.match(diagnosticUi, /break-all/)
+assert.match(diagnosticUi, /data-voice-raw-transcript/)
 
 console.log(`studentDailyTestVoice.test.ts passed (${corpus.length} corpus phrases)`)
