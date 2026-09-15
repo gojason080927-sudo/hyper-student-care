@@ -427,7 +427,7 @@ const parentCommentUi = readFileSync(
   'utf8',
 )
 assert.match(parentCommentUi, /강사의 의견|PARENT_ATTITUDE_TEACHER_COMMENT_LABEL|display\.label/)
-assert.match(parentCommentUi, /break-words/)
+assert.match(parentCommentUi, /break-keep/)
 assert.doesNotMatch(parentCommentUi, /textarea|microphone|SectionVoiceInput/i)
 assert.equal(PARENT_ATTITUDE_TEACHER_COMMENT_LABEL, '강사의 의견')
 

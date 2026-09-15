@@ -16,7 +16,7 @@ const VIEWPORTS = [
   { name: '393x852', width: 393, height: 852 },
   { name: '430', width: 430, height: 932 },
 ]
-const ARTIFACT_DIR = '/opt/cursor/artifacts/parent-attitude-teacher-comment'
+const ARTIFACT_DIR = '/opt/cursor/artifacts/parent-attitude-teacher-comment-break-keep'
 
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))

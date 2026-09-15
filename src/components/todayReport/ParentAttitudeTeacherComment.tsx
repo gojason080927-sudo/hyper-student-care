@@ -16,7 +16,7 @@ export function ParentAttitudeTeacherComment({
       data-parent-attitude-teacher-comment=""
     >
       <p className="text-xs font-semibold text-slate-600">{display.label}</p>
-      <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-slate-700">
+      <p className="mt-1 min-w-0 whitespace-pre-wrap break-keep text-sm leading-6 text-slate-700">
         {display.text}
       </p>
     </div>
