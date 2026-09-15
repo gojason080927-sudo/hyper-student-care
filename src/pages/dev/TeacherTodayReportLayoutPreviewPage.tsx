@@ -151,9 +151,40 @@ export function TeacherTodayReportLayoutPreviewPage() {
             <div className="mb-2 min-h-10 rounded-lg border border-slate-200 bg-white px-2 py-2 text-sm text-slate-800">
               수학
             </div>
-            <p className="mb-1.5 text-sm font-bold text-[#163A70]">김도영</p>
+            <div className="mb-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
+              <p className="text-sm font-bold text-[#163A70]">김도영</p>
+              <SectionVoiceInput
+                label="김도영 일일테스트 음성 입력"
+                chipLabel="음성입력"
+                compact
+                onApply={() => ({
+                  appliedCount: 0,
+                  excludedAbsentCount: 0,
+                  needsReviewCount: 0,
+                  needsReview: [],
+                })}
+              />
+            </div>
             <div className="grid grid-cols-2 gap-1.5">
-              {['1차', '2차', '3차', '4차'].map((label) => (
+              <div className="flex min-w-0 items-center gap-1 rounded-lg border border-slate-200 bg-slate-50/50 px-1.5 py-1">
+                <span className="w-7 shrink-0 text-[11px] font-semibold text-slate-600">1차</span>
+                <span className="min-h-7 min-w-0 flex-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-center text-sm text-slate-800">
+                  80
+                </span>
+                <span className="inline-flex min-h-7 min-w-[2.8rem] items-center justify-center rounded-md border border-rose-500 bg-rose-50 text-[10px] font-semibold text-rose-800">
+                  불합격
+                </span>
+              </div>
+              <div className="flex min-w-0 items-center gap-1 rounded-lg border border-slate-200 bg-slate-50/50 px-1.5 py-1">
+                <span className="w-7 shrink-0 text-[11px] font-semibold text-slate-600">2차</span>
+                <span className="min-h-7 min-w-0 flex-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-center text-sm text-slate-800">
+                  100
+                </span>
+                <span className="inline-flex min-h-7 min-w-[2.8rem] items-center justify-center rounded-md border border-emerald-500 bg-emerald-50 text-[10px] font-semibold text-emerald-800">
+                  합격
+                </span>
+              </div>
+              {['3차', '4차'].map((label) => (
                 <div
                   key={label}
                   className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50/50 px-1.5 py-1"
@@ -162,9 +193,7 @@ export function TeacherTodayReportLayoutPreviewPage() {
                   <span className="min-h-7 min-w-0 flex-1 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-center text-sm text-slate-400">
                     점수
                   </span>
-                  <span className="inline-flex min-h-7 min-w-[2.6rem] items-center justify-center rounded-md border border-slate-200 bg-white text-[10px] font-semibold text-slate-500">
-                    합격
-                  </span>
+                  <span className="inline-flex min-h-7 min-w-[2.8rem] items-center justify-center rounded-md border border-slate-200 bg-white text-[10px] font-semibold text-slate-400" />
                 </div>
               ))}
             </div>

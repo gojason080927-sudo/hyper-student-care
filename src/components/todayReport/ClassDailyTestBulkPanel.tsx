@@ -1,4 +1,3 @@
-import { Check } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { DailyLearningDiagnosisFields } from '../diagnosis/DailyLearningDiagnosisFields'
 import { DailyTestPassRuleBadge } from '../dailytest/DailyTestSessionFormSection'
@@ -11,7 +10,7 @@ import {
   hasDailyLearningDiagnosisContent,
   normalizeDailyLearningDiagnosis,
 } from '../../utils/learningDiagnosis'
-import { btnPrimary, inputClass } from '../../utils/labels'
+import { getDailyTestSessionColor, btnPrimary, inputClass } from '../../utils/labels'
 import { getVisibleDailyTestSubjects } from '../../utils/todayReportVisibleSubjects'
 import {
   bulkDailyTestToSavePayload,
@@ -19,14 +18,14 @@ import {
   defaultDailyTestNameForDate,
   hasBulkDailyTestContent,
   isValidMobileScoreDraft,
-  selectBulkPassRound,
   sessionsToBulkDailyTestRounds,
   updateBulkScoreDraft,
+  visualStatusFromScoreDraft,
   type MobileDailyTestRound,
 } from '../../utils/teacherMobileDailyTest'
 import { isFollowOnInputRequired, isStudentAbsentOnDate } from '../../utils/todayReportAbsence'
 import { markChangedDraftKeys, overlayLoadedDrafts } from '../../utils/todayReportDraftMerge'
-import { applyDailyTestDrafts } from '../../utils/voiceInput/applyVoiceDraft'
+import { applyStudentDailyTestDraft } from '../../utils/voiceInput/applyVoiceDraft'
 import { AbsentFollowOnHint, StudentFollowOnRowHeader } from './AbsentFollowOnBadge'
 import { SectionVoiceInput } from './SectionVoiceInput'
 
@@ -179,10 +178,6 @@ export function ClassDailyTestBulkPanel({
     updateRounds(studentId, (rounds) => updateBulkScoreDraft(rounds, round, raw))
   }
 
-  const handleSelectPass = (studentId: string, round: 1 | 2 | 3 | 4) => {
-    updateRounds(studentId, (rounds) => selectBulkPassRound(rounds, round))
-  }
-
   const handleSaveAll = async () => {
     if (saving || students.length === 0) return
 
@@ -313,29 +308,6 @@ export function ClassDailyTestBulkPanel({
           {formatKoreanDate(date)} / {className || grade} · {students.length}명
         </p>
         <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
-          {([1, 2, 3, 4] as const).map((round) => (
-            <SectionVoiceInput
-              key={`voice-test-${round}`}
-              label={`${round}차 일일테스트 음성 입력`}
-              chipLabel={`${round}차`}
-              compact={compact}
-              disabled={saving}
-              onApply={(transcript) => {
-                const applied = applyDailyTestDrafts(
-                  drafts,
-                  transcript,
-                  students,
-                  attendance,
-                  date,
-                  round,
-                )
-                markChangedDraftKeys(drafts, applied.drafts, dirtyDailyTestKeysRef.current)
-                setDrafts(applied.drafts)
-                return applied.summary
-              }}
-              onSaveCommand={() => void handleSaveAll()}
-            />
-          ))}
           <DailyTestPassRuleBadge />
         </div>
       </div>
@@ -400,7 +372,35 @@ export function ClassDailyTestBulkPanel({
               className={compact ? 'px-2.5 py-2' : 'px-3 py-2.5'}
               data-absent-excluded={excluded ? 'true' : 'false'}
             >
-              <StudentFollowOnRowHeader name={student.name} excluded={excluded} compact={compact} />
+              <StudentFollowOnRowHeader
+                name={student.name}
+                excluded={excluded}
+                compact={compact}
+                extra={
+                  excluded ? undefined : (
+                    <SectionVoiceInput
+                      label={`${student.name} 일일테스트 음성 입력`}
+                      chipLabel="음성입력"
+                      compact={compact}
+                      disabled={saving}
+                      onApply={(transcript) => {
+                        const applied = applyStudentDailyTestDraft(
+                          drafts,
+                          transcript,
+                          student,
+                          students,
+                          attendance,
+                          date,
+                        )
+                        markChangedDraftKeys(drafts, applied.drafts, dirtyDailyTestKeysRef.current)
+                        setDrafts(applied.drafts)
+                        return applied.summary
+                      }}
+                      onSaveCommand={() => void handleSaveAll()}
+                    />
+                  )
+                }
+              />
               {excluded ? (
                 <AbsentFollowOnHint compact={compact} />
               ) : (
@@ -418,13 +418,13 @@ export function ClassDailyTestBulkPanel({
               ) : null}
               <div className="grid grid-cols-2 gap-1.5">
                 {draft.rounds.map((round) => {
-                  const isPassSelected = passRound === round.round
+                  const result = visualStatusFromScoreDraft(round.score)
                   const dimmed =
                     passRound !== null && round.round > passRound && !round.score
                   return (
                     <div
                       key={round.round}
-                      className={`flex items-center gap-1 rounded-lg border px-1.5 py-1 ${
+                      className={`flex min-w-0 items-center gap-1 rounded-lg border px-1.5 py-1 ${
                         dimmed
                           ? 'border-slate-100 bg-slate-50/80 opacity-60'
                           : 'border-slate-200 bg-slate-50/50'
@@ -444,21 +444,16 @@ export function ClassDailyTestBulkPanel({
                         placeholder="점수"
                         className="min-h-7 w-full min-w-0 rounded-md border border-slate-200 bg-white px-1.5 py-0.5 text-center text-sm font-semibold text-slate-800 outline-none focus:border-[#163A70]/40"
                       />
-                      <button
-                        type="button"
-                        onClick={() => handleSelectPass(student.id, round.round)}
-                        disabled={saving}
-                        className={`inline-flex min-h-7 min-w-[2.6rem] shrink-0 items-center justify-center gap-0.5 rounded-md border px-1.5 text-[10px] font-semibold transition ${
-                          isPassSelected
-                            ? 'border-emerald-500 bg-emerald-500 text-white'
-                            : 'border-slate-200 bg-white text-slate-500'
+                      <span
+                        data-daily-test-result={result ?? 'neutral'}
+                        className={`inline-flex min-h-7 min-w-[2.8rem] shrink-0 items-center justify-center rounded-md border px-1 text-[10px] font-semibold ${
+                          result
+                            ? getDailyTestSessionColor(result)
+                            : 'border-slate-200 bg-white text-slate-400'
                         }`}
                       >
-                        {isPassSelected ? (
-                          <Check className="h-3 w-3 shrink-0" aria-hidden />
-                        ) : null}
-                        합격
-                      </button>
+                        {result ?? ''}
+                      </span>
                     </div>
                   )
                 })}
