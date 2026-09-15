@@ -405,6 +405,7 @@ assert.match(diagnosticUi, /data-voice-parser-input/)
 assert.match(diagnosticUi, /data-voice-parsed-feedback/)
 assert.match(diagnosticUi, /data-voice-apply-result/)
 assert.match(diagnosticUi, /data-voice-end-reason/)
+assert.match(diagnosticUi, /data-voice-lifecycle/)
 assert.match(diagnosticUi, /누적 원본/)
 assert.match(diagnosticUi, /파서 입력/)
 assert.match(diagnosticUi, /파싱된 피드백/)
@@ -430,6 +431,9 @@ assert.match(parser, /structuredNorm = normalizeStudentDailyTestAttemptSpeech\(s
 
 const speech = readFileSync('src/utils/voiceInput/speechRecognition.ts', 'utf8')
 assert.match(speech, /holdUntilExplicitStop/)
+assert.match(speech, /reconcileSameIndexHypothesis/)
+assert.match(speech, /listenCycleId/)
+assert.match(speech, /recognitionGeneration/)
 assert.match(speech, /accumulateHeldFragments/)
 assert.match(speech, /HELD_SPEECH_MAX_RESTARTS/)
 

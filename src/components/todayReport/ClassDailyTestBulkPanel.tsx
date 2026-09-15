@@ -439,6 +439,8 @@ export function ClassDailyTestBulkPanel({
                               summary: payload.summary,
                               parseResult,
                               endReason: payload.endReason,
+                              heldTrace: payload.heldTrace,
+                              voiceApplyCount: payload.routed.kind === 'form-fill' && payload.summary ? 1 : 0,
                             }),
                           ),
                         )

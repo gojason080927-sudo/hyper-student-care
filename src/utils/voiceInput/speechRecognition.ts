@@ -34,11 +34,60 @@ export type SpeechRecognitionResultEventLike = {
 }
 
 function normalizeTranscript(text: string): string {
-  return text.replace(/\s+/g, ' ').trim()
+  return text
+    .replace(/\s+/g, ' ')
+    .replace(/(불합격|합격)(?=[1-4])/g, '$1 ')
+    .replace(/([1-4]\s*차)(?=\d)/g, '$1 ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 function compactTranscriptKey(text: string): string {
   return text.replace(/\s+/g, '')
+}
+
+function isHypothesisAbsorbed(committed: string, fragment: string): boolean {
+  const next = normalizeTranscript(fragment)
+  if (!next) return true
+  const committedKey = compactTranscriptKey(committed)
+  const fragmentKey = compactTranscriptKey(next)
+  if (!fragmentKey) return true
+  if (compactFinalHypotheses([committed, next]) === committed) return true
+  return fragmentKey.length >= 4 && committedKey.includes(fragmentKey)
+}
+
+function commonCompactPrefixLength(prev: string, next: string): number {
+  const prevKey = compactTranscriptKey(prev)
+  const nextKey = compactTranscriptKey(next)
+  let i = 0
+  while (i < prevKey.length && i < nextKey.length && prevKey[i] === nextKey[i]) i += 1
+  return i
+}
+
+/**
+ * Same Web Speech resultIndex is a replacement slot, not a new utterance.
+ * Growing/shrinking prefixes keep the longer text (PR #31).
+ * Divergent hypotheses that still share a substantial prefix are corrections:
+ * take the newest. Non-overlapping text is treated as iOS index reuse and concatenated.
+ */
+export function reconcileSameIndexHypothesis(prevRaw: string | undefined, nextRaw: string): string {
+  const prev = normalizeTranscript(prevRaw ?? '')
+  const next = normalizeTranscript(nextRaw)
+  if (!next) return prev
+  if (!prev) return next
+  const prevKey = compactTranscriptKey(prev)
+  const nextKey = compactTranscriptKey(next)
+  if (nextKey === prevKey) return prev
+  if (nextKey.startsWith(prevKey)) return next
+  if (prevKey.startsWith(nextKey)) return prev
+  if (nextKey.length >= 2 && prevKey.endsWith(nextKey)) return prev
+  if (prevKey.length >= 2 && nextKey.endsWith(prevKey) && nextKey.length > prevKey.length) {
+    return next
+  }
+  const shared = commonCompactPrefixLength(prev, next)
+  const shorter = Math.min(prevKey.length, nextKey.length)
+  if (shared >= 4 && shared >= Math.ceil(shorter / 2)) return next
+  return compactFinalHypotheses([prev, next])
 }
 
 /**
@@ -244,14 +293,22 @@ export function createSpeechTranscriptSession() {
         const text = normalizeTranscript(piece[0]?.transcript ?? '')
         if (!text) continue
         if (piece.isFinal) {
-          // WebKit reuses resultIndex (often 0). Merge, do not overwrite:
-          // a later prefix must not replace an already-committed longer final.
-          finalsByIndex[i] = compactFinalHypotheses([finalsByIndex[i], text])
+          // Same resultIndex is a replacement slot. Reconcile; do not blindly overwrite
+          // a longer final with a later prefix (PR #31) or concatenate a word correction.
+          finalsByIndex[i] = reconcileSameIndexHypothesis(finalsByIndex[i], text)
         } else interim += text
       }
-      lastInterim = normalizeTranscript(interim)
+      const eventInterim = normalizeTranscript(interim)
       const committed = compactFinalHypotheses(finalsByIndex)
-      const display = [committed, lastInterim].filter(Boolean).join(' ')
+      if (eventInterim) {
+        lastInterim = lastInterim
+          ? reconcileSameIndexHypothesis(lastInterim, eventInterim)
+          : eventInterim
+      }
+      if (lastInterim && isHypothesisAbsorbed(committed, lastInterim)) lastInterim = ''
+      const display = lastInterim
+        ? compactFinalHypotheses([committed, lastInterim])
+        : committed
       return { display: normalizeTranscript(display) }
     },
 
@@ -261,7 +318,9 @@ export function createSpeechTranscriptSession() {
 
     /** WebKit/iOS often ends a session with interim-only results (isFinal never set). */
     peekHoldTranscript(): string {
-      return compactFinalHypotheses([compactFinalHypotheses(finalsByIndex), lastInterim])
+      const committed = compactFinalHypotheses(finalsByIndex)
+      if (!lastInterim || isHypothesisAbsorbed(committed, lastInterim)) return committed
+      return compactFinalHypotheses([committed, lastInterim])
     },
 
     consumeFinal(): { text: string; delivered: boolean } {
@@ -320,6 +379,15 @@ export type HeldSpeechTrace = {
   restartCount: number
   userStopped: boolean
   restartDisabled?: boolean
+  listenCycleId?: number
+  recognitionGeneration?: number
+  eventSeq?: number
+  resultIndex?: number
+  lastRaw?: string
+  lastIsFinal?: boolean
+  interim?: string
+  committed?: string
+  lifecycle?: string[]
 }
 
 export type SpeechRecognitionEngineDeps = {
@@ -335,6 +403,8 @@ function errorName(err: unknown): string {
   return ''
 }
 
+let nextListenCycleId = 1
+
 function emitHeldApply(
   handlers: {
     onFinal?: (text: string) => void
@@ -342,12 +412,15 @@ function emitHeldApply(
   },
   state: HeldSpeechState,
   text: string,
+  extra: Partial<HeldSpeechTrace> = {},
 ) {
   handlers.onHeldTrace?.({
     accumulated: text,
     restartCount: state.restartCount,
     userStopped: state.userStopped,
     restartDisabled: state.restartDisabled,
+    committed: text,
+    ...extra,
   })
   handlers.onFinal?.(text)
 }
@@ -385,6 +458,10 @@ export function startKoreanSpeechRecognition(
   recognition.maxAlternatives = 1
 
   const hold = Boolean(handlers.holdUntilExplicitStop)
+  const listenCycleId = nextListenCycleId++
+  let recognitionGeneration = 0
+  let eventSeq = 0
+  const lifecycle: string[] = []
   let stopped = false
   let ended = false
   let engineActive = false
@@ -392,6 +469,21 @@ export function startKoreanSpeechRecognition(
   let restartTimer: ReturnType<typeof setTimeout> | null = null
   let transcriptSession = createSpeechTranscriptSession()
   let held = createHeldSpeechState()
+
+  const recordLifecycle = (line: string) => {
+    eventSeq += 1
+    lifecycle.push(`#${eventSeq} g${recognitionGeneration} ${line}`)
+    if (lifecycle.length > 20) lifecycle.shift()
+  }
+
+  const traceExtra = (more: Partial<HeldSpeechTrace> = {}): Partial<HeldSpeechTrace> => ({
+    listenCycleId,
+    recognitionGeneration,
+    eventSeq,
+    lifecycle: [...lifecycle],
+    committed: transcriptSession.peekHoldTranscript(),
+    ...more,
+  })
 
   const clearRestartTimer = () => {
     if (restartTimer != null) {
@@ -419,7 +511,10 @@ export function startKoreanSpeechRecognition(
     foldCurrentSession()
     const next = reduceHeldSpeech(held, { type: 'browser-end' })
     held = next.state
-    if (next.apply != null) emitHeldApply(handlers, next.state, next.apply)
+    if (next.apply != null) {
+      recordLifecycle(`apply ${next.apply}`)
+      emitHeldApply(handlers, next.state, next.apply, traceExtra({ accumulated: next.apply }))
+    }
   }
 
   const tryStartEngine = (retry: boolean): 'started' | 'retry' | 'blocked' => {
@@ -445,10 +540,13 @@ export function startKoreanSpeechRecognition(
   const scheduleRestart = () => {
     if (held.applied || held.restartDisabled) return
     if (stopped && !stopAfterRestart) return
+    recordLifecycle('restart attempt')
     const begin = tryStartEngine(false)
     if (begin === 'started') {
       foldCurrentSession()
+      recognitionGeneration += 1
       transcriptSession = createSpeechTranscriptSession()
+      recordLifecycle('restart ok')
       if (stopAfterRestart) {
         try {
           recognition.stop()
@@ -467,7 +565,9 @@ export function startKoreanSpeechRecognition(
         const second = tryStartEngine(true)
         if (second === 'started') {
           foldCurrentSession()
+          recognitionGeneration += 1
           transcriptSession = createSpeechTranscriptSession()
+          recordLifecycle('restart ok delayed')
           if (stopAfterRestart) {
             try {
               recognition.stop()
@@ -477,11 +577,13 @@ export function startKoreanSpeechRecognition(
           }
           return
         }
+        recordLifecycle('restart fail delayed')
         held = reduceHeldSpeech(held, { type: 'restart-blocked' }).state
         if (stopAfterRestart) finishStoppedSession()
       }, HELD_SPEECH_RESTART_RETRY_MS)
       return
     }
+    recordLifecycle('restart fail')
     held = reduceHeldSpeech(held, { type: 'restart-blocked' }).state
     if (stopAfterRestart) finishStoppedSession()
   }
@@ -494,12 +596,29 @@ export function startKoreanSpeechRecognition(
   recognition.onresult = (event) => {
     if (held.applied) return
     const { display } = transcriptSession.ingest(event)
+    const first = event.results[event.resultIndex ?? 0]
+    recordLifecycle(
+      `result idx=${event.resultIndex ?? 0} final=${Boolean(first?.isFinal)} raw=${display}`,
+    )
     if (!hold) {
       handlers.onInterim?.(display)
       return
     }
     const committed = transcriptSession.peekHoldTranscript()
     held = reduceHeldSpeech(held, { type: 'committed', text: committed }).state
+    handlers.onHeldTrace?.({
+      accumulated: accumulateHeldFragments(held.accumulated, held.currentCommitted),
+      restartCount: held.restartCount,
+      userStopped: held.userStopped,
+      restartDisabled: held.restartDisabled,
+      ...traceExtra({
+        resultIndex: event.resultIndex ?? 0,
+        lastRaw: display,
+        lastIsFinal: Boolean(first?.isFinal),
+        interim: display,
+        committed,
+      }),
+    })
     const interim = normalizeTranscript(display.slice(committed.length))
     displayHeld(interim)
   }
@@ -533,13 +652,17 @@ export function startKoreanSpeechRecognition(
         handlers.onEnd()
         return
       }
+      recordLifecycle('onend')
       held = reduceHeldSpeech(held, {
         type: 'committed',
         text: transcriptSession.peekHoldTranscript(),
       }).state
       const next = reduceHeldSpeech(held, { type: 'browser-end' })
       held = next.state
-      if (next.apply != null) emitHeldApply(handlers, next.state, next.apply)
+      if (next.apply != null) {
+        recordLifecycle(`apply ${next.apply}`)
+        emitHeldApply(handlers, next.state, next.apply, traceExtra({ accumulated: next.apply }))
+      }
       if (next.restart && !stopped) {
         scheduleRestart()
         return
@@ -559,6 +682,7 @@ export function startKoreanSpeechRecognition(
     recognition.start()
     hadSuccessfulStart = true
     engineActive = true
+    recordLifecycle('start')
   } catch {
     handlers.onError('음성 인식을 시작할 수 없습니다.', 'unknown')
     return null
@@ -568,6 +692,7 @@ export function startKoreanSpeechRecognition(
     stop: () => {
       stopped = true
       if (hold) {
+        recordLifecycle('user-stop')
         held = reduceHeldSpeech(held, { type: 'user-stop' }).state
       }
       if (hold && restartTimer != null) {
