@@ -13,6 +13,7 @@ import {
   normalizeStudentDailyTestAttemptSpeech,
   parseStudentDailyTestVoice,
   SAMSUNG_RYU_DAILY_TEST_TRANSCRIPT,
+  SAMSUNG_RYU_FEEDBACK_ONLY_TRANSCRIPT,
 } from './parseStudentDailyTestVoice.ts'
 import { formatVoiceSummary } from './parseVoiceTranscript.ts'
 import { isVoiceBulkSaveCommand, routeVoiceTranscript } from './voiceSaveCommand.ts'
@@ -621,7 +622,7 @@ function parseRyu(text: string) {
   assert.equal(parsed.attempts.length, 2)
   assert.equal(visualStatusFromScoreDraft('80'), '불합격')
   assert.equal(visualStatusFromScoreDraft('95'), '합격')
-  assert.equal(parsed.teacherFeedback, '함수 부분을 부분에 이해가 늦는 거 같다')
+  assert.equal(parsed.teacherFeedback, '2차 함수 부분을 부분에 이해가 늦는 거 같다')
   assert.equal(parsed.needsReview.length, 0)
   const applied = applyRyu(SAMSUNG_RYU_DAILY_TEST_TRANSCRIPT)
   assert.equal(applied.drafts.ryujeonghyeon?.rounds[0]?.score, '80')
@@ -629,7 +630,7 @@ function parseRyu(text: string) {
   assert.equal(applied.drafts.ryujeonghyeon?.rounds.find((row) => row.passed)?.round, 2)
   assert.equal(
     applied.drafts.ryujeonghyeon?.learningDiagnosis.teacherFeedback,
-    '함수 부분을 부분에 이해가 늦는 거 같다',
+    '2차 함수 부분을 부분에 이해가 늦는 거 같다',
   )
   assert.equal(applied.summary.needsReviewCount, 0)
   assert.equal(applied.drafts.nagyeong?.rounds[0]?.score, '')
@@ -742,6 +743,154 @@ function parseRyu(text: string) {
   )
 }
 
+{
+  assert.equal(SAMSUNG_RYU_FEEDBACK_ONLY_TRANSCRIPT, '2차 함수에 대한 이해가 늦는 거 같다')
+  const parsed = parseRyu(SAMSUNG_RYU_FEEDBACK_ONLY_TRANSCRIPT)
+  assert.equal(parsed.apply, true)
+  assert.equal(parsed.attempts.length, 0)
+  assert.equal(parsed.applicationLackCount, undefined)
+  assert.equal(parsed.teacherFeedback, '2차 함수에 대한 이해가 늦는 거 같다')
+  assert.equal(parsed.needsReview.length, 0)
+  assert.doesNotMatch(parsed.teacherFeedback, /유정현|류정현/)
+  const applied = applyRyu(SAMSUNG_RYU_FEEDBACK_ONLY_TRANSCRIPT, {
+    nagyeong: emptyDraft(),
+    doyoung: emptyDraft(),
+    ryujeonghyeon: {
+      rounds: [
+        { round: 1 as const, score: '80', passed: false },
+        { round: 2 as const, score: '95', passed: true },
+        { round: 3 as const, score: '', passed: false },
+        { round: 4 as const, score: '', passed: false },
+      ],
+      learningDiagnosis: { ...EMPTY_DAILY_LEARNING_DIAGNOSIS },
+    },
+  })
+  assert.equal(applied.drafts.ryujeonghyeon?.rounds[0]?.score, '80')
+  assert.equal(applied.drafts.ryujeonghyeon?.rounds[1]?.score, '95')
+  assert.equal(applied.drafts.ryujeonghyeon?.rounds[2]?.score, '')
+  assert.equal(
+    applied.drafts.ryujeonghyeon?.learningDiagnosis.teacherFeedback,
+    '2차 함수에 대한 이해가 늦는 거 같다',
+  )
+  assert.equal(applied.summary.needsReviewCount, 0)
+}
+
+{
+  const parsed = parseRyu('함수에 대한 이해가 늦는 거 같다')
+  assert.equal(parsed.teacherFeedback, '함수에 대한 이해가 늦는 거 같다')
+  assert.equal(parsed.attempts.length, 0)
+}
+
+{
+  const parsed = parseRyu('류정현 함수에 대한 이해가 늦는 거 같다')
+  assert.equal(parsed.teacherFeedback, '함수에 대한 이해가 늦는 거 같다')
+  assert.doesNotMatch(parsed.teacherFeedback ?? '', /류정현|유정현/)
+}
+
+{
+  const prev = {
+    nagyeong: emptyDraft(),
+    doyoung: emptyDraft(),
+    ryujeonghyeon: {
+      ...emptyDraft(),
+      learningDiagnosis: {
+        ...EMPTY_DAILY_LEARNING_DIAGNOSIS,
+        teacherFeedback: '기존 피드백',
+      },
+    },
+  }
+  const parsed = parseRyu('2차 95점')
+  assert.equal(parsed.attempts[0]?.round, 2)
+  assert.equal(parsed.attempts[0]?.score, '95')
+  assert.equal(parsed.teacherFeedback, undefined)
+  const applied = applyRyu('2차 95점', prev)
+  assert.equal(applied.drafts.ryujeonghyeon?.rounds[1]?.score, '95')
+  assert.equal(applied.drafts.ryujeonghyeon?.learningDiagnosis.teacherFeedback, '기존 피드백')
+}
+
+{
+  const parsed = parseRyu('2차 95점 합격')
+  assert.equal(parsed.attempts[0]?.score, '95')
+  assert.equal(visualStatusFromScoreDraft('95'), '합격')
+  assert.equal(parsed.teacherFeedback, undefined)
+}
+
+{
+  const parsed = parseRyu('2차 80점 불합격 함수 이해가 부족하다')
+  assert.equal(parsed.attempts[0]?.round, 2)
+  assert.equal(parsed.attempts[0]?.score, '80')
+  assert.equal(visualStatusFromScoreDraft('80'), '불합격')
+  assert.equal(parsed.teacherFeedback, '함수 이해가 부족하다')
+}
+
+{
+  const parsed = parseRyu('응용 능력 부족 2개 함수 응용 문제 이해가 늦다')
+  assert.equal(parsed.applicationLackCount, 2)
+  assert.equal(parsed.teacherFeedback, '함수 응용 문제 이해가 늦다')
+}
+
+{
+  const prev = {
+    nagyeong: emptyDraft(),
+    doyoung: emptyDraft(),
+    ryujeonghyeon: {
+      ...emptyDraft(),
+      learningDiagnosis: {
+        ...EMPTY_DAILY_LEARNING_DIAGNOSIS,
+        teacherFeedback: '기존 피드백',
+      },
+    },
+  }
+  const parsed = parseRyu('응용 능력 부족 2개')
+  assert.equal(parsed.apply, true)
+  assert.equal(parsed.applicationLackCount, 2)
+  assert.equal(parsed.teacherFeedback, undefined)
+  assert.equal(parsed.attempts.length, 0)
+  const applied = applyRyu('응용 능력 부족 2개', prev)
+  assert.equal(applied.drafts.ryujeonghyeon?.learningDiagnosis.applicationLackCount, 2)
+  assert.equal(applied.drafts.ryujeonghyeon?.learningDiagnosis.teacherFeedback, '기존 피드백')
+}
+
+{
+  const parsed = parseRyu('오늘 함수 문제에서 계산이 많이 좋아졌다')
+  assert.equal(parsed.apply, true)
+  assert.equal(parsed.attempts.length, 0)
+  assert.equal(parsed.teacherFeedback, '오늘 함수 문제에서 계산이 많이 좋아졌다')
+  assert.equal(parsed.needsReview.length, 0)
+}
+
+{
+  const parsed = parseRyu('1차 80 불합격 2차 95 합격 2차 함수에 대한 이해가 늦는 거 같다')
+  assert.deepEqual(
+    parsed.attempts.map((row) => [row.round, row.score]),
+    [
+      [1, '80'],
+      [2, '95'],
+    ],
+  )
+  assert.equal(parsed.teacherFeedback, '2차 함수에 대한 이해가 늦는 거 같다')
+  assert.doesNotMatch(parsed.teacherFeedback ?? '', /유정현|류정현/)
+}
+
+{
+  const parsed = parseRyu('2차 이해가 늦다')
+  assert.equal(parsed.attempts.length, 0)
+  assert.equal(parsed.teacherFeedback, '2차 이해가 늦다')
+}
+
+{
+  const routed = routeVoiceTranscript(SAMSUNG_RYU_FEEDBACK_ONLY_TRANSCRIPT)
+  assert.equal(routed.kind, 'form-fill')
+  assert.ok(routed.kind === 'form-fill' && routed.transcript === SAMSUNG_RYU_FEEDBACK_ONLY_TRANSCRIPT)
+}
+
+{
+  const parsed = parseRyu('강나경 함수에 대한 이해가 늦는 거 같다')
+  assert.equal(parsed.apply, false)
+  assert.equal(parsed.teacherFeedback, undefined)
+  assert.ok(parsed.needsReview.some((row) => row.reason.includes('다른 학생')))
+}
+
 const panel = readFileSync('src/components/todayReport/ClassDailyTestBulkPanel.tsx', 'utf8')
 assert.match(panel, /chipLabel="음성입력"/)
 assert.match(panel, /applyStudentDailyTestDraft/)
@@ -755,9 +904,18 @@ assert.match(panel, /import.meta.env.DEV/)
 assert.match(panel, /hideStatus/)
 assert.match(panel, /onDiagnostic/)
 assert.match(panel, /data-voice-summary="true"/)
-assert.match(readFileSync('src/utils/voiceInput/applyVoiceDraft.ts', 'utf8'), /parseStudentDailyTestVoice/)
-assert.doesNotMatch(readFileSync('src/utils/voiceInput/applyVoiceDraft.ts', 'utf8'), /saveDailyTestRecord/)
-assert.doesNotMatch(readFileSync('src/utils/voiceInput/parseStudentDailyTestVoice.ts', 'utf8'), /from '@supabase/)
+const applySrc = readFileSync('src/utils/voiceInput/applyVoiceDraft.ts', 'utf8')
+assert.match(applySrc, /parseStudentDailyTestVoice/)
+assert.doesNotMatch(applySrc, /saveDailyTestRecord/)
+assert.doesNotMatch(applySrc, /diagnosis\.teacherFeedback\s*=\s*[^\n]*cardStudent/)
+
+const parserSrc = readFileSync('src/utils/voiceInput/parseStudentDailyTestVoice.ts', 'utf8')
+assert.doesNotMatch(parserSrc, /from '@supabase/)
+assert.doesNotMatch(parserSrc, /ATTEMPT_SPLIT_RE/)
+assert.doesNotMatch(parserSrc, /teacherFeedback\s*=\s*[^\n]*cardStudent/)
+assert.doesNotMatch(parserSrc, /cardStudent\.name\s*\+/)
+assert.doesNotMatch(parserSrc, /from '\.\/speechRecognition/)
+assert.match(parserSrc, /ATTEMPT_PAYLOAD_RE/)
 
 const header = readFileSync('src/components/todayReport/AbsentFollowOnBadge.tsx', 'utf8')
 assert.match(header, /ml-auto min-w-0 max-w-full flex-1/)

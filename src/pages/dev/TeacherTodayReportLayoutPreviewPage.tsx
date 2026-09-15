@@ -218,7 +218,7 @@ export function TeacherTodayReportLayoutPreviewPage() {
             </div>
             <p className="mt-2 text-sm font-semibold text-slate-700">강사의 피드백</p>
             <div className="mt-1 min-h-[5.5rem] w-full min-w-0 max-w-full whitespace-pre-wrap break-all rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-800 [overflow-wrap:anywhere]">
-              함수 부분을 부분에 이해가 늦는 거 같다
+              2차 함수에 대한 이해가 늦는 거 같다
             </div>
             <button type="button" className="tm-btn-primary mt-2 w-full min-h-11 text-sm font-semibold">
               일일테스트 전체 저장
