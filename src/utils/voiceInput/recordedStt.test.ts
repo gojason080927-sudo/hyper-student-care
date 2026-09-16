@@ -9,7 +9,7 @@ import { visualStatusFromScoreDraft } from '../teacherMobileDailyTest.ts'
 import { applyStudentDailyTestDraft } from './applyVoiceDraft.ts'
 import { parseStudentDailyTestVoice } from './parseStudentDailyTestVoice.ts'
 import { formatVoiceSummary } from './parseVoiceTranscript.ts'
-import { handleVoiceTranscribe } from '../../../api/voice-transcribe.ts'
+import { envFromProcess, handleVoiceTranscribe } from '../../../api/voice-transcribe.ts'
 import {
   pickRecorderMimeType,
   detectAudioRecordingSupport,
@@ -161,9 +161,36 @@ class FakeMediaRecorder {
       }) as unknown as MediaStream,
     MediaRecorderCtor: EmptyRecorder as unknown as typeof MediaRecorder,
     isTypeSupported: (type) => type === 'audio/mp4',
+    stopFlushMs: 0,
   })
   const blob = await recorder.stop()
   assert.equal(blob.size, 0)
+}
+
+{
+  class LateDataRecorder extends FakeMediaRecorder {
+    requestData() {
+      /* iOS often delivers the blob after stop, not via requestData */
+    }
+    stop() {
+      this.state = 'inactive'
+      this.onstop?.()
+      setTimeout(() => {
+        this.ondataavailable?.({ data: new Blob(['voice'], { type: 'audio/mp4' }) })
+      }, 20)
+    }
+  }
+  const recorder = await startAudioRecorder({
+    getUserMedia: async () =>
+      ({
+        getTracks: () => [{ stop: () => undefined }],
+      }) as unknown as MediaStream,
+    MediaRecorderCtor: LateDataRecorder as unknown as typeof MediaRecorder,
+    isTypeSupported: (type) => type === 'audio/mp4',
+    stopFlushMs: 80,
+  })
+  const blob = await recorder.stop()
+  assert.ok(blob.size > 0)
 }
 
 assert.equal(mapTranscribeHttpError(401), STT_FAIL_MESSAGE)
@@ -413,6 +440,37 @@ const noKey = await handleVoiceTranscribe(
 )
 assert.equal(noKey.status, 503)
 
+{
+  const keys = [
+    'OPENAI_API_KEY',
+    'OPENAI_TRANSCRIBE_MODEL',
+    'SUPABASE_URL',
+    'VITE_SUPABASE_URL',
+    'SUPABASE_ANON_KEY',
+    'VITE_SUPABASE_ANON_KEY',
+  ] as const
+  const previous = Object.fromEntries(keys.map((key) => [key, process.env[key]]))
+  process.env.OPENAI_API_KEY = 'test-key'
+  delete process.env.OPENAI_TRANSCRIBE_MODEL
+  delete process.env.SUPABASE_URL
+  process.env.VITE_SUPABASE_URL = 'https://example.supabase.co'
+  delete process.env.SUPABASE_ANON_KEY
+  process.env.VITE_SUPABASE_ANON_KEY = 'anon'
+  try {
+    const live = envFromProcess()
+    assert.equal(live.openaiApiKey, 'test-key')
+    assert.equal(live.openaiModel, 'gpt-4o-transcribe')
+    assert.equal(live.supabaseUrl, 'https://example.supabase.co')
+    assert.equal(live.supabaseAnonKey, 'anon')
+  } finally {
+    for (const key of keys) {
+      const value = previous[key]
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
+  }
+}
+
 const clientOk = await transcribeRecordedAudio({
   blob: new Blob(['abcd'], { type: 'audio/mp4' }),
   mimeType: 'audio/mp4',
@@ -472,11 +530,20 @@ assert.match(speech, /holdUntilExplicitStop/)
 
 const endpoint = readFileSync('api/voice-transcribe.ts', 'utf8')
 assert.match(endpoint, /api\.openai\.com\/v1\/audio\/transcriptions/)
-assert.match(endpoint, /runtime: 'edge'/)
+assert.match(endpoint, /runtime: 'nodejs'/)
+assert.match(endpoint, /process\.env\.OPENAI_API_KEY/)
+assert.match(endpoint, /process\.env\.VITE_SUPABASE_URL/)
+assert.doesNotMatch(endpoint, /globalThis\.process/)
+assert.doesNotMatch(endpoint, /runtime: 'edge'/)
 assert.doesNotMatch(endpoint, /VITE_OPENAI/)
 assert.doesNotMatch(endpoint, /from '@supabase/)
 assert.doesNotMatch(endpoint, /parseStudentDailyTestVoice/)
 assert.doesNotMatch(endpoint, /saveDailyTestRecord/)
+assert.doesNotMatch(endpoint, /sk-[a-zA-Z0-9]/)
+
+const recorderSrc = readFileSync('src/utils/voiceInput/audioRecorder.ts', 'utf8')
+assert.match(recorderSrc, /stopFlushMs/)
+assert.match(recorderSrc, /recorder\.state === 'inactive' && chunks\.length > 0/)
 
 const vercel = readFileSync('vercel.json', 'utf8')
 assert.match(vercel, /"source": "\/\(\.\*\)"/)
