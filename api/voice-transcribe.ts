@@ -1,4 +1,6 @@
-export const config = { runtime: 'edge' }
+/// <reference types="node" />
+
+export const config = { runtime: 'nodejs' }
 
 const MAX_AUDIO_BYTES = 3_500_000
 const STT_CLASSROOM_PROMPT =
@@ -13,19 +15,22 @@ export type TranscribeEnv = {
   verifyUser?: (token: string) => Promise<boolean>
 }
 
-function readRuntimeEnv(): Record<string, string | undefined> {
-  const runtime = globalThis as { process?: { env?: Record<string, string | undefined> } }
-  return runtime.process?.env ?? {}
-}
-
 export function envFromProcess(
-  env: Record<string, string | undefined> = readRuntimeEnv(),
+  env?: Record<string, string | undefined>,
 ): TranscribeEnv {
+  if (env) {
+    return {
+      openaiApiKey: env.OPENAI_API_KEY?.trim() ?? '',
+      openaiModel: env.OPENAI_TRANSCRIBE_MODEL?.trim() || 'gpt-4o-transcribe',
+      supabaseUrl: (env.SUPABASE_URL || env.VITE_SUPABASE_URL)?.trim() ?? '',
+      supabaseAnonKey: (env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY)?.trim() ?? '',
+    }
+  }
   return {
-    openaiApiKey: env.OPENAI_API_KEY?.trim() ?? '',
-    openaiModel: env.OPENAI_TRANSCRIBE_MODEL?.trim() || 'gpt-4o-transcribe',
-    supabaseUrl: (env.SUPABASE_URL || env.VITE_SUPABASE_URL)?.trim() ?? '',
-    supabaseAnonKey: (env.SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY)?.trim() ?? '',
+    openaiApiKey: process.env.OPENAI_API_KEY?.trim() ?? '',
+    openaiModel: process.env.OPENAI_TRANSCRIBE_MODEL?.trim() || 'gpt-4o-transcribe',
+    supabaseUrl: (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL)?.trim() ?? '',
+    supabaseAnonKey: (process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY)?.trim() ?? '',
   }
 }
 
@@ -74,6 +79,10 @@ async function defaultVerifyUser(
   }
 }
 
+function logFail(error: string, extra: Record<string, unknown> = {}) {
+  console.error('voice-transcribe', { error, ...extra })
+}
+
 export async function handleVoiceTranscribe(
   request: Request,
   env: TranscribeEnv,
@@ -83,14 +92,23 @@ export async function handleVoiceTranscribe(
 
   const auth = request.headers.get('authorization') ?? ''
   const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : ''
-  if (!token) return json({ error: 'unauthorized' }, 401)
+  if (!token) {
+    logFail('unauthorized')
+    return json({ error: 'unauthorized' }, 401)
+  }
 
   const fetchImpl = env.fetchImpl ?? fetch
   const verify = env.verifyUser ?? ((value: string) => defaultVerifyUser(value, env, fetchImpl))
   const allowed = await verify(token)
-  if (!allowed) return json({ error: 'unauthorized' }, 401)
+  if (!allowed) {
+    logFail('unauthorized')
+    return json({ error: 'unauthorized' }, 401)
+  }
 
-  if (!env.openaiApiKey) return json({ error: 'stt_unavailable' }, 503)
+  if (!env.openaiApiKey) {
+    logFail('stt_unavailable')
+    return json({ error: 'stt_unavailable' }, 503)
+  }
 
   let payload: {
     mimeType?: unknown
@@ -100,21 +118,32 @@ export async function handleVoiceTranscribe(
   try {
     payload = (await request.json()) as typeof payload
   } catch {
+    logFail('malformed')
     return json({ error: 'malformed' }, 400)
   }
 
   const mimeType = typeof payload.mimeType === 'string' ? payload.mimeType : ''
   const audioBase64 = typeof payload.audioBase64 === 'string' ? payload.audioBase64 : ''
-  if (!audioBase64) return json({ error: 'empty' }, 422)
+  if (!audioBase64) {
+    logFail('empty')
+    return json({ error: 'empty' }, 422)
+  }
 
   let bytes: Uint8Array
   try {
     bytes = decodeBase64Audio(audioBase64)
   } catch {
+    logFail('malformed')
     return json({ error: 'malformed' }, 400)
   }
-  if (!bytes.byteLength) return json({ error: 'empty' }, 422)
-  if (bytes.byteLength > MAX_AUDIO_BYTES) return json({ error: 'too_large' }, 413)
+  if (!bytes.byteLength) {
+    logFail('empty')
+    return json({ error: 'empty' }, 422)
+  }
+  if (bytes.byteLength > MAX_AUDIO_BYTES) {
+    logFail('too_large', { bytes: bytes.byteLength })
+    return json({ error: 'too_large' }, 413)
+  }
 
   const filename =
     typeof payload.filename === 'string' && payload.filename.trim()
@@ -148,9 +177,11 @@ export async function handleVoiceTranscribe(
       env.openaiModel !== 'whisper-1' &&
       (upstream.status === 400 || upstream.status === 404)
     ) {
+      logFail('upstream_fallback', { status: upstream.status, mimeType, filename })
       upstream = await postTranscription('whisper-1')
     }
   } catch {
+    logFail('upstream_timeout', { mimeType, filename })
     return json({ error: 'upstream_timeout' }, 504)
   }
 
@@ -158,11 +189,13 @@ export async function handleVoiceTranscribe(
   try {
     upstreamJson = await upstream.json()
   } catch {
+    logFail('malformed_upstream', { status: upstream.status, mimeType, filename })
     return json({ error: 'malformed_upstream' }, 502)
   }
 
   if (!upstream.ok) {
     const status = upstream.status >= 500 ? 502 : upstream.status === 401 ? 503 : 502
+    logFail('upstream_error', { status: upstream.status, mimeType, filename })
     return json({ error: 'upstream_error' }, status)
   }
 
@@ -172,7 +205,10 @@ export async function handleVoiceTranscribe(
     typeof (upstreamJson as { text?: unknown }).text === 'string'
       ? String((upstreamJson as { text: string }).text).replace(/\s+/g, ' ').trim()
       : ''
-  if (!text) return json({ error: 'empty' }, 422)
+  if (!text) {
+    logFail('empty_transcript', { mimeType, filename })
+    return json({ error: 'empty' }, 422)
+  }
   return json({ transcript: text })
 }
 

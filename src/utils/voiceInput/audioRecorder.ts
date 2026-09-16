@@ -12,7 +12,11 @@ type RecorderDeps = {
   getUserMedia?: (constraints: MediaStreamConstraints) => Promise<MediaStream>
   MediaRecorderCtor?: typeof MediaRecorder
   isTypeSupported?: (type: string) => boolean
+  /** iOS can deliver dataavailable after the stop event. */
+  stopFlushMs?: number
 }
+
+const DEFAULT_STOP_FLUSH_MS = 300
 
 export function detectAudioRecordingSupport(
   flags?: { mediaDevices?: boolean; MediaRecorder?: boolean },
@@ -77,18 +81,33 @@ export async function startAudioRecorder(deps: RecorderDeps = {}): Promise<Audio
 
   const mimeType = recorder.mimeType || negotiated || 'application/octet-stream'
   const chunks: Blob[] = []
-  recorder.ondataavailable = (event) => {
-    if (event.data && event.data.size > 0) chunks.push(event.data)
-  }
+  const flushMs = deps.stopFlushMs ?? DEFAULT_STOP_FLUSH_MS
 
   const done = new Promise<Blob>((resolve, reject) => {
+    let settled = false
+    const finish = () => {
+      if (settled) return
+      settled = true
+      stopTracks(stream)
+      resolve(new Blob(chunks, { type: mimeType }))
+    }
+
     recorder.onerror = () => {
+      if (settled) return
+      settled = true
       stopTracks(stream)
       reject(new Error('recording_error'))
     }
+    recorder.ondataavailable = (event) => {
+      if (event.data && event.data.size > 0) chunks.push(event.data)
+      if (recorder.state === 'inactive' && chunks.length > 0) finish()
+    }
     recorder.onstop = () => {
-      stopTracks(stream)
-      resolve(new Blob(chunks, { type: mimeType }))
+      if (chunks.length > 0) {
+        finish()
+        return
+      }
+      setTimeout(finish, flushMs)
     }
   })
 
