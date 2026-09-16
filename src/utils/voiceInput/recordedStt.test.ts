@@ -9,7 +9,12 @@ import { visualStatusFromScoreDraft } from '../teacherMobileDailyTest.ts'
 import { applyStudentDailyTestDraft } from './applyVoiceDraft.ts'
 import { parseStudentDailyTestVoice } from './parseStudentDailyTestVoice.ts'
 import { formatVoiceSummary } from './parseVoiceTranscript.ts'
-import { envFromProcess, handleVoiceTranscribe } from '../../../api/voice-transcribe.ts'
+import voiceTranscribeHandler, {
+  envFromProcess,
+  handleVoiceTranscribe,
+  incomingToRequest,
+  readBearerToken,
+} from '../../../api/voice-transcribe.ts'
 import {
   pickRecorderMimeType,
   detectAudioRecordingSupport,
@@ -337,6 +342,109 @@ await assert.rejects(
   },
 )
 
+{
+  const nodeReq = await incomingToRequest({
+    method: 'POST',
+    url: '/api/voice-transcribe',
+    headers: {
+      host: 'hyper-student-care.vercel.app',
+      authorization: 'Bearer teacher-jwt',
+      'content-type': 'application/json',
+    },
+    async *[Symbol.asyncIterator]() {
+      yield Buffer.from(JSON.stringify({ mimeType: 'audio/mp4', audioBase64: btoa('abcd') }))
+    },
+  } as never)
+  assert.equal(readBearerToken(nodeReq), 'teacher-jwt')
+  const adapted = await handleVoiceTranscribe(nodeReq, {
+    openaiApiKey: '',
+    openaiModel: 'gpt-4o-transcribe',
+    supabaseUrl: 'https://example.supabase.co',
+    supabaseAnonKey: 'anon',
+    verifyUser: async (token) => token === 'teacher-jwt',
+  })
+  assert.equal(adapted.status, 503)
+}
+
+{
+  class MockRes {
+    statusCode = 0
+    headers: Record<string, string> = {}
+    chunks: Uint8Array[] = []
+    writeHead(status: number, headers: Record<string, string>) {
+      this.statusCode = status
+      this.headers = headers
+    }
+    end(buf?: Uint8Array) {
+      if (buf) this.chunks.push(buf)
+    }
+    text() {
+      return Buffer.concat(this.chunks.map((part) => Buffer.from(part))).toString('utf8')
+    }
+  }
+  const res = new MockRes()
+  const req = {
+    method: 'POST',
+    url: '/api/voice-transcribe',
+    headers: {
+      host: 'hyper-student-care.vercel.app',
+      authorization: 'Bearer teacher-jwt',
+      'content-type': 'application/json',
+    },
+    async *[Symbol.asyncIterator]() {
+      yield Buffer.from(JSON.stringify({ mimeType: 'audio/mp4', audioBase64: btoa('abcd') }))
+    },
+  }
+  await voiceTranscribeHandler(req as never, res as never)
+  assert.equal(res.statusCode, 401)
+  assert.match(res.text(), /unauthorized/)
+}
+
+const unconfigured = await handleVoiceTranscribe(
+  new Request('https://example.test/api/voice-transcribe', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer teacher-jwt', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mimeType: 'audio/mp4', audioBase64: btoa('abcd') }),
+  }),
+  {
+    openaiApiKey: 'sk-test',
+    openaiModel: 'gpt-4o-transcribe',
+    supabaseUrl: '',
+    supabaseAnonKey: '',
+  },
+)
+assert.equal(unconfigured.status, 401)
+assert.deepEqual(await unconfigured.json(), { error: 'unauthorized' })
+
+{
+  let verifyUrl = ''
+  const afterVerify = await handleVoiceTranscribe(
+    new Request('https://example.test/api/voice-transcribe', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer teacher-jwt', 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mimeType: 'audio/mp4', audioBase64: btoa('abcd') }),
+    }),
+    {
+      openaiApiKey: '',
+      openaiModel: 'gpt-4o-transcribe',
+      supabaseUrl: 'https://example.supabase.co',
+      supabaseAnonKey: 'anon',
+      fetchImpl: async (url, init) => {
+        verifyUrl = String(url)
+        const headers = init?.headers as { Authorization?: string; apikey?: string }
+        assert.equal(headers.Authorization, 'Bearer teacher-jwt')
+        assert.equal(headers.apikey, 'anon')
+        return new Response(JSON.stringify({ id: 'teacher-1' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      },
+    },
+  )
+  assert.match(verifyUrl, /\/auth\/v1\/user$/)
+  assert.equal(afterVerify.status, 503)
+}
+
 const emptyUp = await handleVoiceTranscribe(
   new Request('https://example.test/api/voice-transcribe', {
     method: 'POST',
@@ -548,16 +656,26 @@ assert.match(speech, /holdUntilExplicitStop/)
 
 const endpoint = readFileSync('api/voice-transcribe.ts', 'utf8')
 assert.match(endpoint, /api\.openai\.com\/v1\/audio\/transcriptions/)
-assert.match(endpoint, /runtime: 'edge'/)
+assert.match(endpoint, /runtime: 'nodejs'/)
+assert.match(endpoint, /incomingToRequest/)
+assert.match(endpoint, /missing_bearer/)
+assert.match(endpoint, /unconfigured/)
+assert.match(endpoint, /auth\/v1\/user/)
 assert.match(endpoint, /process\.env\.OPENAI_API_KEY/)
 assert.match(endpoint, /process\.env\.VITE_SUPABASE_URL/)
 assert.doesNotMatch(endpoint, /globalThis\.process/)
-assert.doesNotMatch(endpoint, /runtime: 'nodejs'/)
+assert.doesNotMatch(endpoint, /runtime: 'edge'/)
 assert.doesNotMatch(endpoint, /VITE_OPENAI/)
 assert.doesNotMatch(endpoint, /from '@supabase/)
 assert.doesNotMatch(endpoint, /parseStudentDailyTestVoice/)
 assert.doesNotMatch(endpoint, /saveDailyTestRecord/)
 assert.doesNotMatch(endpoint, /sk-[a-zA-Z0-9]/)
+
+const clientSrc = readFileSync('src/utils/voiceInput/recordedSttClient.ts', 'utf8')
+assert.match(clientSrc, /refreshSession/)
+assert.match(clientSrc, /getSession/)
+assert.match(clientSrc, /Authorization: `Bearer \$\{token\}`/)
+assert.doesNotMatch(clientSrc, /OPENAI_API_KEY|sk-/)
 
 const recorderSrc = readFileSync('src/utils/voiceInput/audioRecorder.ts', 'utf8')
 assert.match(recorderSrc, /stopFlushMs/)
