@@ -49,13 +49,39 @@ function json(body: Record<string, unknown>, status = 200): Response {
   })
 }
 
+function recorderContainerMime(mimeType: string): string {
+  return mimeType.split(';')[0]?.trim().toLowerCase() ?? ''
+}
+
+/** Match OpenAI transcription file types: mp3, mp4, mpeg, mpga, m4a, wav, webm. */
+export function normalizeTranscriptionAudioMeta(mimeType: string): {
+  mimeType: string
+  filename: string
+} {
+  const base = recorderContainerMime(mimeType)
+  if (
+    base === 'audio/mp4' ||
+    base === 'audio/m4a' ||
+    base === 'audio/x-m4a' ||
+    base === 'audio/aac' ||
+    base === 'video/mp4'
+  ) {
+    return { mimeType: 'audio/mp4', filename: 'voice.m4a' }
+  }
+  if (base === 'audio/mpeg' || base === 'audio/mp3') {
+    return { mimeType: 'audio/mpeg', filename: 'voice.mp3' }
+  }
+  if (base === 'audio/wav' || base === 'audio/wave' || base === 'audio/x-wav') {
+    return { mimeType: 'audio/wav', filename: 'voice.wav' }
+  }
+  if (base.includes('webm')) {
+    return { mimeType: 'audio/webm', filename: 'voice.webm' }
+  }
+  return { mimeType: base || 'application/octet-stream', filename: 'voice.bin' }
+}
+
 function filenameForMimeType(mimeType: string): string {
-  const base = mimeType.split(';')[0]?.trim() ?? ''
-  if (base === 'audio/mp4' || base === 'audio/m4a' || base === 'audio/aac') return 'voice.m4a'
-  if (base === 'audio/mpeg') return 'voice.mp3'
-  if (base === 'audio/wav' || base === 'audio/wave') return 'voice.wav'
-  if (base.includes('webm')) return 'voice.webm'
-  return 'voice.bin'
+  return normalizeTranscriptionAudioMeta(mimeType).filename
 }
 
 function decodeBase64Audio(base64: string): Uint8Array {
@@ -275,15 +301,20 @@ export async function handleVoiceTranscribe(
     return json({ error: 'too_large' }, 413)
   }
 
-  const filename =
+  const requestedName =
     typeof payload.filename === 'string' && payload.filename.trim()
       ? payload.filename.trim()
       : filenameForMimeType(mimeType)
+  const normalized = normalizeTranscriptionAudioMeta(mimeType || requestedName)
+  const filename = /\.(m4a|mp4|mp3|mpeg|mpga|wav|webm)$/i.test(requestedName)
+    ? requestedName
+    : normalized.filename
   const copy = new Uint8Array(new ArrayBuffer(bytes.byteLength))
   copy.set(bytes)
-  const audioBlob = new Blob([copy], {
-    type: mimeType || 'application/octet-stream',
-  })
+  const audioBlob =
+    typeof File === 'function'
+      ? new File([copy], filename, { type: normalized.mimeType })
+      : new Blob([copy], { type: normalized.mimeType })
 
   const postTranscription = (model: string) => {
     const form = new FormData()
@@ -307,11 +338,20 @@ export async function handleVoiceTranscribe(
       env.openaiModel !== 'whisper-1' &&
       (upstream.status === 400 || upstream.status === 404)
     ) {
-      logFail('upstream_fallback', { status: upstream.status, mimeType, filename })
+      logFail('upstream_fallback', {
+        status: upstream.status,
+        mimeType: normalized.mimeType,
+        filename,
+        bytes: bytes.byteLength,
+      })
       upstream = await postTranscription('whisper-1')
     }
   } catch {
-    logFail('upstream_timeout', { mimeType, filename })
+    logFail('upstream_timeout', {
+      mimeType: normalized.mimeType,
+      filename,
+      bytes: bytes.byteLength,
+    })
     return json({ error: 'upstream_timeout' }, 504)
   }
 
@@ -319,13 +359,23 @@ export async function handleVoiceTranscribe(
   try {
     upstreamJson = await upstream.json()
   } catch {
-    logFail('malformed_upstream', { status: upstream.status, mimeType, filename })
+    logFail('malformed_upstream', {
+      status: upstream.status,
+      mimeType: normalized.mimeType,
+      filename,
+      bytes: bytes.byteLength,
+    })
     return json({ error: 'malformed_upstream' }, 502)
   }
 
   if (!upstream.ok) {
     const status = upstream.status >= 500 ? 502 : upstream.status === 401 ? 503 : 502
-    logFail('upstream_error', { status: upstream.status, mimeType, filename })
+    logFail('upstream_error', {
+      status: upstream.status,
+      mimeType: normalized.mimeType,
+      filename,
+      bytes: bytes.byteLength,
+    })
     return json({ error: 'upstream_error' }, status)
   }
 
@@ -336,7 +386,11 @@ export async function handleVoiceTranscribe(
       ? String((upstreamJson as { text: string }).text).replace(/\s+/g, ' ').trim()
       : ''
   if (!text) {
-    logFail('empty_transcript', { mimeType, filename })
+    logFail('empty_transcript', {
+      mimeType: normalized.mimeType,
+      filename,
+      bytes: bytes.byteLength,
+    })
     return json({ error: 'empty' }, 422)
   }
   return json({ transcript: text })

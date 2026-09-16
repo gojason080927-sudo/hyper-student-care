@@ -4,8 +4,8 @@ import {
   STT_FAIL_MESSAGE,
   VOICE_TRANSCRIBE_PATH,
   blobToBase64,
-  filenameForMimeType,
   mapTranscribeHttpError,
+  normalizeTranscriptionAudioMeta,
   parseTranscribeJson,
   type SttClientResult,
 } from './sttProtocol.ts'
@@ -43,6 +43,7 @@ export async function transcribeRecordedAudio(args: {
     return { ok: false, message: STT_FAIL_MESSAGE }
   }
 
+  const audioMeta = normalizeTranscriptionAudioMeta(args.mimeType || args.blob.type)
   let response: Response
   try {
     response = await fetchImpl(VOICE_TRANSCRIBE_PATH, {
@@ -52,8 +53,8 @@ export async function transcribeRecordedAudio(args: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        mimeType: args.mimeType || args.blob.type || 'application/octet-stream',
-        filename: filenameForMimeType(args.mimeType || args.blob.type),
+        mimeType: audioMeta.mimeType,
+        filename: audioMeta.filename,
         audioBase64,
       }),
     })
@@ -78,7 +79,19 @@ async function defaultAccessToken(): Promise<string | null> {
   if (!isSupabaseConfigured()) return null
   const auth = getSupabase().auth
   const { data: userData } = await auth.getUser()
-  if (!userData.user) return null
-  const { data } = await auth.getSession()
-  return data.session?.access_token ?? null
+  if (userData.user) {
+    const { data } = await auth.getSession()
+    return data.session?.access_token ?? null
+  }
+  // iOS Home Screen web apps suspend JS in the background (WWDC23 / WebKit),
+  // so autoRefresh may not run. Refresh once; still require a user before sending.
+  try {
+    const { data: refreshed } = await auth.refreshSession()
+    if (refreshed.session?.user && refreshed.session.access_token) {
+      return refreshed.session.access_token
+    }
+  } catch {
+    return null
+  }
+  return null
 }

@@ -61,13 +61,25 @@ export async function startAudioRecorder(deps: RecorderDeps = {}): Promise<Audio
         : false)
 
   const negotiated = pickRecorderMimeType(isTypeSupported)
-  const stream = await getUserMedia({
-    audio: {
-      echoCancellation: true,
-      noiseSuppression: true,
-      channelCount: 1,
-    },
-  })
+  // WebKit MediaRecorder sample uses `{ audio: true }`. Extra constraints can
+  // throw OverconstrainedError on some iPhone versions; fall back to the
+  // Apple-documented unconstrained microphone request.
+  let stream: MediaStream
+  try {
+    stream = await getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        channelCount: 1,
+      },
+    })
+  } catch (err) {
+    const name = err && typeof err === 'object' && 'name' in err ? String(err.name) : ''
+    if (name === 'NotAllowedError' || name === 'PermissionDeniedError' || name === 'NotFoundError') {
+      throw err
+    }
+    stream = await getUserMedia({ audio: true })
+  }
 
   let recorder: MediaRecorder
   try {
@@ -112,6 +124,10 @@ export async function startAudioRecorder(deps: RecorderDeps = {}): Promise<Audio
   })
 
   try {
+    // W3C MediaStream Recording simplest case: start() with no timeslice so
+    // stop() yields one complete Blob. WebKit's sample uses start(1000) for
+    // preview chunks; sliced fragments are not required to be individually
+    // playable, and Safari 18.4 fMP4 slices can fail OpenAI.
     recorder.start()
   } catch (err) {
     stopTracks(stream)
@@ -124,13 +140,6 @@ export async function startAudioRecorder(deps: RecorderDeps = {}): Promise<Audio
     stop: async () => {
       if (!finished) {
         finished = true
-        try {
-          if (recorder.state === 'recording' && typeof recorder.requestData === 'function') {
-            recorder.requestData()
-          }
-        } catch {
-          /* iOS may not implement requestData */
-        }
         if (recorder.state !== 'inactive') recorder.stop()
       }
       return done
