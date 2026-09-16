@@ -418,6 +418,8 @@ assert.doesNotMatch(diagnosticUi, /whitespace-nowrap/)
 const panel = readFileSync('src/components/todayReport/ClassDailyTestBulkPanel.tsx', 'utf8')
 assert.match(panel, /StudentFollowOnRowHeader/)
 assert.match(panel, /DailyTestVoiceDiagnostic snapshot/)
+assert.match(panel, /IphonePhysicalVoiceDiagnosticPanel/)
+assert.match(panel, /IphonePhysicalVoiceDiagnosticToggle/)
 assert.doesNotMatch(panel, /JWT|access_key|service.role|SERVICE_ROLE/i)
 
 assert.doesNotMatch(

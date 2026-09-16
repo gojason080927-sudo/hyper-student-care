@@ -626,6 +626,11 @@ export function parseSectionTextVoice(transcript: string): {
   return { text, needsReview: [] }
 }
 
+/**
+ * Teacher status line after one voice apply.
+ * `appliedCount` is parser field-patch count (see applyStudentDailyTestDraft),
+ * not Web Speech recognition events and not React onFinal/apply calls.
+ */
 export function formatVoiceSummary(summary: {
   appliedCount: number
   excludedAbsentCount: number

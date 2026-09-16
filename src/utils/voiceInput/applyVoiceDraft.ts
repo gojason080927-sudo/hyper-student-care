@@ -296,6 +296,7 @@ export function applyStudentDailyTestDraft<T extends {
     }
   }
   next[cardStudent.id] = patchStudentDailyTestDraft(current, parsed)
+  /** Field patches written this call — not recognition events, not apply-call count. */
   const appliedCount =
     parsed.attempts.length +
     (parsed.conceptLackCount !== undefined ? 1 : 0) +
