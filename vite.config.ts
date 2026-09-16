@@ -76,6 +76,11 @@ export default defineConfig({
           {
             urlPattern: /\/api\/voice-transcribe/i,
             handler: 'NetworkOnly',
+            method: 'POST',
+          },
+          {
+            urlPattern: /\/api\/voice-transcribe/i,
+            handler: 'NetworkOnly',
           },
         ],
       },

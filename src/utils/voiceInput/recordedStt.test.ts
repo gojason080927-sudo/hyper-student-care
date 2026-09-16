@@ -474,10 +474,12 @@ const endpoint = readFileSync('api/voice-transcribe.ts', 'utf8')
 assert.match(endpoint, /api\.openai\.com\/v1\/audio\/transcriptions/)
 assert.match(endpoint, /runtime: 'edge'/)
 assert.doesNotMatch(endpoint, /VITE_OPENAI/)
+assert.doesNotMatch(endpoint, /from '@supabase/)
 assert.doesNotMatch(endpoint, /parseStudentDailyTestVoice/)
 assert.doesNotMatch(endpoint, /saveDailyTestRecord/)
 
 const vercel = readFileSync('vercel.json', 'utf8')
-assert.match(vercel, /\(\(\?!api\/\)\.\*\)/)
+assert.match(vercel, /"source": "\/\(\.\*\)"/)
+assert.doesNotMatch(vercel, /\(\?!api\/\)/)
 
 console.log('recordedStt.test.ts passed')

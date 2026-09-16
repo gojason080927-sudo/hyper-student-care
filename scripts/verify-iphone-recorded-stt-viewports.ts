@@ -24,42 +24,60 @@ try {
       viewport: { width: viewport.width, height: viewport.height },
     })
     await page.goto(url, { waitUntil: 'networkidle', timeout: 60_000 })
-    await page.locator('[data-preview-block="daily-test"]').waitFor({ state: 'visible' })
-    const recording = page.locator('[data-voice-listening-hint=""]')
-    const transcribing = page.locator('[data-voice-transcribing="true"]')
-    const error = page.locator('[data-voice-error="true"]')
-    const summary = page.locator('[data-preview-block="daily-test"] [data-voice-summary="true"]')
+    const daily = page.locator('[data-preview-block="daily-test"]')
+    await daily.waitFor({ state: 'visible' })
+    const mic = daily.locator('[data-voice-input] button').first()
+    const recording = daily.locator('[data-voice-listening-hint=""]')
+    const transcribing = daily.locator('[data-voice-transcribing="true"]')
+    const error = daily.locator('[data-voice-error="true"]')
+    const summary = daily.locator('[data-voice-summary="true"]')
+    await mic.waitFor({ state: 'visible' })
     await recording.first().waitFor({ state: 'visible' })
     await transcribing.first().waitFor({ state: 'visible' })
     await error.first().waitFor({ state: 'visible' })
     await summary.first().waitFor({ state: 'visible' })
+    assert.match((await mic.innerText()).replace(/\s+/g, ''), /음성입력/)
     const overflowX = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     )
     assert.ok(overflowX <= 1, `${viewport.name} overflowX=${overflowX}`)
-        const navBox = await page.locator('nav[aria-label="강사용 모바일 메뉴"]').boundingBox()
-        const errorBox = await error.first().boundingBox()
-        const recordingBox = await recording.first().boundingBox()
-        const transcribingBox = await transcribing.first().boundingBox()
-        assert.ok(navBox, `${viewport.name} missing bottom nav`)
-        for (const [label, box] of [
-          ['error', errorBox],
-          ['recording', recordingBox],
-          ['transcribing', transcribingBox],
-        ] as const) {
-          assert.ok(box, `${viewport.name} missing ${label}`)
-          assert.ok(
-            box!.y + box!.height <= navBox!.y + 2,
-            `${viewport.name} ${label} overlaps bottom nav`,
-          )
-        }
-        const shotDir = process.env.VOICE_STT_SCREENSHOT_DIR
-        if (shotDir && viewport.name === '390x844') {
-          await page.screenshot({
-            path: `${shotDir}/iphone_recorded_stt_daily_test_${viewport.name}.png`,
-            fullPage: true,
-          })
-        }
+
+    const nav = page.locator('nav[aria-label="강사용 모바일 메뉴"]')
+    assert.ok(await nav.count())
+
+    async function assertAboveNav(locator: ReturnType<typeof page.locator>, label: string) {
+      const handle = locator.first()
+      await handle.evaluate((el) => {
+        const navEl = document.querySelector('nav[aria-label="강사용 모바일 메뉴"]')
+        const navH = navEl?.getBoundingClientRect().height ?? 72
+        el.scrollIntoView({ block: 'center', inline: 'nearest' })
+        const rect = el.getBoundingClientRect()
+        const limit = window.innerHeight - navH - 8
+        if (rect.bottom > limit) window.scrollBy(0, rect.bottom - limit)
+      })
+      const box = await handle.boundingBox()
+      const navBox = await nav.boundingBox()
+      assert.ok(box, `${viewport.name} missing ${label}`)
+      assert.ok(navBox, `${viewport.name} missing bottom nav`)
+      assert.ok(
+        box.y + box.height <= navBox.y + 2,
+        `${viewport.name} ${label} overlaps bottom nav (el=${box.y}+${box.height} nav=${navBox.y})`,
+      )
+    }
+
+    await assertAboveNav(mic, 'mic')
+    await assertAboveNav(recording, 'recording')
+    await assertAboveNav(transcribing, 'transcribing')
+    await assertAboveNav(error, 'error')
+
+    const shotDir = process.env.VOICE_STT_SCREENSHOT_DIR
+    if (shotDir && (viewport.name === '390x844' || viewport.name === '360')) {
+      await daily.scrollIntoViewIfNeeded()
+      await page.screenshot({
+        path: `${shotDir}/iphone_recorded_stt_daily_test_${viewport.name}.png`,
+        fullPage: false,
+      })
+    }
     await page.close()
     console.log(`viewport ${viewport.name} ok`)
   }

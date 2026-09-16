@@ -1,12 +1,6 @@
-import { createClient } from '@supabase/supabase-js'
-import {
-  MAX_AUDIO_BYTES,
-  decodeBase64Audio,
-  filenameForMimeType,
-} from '../src/utils/voiceInput/sttProtocol.ts'
-
 export const config = { runtime: 'edge' }
 
+const MAX_AUDIO_BYTES = 3_500_000
 const STT_CLASSROOM_PROMPT =
   '한국어 학원 받아쓰기. 차시는 1차 2차 3차 4차로 적고 점수는 0부터 100까지 숫자로 적는다.'
 
@@ -42,11 +36,42 @@ function json(body: Record<string, unknown>, status = 200): Response {
   })
 }
 
-async function defaultVerifyUser(token: string, env: TranscribeEnv): Promise<boolean> {
+function filenameForMimeType(mimeType: string): string {
+  const base = mimeType.split(';')[0]?.trim() ?? ''
+  if (base === 'audio/mp4' || base === 'audio/m4a' || base === 'audio/aac') return 'voice.m4a'
+  if (base === 'audio/mpeg') return 'voice.mp3'
+  if (base === 'audio/wav' || base === 'audio/wave') return 'voice.wav'
+  if (base.includes('webm')) return 'voice.webm'
+  return 'voice.bin'
+}
+
+function decodeBase64Audio(base64: string): Uint8Array {
+  const normalized = base64.replace(/\s+/g, '')
+  const binary = atob(normalized)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i)
+  return bytes
+}
+
+async function defaultVerifyUser(
+  token: string,
+  env: TranscribeEnv,
+  fetchImpl: typeof fetch,
+): Promise<boolean> {
   if (!env.supabaseUrl || !env.supabaseAnonKey) return false
-  const supabase = createClient(env.supabaseUrl, env.supabaseAnonKey)
-  const { data, error } = await supabase.auth.getUser(token)
-  return Boolean(!error && data.user?.id)
+  try {
+    const response = await fetchImpl(`${env.supabaseUrl.replace(/\/$/, '')}/auth/v1/user`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: env.supabaseAnonKey,
+      },
+    })
+    if (!response.ok) return false
+    const body = (await response.json()) as { id?: unknown }
+    return typeof body.id === 'string' && body.id.length > 0
+  } catch {
+    return false
+  }
 }
 
 export async function handleVoiceTranscribe(
@@ -60,7 +85,8 @@ export async function handleVoiceTranscribe(
   const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : ''
   if (!token) return json({ error: 'unauthorized' }, 401)
 
-  const verify = env.verifyUser ?? ((value: string) => defaultVerifyUser(value, env))
+  const fetchImpl = env.fetchImpl ?? fetch
+  const verify = env.verifyUser ?? ((value: string) => defaultVerifyUser(value, env, fetchImpl))
   const allowed = await verify(token)
   if (!allowed) return json({ error: 'unauthorized' }, 401)
 
@@ -100,7 +126,6 @@ export async function handleVoiceTranscribe(
     type: mimeType || 'application/octet-stream',
   })
 
-  const fetchImpl = env.fetchImpl ?? fetch
   const postTranscription = (model: string) => {
     const form = new FormData()
     form.append('file', audioBlob, filename)
