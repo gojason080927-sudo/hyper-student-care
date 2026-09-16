@@ -1,9 +1,14 @@
 /// <reference types="node" />
 
-// Vite /api on Vercel Node.js uses (req, res). This file is a Web
-// Request/Response handler, so it must stay on Edge. Secrets are still
-// read via static process.env.* so Vercel inlines them at deploy time.
-export const config = { runtime: 'edge' }
+import type { IncomingMessage, ServerResponse } from 'node:http'
+
+// Vite /api on Vercel Node.js calls (req, res) with IncomingMessage.
+// Production (PR #40) crashed: request.headers.get is not a function.
+// Production (PR #41 Edge) accepted POSTs but rejected teacher JWTs as
+// unauthorized because Edge did not expose VITE_SUPABASE_* to verifyUser.
+// Node runtime reads process.env at invocation; this adapter converts
+// IncomingMessage → Web Request so the shared handler can use headers.get.
+export const config = { runtime: 'nodejs' }
 
 const MAX_AUDIO_BYTES = 3_500_000
 const STT_CLASSROOM_PROMPT =
@@ -61,12 +66,83 @@ function decodeBase64Audio(base64: string): Uint8Array {
   return bytes
 }
 
+export function readBearerToken(request: Request): string {
+  const auth = request.headers.get('authorization') ?? request.headers.get('Authorization') ?? ''
+  return auth.startsWith('Bearer ') ? auth.slice(7).trim() : ''
+}
+
+export function isWebRequest(value: unknown): value is Request {
+  return Boolean(
+    value &&
+      typeof value === 'object' &&
+      'headers' in value &&
+      typeof (value as Request).headers?.get === 'function' &&
+      typeof (value as Request).arrayBuffer === 'function',
+  )
+}
+
+function headerValue(value: string | string[] | undefined): string | null {
+  if (value === undefined) return null
+  return Array.isArray(value) ? value.join(', ') : value
+}
+
+export async function incomingToRequest(input: Request | IncomingMessage): Promise<Request> {
+  if (isWebRequest(input)) return input
+  const nodeReq = input as IncomingMessage & { body?: unknown }
+  const proto = headerValue(nodeReq.headers['x-forwarded-proto']) || 'https'
+  const host = headerValue(nodeReq.headers.host) || 'localhost'
+  const url = `${proto}://${host}${nodeReq.url || '/api/voice-transcribe'}`
+  const headers = new Headers()
+  for (const [key, value] of Object.entries(nodeReq.headers)) {
+    if (value === undefined) continue
+    const lower = key.toLowerCase()
+    if (lower === 'host' || lower === 'connection' || lower === 'content-length') continue
+    headers.set(key, Array.isArray(value) ? value.join(', ') : value)
+  }
+  const method = (nodeReq.method || 'GET').toUpperCase()
+  let body: BodyInit | undefined
+  if (method !== 'GET' && method !== 'HEAD') {
+    if (typeof nodeReq.body === 'string' && nodeReq.body.length > 0) {
+      body = nodeReq.body
+    } else if (nodeReq.body && typeof nodeReq.body === 'object' && !ArrayBuffer.isView(nodeReq.body)) {
+      body = JSON.stringify(nodeReq.body)
+      if (!headers.has('content-type')) headers.set('content-type', 'application/json')
+    } else {
+      const chunks: Uint8Array[] = []
+      for await (const chunk of nodeReq as AsyncIterable<Uint8Array | string>) {
+        chunks.push(typeof chunk === 'string' ? new TextEncoder().encode(chunk) : new Uint8Array(chunk))
+      }
+      const total = chunks.reduce((sum, part) => sum + part.byteLength, 0)
+      if (total > 0) {
+        const bytes = new Uint8Array(total)
+        let offset = 0
+        for (const part of chunks) {
+          bytes.set(part, offset)
+          offset += part.byteLength
+        }
+        body = bytes
+      }
+    }
+  }
+  return new Request(url, { method, headers, body })
+}
+
+async function writeNodeResponse(response: Response, res: ServerResponse) {
+  const bytes = new Uint8Array(await response.arrayBuffer())
+  const headers: Record<string, string> = {}
+  response.headers.forEach((value, key) => {
+    headers[key] = value
+  })
+  res.writeHead(response.status, headers)
+  res.end(bytes)
+}
+
 async function defaultVerifyUser(
   token: string,
   env: TranscribeEnv,
   fetchImpl: typeof fetch,
-): Promise<boolean> {
-  if (!env.supabaseUrl || !env.supabaseAnonKey) return false
+): Promise<'ok' | 'unconfigured' | 'verify_failed'> {
+  if (!env.supabaseUrl || !env.supabaseAnonKey) return 'unconfigured'
   try {
     const response = await fetchImpl(`${env.supabaseUrl.replace(/\/$/, '')}/auth/v1/user`, {
       headers: {
@@ -74,11 +150,11 @@ async function defaultVerifyUser(
         apikey: env.supabaseAnonKey,
       },
     })
-    if (!response.ok) return false
+    if (!response.ok) return 'verify_failed'
     const body = (await response.json()) as { id?: unknown }
-    return typeof body.id === 'string' && body.id.length > 0
+    return typeof body.id === 'string' && body.id.length > 0 ? 'ok' : 'verify_failed'
   } catch {
-    return false
+    return 'verify_failed'
   }
 }
 
@@ -93,19 +169,25 @@ export async function handleVoiceTranscribe(
   if (request.method === 'OPTIONS') return new Response(null, { status: 204 })
   if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405)
 
-  const auth = request.headers.get('authorization') ?? ''
-  const token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : ''
+  const token = readBearerToken(request)
   if (!token) {
-    logFail('unauthorized')
+    logFail('missing_bearer')
     return json({ error: 'unauthorized' }, 401)
   }
 
   const fetchImpl = env.fetchImpl ?? fetch
-  const verify = env.verifyUser ?? ((value: string) => defaultVerifyUser(value, env, fetchImpl))
-  const allowed = await verify(token)
-  if (!allowed) {
-    logFail('unauthorized')
-    return json({ error: 'unauthorized' }, 401)
+  if (env.verifyUser) {
+    const allowed = await env.verifyUser(token)
+    if (!allowed) {
+      logFail('verify_failed')
+      return json({ error: 'unauthorized' }, 401)
+    }
+  } else {
+    const verified = await defaultVerifyUser(token, env, fetchImpl)
+    if (verified !== 'ok') {
+      logFail(verified)
+      return json({ error: 'unauthorized' }, 401)
+    }
   }
 
   if (!env.openaiApiKey) {
@@ -215,6 +297,15 @@ export async function handleVoiceTranscribe(
   return json({ transcript: text })
 }
 
-export default async function handler(request: Request): Promise<Response> {
-  return handleVoiceTranscribe(request, envFromProcess())
+export default async function handler(
+  req: Request | IncomingMessage,
+  res?: ServerResponse,
+): Promise<Response | void> {
+  const request = await incomingToRequest(req)
+  const response = await handleVoiceTranscribe(request, envFromProcess())
+  if (res && typeof res.writeHead === 'function') {
+    await writeNodeResponse(response, res)
+    return
+  }
+  return response
 }
