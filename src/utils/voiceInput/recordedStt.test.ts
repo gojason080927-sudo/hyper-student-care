@@ -10,10 +10,13 @@ import { applyStudentDailyTestDraft } from './applyVoiceDraft.ts'
 import { parseStudentDailyTestVoice } from './parseStudentDailyTestVoice.ts'
 import { formatVoiceSummary } from './parseVoiceTranscript.ts'
 import voiceTranscribeHandler, {
+  copyIncomingHeaders,
   envFromProcess,
   handleVoiceTranscribe,
   incomingToRequest,
+  parseBearerToken,
   readBearerToken,
+  readIncomingBearer,
 } from '../../../api/voice-transcribe.ts'
 import {
   pickRecorderMimeType,
@@ -342,6 +345,46 @@ await assert.rejects(
   },
 )
 
+assert.equal(parseBearerToken('Bearer teacher-jwt'), 'teacher-jwt')
+assert.equal(parseBearerToken('bearer teacher-jwt'), 'teacher-jwt')
+assert.equal(parseBearerToken(''), '')
+
+{
+  const whatwg = new Headers({
+    authorization: 'Bearer teacher-jwt',
+    'content-type': 'application/json',
+  })
+  assert.equal(Object.entries(whatwg).length, 0)
+  assert.equal(readIncomingBearer(whatwg), 'teacher-jwt')
+  const copied = copyIncomingHeaders(whatwg)
+  assert.equal(copied.get('authorization'), 'Bearer teacher-jwt')
+  const adaptedFromHeaders = await incomingToRequest({
+    method: 'POST',
+    url: '/api/voice-transcribe',
+    headers: whatwg,
+    async *[Symbol.asyncIterator]() {
+      yield Buffer.from(JSON.stringify({ mimeType: 'audio/mp4', audioBase64: btoa('abcd') }))
+    },
+  } as never)
+  assert.equal(readBearerToken(adaptedFromHeaders), 'teacher-jwt')
+  const passed = await handleVoiceTranscribe(
+    new Request('https://example.test/api/voice-transcribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mimeType: 'audio/mp4', audioBase64: btoa('abcd') }),
+    }),
+    {
+      openaiApiKey: '',
+      openaiModel: 'gpt-4o-transcribe',
+      supabaseUrl: 'https://example.supabase.co',
+      supabaseAnonKey: 'anon',
+      verifyUser: async (token) => token === 'teacher-jwt',
+    },
+    readIncomingBearer(whatwg),
+  )
+  assert.equal(passed.status, 503)
+}
+
 {
   const nodeReq = await incomingToRequest({
     method: 'POST',
@@ -657,6 +700,9 @@ assert.match(speech, /holdUntilExplicitStop/)
 const endpoint = readFileSync('api/voice-transcribe.ts', 'utf8')
 assert.match(endpoint, /api\.openai\.com\/v1\/audio\/transcriptions/)
 assert.match(endpoint, /runtime: 'nodejs'/)
+assert.match(endpoint, /copyIncomingHeaders/)
+assert.match(endpoint, /readIncomingBearer/)
+assert.match(endpoint, /parseBearerToken/)
 assert.match(endpoint, /incomingToRequest/)
 assert.match(endpoint, /missing_bearer/)
 assert.match(endpoint, /unconfigured/)
@@ -672,9 +718,10 @@ assert.doesNotMatch(endpoint, /saveDailyTestRecord/)
 assert.doesNotMatch(endpoint, /sk-[a-zA-Z0-9]/)
 
 const clientSrc = readFileSync('src/utils/voiceInput/recordedSttClient.ts', 'utf8')
-assert.match(clientSrc, /refreshSession/)
+assert.match(clientSrc, /getUser/)
 assert.match(clientSrc, /getSession/)
 assert.match(clientSrc, /Authorization: `Bearer \$\{token\}`/)
+assert.doesNotMatch(clientSrc, /refreshSession/)
 assert.doesNotMatch(clientSrc, /OPENAI_API_KEY|sk-/)
 
 const recorderSrc = readFileSync('src/utils/voiceInput/audioRecorder.ts', 'utf8')

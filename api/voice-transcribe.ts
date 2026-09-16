@@ -66,9 +66,47 @@ function decodeBase64Audio(base64: string): Uint8Array {
   return bytes
 }
 
+export function parseBearerToken(raw: string): string {
+  const value = raw.trim()
+  if (!value) return ''
+  const matched = value.match(/^Bearer\s+(\S+)/i)
+  return matched?.[1]?.trim() ?? ''
+}
+
 export function readBearerToken(request: Request): string {
-  const auth = request.headers.get('authorization') ?? request.headers.get('Authorization') ?? ''
-  return auth.startsWith('Bearer ') ? auth.slice(7).trim() : ''
+  return parseBearerToken(request.headers.get('authorization') ?? request.headers.get('Authorization') ?? '')
+}
+
+export function readIncomingBearer(
+  headers: IncomingMessage['headers'] | Headers | undefined,
+): string {
+  if (!headers) return ''
+  if (typeof (headers as Headers).get === 'function') {
+    return parseBearerToken((headers as Headers).get('authorization') ?? '')
+  }
+  const record = headers as Record<string, string | string[] | undefined>
+  return parseBearerToken(headerValue(record.authorization) ?? headerValue(record.Authorization) ?? '')
+}
+
+const SKIP_INCOMING_HEADERS = new Set(['host', 'connection', 'content-length'])
+
+export function copyIncomingHeaders(
+  headers: IncomingMessage['headers'] | Headers | undefined,
+): Headers {
+  const out = new Headers()
+  if (!headers) return out
+  if (typeof (headers as Headers).forEach === 'function' && typeof (headers as Headers).get === 'function') {
+    ;(headers as Headers).forEach((value, key) => {
+      if (!SKIP_INCOMING_HEADERS.has(key.toLowerCase())) out.append(key, value)
+    })
+    return out
+  }
+  for (const [key, value] of Object.entries(headers as Record<string, string | string[] | undefined>)) {
+    if (value === undefined) continue
+    if (SKIP_INCOMING_HEADERS.has(key.toLowerCase())) continue
+    out.set(key, Array.isArray(value) ? value.join(', ') : value)
+  }
+  return out
 }
 
 export function isWebRequest(value: unknown): value is Request {
@@ -81,6 +119,18 @@ export function isWebRequest(value: unknown): value is Request {
   )
 }
 
+function incomingHeader(
+  headers: IncomingMessage['headers'] | Headers | undefined,
+  name: string,
+): string {
+  if (!headers) return ''
+  if (typeof (headers as Headers).get === 'function') {
+    return (headers as Headers).get(name) ?? ''
+  }
+  const record = headers as Record<string, string | string[] | undefined>
+  return headerValue(record[name]) ?? headerValue(record[name.toLowerCase()]) ?? ''
+}
+
 function headerValue(value: string | string[] | undefined): string | null {
   if (value === undefined) return null
   return Array.isArray(value) ? value.join(', ') : value
@@ -89,16 +139,10 @@ function headerValue(value: string | string[] | undefined): string | null {
 export async function incomingToRequest(input: Request | IncomingMessage): Promise<Request> {
   if (isWebRequest(input)) return input
   const nodeReq = input as IncomingMessage & { body?: unknown }
-  const proto = headerValue(nodeReq.headers['x-forwarded-proto']) || 'https'
-  const host = headerValue(nodeReq.headers.host) || 'localhost'
+  const proto = incomingHeader(nodeReq.headers, 'x-forwarded-proto') || 'https'
+  const host = incomingHeader(nodeReq.headers, 'host') || 'localhost'
   const url = `${proto}://${host}${nodeReq.url || '/api/voice-transcribe'}`
-  const headers = new Headers()
-  for (const [key, value] of Object.entries(nodeReq.headers)) {
-    if (value === undefined) continue
-    const lower = key.toLowerCase()
-    if (lower === 'host' || lower === 'connection' || lower === 'content-length') continue
-    headers.set(key, Array.isArray(value) ? value.join(', ') : value)
-  }
+  const headers = copyIncomingHeaders(nodeReq.headers)
   const method = (nodeReq.method || 'GET').toUpperCase()
   let body: BodyInit | undefined
   if (method !== 'GET' && method !== 'HEAD') {
@@ -165,11 +209,12 @@ function logFail(error: string, extra: Record<string, unknown> = {}) {
 export async function handleVoiceTranscribe(
   request: Request,
   env: TranscribeEnv,
+  incomingBearer = '',
 ): Promise<Response> {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204 })
   if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405)
 
-  const token = readBearerToken(request)
+  const token = parseBearerToken(incomingBearer) || incomingBearer.trim() || readBearerToken(request)
   if (!token) {
     logFail('missing_bearer')
     return json({ error: 'unauthorized' }, 401)
@@ -301,8 +346,9 @@ export default async function handler(
   req: Request | IncomingMessage,
   res?: ServerResponse,
 ): Promise<Response | void> {
+  const incomingBearer = isWebRequest(req) ? readBearerToken(req) : readIncomingBearer(req.headers)
   const request = await incomingToRequest(req)
-  const response = await handleVoiceTranscribe(request, envFromProcess())
+  const response = await handleVoiceTranscribe(request, envFromProcess(), incomingBearer)
   if (res && typeof res.writeHead === 'function') {
     await writeNodeResponse(response, res)
     return

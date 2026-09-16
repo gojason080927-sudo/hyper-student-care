@@ -77,12 +77,8 @@ export async function transcribeRecordedAudio(args: {
 async function defaultAccessToken(): Promise<string | null> {
   if (!isSupabaseConfigured()) return null
   const auth = getSupabase().auth
-  try {
-    const refreshed = await auth.refreshSession()
-    if (refreshed.data.session?.access_token) return refreshed.data.session.access_token
-  } catch {
-    /* fall back to the stored session */
-  }
+  const { data: userData } = await auth.getUser()
+  if (!userData.user) return null
   const { data } = await auth.getSession()
   return data.session?.access_token ?? null
 }
