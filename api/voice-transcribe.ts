@@ -1,6 +1,9 @@
 /// <reference types="node" />
 
-export const config = { runtime: 'nodejs' }
+// Vite /api on Vercel Node.js uses (req, res). This file is a Web
+// Request/Response handler, so it must stay on Edge. Secrets are still
+// read via static process.env.* so Vercel inlines them at deploy time.
+export const config = { runtime: 'edge' }
 
 const MAX_AUDIO_BYTES = 3_500_000
 const STT_CLASSROOM_PROMPT =

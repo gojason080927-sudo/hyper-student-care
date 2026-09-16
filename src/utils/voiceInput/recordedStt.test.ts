@@ -319,6 +319,24 @@ const unauthorized = await handleVoiceTranscribe(
 )
 assert.equal(unauthorized.status, 401)
 
+await assert.rejects(
+  () =>
+    handleVoiceTranscribe(
+      { method: 'POST', headers: { authorization: 'Bearer test' } } as unknown as Request,
+      {
+        openaiApiKey: 'sk-test',
+        openaiModel: 'gpt-4o-transcribe',
+        supabaseUrl: '',
+        supabaseAnonKey: '',
+        verifyUser: async () => false,
+      },
+    ),
+  (err: unknown) => {
+    assert.match(String(err), /is not a function/)
+    return true
+  },
+)
+
 const emptyUp = await handleVoiceTranscribe(
   new Request('https://example.test/api/voice-transcribe', {
     method: 'POST',
@@ -530,11 +548,11 @@ assert.match(speech, /holdUntilExplicitStop/)
 
 const endpoint = readFileSync('api/voice-transcribe.ts', 'utf8')
 assert.match(endpoint, /api\.openai\.com\/v1\/audio\/transcriptions/)
-assert.match(endpoint, /runtime: 'nodejs'/)
+assert.match(endpoint, /runtime: 'edge'/)
 assert.match(endpoint, /process\.env\.OPENAI_API_KEY/)
 assert.match(endpoint, /process\.env\.VITE_SUPABASE_URL/)
 assert.doesNotMatch(endpoint, /globalThis\.process/)
-assert.doesNotMatch(endpoint, /runtime: 'edge'/)
+assert.doesNotMatch(endpoint, /runtime: 'nodejs'/)
 assert.doesNotMatch(endpoint, /VITE_OPENAI/)
 assert.doesNotMatch(endpoint, /from '@supabase/)
 assert.doesNotMatch(endpoint, /parseStudentDailyTestVoice/)
