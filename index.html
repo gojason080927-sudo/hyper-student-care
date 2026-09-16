@@ -37,8 +37,9 @@
         var theme = document.querySelector('meta[name="theme-color"]')
         var isTeacher = path.startsWith('/teacher/')
         var isCare = path === '/care' || path.startsWith('/care/')
+        var isHub = path === '/hub' || path.startsWith('/hub/')
 
-        if (!isTeacher && !isCare) {
+        if (!isTeacher && !isCare && !isHub) {
           if (manifest) manifest.parentNode.removeChild(manifest)
           return
         }
@@ -62,6 +63,28 @@
           if ('serviceWorker' in navigator) {
             navigator.serviceWorker
               .register('/teacher/sw.js', { scope: '/teacher/' })
+              .catch(function () {})
+          }
+          return
+        }
+
+        if (isHub) {
+          if (manifest) manifest.href = '/hub/manifest.webmanifest?v=1-installable'
+          var hubIcon = document.querySelector('link[rel="icon"]')
+          if (hubIcon) {
+            hubIcon.setAttribute('href', '/hub/hyper-hub-icon-v1-192.png')
+            hubIcon.setAttribute('type', 'image/png')
+          }
+          var hubApple = document.querySelector('link[rel="apple-touch-icon"]')
+          if (!hubApple) {
+            hubApple = document.createElement('link')
+            hubApple.rel = 'apple-touch-icon'
+            document.head.appendChild(hubApple)
+          }
+          hubApple.href = '/hub/hyper-hub-icon-v1-192.png'
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker
+              .register('/hub/sw.js', { scope: '/hub/' })
               .catch(function () {})
           }
           return

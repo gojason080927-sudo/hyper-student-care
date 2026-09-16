@@ -29,9 +29,19 @@ export function isParentCarePathname(pathname: string): boolean {
   return /^\/care\/[^/?#]+/.test(pathname)
 }
 
+export function isStudentHubPathname(pathname: string): boolean {
+  return /^\/hub\/[^/?#]+/.test(pathname)
+}
+
 export function getParentAccessKeyFromPath(pathname?: string): string | null {
   const path = pathname ?? (typeof window !== 'undefined' ? window.location.pathname : '')
   const match = path.match(/^\/care\/([^/?#]+)/)
+  return match ? normalizeRouteAccessKey(match[1]) : null
+}
+
+export function getHubAccessKeyFromPath(pathname?: string): string | null {
+  const path = pathname ?? (typeof window !== 'undefined' ? window.location.pathname : '')
+  const match = path.match(/^\/hub\/([^/?#]+)/)
   return match ? normalizeRouteAccessKey(match[1]) : null
 }
 

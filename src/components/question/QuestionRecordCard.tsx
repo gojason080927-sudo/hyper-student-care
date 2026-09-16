@@ -46,6 +46,11 @@ export function QuestionRecordCard({
               <span className="rounded-lg bg-[rgba(22,58,112,0.06)] px-2 py-0.5 text-xs font-medium text-[#6B7280]">
                 {record.category}
               </span>
+              {record.source === 'student' ? (
+                <span className="rounded-lg bg-[#28c7b7]/15 px-2 py-0.5 text-xs font-semibold text-[#0f766e]">
+                  학생 Hub
+                </span>
+              ) : null}
             </div>
             <p className="text-sm text-[#6B7280]">{formatKoreanDate(record.date)}</p>
             {record.title && (
@@ -110,6 +115,15 @@ export function QuestionRecordCard({
             <StatusBadge label={record.status} colorClass={getQuestionStatusColor(record.status)} />
             <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
               {record.category}
+            </span>
+            <span
+              className={`rounded-lg px-2 py-0.5 text-xs font-semibold ${
+                record.source === 'student'
+                  ? 'bg-[#28c7b7]/15 text-[#0f766e]'
+                  : 'bg-navy-50 text-navy-700'
+              }`}
+            >
+              {record.source === 'student' ? '학생 Hub' : '학부모'}
             </span>
           </div>
 

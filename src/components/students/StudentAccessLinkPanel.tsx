@@ -3,7 +3,8 @@ import { useState } from 'react'
 import type { Student } from '../../types/student'
 import { handleShareStudentCareToKakao, KakaoShareButton } from './KakaoShareButton'
 import { useData } from '../../hooks/useData'
-import { getStudentCareUrl } from '../../utils/studentCareUrl'
+import { getStudentCareUrl, getStudentHubUrl } from '../../utils/studentCareUrl'
+import { copyTextToClipboard } from '../../utils/copyToClipboard'
 import { btnPrimary, btnSecondary } from '../../utils/labels'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 
@@ -12,9 +13,15 @@ type StudentAccessLinkPanelProps = {
 }
 
 export function StudentAccessLinkPanel({ student }: StudentAccessLinkPanelProps) {
-  const { copyStudentCareLink, regenerateStudentAccessKey, showToast } = useData()
+  const { copyStudentCareLink, regenerateStudentAccessKey, setStudentAccessKeyActive, showToast } = useData()
   const [regenerateOpen, setRegenerateOpen] = useState(false)
   const careUrl = getStudentCareUrl(student.studentAccessKey)
+  let hubUrl = ''
+  try {
+    hubUrl = getStudentHubUrl(student.studentAccessKey)
+  } catch {
+    hubUrl = ''
+  }
 
   const handleKakaoShare = async (target: Student) => {
     await handleShareStudentCareToKakao(target, {
@@ -31,6 +38,9 @@ export function StudentAccessLinkPanel({ student }: StudentAccessLinkPanelProps)
       <p className="mt-3 break-all rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700">
         {careUrl}
       </p>
+      <p className="mt-2 break-all rounded-xl border border-mint-100 bg-white px-3 py-2.5 text-sm text-slate-700">
+        학생 Hub: {hubUrl || 'URL을 만들 수 없습니다.'}
+      </p>
       <div className="mt-4 flex flex-wrap gap-2">
         <button
           type="button"
@@ -41,6 +51,25 @@ export function StudentAccessLinkPanel({ student }: StudentAccessLinkPanelProps)
           개인 링크 복사
         </button>
         <KakaoShareButton student={student} onShare={handleKakaoShare} />
+        <button
+          type="button"
+          onClick={async () => {
+            if (!hubUrl) return
+            const copied = await copyTextToClipboard(hubUrl)
+            showToast(copied.ok ? '학생 Hub 링크를 복사했습니다.' : hubUrl)
+          }}
+          className={`${btnSecondary} inline-flex items-center gap-2`}
+        >
+          <Copy className="h-4 w-4" />
+          학생 Hub 복사
+        </button>
+        <button
+          type="button"
+          onClick={() => setStudentAccessKeyActive(student.id, student.accessKeyActive === false)}
+          className={`${btnSecondary} inline-flex items-center gap-2`}
+        >
+          {student.accessKeyActive === false ? '링크 활성화' : '링크 차단'}
+        </button>
         <button
           type="button"
           onClick={() => setRegenerateOpen(true)}

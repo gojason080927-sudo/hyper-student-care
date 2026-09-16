@@ -15,18 +15,18 @@ const CRAWLER_UA =
 const STATIC_ASSET =
   /\.(?:webmanifest|js|mjs|cjs|css|png|ico|svg|webp|json|map|txt|woff2?|ttf|otf|eot|jpg|jpeg|gif|avif)$/i
 
-function buildCareOgHtml(pageUrl: string): string {
+function buildCareOgHtml(pageUrl: string, title = 'HYPER STUDENT CARE', description = '하이퍼 학생 관리 시스템'): string {
   return `<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>HYPER STUDENT CARE</title>
-<meta name="description" content="하이퍼 학생 관리 시스템"/>
+<title>${title}</title>
+<meta name="description" content="${description}"/>
 <meta property="og:type" content="website"/>
-<meta property="og:site_name" content="HYPER STUDENT CARE"/>
-<meta property="og:title" content="HYPER STUDENT CARE"/>
-<meta property="og:description" content="하이퍼 학생 관리 시스템"/>
+<meta property="og:site_name" content="${title}"/>
+<meta property="og:title" content="${title}"/>
+<meta property="og:description" content="${description}"/>
 <meta property="og:url" content="${pageUrl}"/>
 <meta property="og:image" content="${OG_IMAGE}"/>
 <meta property="og:image:secure_url" content="${OG_IMAGE}"/>
@@ -34,14 +34,14 @@ function buildCareOgHtml(pageUrl: string): string {
 <meta property="og:image:width" content="1200"/>
 <meta property="og:image:height" content="630"/>
 <meta name="twitter:card" content="summary_large_image"/>
-<meta name="twitter:title" content="HYPER STUDENT CARE"/>
-<meta name="twitter:description" content="하이퍼 학생 관리 시스템"/>
+<meta name="twitter:title" content="${title}"/>
+<meta name="twitter:description" content="${description}"/>
 <meta name="twitter:image" content="${OG_IMAGE}"/>
-<link rel="manifest" href="/care/manifest.webmanifest"/>
+<link rel="manifest" href="${pageUrl.includes('/hub/') ? '/hub/manifest.webmanifest' : '/care/manifest.webmanifest'}"/>
 <link rel="canonical" href="${pageUrl}"/>
 </head>
 <body>
-<p>HYPER STUDENT CARE — 하이퍼 학생 관리 시스템</p>
+<p>${title}</p>
 </body>
 </html>`
 }
@@ -50,7 +50,7 @@ export default function middleware(request: Request) {
   const url = new URL(request.url)
   const ua = request.headers.get('user-agent') ?? ''
 
-  if (!url.pathname.startsWith('/care/')) {
+  if (!url.pathname.startsWith('/care/') && !url.pathname.startsWith('/hub/')) {
     return
   }
 
@@ -64,7 +64,14 @@ export default function middleware(request: Request) {
   }
 
   const pageUrl = `${APP_ORIGIN}${url.pathname}`
-  return new Response(buildCareOgHtml(pageUrl), {
+  const isHub = url.pathname === '/hub' || url.pathname.startsWith('/hub/')
+  return new Response(
+    buildCareOgHtml(
+      pageUrl,
+      isHub ? 'HYPER STUDENT HUB' : 'HYPER STUDENT CARE',
+      isHub ? '하이퍼 학생 전용 학습 허브' : '하이퍼 학생 관리 시스템',
+    ),
+    {
     status: 200,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
@@ -74,5 +81,5 @@ export default function middleware(request: Request) {
 }
 
 export const config = {
-  matcher: ['/care/:path*'],
+  matcher: ['/care/:path*', '/hub/:path*'],
 }

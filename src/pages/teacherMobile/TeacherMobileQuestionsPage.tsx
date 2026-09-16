@@ -80,6 +80,13 @@ function MobileQuestionListCard({
             <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
               {record.category}
             </span>
+            <span
+              className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+                record.source === 'student' ? 'bg-teal-50 text-teal-800' : 'bg-navy-50 text-navy-700'
+              }`}
+            >
+              {record.source === 'student' ? '학생 Hub' : '학부모'}
+            </span>
             {record.title && (
               <p className="text-sm font-medium text-navy-800">{record.title}</p>
             )}
@@ -151,8 +158,13 @@ export function TeacherMobileQuestionsPage() {
   const [editForm, setEditForm] = useState<QuestionFormState>(emptyQuestionForm())
   const [editErrors, setEditErrors] = useState<Record<string, string>>({})
   const [deleteTarget, setDeleteTarget] = useState<QuestionRecord | null>(null)
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'parent' | 'student'>('all')
 
-  const sortedQuestions = useMemo(() => sortQuestionsForMobile(questions), [questions])
+  const sortedQuestions = useMemo(() => {
+    const list = sortQuestionsForMobile(questions)
+    if (sourceFilter === 'all') return list
+    return list.filter((record) => (record.source ?? 'parent') === sourceFilter)
+  }, [questions, sourceFilter])
   const selectedQuestion = useMemo(
     () => sortedQuestions.find((q) => q.id === selectedQuestionId) ?? null,
     [selectedQuestionId, sortedQuestions],
@@ -269,6 +281,29 @@ export function TeacherMobileQuestionsPage() {
       </div>
 
       {activeTab === 'list' ? (
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              { id: 'all' as const, label: '전체' },
+              { id: 'parent' as const, label: '학부모' },
+              { id: 'student' as const, label: '학생 Hub' },
+            ] as const
+          ).map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setSourceFilter(item.id)}
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                sourceFilter === item.id ? 'bg-[#163A70] text-white' : 'bg-white text-slate-600'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {activeTab === 'list' ? (
         sortedQuestions.length === 0 ? (
           <EmptyState title="등록된 질문이 없습니다." />
         ) : (
@@ -305,6 +340,15 @@ export function TeacherMobileQuestionsPage() {
               <p className="text-sm text-slate-500">{formatKoreanDate(selectedQuestion.date)}</p>
               <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
                 {selectedQuestion.category}
+              </span>
+              <span
+                className={`inline-flex rounded-md px-2 py-0.5 text-xs font-semibold ${
+                  selectedQuestion.source === 'student'
+                    ? 'bg-teal-50 text-teal-800'
+                    : 'bg-navy-50 text-navy-700'
+                }`}
+              >
+                {selectedQuestion.source === 'student' ? '학생 Hub' : '학부모'}
               </span>
               {selectedQuestion.title && (
                 <p className="font-medium text-navy-800">{selectedQuestion.title}</p>

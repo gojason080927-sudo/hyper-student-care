@@ -422,7 +422,7 @@ export async function rpcGetParentCareBundle(accessKey: string): Promise<LocalBa
     questions: mapRows<QuestionRow, ReturnType<typeof questionFromRow>>(
       bundle.questions,
       questionFromRow,
-    ),
+    ).filter((record) => record.source !== 'student'),
     makeupPlans: mapRows<MakeupPlanRow, ReturnType<typeof makeupPlanFromRow>>(
       bundle.makeup_plans,
       makeupPlanFromRow,

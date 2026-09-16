@@ -151,6 +151,7 @@ export type QuestionRow = {
   question_images: QuestionRecord['questionImages']
   answer_images: QuestionRecord['answerImages']
   status: string
+  source?: 'parent' | 'student'
   created_at: string
   updated_at: string
 }
@@ -651,6 +652,7 @@ export function questionFromRow(row: QuestionRow): QuestionRecord {
     questionImages: row.question_images ?? [],
     answerImages: row.answer_images ?? [],
     status: row.status as QuestionRecord['status'],
+    source: row.source === 'student' ? 'student' : 'parent',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }

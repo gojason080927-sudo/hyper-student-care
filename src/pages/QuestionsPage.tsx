@@ -31,6 +31,7 @@ export function QuestionsPage() {
   const [studentFilter, setStudentFilter] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [sourceFilter, setSourceFilter] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState<QuestionFormState>(emptyQuestionForm())
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -41,8 +42,9 @@ export function QuestionsPage() {
     if (studentFilter) list = list.filter((q) => q.studentId === studentFilter)
     if (categoryFilter) list = list.filter((q) => q.category === categoryFilter)
     if (statusFilter) list = list.filter((q) => q.status === statusFilter)
+    if (sourceFilter) list = list.filter((q) => (q.source ?? 'parent') === sourceFilter)
     return list
-  }, [categoryFilter, questions, statusFilter, studentFilter])
+  }, [categoryFilter, questions, sourceFilter, statusFilter, studentFilter])
 
   const openAdd = () => {
     setForm(emptyQuestionForm())
@@ -104,7 +106,7 @@ export function QuestionsPage() {
       </p>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
           <StudentSelect students={students} value={studentFilter} onChange={setStudentFilter} label="학생" />
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-600">분류</label>
@@ -126,6 +128,14 @@ export function QuestionsPage() {
                   {s}
                 </option>
               ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-600">출처</label>
+            <select value={sourceFilter} onChange={(e) => setSourceFilter(e.target.value)} className={inputClass()}>
+              <option value="">전체</option>
+              <option value="parent">학부모</option>
+              <option value="student">학생 Hub</option>
             </select>
           </div>
         </div>

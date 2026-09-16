@@ -1,6 +1,7 @@
 import { hasStudentAccessKey } from './studentAccessKey'
 
 const CARE_PATH_PREFIX = '/care/'
+const HUB_PATH_PREFIX = '/hub/'
 
 /** Vite가 빌드/ dev 서버 시작 시 주입하는 공개 앱 URL */
 const VITE_PUBLIC_APP_URL = import.meta.env.VITE_PUBLIC_APP_URL
@@ -117,6 +118,26 @@ export function maskStudentCareUrl(url: string): string {
     return parsed.toString()
   } catch {
     return '••••••••'
+  }
+}
+
+export function getStudentHubUrl(studentAccessKey: string): string {
+  if (!hasStudentAccessKey(studentAccessKey)) {
+    throw new Error('유효하지 않은 학생 접근 키입니다.')
+  }
+  const baseUrl = getPublicAppBaseUrl()
+  if (!baseUrl) {
+    throw new Error('앱 URL을 확인할 수 없습니다. VITE_PUBLIC_APP_URL 환경변수를 설정해 주세요.')
+  }
+  const key = normalizeCareAccessKey(studentAccessKey)
+  return `${baseUrl}${HUB_PATH_PREFIX}${key}`
+}
+
+export function tryGetStudentHubUrl(studentAccessKey: string): string | null {
+  try {
+    return getStudentHubUrl(studentAccessKey)
+  } catch {
+    return null
   }
 }
 

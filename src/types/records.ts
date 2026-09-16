@@ -259,6 +259,7 @@ export type QuestionRecord = {
   questionImages: QuestionImageAttachment[]
   answerImages: QuestionImageAttachment[]
   status: QuestionStatus
+  source?: 'parent' | 'student'
   createdAt: string
   updatedAt: string
 }
