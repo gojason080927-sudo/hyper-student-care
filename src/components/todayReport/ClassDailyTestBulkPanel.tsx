@@ -33,9 +33,17 @@ import {
   setStudentVoiceDiagnostic,
   type DailyTestVoiceDiagnosticSnapshot,
 } from '../../utils/voiceInput/dailyTestVoiceDiagnostic'
+import {
+  finalizePhysicalDailyTestVoicePath,
+  type IphonePhysicalVoiceDiagnosticReport,
+} from '../../utils/voiceInput/iphonePhysicalVoiceDiagnostic'
 import { parseStudentDailyTestVoice } from '../../utils/voiceInput/parseStudentDailyTestVoice'
 import { AbsentFollowOnHint, StudentFollowOnRowHeader } from './AbsentFollowOnBadge'
 import { DailyTestVoiceDiagnostic } from './DailyTestVoiceDiagnostic'
+import {
+  IphonePhysicalVoiceDiagnosticPanel,
+  IphonePhysicalVoiceDiagnosticToggle,
+} from './IphonePhysicalVoiceDiagnosticPanel'
 import { SectionVoiceInput } from './SectionVoiceInput'
 
 type StudentDraft = {
@@ -79,6 +87,10 @@ export function ClassDailyTestBulkPanel({
   >({})
   const [voiceConfirmations, setVoiceConfirmations] = useState<
     Record<string, VoiceApplySummary>
+  >({})
+  const [physicalDiagnosticEnabled, setPhysicalDiagnosticEnabled] = useState(false)
+  const [physicalReports, setPhysicalReports] = useState<
+    Record<string, IphonePhysicalVoiceDiagnosticReport>
   >({})
   const dirtyDailyTestKeysRef = useRef(new Set<string>())
   const dirtyTestNameRef = useRef(false)
@@ -324,6 +336,11 @@ export function ClassDailyTestBulkPanel({
         </p>
         <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
           <DailyTestPassRuleBadge />
+          <IphonePhysicalVoiceDiagnosticToggle
+            enabled={physicalDiagnosticEnabled}
+            onToggle={() => setPhysicalDiagnosticEnabled((open) => !open)}
+            compact={compact}
+          />
         </div>
       </div>
 
@@ -400,6 +417,8 @@ export function ClassDailyTestBulkPanel({
                       disabled={saving}
                       explicitStop
                       hideStatus
+                      physicalDiagnostic={physicalDiagnosticEnabled}
+                      dryRun={physicalDiagnosticEnabled}
                       onApply={(transcript) => {
                         const applied = applyStudentDailyTestDraft(
                           drafts,
@@ -418,6 +437,21 @@ export function ClassDailyTestBulkPanel({
                         return applied.summary
                       }}
                       onSaveCommand={() => void handleSaveAll()}
+                      onPhysicalComplete={(capture) => {
+                        const finalized = finalizePhysicalDailyTestVoicePath({
+                          capture,
+                          drafts,
+                          cardStudent: student,
+                          students,
+                          attendance,
+                          date,
+                          absent: excluded,
+                        })
+                        setPhysicalReports((prev) => ({
+                          ...prev,
+                          [student.id]: finalized.report,
+                        }))
+                      }}
                       onDiagnostic={(payload) => {
                         const parserInput =
                           payload.routed.kind === 'form-fill' ? payload.routed.transcript : ''
@@ -459,6 +493,12 @@ export function ClassDailyTestBulkPanel({
                     ? ` — ${voiceConfirmations[student.id]!.needsReview[0]!.label} ${voiceConfirmations[student.id]!.needsReview[0]!.reason}`
                     : ''}
                 </p>
+              ) : null}
+              {!excluded && (physicalDiagnosticEnabled || physicalReports[student.id]) ? (
+                <IphonePhysicalVoiceDiagnosticPanel
+                  idleHint={physicalDiagnosticEnabled && !physicalReports[student.id]}
+                  report={physicalReports[student.id]}
+                />
               ) : null}
               {import.meta.env.DEV && !excluded && voiceDiagnostics[student.id] ? (
                 <DailyTestVoiceDiagnostic snapshot={voiceDiagnostics[student.id]!} />

@@ -54,6 +54,35 @@ export type SpeechRecognitionResultEventLike = {
   }>
 }
 
+/** Observational raw Web Speech onresult snapshot. Does not affect merge/apply. */
+export type RawSpeechRecognitionCapture = {
+  sessionId: number
+  recognitionGeneration: number
+  eventSequenceNumber: number
+  timestampDeltaMs: number
+  resultIndex: number
+  resultsLength: number
+  results: Array<{ index: number; isFinal: boolean; rawTranscript: string }>
+  generationReady: boolean
+  heldApplied: boolean
+}
+
+export function captureSpeechRecognitionResults(
+  event: SpeechRecognitionResultEventLike,
+): Array<{ index: number; isFinal: boolean; rawTranscript: string }> {
+  const resultsLength = event.results.length
+  const results: Array<{ index: number; isFinal: boolean; rawTranscript: string }> = []
+  for (let i = 0; i < resultsLength; i += 1) {
+    const piece = event.results[i]
+    results.push({
+      index: i,
+      isFinal: Boolean(piece?.isFinal),
+      rawTranscript: String(piece?.[0]?.transcript ?? ''),
+    })
+  }
+  return results
+}
+
 function normalizeTranscript(text: string): string {
   return normalizeHypothesisText(text)
 }
@@ -500,6 +529,8 @@ export function startKoreanSpeechRecognition(
     onInterim?: (text: string) => void
     onFinal?: (text: string) => void
     onHeldTrace?: (trace: HeldSpeechTrace) => void
+    /** Observational only. Must not be used to change merge/apply. */
+    onRawRecognitionEvent?: (event: RawSpeechRecognitionCapture) => void
     onError: (message: string, code: string) => void
     onEnd: () => void
     holdUntilExplicitStop?: boolean
@@ -531,6 +562,8 @@ export function startKoreanSpeechRecognition(
   let recognitionGeneration = 0
   let generationReady = true
   let eventSeq = 0
+  let rawEventSeq = 0
+  const physicalStartedAt = Date.now()
   const lifecycle: string[] = []
   let stopped = false
   let ended = false
@@ -715,7 +748,24 @@ export function startKoreanSpeechRecognition(
     generationReady = true
   }
 
+  const emitRawRecognitionEvent = (event: SpeechRecognitionResultEventLike) => {
+    if (!handlers.onRawRecognitionEvent) return
+    rawEventSeq += 1
+    handlers.onRawRecognitionEvent({
+      sessionId: logicalSessionId,
+      recognitionGeneration,
+      eventSequenceNumber: rawEventSeq,
+      timestampDeltaMs: Date.now() - physicalStartedAt,
+      resultIndex: event.resultIndex ?? 0,
+      resultsLength: event.results.length,
+      results: captureSpeechRecognitionResults(event),
+      generationReady,
+      heldApplied: held.applied,
+    })
+  }
+
   recognition.onresult = (event) => {
+    emitRawRecognitionEvent(event)
     if (held.applied) return
     if (protections.staleGenerationGuard && !generationReady) {
       const lateText = normalizeTranscript(event.results[event.resultIndex ?? 0]?.[0]?.transcript ?? '')

@@ -6,6 +6,11 @@ import { TeacherMobileHeader } from '../../components/teacherMobile/TeacherMobil
 import { HyperFeaturedCardWave } from '../../components/ui/HyperFeaturedCardWave'
 import { AttendanceExcuseButtons } from '../../components/studentCare/AttendanceExcuseButtons'
 import { SectionVoiceInput } from '../../components/todayReport/SectionVoiceInput'
+import {
+  IphonePhysicalVoiceDiagnosticPanel,
+  IphonePhysicalVoiceDiagnosticToggle,
+} from '../../components/todayReport/IphonePhysicalVoiceDiagnosticPanel'
+import { previewIphonePhysicalVoiceDiagnosticReport } from '../../utils/voiceInput/iphonePhysicalVoiceDiagnostic'
 import type { ClassAttitudeIssue } from '../../types/records'
 import '../../styles/teacherMobileTheme.css'
 
@@ -242,12 +247,17 @@ export function TeacherTodayReportLayoutPreviewPage() {
             <div className="mb-1.5 flex min-w-0 max-w-full flex-wrap items-center gap-1.5">
               <p className="min-w-0 text-sm font-bold text-[#163A70]">류정현</p>
               <div className="ml-auto shrink-0">
+                <IphonePhysicalVoiceDiagnosticToggle enabled onToggle={() => undefined} compact />
+              </div>
+              <div className="ml-auto shrink-0">
                 <SectionVoiceInput
                   label="류정현 일일테스트 음성 입력"
                   chipLabel="음성입력"
                   compact
                   hideStatus
                   explicitStop
+                  physicalDiagnostic
+                  dryRun
                   onApply={() => ({
                     appliedCount: 3,
                     excludedAbsentCount: 0,
@@ -269,6 +279,10 @@ export function TeacherTodayReportLayoutPreviewPage() {
             >
               음성 입력 완료 · 3건 반영
             </p>
+            <IphonePhysicalVoiceDiagnosticPanel
+              idleHint
+              report={previewIphonePhysicalVoiceDiagnosticReport()}
+            />
             <div className="grid grid-cols-2 gap-1.5">
               <div className="flex min-w-0 items-center gap-1 rounded-lg border border-slate-200 bg-slate-50/50 px-1.5 py-1">
                 <span className="w-7 shrink-0 text-[11px] font-semibold text-slate-600">1차</span>

@@ -13,6 +13,15 @@ import {
 } from '../../utils/voiceInput/voiceSaveCommand'
 import type { VoiceApplySummary } from '../../utils/voiceInput/types'
 import { formatHeldSpeechEndReason } from '../../utils/voiceInput/dailyTestVoiceDiagnostic'
+import {
+  attachHypothesesToRawEvent,
+  emptyPhysicalVoicePathCounters,
+  type IphonePhysicalOnResultLog,
+  type IphonePhysicalVoicePathCounters,
+  type PhysicalVoiceSessionCapture,
+} from '../../utils/voiceInput/iphonePhysicalVoiceDiagnostic'
+import { createSpeechForensicRecorder, type SpeechForensicRecorder } from '../../utils/voiceInput/speechForensic'
+import type { RawSpeechRecognitionCapture } from '../../utils/voiceInput/speechRecognition'
 
 export type VoiceSessionDiagnosticPayload = {
   rawTranscript: string
@@ -38,6 +47,13 @@ type SectionVoiceInputProps = {
   /** Hide inline confirmation; parent (daily-test) renders diagnostic full-width. */
   hideStatus?: boolean
   onDiagnostic?: (payload: VoiceSessionDiagnosticPayload) => void
+  /**
+   * Teacher-only physical iPhone capture. Observational. Default off.
+   * When dryRun, speech is parsed for preview but drafts/save are skipped.
+   */
+  physicalDiagnostic?: boolean
+  dryRun?: boolean
+  onPhysicalComplete?: (capture: PhysicalVoiceSessionCapture) => void
 }
 
 /**
@@ -55,6 +71,9 @@ export function SectionVoiceInput({
   explicitStop = true,
   hideStatus = false,
   onDiagnostic,
+  physicalDiagnostic = false,
+  dryRun = false,
+  onPhysicalComplete,
 }: SectionVoiceInputProps) {
   const reactId = useId()
   const fallbackId = `${reactId}-fallback`
@@ -70,10 +89,20 @@ export function SectionVoiceInput({
   const heldTraceRef = useRef<HeldSpeechTrace | null>(null)
   const onSaveCommandRef = useRef(onSaveCommand)
   const onDiagnosticRef = useRef(onDiagnostic)
+  const onPhysicalCompleteRef = useRef(onPhysicalComplete)
   const disabledRef = useRef(disabled)
+  const dryRunRef = useRef(dryRun)
+  const physicalDiagnosticRef = useRef(physicalDiagnostic)
+  const physicalCountersRef = useRef<IphonePhysicalVoicePathCounters>(emptyPhysicalVoicePathCounters())
+  const physicalRawEventsRef = useRef<IphonePhysicalOnResultLog[]>([])
+  const physicalForensicRef = useRef<SpeechForensicRecorder | null>(null)
+  const physicalLiveRef = useRef('')
   onSaveCommandRef.current = onSaveCommand
   onDiagnosticRef.current = onDiagnostic
+  onPhysicalCompleteRef.current = onPhysicalComplete
   disabledRef.current = disabled
+  dryRunRef.current = dryRun
+  physicalDiagnosticRef.current = physicalDiagnostic
 
   useEffect(() => {
     return () => {
@@ -102,8 +131,51 @@ export function SectionVoiceInput({
     })
   }
 
+  const emitPhysicalComplete = (
+    raw: string,
+    routed: VoiceTranscriptRoute,
+    source: 'speech' | 'typed',
+  ) => {
+    if (!physicalDiagnosticRef.current) return
+    const held = source === 'speech' ? heldTraceRef.current : null
+    onPhysicalCompleteRef.current?.({
+      rawTranscript: raw,
+      routed,
+      heldTrace: held,
+      forensicEvents: physicalForensicRef.current?.snapshot() ?? [],
+      rawRecognitionEvents: physicalRawEventsRef.current.map((event) => ({
+        ...event,
+        results: event.results.map((slot) => ({ ...slot })),
+      })),
+      liveTranscriptShown: physicalLiveRef.current,
+      counters: { ...physicalCountersRef.current },
+      endReason: formatHeldSpeechEndReason({
+        source,
+        userStopped: held?.userStopped ?? source === 'speech',
+        restartCount: held?.restartCount ?? 0,
+      }),
+      dryRun: dryRunRef.current,
+    })
+  }
+
   const applyTranscript = (raw: string, source: 'speech' | 'typed' = 'speech') => {
+    if (physicalDiagnosticRef.current) {
+      physicalCountersRef.current.routeCallCount += 1
+    }
     const routed = routeVoiceTranscript(raw)
+    emitPhysicalComplete(raw, routed, source)
+    if (dryRunRef.current) {
+      if (routed.kind === 'none') {
+        setError('인식된 내용이 없습니다. 텍스트로 입력할 수 있습니다.')
+        setFallbackOpen(true)
+        return
+      }
+      setSummary(null)
+      setError('')
+      setFallbackText('')
+      setFallbackOpen(false)
+      return
+    }
     if (routed.kind === 'none') {
       emitDiagnostic(raw, routed, null, source)
       setError('인식된 내용이 없습니다. 텍스트로 입력할 수 있습니다.')
@@ -141,13 +213,35 @@ export function SectionVoiceInput({
     setInterim('')
     appliedThisSessionRef.current = false
     heldTraceRef.current = null
+    const capturing = physicalDiagnosticRef.current
+    physicalCountersRef.current = emptyPhysicalVoicePathCounters()
+    physicalRawEventsRef.current = []
+    physicalLiveRef.current = ''
+    physicalForensicRef.current = capturing ? createSpeechForensicRecorder() : null
     const session = startKoreanSpeechRecognition({
       holdUntilExplicitStop: true,
-      onInterim: setInterim,
+      onInterim: capturing
+        ? (text) => {
+            physicalCountersRef.current.interimCallbackCount += 1
+            physicalLiveRef.current = text
+            const last = physicalRawEventsRef.current[physicalRawEventsRef.current.length - 1]
+            if (last) last.liveTranscriptShown = text
+            setInterim(text)
+          }
+        : setInterim,
       onHeldTrace: (trace) => {
         heldTraceRef.current = trace
+        if (!capturing) return
+        const last = physicalRawEventsRef.current[physicalRawEventsRef.current.length - 1]
+        if (!last) return
+        last.currentInterimHypothesis = trace.interim ?? physicalLiveRef.current
+        last.currentFinalHypothesis = trace.committed ?? ''
+        last.liveTranscriptShown = physicalLiveRef.current || trace.interim || last.liveTranscriptShown
+        last.stableTranscript = trace.accumulated ?? ''
+        last.mutableTranscript = trace.committed ?? ''
       },
       onFinal: (text) => {
+        if (capturing) physicalCountersRef.current.finalCallbackCount += 1
         if (appliedThisSessionRef.current) return
         appliedThisSessionRef.current = true
         applyTranscript(text, 'speech')
@@ -162,6 +256,17 @@ export function SectionVoiceInput({
         setListening(false)
         sessionRef.current = null
       },
+      ...(capturing
+        ? {
+            forensic: physicalForensicRef.current ?? undefined,
+            onRawRecognitionEvent: (raw: RawSpeechRecognitionCapture) => {
+              physicalCountersRef.current.recognitionEventCount += 1
+              physicalRawEventsRef.current.push(
+                attachHypothesesToRawEvent(raw, heldTraceRef.current, physicalLiveRef.current),
+              )
+            },
+          }
+        : {}),
     })
     if (!session) {
       setError('이 브라우저는 음성 인식을 지원하지 않습니다.')
@@ -181,7 +286,12 @@ export function SectionVoiceInput({
     : 'inline-flex min-h-9 items-center justify-center gap-1 rounded-lg border px-2.5 text-xs font-semibold'
 
   return (
-    <div className="min-w-0 w-full max-w-full" data-voice-input="true">
+    <div
+      className="min-w-0 w-full max-w-full"
+      data-voice-input="true"
+      data-voice-dry-run={dryRun ? 'true' : 'false'}
+      data-physical-voice-diagnostic={physicalDiagnostic ? 'true' : 'false'}
+    >
       <div className="flex min-w-0 max-w-full flex-wrap items-center gap-1">
         {support === 'supported' ? (
           <button

@@ -58,15 +58,19 @@ export function nextSpeechLogicalSessionId(): number {
   return nextLogicalSessionId
 }
 
-export function createSpeechForensicRecorder(): SpeechForensicRecorder {
+export function createSpeechForensicRecorder(options?: {
+  now?: () => number
+}): SpeechForensicRecorder {
   const events: SpeechForensicEvent[] = []
+  const now = options?.now ?? (() => Date.now())
+  const startedAt = now()
   return {
     enabled: true,
     record(event) {
       events.push({
         ...event,
         order: events.length + 1,
-        timestampMs: events.length,
+        timestampMs: now() - startedAt,
       })
     },
     snapshot() {
