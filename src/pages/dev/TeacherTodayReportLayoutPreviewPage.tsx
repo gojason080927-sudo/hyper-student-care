@@ -248,6 +248,7 @@ export function TeacherTodayReportLayoutPreviewPage() {
                   compact
                   hideStatus
                   explicitStop
+                  forceVoiceTransport="recorded-stt"
                   onApply={() => ({
                     appliedCount: 3,
                     excludedAbsentCount: 0,
@@ -258,16 +259,28 @@ export function TeacherTodayReportLayoutPreviewPage() {
               </div>
             </div>
             <p
-              data-live-transcript=""
-              className="mt-1 max-h-24 w-full min-w-0 max-w-full overflow-y-auto whitespace-pre-wrap break-keep text-[11px] leading-4 text-slate-500 [overflow-wrap:anywhere]"
+              data-voice-listening-hint=""
+              className="mt-1 w-full min-w-0 max-w-full whitespace-normal break-words text-[11px] leading-4 text-rose-800 [overflow-wrap:anywhere]"
             >
-              듣는 중: 1차 30점 2차 50점 3차 100점 나날이 속도가 빨라지고 정확도가 높아지고 있음
+              🔴 듣는 중 · 다 말한 뒤 종료를 누르세요
+            </p>
+            <p
+              data-voice-transcribing="true"
+              className="mt-1 w-full min-w-0 max-w-full whitespace-normal break-words text-[11px] leading-4 text-rose-800 [overflow-wrap:anywhere]"
+            >
+              음성 변환 중...
+            </p>
+            <p
+              data-voice-error="true"
+              className="mt-1 w-full min-w-0 max-w-full whitespace-normal break-words text-[11px] leading-4 text-amber-800 [overflow-wrap:anywhere]"
+            >
+              음성 변환에 실패했습니다. 다시 시도하거나 텍스트 입력을 이용해 주세요.
             </p>
             <p
               data-voice-summary="true"
               className="mb-1 w-full min-w-0 max-w-full whitespace-normal break-words text-[11px] leading-4 text-slate-600 [overflow-wrap:anywhere]"
             >
-              음성 입력 완료 · 3건 반영
+              음성 내용 반영 완료
             </p>
             <div className="grid grid-cols-2 gap-1.5">
               <div className="flex min-w-0 items-center gap-1 rounded-lg border border-slate-200 bg-slate-50/50 px-1.5 py-1">
