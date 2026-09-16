@@ -31,13 +31,44 @@ export function pickRecorderMimeType(isTypeSupported: (type: string) => boolean)
   return ''
 }
 
+export function recorderContainerMime(mimeType: string): string {
+  return mimeType.split(';')[0]?.trim().toLowerCase() ?? ''
+}
+
+/**
+ * OpenAI /v1/audio/transcriptions officially accepts
+ * mp3, mp4, mpeg, mpga, m4a, wav, webm with an extension-bearing filename
+ * and matching content type. Safari MediaRecorder reports audio/mp4 (AAC)
+ * and may include a codecs parameter; that parameter is not an OpenAI type.
+ */
+export function normalizeTranscriptionAudioMeta(mimeType: string): {
+  mimeType: string
+  filename: string
+} {
+  const base = recorderContainerMime(mimeType)
+  if (
+    base === 'audio/mp4' ||
+    base === 'audio/m4a' ||
+    base === 'audio/x-m4a' ||
+    base === 'audio/aac' ||
+    base === 'video/mp4'
+  ) {
+    return { mimeType: 'audio/mp4', filename: 'voice.m4a' }
+  }
+  if (base === 'audio/mpeg' || base === 'audio/mp3') {
+    return { mimeType: 'audio/mpeg', filename: 'voice.mp3' }
+  }
+  if (base === 'audio/wav' || base === 'audio/wave' || base === 'audio/x-wav') {
+    return { mimeType: 'audio/wav', filename: 'voice.wav' }
+  }
+  if (base.includes('webm')) {
+    return { mimeType: 'audio/webm', filename: 'voice.webm' }
+  }
+  return { mimeType: base || 'application/octet-stream', filename: 'voice.bin' }
+}
+
 export function filenameForMimeType(mimeType: string): string {
-  const base = mimeType.split(';')[0]?.trim() ?? ''
-  if (base === 'audio/mp4' || base === 'audio/m4a' || base === 'audio/aac') return 'voice.m4a'
-  if (base === 'audio/mpeg') return 'voice.mp3'
-  if (base === 'audio/wav' || base === 'audio/wave') return 'voice.wav'
-  if (base.includes('webm')) return 'voice.webm'
-  return 'voice.bin'
+  return normalizeTranscriptionAudioMeta(mimeType).filename
 }
 
 export const STT_FAIL_MESSAGE =

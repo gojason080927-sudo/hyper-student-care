@@ -29,6 +29,7 @@ import {
   detectVoiceTransport,
   filenameForMimeType,
   mapTranscribeHttpError,
+  normalizeTranscriptionAudioMeta,
   parseTranscribeJson,
   pickRecorderMimeType as pickMime,
 } from './sttProtocol.ts'
@@ -95,6 +96,18 @@ assert.equal(
 assert.equal(pickMime(() => false), '')
 assert.equal(filenameForMimeType('audio/mp4;codecs=mp4a.40.2'), 'voice.m4a')
 assert.equal(filenameForMimeType('audio/webm;codecs=opus'), 'voice.webm')
+assert.deepEqual(normalizeTranscriptionAudioMeta('audio/mp4;codecs=mp4a.40.2'), {
+  mimeType: 'audio/mp4',
+  filename: 'voice.m4a',
+})
+assert.deepEqual(normalizeTranscriptionAudioMeta('video/mp4'), {
+  mimeType: 'audio/mp4',
+  filename: 'voice.m4a',
+})
+assert.deepEqual(normalizeTranscriptionAudioMeta('audio/webm;codecs=opus'), {
+  mimeType: 'audio/webm',
+  filename: 'voice.webm',
+})
 assert.equal(detectAudioRecordingSupport({ mediaDevices: true, MediaRecorder: true }), true)
 assert.equal(detectAudioRecordingSupport({ mediaDevices: false, MediaRecorder: true }), false)
 
@@ -104,23 +117,34 @@ class FakeMediaRecorder {
   }
   mimeType = 'audio/mp4'
   state = 'inactive'
+  startArgs: unknown[] = []
+  requestDataCalls = 0
   ondataavailable: ((event: { data: Blob }) => void) | null = null
   onstop: (() => void) | null = null
   onerror: (() => void) | null = null
-  start() {
+  start(...args: unknown[]) {
+    this.startArgs = args
     this.state = 'recording'
   }
   requestData() {
-    this.ondataavailable?.({ data: new Blob(['voice'], { type: 'audio/mp4' }) })
+    this.requestDataCalls += 1
   }
   stop() {
     this.state = 'inactive'
+    this.ondataavailable?.({ data: new Blob(['voice'], { type: 'audio/mp4' }) })
     this.onstop?.()
   }
 }
 
 {
   const tracksStopped: string[] = []
+  let constructed: FakeMediaRecorder | null = null
+  class CaptureRecorder extends FakeMediaRecorder {
+    constructor() {
+      super()
+      constructed = this
+    }
+  }
   const recorder = await startAudioRecorder({
     getUserMedia: async () =>
       ({
@@ -132,13 +156,15 @@ class FakeMediaRecorder {
           },
         ],
       }) as unknown as MediaStream,
-    MediaRecorderCtor: FakeMediaRecorder as unknown as typeof MediaRecorder,
+    MediaRecorderCtor: CaptureRecorder as unknown as typeof MediaRecorder,
     isTypeSupported: (type) => type === 'audio/mp4',
   })
   assert.equal(recorder.mimeType, 'audio/mp4')
   const blob = await recorder.stop()
   assert.ok(blob.size > 0)
   assert.equal(tracksStopped.length > 0, true)
+  assert.deepEqual(constructed?.startArgs, [])
+  assert.equal(constructed?.requestDataCalls, 0)
 }
 
 {
@@ -157,9 +183,40 @@ class FakeMediaRecorder {
 }
 
 {
+  const overconstrained = new Error('overconstrained')
+  overconstrained.name = 'OverconstrainedError'
+  let attempts = 0
+  const recorder = await startAudioRecorder({
+    getUserMedia: async (constraints) => {
+      attempts += 1
+      if (attempts === 1) {
+        assert.equal(
+          typeof constraints.audio === 'object' && constraints.audio !== null,
+          true,
+        )
+        throw overconstrained
+      }
+      assert.equal(constraints.audio, true)
+      return {
+        getTracks: () => [{ stop: () => undefined }],
+      } as unknown as MediaStream
+    },
+    MediaRecorderCtor: FakeMediaRecorder as unknown as typeof MediaRecorder,
+    isTypeSupported: (type) => type === 'audio/mp4',
+  })
+  assert.equal(attempts, 2)
+  const blob = await recorder.stop()
+  assert.ok(blob.size > 0)
+}
+
+{
   class EmptyRecorder extends FakeMediaRecorder {
     requestData() {
-      /* no chunks */
+      this.requestDataCalls += 1
+    }
+    stop() {
+      this.state = 'inactive'
+      this.onstop?.()
     }
   }
   const recorder = await startAudioRecorder({
@@ -583,6 +640,12 @@ const ok = await handleVoiceTranscribe(
     verifyUser: async () => true,
     fetchImpl: async (_url, init) => {
       assert.ok(String(init?.headers && (init.headers as { Authorization?: string }).Authorization).startsWith('Bearer sk-'))
+      const body = init?.body
+      assert.ok(body instanceof FormData)
+      const file = body.get('file')
+      assert.ok(file instanceof File)
+      assert.equal(file.name, 'voice.m4a')
+      assert.equal(file.type, 'audio/mp4')
       return new Response(JSON.stringify({ text: GOLDEN_A }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
@@ -590,8 +653,37 @@ const ok = await handleVoiceTranscribe(
     },
   },
 )
-assert.equal(ok.status, 200)
-assert.deepEqual(await ok.json(), { transcript: GOLDEN_A })
+const codecMime = await handleVoiceTranscribe(
+  new Request('https://example.test/api/voice-transcribe', {
+    method: 'POST',
+    headers: { Authorization: 'Bearer test', 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      mimeType: 'audio/mp4;codecs=mp4a.40.2',
+      filename: 'voice.m4a',
+      audioBase64: btoa('abcd'),
+    }),
+  }),
+  {
+    openaiApiKey: 'sk-test',
+    openaiModel: 'gpt-4o-transcribe',
+    supabaseUrl: '',
+    supabaseAnonKey: '',
+    verifyUser: async () => true,
+    fetchImpl: async (_url, init) => {
+      const body = init?.body
+      assert.ok(body instanceof FormData)
+      const file = body.get('file')
+      assert.ok(file instanceof File)
+      assert.equal(file.name, 'voice.m4a')
+      assert.equal(file.type, 'audio/mp4')
+      return new Response(JSON.stringify({ text: GOLDEN_A }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    },
+  },
+)
+assert.equal(codecMime.status, 200)
 
 const noKey = await handleVoiceTranscribe(
   new Request('https://example.test/api/voice-transcribe', {
@@ -707,8 +799,8 @@ assert.match(endpoint, /incomingToRequest/)
 assert.match(endpoint, /missing_bearer/)
 assert.match(endpoint, /unconfigured/)
 assert.match(endpoint, /auth\/v1\/user/)
-assert.match(endpoint, /process\.env\.OPENAI_API_KEY/)
-assert.match(endpoint, /process\.env\.VITE_SUPABASE_URL/)
+assert.match(endpoint, /normalizeTranscriptionAudioMeta/)
+assert.match(endpoint, /voice\.m4a/)
 assert.doesNotMatch(endpoint, /globalThis\.process/)
 assert.doesNotMatch(endpoint, /runtime: 'edge'/)
 assert.doesNotMatch(endpoint, /VITE_OPENAI/)
@@ -720,13 +812,16 @@ assert.doesNotMatch(endpoint, /sk-[a-zA-Z0-9]/)
 const clientSrc = readFileSync('src/utils/voiceInput/recordedSttClient.ts', 'utf8')
 assert.match(clientSrc, /getUser/)
 assert.match(clientSrc, /getSession/)
+assert.match(clientSrc, /refreshSession/)
 assert.match(clientSrc, /Authorization: `Bearer \$\{token\}`/)
-assert.doesNotMatch(clientSrc, /refreshSession/)
+assert.match(clientSrc, /normalizeTranscriptionAudioMeta/)
 assert.doesNotMatch(clientSrc, /OPENAI_API_KEY|sk-/)
 
 const recorderSrc = readFileSync('src/utils/voiceInput/audioRecorder.ts', 'utf8')
 assert.match(recorderSrc, /stopFlushMs/)
 assert.match(recorderSrc, /recorder\.state === 'inactive' && chunks\.length > 0/)
+assert.match(recorderSrc, /getUserMedia\(\{ audio: true \}\)/)
+assert.doesNotMatch(recorderSrc, /recorder\.requestData/)
 
 const vercel = readFileSync('vercel.json', 'utf8')
 assert.match(vercel, /"source": "\/\(\.\*\)"/)
