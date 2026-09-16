@@ -3,21 +3,18 @@ import { getTodayString } from '../utils/date'
 import {
   HUB_FILE_MAX_BYTES,
   HUB_IMAGE_MAX_BYTES,
-  HUB_IMAGE_MIMES,
   HUB_MAX_ATTACHMENTS,
   HUB_VIDEO_MAX_BYTES,
   HUB_VIDEO_MAX_DURATION_MS,
-  HUB_VIDEO_MIMES,
   STUDENT_QUESTION_CATEGORIES,
-  type HubAttachmentKind,
 } from './types'
+import { classifyHubUpload, HUB_QUESTION_ACCEPT } from './hubFilePolicy'
 import {
   rpcFinalizeQuestionAttachment,
   rpcPrepareQuestionAttachment,
   rpcSubmitStudentQuestion,
 } from './hubRpc'
 import {
-  extensionFromName,
   questionAttachmentBucket,
   readVideoDurationMs,
   uploadHubObject,
@@ -25,37 +22,6 @@ import {
 } from './hubStorageClient'
 import { HubEmpty, HubPageHeader } from './HubChrome'
 import { useHub } from './HubContext'
-
-function classifyFile(file: File): HubAttachmentKind {
-  const name = file.name.toLowerCase()
-  const type = file.type
-  if (HUB_IMAGE_MIMES.includes(type as (typeof HUB_IMAGE_MIMES)[number]) || type.startsWith('image/')) {
-    return 'image'
-  }
-  if (type === 'application/pdf' || name.endsWith('.pdf')) return 'pdf'
-  if (
-    HUB_VIDEO_MIMES.includes(type as (typeof HUB_VIDEO_MIMES)[number]) ||
-    name.endsWith('.mp4') ||
-    name.endsWith('.mov') ||
-    name.endsWith('.webm')
-  ) {
-    return 'video'
-  }
-  return 'file'
-}
-
-function mimeForUpload(file: File, kind: HubAttachmentKind): string {
-  if (file.type) return file.type
-  const name = file.name.toLowerCase()
-  if (kind === 'video') {
-    if (name.endsWith('.mov')) return 'video/quicktime'
-    if (name.endsWith('.webm')) return 'video/webm'
-    return 'video/mp4'
-  }
-  if (kind === 'pdf') return 'application/pdf'
-  if (kind === 'image') return 'image/jpeg'
-  return 'application/octet-stream'
-}
 
 function mergeFiles(current: File[], next: File[]): File[] {
   const merged = [...current]
@@ -87,13 +53,17 @@ export function HubQuestionsPage() {
       setError('첨부는 최대 5개입니다.')
       return
     }
-    const videos = files.filter((file) => classifyFile(file) === 'video')
-    if (videos.length > 1) {
-      setError('짧은 영상은 질문당 1개만 첨부할 수 있습니다.')
-      return
-    }
     setBusy(true)
     try {
+      const classified = files.map((file) => {
+        const decision = classifyHubUpload(file)
+        if (!decision.ok) throw new Error(`${file.name}: ${decision.error}`)
+        return { file, decision }
+      })
+      const videos = classified.filter((item) => item.decision.kind === 'video')
+      if (videos.length > 1) {
+        throw new Error('짧은 영상은 질문당 1개만 첨부할 수 있습니다.')
+      }
       const created = await rpcSubmitStudentQuestion({
         accessKey,
         date: getTodayString(),
@@ -102,8 +72,8 @@ export function HubQuestionsPage() {
         content,
       })
       if (!created) throw new Error('질문 저장에 실패했습니다.')
-      for (const file of files) {
-        const kind = classifyFile(file)
+      for (const { file, decision } of classified) {
+        const kind = decision.kind
         if (kind === 'image' && file.size > HUB_IMAGE_MAX_BYTES) throw new Error('이미지는 5MB 이하만 가능합니다.')
         if ((kind === 'pdf' || kind === 'file') && file.size > HUB_FILE_MAX_BYTES) {
           throw new Error('파일은 10MB 이하만 가능합니다.')
@@ -118,18 +88,18 @@ export function HubQuestionsPage() {
           accessKey,
           questionId: created.id,
           kind,
-          mime: mimeForUpload(file, kind),
+          mime: decision.mime,
           byteSize: file.size,
           originalName: file.name,
           durationMs,
-          ext: extensionFromName(file.name, kind === 'video' ? 'mp4' : 'bin'),
+          ext: decision.ext,
         })
         await uploadHubObject({
           accessKey,
           bucket: prepared.bucket || questionAttachmentBucket(),
           path: prepared.storagePath,
           file,
-          contentType: file.type,
+          contentType: decision.mime,
         })
         await rpcFinalizeQuestionAttachment(accessKey, prepared.id)
       }
@@ -179,7 +149,7 @@ export function HubQuestionsPage() {
               type="file"
               multiple
               className="sr-only"
-              accept="image/*,application/pdf,.hwp,.hwpx,.docx,.pptx,video/mp4,video/quicktime,video/webm,.mov"
+              accept={HUB_QUESTION_ACCEPT}
               onChange={(event) => {
                 setFiles((current) => mergeFiles(current, Array.from(event.target.files ?? [])))
                 event.currentTarget.value = ''
@@ -204,7 +174,7 @@ export function HubQuestionsPage() {
           <p className="text-[11px] text-slate-500">{files.map((file) => file.name).join(', ')}</p>
         ) : null}
         <p className="text-[11px] text-slate-500">
-          이미지·PDF·파일·짧은 영상(60초/40MB, 1개). 다른 학생에게는 보이지 않습니다.
+          이미지·PDF·HWP/HWPX·DOC/DOCX·PPT/PPTX·짧은 영상(60초/40MB, 1개). 다른 학생에게는 보이지 않습니다.
         </p>
         {error ? <p className="text-sm text-rose-600">{error}</p> : null}
         <button

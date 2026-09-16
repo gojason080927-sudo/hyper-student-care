@@ -315,6 +315,116 @@ $$;
 
 REVOKE ALL ON FUNCTION public._hub_audience_visible(text, text, text, uuid, uuid, text, text) FROM PUBLIC;
 
+CREATE OR REPLACE FUNCTION public._hub_file_allowed(
+  p_kind text,
+  p_mime text,
+  p_ext text
+)
+RETURNS boolean
+LANGUAGE plpgsql
+IMMUTABLE
+SET search_path = public
+AS $$
+DECLARE
+  v_mime text := lower(trim(coalesce(p_mime, '')));
+  v_ext text := lower(regexp_replace(coalesce(p_ext, ''), '[^a-z0-9]', '', 'g'));
+  v_generic boolean := v_mime IN ('', 'application/octet-stream', 'binary/octet-stream');
+BEGIN
+  IF v_ext IN (
+    'exe','apk','bat','cmd','sh','js','msi','com','scr','pif','vbs','ps1',
+    'jar','dll','so','dmg','pkg','html','htm','php','py','rb','wasm','app'
+  ) THEN
+    RETURN false;
+  END IF;
+  IF v_mime IN (
+    'application/x-msdownload',
+    'application/x-executable',
+    'application/x-dosexec',
+    'application/javascript',
+    'text/javascript',
+    'application/x-sh',
+    'application/x-bat',
+    'application/x-msdos-program'
+  ) THEN
+    RETURN false;
+  END IF;
+
+  IF v_ext = '' THEN
+    v_ext := CASE v_mime
+      WHEN 'image/jpeg' THEN 'jpg'
+      WHEN 'image/jpg' THEN 'jpg'
+      WHEN 'image/png' THEN 'png'
+      WHEN 'image/webp' THEN 'webp'
+      WHEN 'image/gif' THEN 'gif'
+      WHEN 'application/pdf' THEN 'pdf'
+      WHEN 'video/mp4' THEN 'mp4'
+      WHEN 'video/mpeg' THEN 'mp4'
+      WHEN 'video/quicktime' THEN 'mov'
+      WHEN 'video/webm' THEN 'webm'
+      ELSE ''
+    END;
+  END IF;
+  IF v_ext = '' THEN
+    RETURN false;
+  END IF;
+
+  IF p_kind = 'image' THEN
+    IF v_ext NOT IN ('jpg', 'jpeg', 'png', 'webp', 'gif') THEN RETURN false; END IF;
+    IF v_generic THEN RETURN true; END IF;
+    IF v_ext IN ('jpg', 'jpeg') THEN RETURN v_mime IN ('image/jpeg', 'image/jpg'); END IF;
+    IF v_ext = 'png' THEN RETURN v_mime = 'image/png'; END IF;
+    IF v_ext = 'webp' THEN RETURN v_mime = 'image/webp'; END IF;
+    IF v_ext = 'gif' THEN RETURN v_mime = 'image/gif'; END IF;
+    RETURN false;
+  END IF;
+
+  IF p_kind = 'pdf' THEN
+    RETURN v_ext = 'pdf' AND (v_generic OR v_mime = 'application/pdf');
+  END IF;
+
+  IF p_kind = 'video' THEN
+    IF v_ext NOT IN ('mp4', 'mov', 'webm') THEN RETURN false; END IF;
+    IF v_generic THEN RETURN true; END IF;
+    IF v_ext = 'mp4' THEN RETURN v_mime IN ('video/mp4', 'video/mpeg'); END IF;
+    IF v_ext = 'mov' THEN RETURN v_mime IN ('video/quicktime', 'video/mp4'); END IF;
+    IF v_ext = 'webm' THEN RETURN v_mime = 'video/webm'; END IF;
+    RETURN false;
+  END IF;
+
+  IF p_kind = 'file' THEN
+    IF v_ext NOT IN ('hwp', 'hwpx', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'txt', 'csv') THEN
+      RETURN false;
+    END IF;
+    IF v_generic THEN RETURN true; END IF;
+    IF v_ext = 'hwp' THEN
+      RETURN v_mime IN ('application/x-hwp', 'application/haansofthwp', 'application/vnd.hancom.hwp', 'application/hwp');
+    END IF;
+    IF v_ext = 'hwpx' THEN
+      RETURN v_mime IN ('application/vnd.hancom.hwpx', 'application/hwpx', 'application/x-hwp+zip');
+    END IF;
+    IF v_ext = 'doc' THEN RETURN v_mime IN ('application/msword', 'application/doc'); END IF;
+    IF v_ext = 'docx' THEN
+      RETURN v_mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    END IF;
+    IF v_ext = 'ppt' THEN RETURN v_mime IN ('application/vnd.ms-powerpoint', 'application/mspowerpoint'); END IF;
+    IF v_ext = 'pptx' THEN
+      RETURN v_mime = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+    END IF;
+    IF v_ext = 'xls' THEN RETURN v_mime = 'application/vnd.ms-excel'; END IF;
+    IF v_ext = 'xlsx' THEN
+      RETURN v_mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    END IF;
+    IF v_ext = 'txt' THEN RETURN v_mime IN ('text/plain', 'text/txt'); END IF;
+    IF v_ext = 'csv' THEN RETURN v_mime IN ('text/csv', 'text/plain', 'application/csv'); END IF;
+    RETURN false;
+  END IF;
+
+  RETURN false;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public._hub_file_allowed(text, text, text) FROM PUBLIC;
+
 -- ---------------------------------------------------------------------------
 -- 9) Student Hub RPCs (access_key → student_id, never client student_id)
 -- ---------------------------------------------------------------------------
@@ -662,13 +772,34 @@ BEGIN
     RAISE EXCEPTION 'video_too_long';
   END IF;
 
-  IF p_kind = 'image' AND p_mime NOT IN ('image/jpeg', 'image/png', 'image/webp', 'image/gif') THEN
-    RAISE EXCEPTION 'invalid_mime';
+  v_ext := lower(regexp_replace(coalesce(p_ext, ''), '[^a-z0-9]', '', 'g'));
+  IF v_ext = '' THEN
+    v_ext := lower(regexp_replace(
+      substring(coalesce(p_original_name, '') from '\.([A-Za-z0-9]+)$'),
+      '[^a-z0-9]',
+      '',
+      'g'
+    ));
   END IF;
-  IF p_kind = 'pdf' AND p_mime <> 'application/pdf' THEN
-    RAISE EXCEPTION 'invalid_mime';
+  IF v_ext = '' THEN
+    v_ext := CASE lower(trim(coalesce(p_mime, '')))
+      WHEN 'image/jpeg' THEN 'jpg'
+      WHEN 'image/jpg' THEN 'jpg'
+      WHEN 'image/png' THEN 'png'
+      WHEN 'image/webp' THEN 'webp'
+      WHEN 'image/gif' THEN 'gif'
+      WHEN 'application/pdf' THEN 'pdf'
+      WHEN 'video/mp4' THEN 'mp4'
+      WHEN 'video/mpeg' THEN 'mp4'
+      WHEN 'video/quicktime' THEN 'mov'
+      WHEN 'video/webm' THEN 'webm'
+      ELSE ''
+    END;
   END IF;
-  IF p_kind = 'video' AND p_mime NOT IN ('video/mp4', 'video/quicktime', 'video/webm') THEN
+  IF v_ext = '' OR char_length(v_ext) > 8 THEN
+    RAISE EXCEPTION 'invalid_ext';
+  END IF;
+  IF NOT public._hub_file_allowed(p_kind, p_mime, v_ext) THEN
     RAISE EXCEPTION 'invalid_mime';
   END IF;
 
@@ -694,14 +825,6 @@ BEGIN
     AND a.created_at > now() - interval '10 minutes';
   IF v_count >= 5 THEN
     RAISE EXCEPTION 'rate_limited';
-  END IF;
-
-  v_ext := lower(regexp_replace(coalesce(p_ext, ''), '[^a-z0-9]', '', 'g'));
-  IF v_ext = '' THEN
-    v_ext := 'bin';
-  END IF;
-  IF char_length(v_ext) > 8 THEN
-    RAISE EXCEPTION 'invalid_ext';
   END IF;
 
   v_id := gen_random_uuid();
@@ -852,11 +975,34 @@ BEGIN
   IF v_kind <> 'material_request' THEN
     RAISE EXCEPTION 'images_not_allowed';
   END IF;
-  IF p_mime NOT IN ('image/jpeg', 'image/png', 'image/webp', 'image/gif') THEN
-    RAISE EXCEPTION 'invalid_mime';
-  END IF;
   IF p_byte_size IS NULL OR p_byte_size <= 0 OR p_byte_size > 5242880 THEN
     RAISE EXCEPTION 'file_too_large';
+  END IF;
+
+  v_ext := lower(regexp_replace(coalesce(p_ext, ''), '[^a-z0-9]', '', 'g'));
+  IF v_ext = '' THEN
+    v_ext := lower(regexp_replace(
+      substring(coalesce(p_original_name, '') from '\.([A-Za-z0-9]+)$'),
+      '[^a-z0-9]',
+      '',
+      'g'
+    ));
+  END IF;
+  IF v_ext = '' THEN
+    v_ext := CASE lower(trim(coalesce(p_mime, '')))
+      WHEN 'image/jpeg' THEN 'jpg'
+      WHEN 'image/jpg' THEN 'jpg'
+      WHEN 'image/png' THEN 'png'
+      WHEN 'image/webp' THEN 'webp'
+      WHEN 'image/gif' THEN 'gif'
+      ELSE ''
+    END;
+  END IF;
+  IF v_ext = '' OR char_length(v_ext) > 8 THEN
+    RAISE EXCEPTION 'invalid_ext';
+  END IF;
+  IF NOT public._hub_file_allowed('image', p_mime, v_ext) THEN
+    RAISE EXCEPTION 'invalid_mime';
   END IF;
 
   SELECT count(*) INTO v_count
@@ -865,9 +1011,6 @@ BEGIN
   IF v_count >= 5 THEN
     RAISE EXCEPTION 'too_many_attachments';
   END IF;
-
-  v_ext := lower(regexp_replace(coalesce(p_ext, ''), '[^a-z0-9]', '', 'g'));
-  IF v_ext = '' THEN v_ext := 'jpg'; END IF;
 
   v_id := gen_random_uuid();
   v_path := v_student_id::text || '/inbox/' || p_inbox_id::text || '/' || v_id::text || '.' || v_ext;
@@ -1003,13 +1146,21 @@ VALUES (
   52428800,
   ARRAY[
     'application/pdf',
+    'application/msword',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.ms-excel',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'application/x-hwp',
     'application/haansofthwp',
     'application/vnd.hancom.hwp',
     'application/vnd.hancom.hwpx',
     'application/hwpx',
+    'application/x-hwp+zip',
+    'application/octet-stream',
+    'text/plain',
+    'text/csv',
     'image/jpeg',
     'image/png',
     'image/webp',
@@ -1021,7 +1172,29 @@ ON CONFLICT (id) DO NOTHING;
 UPDATE storage.buckets
 SET
   public = false,
-  file_size_limit = 52428800
+  file_size_limit = 52428800,
+  allowed_mime_types = ARRAY[
+    'application/pdf',
+    'application/msword',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/x-hwp',
+    'application/haansofthwp',
+    'application/vnd.hancom.hwp',
+    'application/vnd.hancom.hwpx',
+    'application/hwpx',
+    'application/x-hwp+zip',
+    'application/octet-stream',
+    'text/plain',
+    'text/csv',
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/gif'
+  ]::text[]
 WHERE id = 'hub-learning-materials';
 
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
@@ -1036,12 +1209,21 @@ VALUES (
     'image/webp',
     'image/gif',
     'application/pdf',
+    'application/msword',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.ms-excel',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'application/x-hwp',
     'application/haansofthwp',
     'application/vnd.hancom.hwp',
     'application/vnd.hancom.hwpx',
+    'application/hwpx',
+    'application/x-hwp+zip',
+    'application/octet-stream',
+    'text/plain',
+    'text/csv',
     'video/mp4',
     'video/quicktime',
     'video/webm'
@@ -1052,7 +1234,32 @@ ON CONFLICT (id) DO NOTHING;
 UPDATE storage.buckets
 SET
   public = false,
-  file_size_limit = 52428800
+  file_size_limit = 52428800,
+  allowed_mime_types = ARRAY[
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/gif',
+    'application/pdf',
+    'application/msword',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/x-hwp',
+    'application/haansofthwp',
+    'application/vnd.hancom.hwp',
+    'application/vnd.hancom.hwpx',
+    'application/hwpx',
+    'application/x-hwp+zip',
+    'application/octet-stream',
+    'text/plain',
+    'text/csv',
+    'video/mp4',
+    'video/quicktime',
+    'video/webm'
+  ]::text[]
 WHERE id = 'hub-question-attachments';
 
 DO $$
@@ -1082,25 +1289,7 @@ BEGIN
       USING (bucket_id = 'hub-question-attachments')
       WITH CHECK (bucket_id = 'hub-question-attachments');
   END IF;
-
-  -- 학생 anon INSERT 없음. published 자료 pages 만 SELECT (signed URL용)
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies
-    WHERE schemaname = 'storage' AND tablename = 'objects'
-      AND policyname = 'hub_learning_materials_student_published_pages'
-  ) THEN
-    CREATE POLICY hub_learning_materials_student_published_pages
-      ON storage.objects
-      FOR SELECT
-      TO anon
-      USING (
-        bucket_id = 'hub-learning-materials'
-        AND name LIKE '%/pages/%'
-        AND EXISTS (
-          SELECT 1 FROM public.hub_learning_materials m
-          WHERE m.status = 'PUBLISHED'
-            AND m.id::text = split_part(name, '/', 1)
-        )
-      );
-  END IF;
 END $$;
+
+-- 학생 anon INSERT/SELECT 없음. preview·download 는 access_key → authorize_hub_storage_path → signed URL.
+DROP POLICY IF EXISTS hub_learning_materials_student_published_pages ON storage.objects;

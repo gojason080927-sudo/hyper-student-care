@@ -21,9 +21,11 @@ import {
   teacherSetMaterialStatus,
   teacherSignedUrl,
   teacherUpdateInboxStatus,
+  teacherUpdateMaterialMetadata,
   teacherUploadMaterial,
 } from '../../hub/teacherHubRepo'
 import { parseTimestampLines, parseYoutubeVideoId } from '../../hub/youtube'
+import { HUB_MATERIAL_ACCEPT } from '../../hub/hubFilePolicy'
 
 type Tab = 'assignments' | 'materials' | 'videos' | 'requests' | 'suggestions'
 
@@ -235,39 +237,53 @@ function AssignmentPanel({
   assignments: HubAssignment[]
   onSaved: () => Promise<void>
 }) {
-  const [grade, setGrade] = useState('')
-  const [className, setClassName] = useState('')
-  const [subject, setSubject] = useState('수학')
-  const [textbookName, setTextbookName] = useState('')
-  const [content, setContent] = useState('')
-  const [dueDate, setDueDate] = useState('')
-  const classOptions = getClassOptionsForGrade(grade)
+  const emptyForm = {
+    id: '',
+    grade: '',
+    className: '',
+    subject: '수학',
+    textbookName: '',
+    content: '',
+    dueDate: '',
+    published: true,
+  }
+  const [form, setForm] = useState(emptyForm)
+  const classOptions = getClassOptionsForGrade(form.grade)
+  const editing = Boolean(form.id)
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
+    const existing = assignments.find((item) => item.id === form.id)
     await teacherSaveAssignment({
-      id: createId(),
-      grade,
-      className,
-      subject,
-      textbookName,
-      content,
-      dueDate: dueDate || null,
-      studentId: null,
-      published: true,
-      publishedAt: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
+      id: form.id || createId(),
+      grade: form.grade,
+      className: form.className,
+      subject: form.subject,
+      textbookName: form.textbookName,
+      content: form.content,
+      dueDate: form.dueDate || null,
+      studentId: existing?.studentId ?? null,
+      published: form.published,
+      publishedAt: form.published
+        ? existing?.publishedAt || new Date().toISOString()
+        : null,
+      createdAt: existing?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     })
-    setContent('')
+    setForm(emptyForm)
     await onSaved()
   }
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <form onSubmit={(event) => void submit(event)} className="space-y-3 rounded-2xl bg-white p-5 shadow-sm">
-        <h3 className="font-bold text-navy-900">반 과제 게시</h3>
-        <select className={inputClass()} value={grade} onChange={(event) => setGrade(event.target.value)} required>
+        <h3 className="font-bold text-navy-900">{editing ? '과제 수정' : '반 과제 게시'}</h3>
+        <select
+          className={inputClass()}
+          value={form.grade}
+          onChange={(event) => setForm((prev) => ({ ...prev, grade: event.target.value, className: '' }))}
+          required
+        >
           <option value="">학년</option>
           {GRADES.map((item) => (
             <option key={item} value={item}>
@@ -275,7 +291,12 @@ function AssignmentPanel({
             </option>
           ))}
         </select>
-        <select className={inputClass()} value={className} onChange={(event) => setClassName(event.target.value)} required>
+        <select
+          className={inputClass()}
+          value={form.className}
+          onChange={(event) => setForm((prev) => ({ ...prev, className: event.target.value }))}
+          required
+        >
           <option value="">반</option>
           {classOptions.map((item) => (
             <option key={item} value={item}>
@@ -283,19 +304,55 @@ function AssignmentPanel({
             </option>
           ))}
         </select>
-        <select className={inputClass()} value={subject} onChange={(event) => setSubject(event.target.value)}>
+        <select
+          className={inputClass()}
+          value={form.subject}
+          onChange={(event) => setForm((prev) => ({ ...prev, subject: event.target.value }))}
+        >
           {TEXTBOOK_SUBJECTS.map((item) => (
             <option key={item} value={item}>
               {item}
             </option>
           ))}
         </select>
-        <input className={inputClass()} value={textbookName} onChange={(event) => setTextbookName(event.target.value)} placeholder="교재 (선택)" />
-        <textarea className={inputClass()} rows={4} value={content} onChange={(event) => setContent(event.target.value)} placeholder="과제 내용" required />
-        <input className={inputClass()} type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} />
-        <button type="submit" className={btnPrimary}>
-          게시
-        </button>
+        <input
+          className={inputClass()}
+          value={form.textbookName}
+          onChange={(event) => setForm((prev) => ({ ...prev, textbookName: event.target.value }))}
+          placeholder="교재 (선택)"
+        />
+        <textarea
+          className={inputClass()}
+          rows={4}
+          value={form.content}
+          onChange={(event) => setForm((prev) => ({ ...prev, content: event.target.value }))}
+          placeholder="과제 내용"
+          required
+        />
+        <input
+          className={inputClass()}
+          type="date"
+          value={form.dueDate}
+          onChange={(event) => setForm((prev) => ({ ...prev, dueDate: event.target.value }))}
+        />
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={form.published}
+            onChange={(event) => setForm((prev) => ({ ...prev, published: event.target.checked }))}
+          />
+          학생에게 게시
+        </label>
+        <div className="flex flex-wrap gap-2">
+          <button type="submit" className={btnPrimary}>
+            {editing ? '수정 저장' : '게시'}
+          </button>
+          {editing ? (
+            <button type="button" className={btnSecondary} onClick={() => setForm(emptyForm)}>
+              취소
+            </button>
+          ) : null}
+        </div>
       </form>
       <div className="space-y-3">
         {assignments.length === 0 ? <EmptyState title="과제가 없습니다." /> : null}
@@ -303,18 +360,40 @@ function AssignmentPanel({
           <article key={item.id} className="rounded-2xl bg-white p-4 shadow-sm">
             <p className="text-xs text-slate-500">
               {item.grade} {item.className} · {item.subject}
+              {item.published ? ' · 게시' : ' · 숨김'}
             </p>
-            <p className="mt-1 whitespace-pre-wrap text-sm">{item.content}</p>
-            <button
-              type="button"
-              className={`${btnSecondary} mt-3`}
-              onClick={async () => {
-                await teacherDeleteAssignment(item.id)
-                await onSaved()
-              }}
-            >
-              삭제
-            </button>
+            <p className="mt-1 whitespace-pre-wrap break-anywhere text-sm">{item.content}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                className={btnSecondary}
+                onClick={() =>
+                  setForm({
+                    id: item.id,
+                    grade: item.grade,
+                    className: item.className,
+                    subject: item.subject,
+                    textbookName: item.textbookName,
+                    content: item.content,
+                    dueDate: item.dueDate ?? '',
+                    published: item.published,
+                  })
+                }
+              >
+                수정
+              </button>
+              <button
+                type="button"
+                className={btnSecondary}
+                onClick={async () => {
+                  await teacherDeleteAssignment(item.id)
+                  if (form.id === item.id) setForm(emptyForm)
+                  await onSaved()
+                }}
+              >
+                삭제
+              </button>
+            </div>
           </article>
         ))}
       </div>
@@ -341,6 +420,16 @@ function MaterialPanel({
     targetStudentId: '',
   })
   const [busy, setBusy] = useState(false)
+  const [metaEdit, setMetaEdit] = useState<HubMaterial | null>(null)
+  const [metaTitle, setMetaTitle] = useState('')
+  const [metaDescription, setMetaDescription] = useState('')
+  const [metaStatus, setMetaStatus] = useState<HubMaterial['status']>('PUBLISHED')
+  const [metaAudience, setMetaAudience] = useState({
+    audienceType: 'all' as HubAudienceType,
+    targetGrade: '',
+    targetClassName: '',
+    targetStudentId: '',
+  })
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -366,42 +455,106 @@ function MaterialPanel({
     }
   }
 
+  const startMetaEdit = (item: HubMaterial) => {
+    setMetaEdit(item)
+    setMetaTitle(item.title)
+    setMetaDescription(item.description)
+    setMetaStatus(item.status)
+    setMetaAudience({
+      audienceType: item.audienceType,
+      targetGrade: item.targetGrade ?? '',
+      targetClassName: item.targetClassName ?? '',
+      targetStudentId: item.targetStudentId ?? '',
+    })
+  }
+
+  const saveMeta = async (event: FormEvent) => {
+    event.preventDefault()
+    if (!metaEdit) return
+    await teacherUpdateMaterialMetadata({
+      id: metaEdit.id,
+      title: metaTitle,
+      description: metaDescription,
+      audienceType: metaAudience.audienceType,
+      targetGrade: metaAudience.targetGrade || null,
+      targetClassName: metaAudience.targetClassName || null,
+      targetStudentId: metaAudience.audienceType === 'student' ? metaAudience.targetStudentId || null : null,
+      status: metaStatus,
+      publishedAt: metaEdit.publishedAt,
+    })
+    setMetaEdit(null)
+    await onSaved()
+  }
+
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <form onSubmit={(event) => void submit(event)} className="space-y-3 rounded-2xl bg-white p-5 shadow-sm">
-        <h3 className="font-bold text-navy-900">자료 업로드</h3>
-        <input className={inputClass()} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="제목" required />
-        <textarea className={inputClass()} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="설명 (선택)" />
-        <AudienceFields {...audience} students={students} onChange={setAudience} />
-        <input
-          type="file"
-          accept=".pdf,.jpg,.jpeg,.png,.webp,.hwp,.hwpx,.docx,.pptx"
-          onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-          required
-        />
-        <p className="text-xs text-slate-500">PDF/이미지는 미리보기, HWP·DOCX·PPTX는 다운로드 우선.</p>
-        <button type="submit" className={btnPrimary} disabled={busy}>
-          {busy ? '업로드 중…' : '게시'}
-        </button>
-      </form>
+      <div className="space-y-4">
+        <form onSubmit={(event) => void submit(event)} className="space-y-3 rounded-2xl bg-white p-5 shadow-sm">
+          <h3 className="font-bold text-navy-900">자료 업로드</h3>
+          <input className={inputClass()} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="제목" required />
+          <textarea className={inputClass()} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="설명 (선택)" />
+          <AudienceFields {...audience} students={students} onChange={setAudience} />
+          <input
+            type="file"
+            accept={HUB_MATERIAL_ACCEPT}
+            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
+            required
+          />
+          <p className="text-xs text-slate-500">PDF/이미지는 미리보기, HWP·DOC·DOCX·PPT·PPTX는 다운로드 우선. 파일 교체는 새 자료 업로드.</p>
+          <button type="submit" className={btnPrimary} disabled={busy}>
+            {busy ? '업로드 중…' : '게시'}
+          </button>
+        </form>
+        {metaEdit ? (
+          <form onSubmit={(event) => void saveMeta(event)} className="space-y-3 rounded-2xl bg-white p-5 shadow-sm">
+            <h3 className="font-bold text-navy-900">자료 정보 수정</h3>
+            <p className="text-xs text-slate-500">원본 파일은 바꾸지 않습니다. 파일 교체가 필요하면 새 자료를 업로드하세요.</p>
+            <input className={inputClass()} value={metaTitle} onChange={(event) => setMetaTitle(event.target.value)} required />
+            <textarea className={inputClass()} value={metaDescription} onChange={(event) => setMetaDescription(event.target.value)} />
+            <AudienceFields {...metaAudience} students={students} onChange={setMetaAudience} />
+            <select
+              className={inputClass()}
+              value={metaStatus}
+              onChange={(event) => setMetaStatus(event.target.value as HubMaterial['status'])}
+            >
+              <option value="PUBLISHED">게시</option>
+              <option value="DRAFT">초안</option>
+              <option value="HIDDEN">숨김</option>
+            </select>
+            <div className="flex flex-wrap gap-2">
+              <button type="submit" className={btnPrimary}>
+                정보 저장
+              </button>
+              <button type="button" className={btnSecondary} onClick={() => setMetaEdit(null)}>
+                취소
+              </button>
+            </div>
+          </form>
+        ) : null}
+      </div>
       <div className="space-y-3">
         {materials.length === 0 ? <EmptyState title="자료가 없습니다." /> : null}
         {materials.map((item) => (
           <article key={item.id} className="rounded-2xl bg-white p-4 shadow-sm">
-            <p className="font-semibold">{item.title}</p>
+            <p className="break-anywhere font-semibold">{item.title}</p>
             <p className="text-xs text-slate-500">
               {item.kind} · {item.status} · {students.find((student) => student.id === item.targetStudentId)?.name ?? item.audienceType}
             </p>
-            <button
-              type="button"
-              className={`${btnSecondary} mt-2`}
-              onClick={async () => {
-                await teacherSetMaterialStatus(item.id, item.status === 'PUBLISHED' ? 'HIDDEN' : 'PUBLISHED')
-                await onSaved()
-              }}
-            >
-              {item.status === 'PUBLISHED' ? '숨기기' : '게시'}
-            </button>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" className={btnSecondary} onClick={() => startMetaEdit(item)}>
+                수정
+              </button>
+              <button
+                type="button"
+                className={btnSecondary}
+                onClick={async () => {
+                  await teacherSetMaterialStatus(item.id, item.status === 'PUBLISHED' ? 'HIDDEN' : 'PUBLISHED')
+                  await onSaved()
+                }}
+              >
+                {item.status === 'PUBLISHED' ? '숨기기' : '게시'}
+              </button>
+            </div>
           </article>
         ))}
       </div>
@@ -418,40 +571,42 @@ function VideoPanel({
   students: { id: string; name: string }[]
   onSaved: () => Promise<void>
 }) {
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [url, setUrl] = useState('')
-  const [timestampText, setTimestampText] = useState('')
-  const [audience, setAudience] = useState({
+  const emptyForm = {
+    id: '',
+    title: '',
+    description: '',
+    url: '',
+    timestampText: '',
+    published: true,
     audienceType: 'all' as HubAudienceType,
     targetGrade: '',
     targetClassName: '',
     targetStudentId: '',
-  })
+  }
+  const [form, setForm] = useState(emptyForm)
+  const editing = Boolean(form.id)
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
-    const videoId = parseYoutubeVideoId(url)
+    const videoId = parseYoutubeVideoId(form.url)
     if (!videoId) throw new Error('YouTube URL을 확인해 주세요.')
+    const existing = videos.find((item) => item.id === form.id)
     await teacherSaveVideo({
-      id: createId(),
-      title,
-      description,
-      videoUrl: url.trim(),
+      id: form.id || createId(),
+      title: form.title,
+      description: form.description,
+      videoUrl: form.url.trim(),
       videoId,
-      audienceType: audience.audienceType,
-      targetGrade: audience.targetGrade || null,
-      targetClassName: audience.targetClassName || null,
-      targetStudentId: audience.audienceType === 'student' ? audience.targetStudentId || null : null,
-      published: true,
-      publishedAt: new Date().toISOString(),
-      timestamps: parseTimestampLines(timestampText),
-      createdAt: new Date().toISOString(),
+      audienceType: form.audienceType,
+      targetGrade: form.targetGrade || null,
+      targetClassName: form.targetClassName || null,
+      targetStudentId: form.audienceType === 'student' ? form.targetStudentId || null : null,
+      published: form.published,
+      publishedAt: form.published ? existing?.publishedAt || new Date().toISOString() : null,
+      timestamps: parseTimestampLines(form.timestampText),
+      createdAt: existing?.createdAt || new Date().toISOString(),
     })
-    setTitle('')
-    setDescription('')
-    setUrl('')
-    setTimestampText('')
+    setForm(emptyForm)
     await onSaved()
   }
 
@@ -465,39 +620,110 @@ function VideoPanel({
         }}
         className="space-y-3 rounded-2xl bg-white p-5 shadow-sm"
       >
-        <h3 className="font-bold text-navy-900">YouTube 일부공개 영상</h3>
-        <input className={inputClass()} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="제목" required />
-        <textarea className={inputClass()} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="설명" />
-        <input className={inputClass()} value={url} onChange={(event) => setUrl(event.target.value)} placeholder="https://youtu.be/..." required />
+        <h3 className="font-bold text-navy-900">{editing ? '영상 수정' : 'YouTube 일부공개 영상'}</h3>
+        <input
+          className={inputClass()}
+          value={form.title}
+          onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
+          placeholder="제목"
+          required
+        />
         <textarea
           className={inputClass()}
-          value={timestampText}
-          onChange={(event) => setTimestampText(event.target.value)}
+          value={form.description}
+          onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
+          placeholder="설명"
+        />
+        <input
+          className={inputClass()}
+          value={form.url}
+          onChange={(event) => setForm((prev) => ({ ...prev, url: event.target.value }))}
+          placeholder="https://youtu.be/..."
+          required
+        />
+        <textarea
+          className={inputClass()}
+          value={form.timestampText}
+          onChange={(event) => setForm((prev) => ({ ...prev, timestampText: event.target.value }))}
           placeholder="타임스탬프 선택 (한 줄에 1:30 제목)"
           rows={3}
         />
-        <AudienceFields {...audience} students={students} onChange={setAudience} />
+        <AudienceFields
+          audienceType={form.audienceType}
+          targetGrade={form.targetGrade}
+          targetClassName={form.targetClassName}
+          targetStudentId={form.targetStudentId}
+          students={students}
+          onChange={(next) => setForm((prev) => ({ ...prev, ...next }))}
+        />
+        <label className="flex items-center gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={form.published}
+            onChange={(event) => setForm((prev) => ({ ...prev, published: event.target.checked }))}
+          />
+          학생에게 게시
+        </label>
         <p className="text-xs text-slate-500">일부공개(unlisted)는 링크를 아는 사람이 볼 수 있습니다.</p>
-        <button type="submit" className={btnPrimary}>
-          게시
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button type="submit" className={btnPrimary}>
+            {editing ? '수정 저장' : '게시'}
+          </button>
+          {editing ? (
+            <button type="button" className={btnSecondary} onClick={() => setForm(emptyForm)}>
+              취소
+            </button>
+          ) : null}
+        </div>
       </form>
       <div className="space-y-3">
         {videos.length === 0 ? <EmptyState title="영상이 없습니다." /> : null}
         {videos.map((item) => (
           <article key={item.id} className="rounded-2xl bg-white p-4 shadow-sm">
-            <p className="font-semibold">{item.title}</p>
-            <p className="text-xs text-slate-500">{item.videoId}</p>
-            <button
-              type="button"
-              className={`${btnSecondary} mt-2`}
-              onClick={async () => {
-                await teacherDeleteVideo(item.id)
-                await onSaved()
-              }}
-            >
-              삭제
-            </button>
+            <p className="break-anywhere font-semibold">{item.title}</p>
+            <p className="text-xs text-slate-500">
+              {item.videoId}
+              {item.published ? ' · 게시' : ' · 숨김'}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                className={btnSecondary}
+                onClick={() =>
+                  setForm({
+                    id: item.id,
+                    title: item.title,
+                    description: item.description,
+                    url: item.videoUrl,
+                    timestampText: item.timestamps
+                      .map((stamp) => {
+                        const minutes = Math.floor(stamp.seconds / 60)
+                        const seconds = stamp.seconds % 60
+                        return `${minutes}:${String(seconds).padStart(2, '0')} ${stamp.label}`.trim()
+                      })
+                      .join('\n'),
+                    published: item.published,
+                    audienceType: item.audienceType,
+                    targetGrade: item.targetGrade ?? '',
+                    targetClassName: item.targetClassName ?? '',
+                    targetStudentId: item.targetStudentId ?? '',
+                  })
+                }
+              >
+                수정
+              </button>
+              <button
+                type="button"
+                className={btnSecondary}
+                onClick={async () => {
+                  await teacherDeleteVideo(item.id)
+                  if (form.id === item.id) setForm(emptyForm)
+                  await onSaved()
+                }}
+              >
+                삭제
+              </button>
+            </div>
           </article>
         ))}
       </div>

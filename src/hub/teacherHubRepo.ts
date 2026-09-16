@@ -7,9 +7,11 @@ import type {
   HubInboxItem,
   HubMaterial,
   HubMaterialKind,
+  HubQuestionAttachment,
   HubVideo,
 } from './types'
 import { HUB_LEARNING_MATERIALS_BUCKET } from './types'
+import { classifyHubMaterialFile, materialKindFromDecision } from './hubFilePolicy'
 
 function throwIfError(error: { message?: string } | null, fallback: string): void {
   if (error) throw new Error(error.message || fallback)
@@ -154,15 +156,52 @@ export async function teacherSignedUrl(bucket: string, path: string): Promise<st
   return data.signedUrl
 }
 
+export type TeacherQuestionAttachment = HubQuestionAttachment & { questionId: string }
+
+function isMissingRelation(error: { message?: string; code?: string } | null): boolean {
+  const msg = `${error?.message ?? ''} ${error?.code ?? ''}`
+  return /does not exist|schema cache|42P01/i.test(msg)
+}
+
+export async function teacherFetchQuestionAttachments(): Promise<TeacherQuestionAttachment[]> {
+  const { data, error } = await getSupabase()
+    .from('question_attachments')
+    .select('*')
+    .eq('ready', true)
+    .order('created_at', { ascending: true })
+  if (error) {
+    if (isMissingRelation(error)) return []
+    throw new Error(error.message || '질문 첨부를 불러오지 못했습니다.')
+  }
+  return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
+    id: String(row.id),
+    questionId: String(row.question_id),
+    kind: (row.kind as HubQuestionAttachment['kind']) || 'file',
+    storagePath: String(row.storage_path ?? ''),
+    mime: String(row.mime ?? ''),
+    byteSize: Number(row.byte_size ?? 0),
+    durationMs: typeof row.duration_ms === 'number' ? row.duration_ms : null,
+    originalName: String(row.original_name ?? ''),
+    ready: row.ready === true,
+  }))
+}
+
+export function groupAttachmentsByQuestion(
+  items: TeacherQuestionAttachment[],
+): Record<string, HubQuestionAttachment[]> {
+  const grouped: Record<string, HubQuestionAttachment[]> = {}
+  for (const item of items) {
+    const list = grouped[item.questionId] ?? []
+    list.push(item)
+    grouped[item.questionId] = list
+  }
+  return grouped
+}
+
 function detectMaterialKind(file: File): HubMaterialKind {
-  const name = file.name.toLowerCase()
-  if (file.type === 'application/pdf' || name.endsWith('.pdf')) return 'pdf'
-  if (file.type.startsWith('image/')) return 'image'
-  if (name.endsWith('.hwp')) return 'hwp'
-  if (name.endsWith('.hwpx')) return 'hwpx'
-  if (name.endsWith('.docx')) return 'docx'
-  if (name.endsWith('.pptx')) return 'pptx'
-  return 'file'
+  const decision = classifyHubMaterialFile(file)
+  if (!decision.ok) throw new Error(decision.error)
+  return materialKindFromDecision(decision)
 }
 
 export async function teacherFetchMaterials(): Promise<HubMaterial[]> {
@@ -214,13 +253,15 @@ export async function teacherUploadMaterial(params: {
   targetStudentId: string | null
   publish: boolean
 }): Promise<void> {
+  const decision = classifyHubMaterialFile(params.file)
+  if (!decision.ok) throw new Error(decision.error)
   const id = createId()
   const kind = detectMaterialKind(params.file)
-  const ext = params.file.name.split('.').pop()?.toLowerCase() || 'bin'
+  const ext = decision.ext
   const sourcePath = `${id}/source/${createId()}.${ext}`
   const { error: uploadError } = await getSupabase()
     .storage.from(HUB_LEARNING_MATERIALS_BUCKET)
-    .upload(sourcePath, params.file, { upsert: true, contentType: params.file.type || undefined })
+    .upload(sourcePath, params.file, { upsert: true, contentType: decision.mime })
   throwIfError(uploadError, '원본 업로드에 실패했습니다.')
 
   const pages: { page_number: number; asset_path: string; width: number | null; height: number | null }[] = []
@@ -243,7 +284,7 @@ export async function teacherUploadMaterial(params: {
     const assetPath = `${id}/pages/${createId()}-001.jpg`
     const { error } = await getSupabase()
       .storage.from(HUB_LEARNING_MATERIALS_BUCKET)
-      .upload(assetPath, params.file, { upsert: true, contentType: params.file.type })
+      .upload(assetPath, params.file, { upsert: true, contentType: decision.mime })
     throwIfError(error, '이미지 업로드에 실패했습니다.')
     pages.push({ page_number: 1, asset_path: assetPath, width: null, height: null })
   }
@@ -254,7 +295,7 @@ export async function teacherUploadMaterial(params: {
     description: params.description,
     original_file_name: params.file.name,
     source_file_path: sourcePath,
-    mime: params.file.type,
+    mime: decision.mime,
     kind,
     status: params.publish ? 'PUBLISHED' : 'DRAFT',
     page_count: pages.length,
@@ -282,4 +323,32 @@ export async function teacherSetMaterialStatus(id: string, status: 'DRAFT' | 'PU
     })
     .eq('id', id)
   throwIfError(error, '자료 상태 변경에 실패했습니다.')
+}
+
+export async function teacherUpdateMaterialMetadata(params: {
+  id: string
+  title: string
+  description: string
+  audienceType: HubAudienceType
+  targetGrade: string | null
+  targetClassName: string | null
+  targetStudentId: string | null
+  status: 'DRAFT' | 'PUBLISHED' | 'HIDDEN'
+  publishedAt?: string | null
+}): Promise<void> {
+  const { error } = await getSupabase()
+    .from('hub_learning_materials')
+    .update({
+      title: params.title,
+      description: params.description,
+      audience_type: params.audienceType,
+      target_grade: params.targetGrade,
+      target_class_name: params.targetClassName,
+      target_student_id: params.targetStudentId,
+      status: params.status,
+      published_at:
+        params.status === 'PUBLISHED' ? params.publishedAt || new Date().toISOString() : null,
+    })
+    .eq('id', params.id)
+  throwIfError(error, '자료 정보 수정에 실패했습니다.')
 }

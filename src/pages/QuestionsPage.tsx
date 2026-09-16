@@ -1,5 +1,5 @@
 import { Plus } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   emptyQuestionForm,
   QuestionFormFields,
@@ -18,6 +18,13 @@ import type { QuestionImageAttachment, QuestionRecord, QuestionStatus } from '..
 import { sortByDateDesc } from '../utils/filters'
 import { QUESTION_CATEGORIES, QUESTION_STATUSES, btnPrimary, btnSecondary, inputClass } from '../utils/labels'
 import { requireDate, requireNonEmpty } from '../utils/validation'
+import { HUB_QUESTION_ATTACHMENTS_BUCKET } from '../hub/types'
+import type { HubQuestionAttachment } from '../hub/types'
+import {
+  groupAttachmentsByQuestion,
+  teacherFetchQuestionAttachments,
+  teacherSignedUrl,
+} from '../hub/teacherHubRepo'
 
 function hasAnswerContent(
   answer: string,
@@ -36,6 +43,26 @@ export function QuestionsPage() {
   const [form, setForm] = useState<QuestionFormState>(emptyQuestionForm())
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [deleteTarget, setDeleteTarget] = useState<QuestionRecord | null>(null)
+  const [attachmentsByQuestion, setAttachmentsByQuestion] = useState<Record<string, HubQuestionAttachment[]>>({})
+
+  useEffect(() => {
+    let cancelled = false
+    void teacherFetchQuestionAttachments()
+      .then((items) => {
+        if (!cancelled) setAttachmentsByQuestion(groupAttachmentsByQuestion(items))
+      })
+      .catch(() => {
+        if (!cancelled) setAttachmentsByQuestion({})
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [questions])
+
+  const resolveStorageUrl = useCallback(
+    (path: string) => teacherSignedUrl(HUB_QUESTION_ATTACHMENTS_BUCKET, path),
+    [],
+  )
 
   const filtered = useMemo(() => {
     let list = sortByDateDesc(questions)
@@ -151,6 +178,8 @@ export function QuestionsPage() {
               record={record}
               studentName={getStudentName(record.studentId)}
               showStudentName
+              storageAttachments={attachmentsByQuestion[record.id]}
+              resolveStorageUrl={resolveStorageUrl}
               actions={
                 <RecordActions onEdit={() => openEdit(record)} onDelete={() => setDeleteTarget(record)} />
               }

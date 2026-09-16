@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { ConnectedAdmissionStrategyViewer } from '../components/admissionStrategy/ConnectedAdmissionStrategyViewer'
-import { getSupabase } from '../lib/supabase'
 import { HUB_LEARNING_MATERIALS_BUCKET } from './types'
 import { downloadHubObjectUrl } from './hubStorageClient'
 import { HubEmpty, HubPageHeader } from './HubChrome'
@@ -17,17 +16,11 @@ export function HubMaterialsPage() {
   const [error, setError] = useState('')
 
   const resolvePageUrl = async (assetPath: string) => {
-    const { data, error: signError } = await getSupabase()
-      .storage.from(HUB_LEARNING_MATERIALS_BUCKET)
-      .createSignedUrl(assetPath, 60 * 30)
-    if (signError || !data?.signedUrl) {
-      return downloadHubObjectUrl({
-        accessKey,
-        bucket: HUB_LEARNING_MATERIALS_BUCKET,
-        path: assetPath,
-      })
-    }
-    return data.signedUrl
+    return downloadHubObjectUrl({
+      accessKey,
+      bucket: HUB_LEARNING_MATERIALS_BUCKET,
+      path: assetPath,
+    })
   }
 
   const downloadSource = async (material: HubMaterial) => {

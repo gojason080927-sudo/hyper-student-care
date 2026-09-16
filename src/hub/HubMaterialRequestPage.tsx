@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
-import { HUB_IMAGE_MAX_BYTES, HUB_IMAGE_MIMES, HUB_MAX_ATTACHMENTS } from './types'
+import { HUB_IMAGE_MAX_BYTES, HUB_MAX_ATTACHMENTS } from './types'
+import { classifyHubUpload } from './hubFilePolicy'
 import {
   rpcFinalizeInboxAttachment,
   rpcPrepareInboxAttachment,
@@ -7,7 +8,6 @@ import {
 } from './hubRpc'
 import {
   downloadHubObjectUrl,
-  extensionFromName,
   questionAttachmentBucket,
   uploadHubObject,
 } from './hubStorageClient'
@@ -39,24 +39,24 @@ export function HubMaterialRequestPage() {
       })
       if (!created) throw new Error('저장에 실패했습니다.')
       for (const file of files.slice(0, HUB_MAX_ATTACHMENTS)) {
-        if (!HUB_IMAGE_MIMES.includes(file.type as (typeof HUB_IMAGE_MIMES)[number])) {
-          throw new Error('이미지만 첨부할 수 있습니다.')
-        }
+        const decision = classifyHubUpload(file)
+        if (!decision.ok) throw new Error(decision.error)
+        if (decision.kind !== 'image') throw new Error('이미지만 첨부할 수 있습니다.')
         if (file.size > HUB_IMAGE_MAX_BYTES) throw new Error('이미지는 5MB 이하만 가능합니다.')
         const prepared = await rpcPrepareInboxAttachment({
           accessKey,
           inboxId: created.id,
-          mime: file.type,
+          mime: decision.mime,
           byteSize: file.size,
           originalName: file.name,
-          ext: extensionFromName(file.name, 'jpg'),
+          ext: decision.ext,
         })
         await uploadHubObject({
           accessKey,
           bucket: prepared.bucket || questionAttachmentBucket(),
           path: prepared.storagePath,
           file,
-          contentType: file.type,
+          contentType: decision.mime,
         })
         await rpcFinalizeInboxAttachment(accessKey, prepared.id)
       }
