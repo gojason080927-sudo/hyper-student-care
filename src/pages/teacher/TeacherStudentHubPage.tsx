@@ -358,7 +358,7 @@ function AssignmentPanel({
         {assignments.length === 0 ? <EmptyState title="과제가 없습니다." /> : null}
         {assignments.map((item) => (
           <article key={item.id} className="rounded-2xl bg-white p-4 shadow-sm">
-            <p className="text-xs text-slate-500">
+            <p className="break-keep text-xs text-slate-500">
               {item.grade} {item.className} · {item.subject}
               {item.published ? ' · 게시' : ' · 숨김'}
             </p>
@@ -500,7 +500,7 @@ function MaterialPanel({
             onChange={(event) => setFile(event.target.files?.[0] ?? null)}
             required
           />
-          <p className="text-xs text-slate-500">PDF/이미지는 미리보기, HWP·DOC·DOCX·PPT·PPTX는 다운로드 우선. 파일 교체는 새 자료 업로드.</p>
+          <p className="break-keep text-xs text-slate-500">PDF/이미지는 미리보기, HWP·DOC·DOCX·PPT·PPTX는 다운로드 우선. 파일 교체는 새 자료 업로드.</p>
           <button type="submit" className={btnPrimary} disabled={busy}>
             {busy ? '업로드 중…' : '게시'}
           </button>
@@ -508,7 +508,7 @@ function MaterialPanel({
         {metaEdit ? (
           <form onSubmit={(event) => void saveMeta(event)} className="space-y-3 rounded-2xl bg-white p-5 shadow-sm">
             <h3 className="font-bold text-navy-900">자료 정보 수정</h3>
-            <p className="text-xs text-slate-500">원본 파일은 바꾸지 않습니다. 파일 교체가 필요하면 새 자료를 업로드하세요.</p>
+            <p className="break-keep text-xs text-slate-500">원본 파일은 바꾸지 않습니다. 파일 교체가 필요하면 새 자료를 업로드하세요.</p>
             <input className={inputClass()} value={metaTitle} onChange={(event) => setMetaTitle(event.target.value)} required />
             <textarea className={inputClass()} value={metaDescription} onChange={(event) => setMetaDescription(event.target.value)} />
             <AudienceFields {...metaAudience} students={students} onChange={setMetaAudience} />
@@ -537,7 +537,7 @@ function MaterialPanel({
         {materials.map((item) => (
           <article key={item.id} className="rounded-2xl bg-white p-4 shadow-sm">
             <p className="break-anywhere font-semibold">{item.title}</p>
-            <p className="text-xs text-slate-500">
+            <p className="break-keep text-xs text-slate-500">
               {item.kind} · {item.status} · {students.find((student) => student.id === item.targetStudentId)?.name ?? item.audienceType}
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -664,7 +664,7 @@ function VideoPanel({
           />
           학생에게 게시
         </label>
-        <p className="text-xs text-slate-500">일부공개(unlisted)는 링크를 아는 사람이 볼 수 있습니다.</p>
+        <p className="break-keep text-xs text-slate-500">일부공개(unlisted)는 링크를 아는 사람이 볼 수 있습니다.</p>
         <div className="flex flex-wrap gap-2">
           <button type="submit" className={btnPrimary}>
             {editing ? '수정 저장' : '게시'}
@@ -681,7 +681,7 @@ function VideoPanel({
         {videos.map((item) => (
           <article key={item.id} className="rounded-2xl bg-white p-4 shadow-sm">
             <p className="break-anywhere font-semibold">{item.title}</p>
-            <p className="text-xs text-slate-500">
+            <p className="break-keep text-xs text-slate-500">
               {item.videoId}
               {item.published ? ' · 게시' : ' · 숨김'}
             </p>
