@@ -631,8 +631,7 @@ export function formatVoiceSummary(summary: {
   excludedAbsentCount: number
   needsReviewCount: number
 }): string {
-  const parts = ['음성 입력 완료']
-  if (summary.appliedCount > 0) parts.push(`${summary.appliedCount}건 반영`)
+  const parts = summary.appliedCount > 0 ? ['음성 내용 반영 완료'] : ['음성 입력 완료']
   if (summary.excludedAbsentCount > 0) {
     parts.push(`결석 ${summary.excludedAbsentCount}명 제외`)
   }

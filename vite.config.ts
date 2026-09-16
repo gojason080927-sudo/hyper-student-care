@@ -64,13 +64,17 @@ export default defineConfig({
         ],
         navigateFallback: '/index.html',
         // 학부모 /care 는 SW navigateFallback 대상에서 제외 (브라우저 정상 fingerprint asset 사용)
-        navigateFallbackDenylist: [/^\/care\//],
+        navigateFallbackDenylist: [/^\/care\//, /^\/api\//],
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
+            handler: 'NetworkOnly',
+          },
+          {
+            urlPattern: /\/api\/voice-transcribe/i,
             handler: 'NetworkOnly',
           },
         ],
