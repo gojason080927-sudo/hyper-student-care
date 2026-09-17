@@ -95,7 +95,7 @@ export async function downloadHubObjectBlob(params: {
     throw new Error(payload.message || payload.error || '파일을 불러오지 못했습니다.')
   }
   if (contentType.includes('application/json') || contentType.includes('text/html')) {
-    throw new Error('미리보기 파일을 불러오지 못했습니다.')
+    throw new Error('파일을 불러오지 못했습니다.')
   }
   return res.blob()
 }

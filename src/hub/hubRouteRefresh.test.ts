@@ -37,11 +37,15 @@ assert.equal(
 assert.equal(hubMaterialPreviewKind({ kind: 'hwp', pages: [], sourceFilePath: 'a/source.hwp' }), 'none')
 assert.deepEqual(
   hubMaterialPreviewRuntime({ kind: 'pdf', pages: [], sourceFilePath: 'a/source.pdf' }),
-  { kind: 'source', viewer: 'in-app', popupAfterAwait: false },
+  { kind: 'source', viewer: 'system', popupAfterAwait: false },
 )
 assert.deepEqual(
   hubMaterialPreviewRuntime({ kind: 'pdf', pages: [{ pageNumber: 1 }], sourceFilePath: 'a/source.pdf' }),
-  { kind: 'pages', viewer: 'in-app', popupAfterAwait: false },
+  { kind: 'pages', viewer: 'system', popupAfterAwait: false },
+)
+assert.deepEqual(
+  hubMaterialPreviewRuntime({ kind: 'hwp', pages: [], sourceFilePath: 'a/source.hwp' }),
+  { kind: 'none', viewer: 'none', popupAfterAwait: false },
 )
 
 const mapped = hubRenderedPagesToViewerPages(
@@ -126,18 +130,22 @@ assert.doesNotMatch(hubRefresh, /location\.pathname/)
 assert.doesNotMatch(hubRefresh, /addEventListener\('focus'/)
 assert.match(hubRefresh, /visibilitychange/)
 assert.match(hubRefresh, /event\.persisted/)
-assert.match(hubMaterials, /loadHubMaterialPreview/)
-assert.match(hubMaterials, /미리보기를 불러오는 중/)
+assert.match(hubMaterials, /openHubMaterialInSystemViewer/)
+assert.match(hubMaterials, /downloadHubMaterialFile/)
 assert.match(hubMaterials, /downloadHubObjectBlob/)
 assert.match(hubMaterials, /downloadHubObjectUrl/)
-assert.match(hubMaterials, /renderPdfFileToPages/)
-assert.match(hubMaterials, /pdfToPageImages/)
-assert.match(hubMaterials, /AdmissionStrategyMaterialViewer/)
+assert.match(hubMaterials, /열기 후 인쇄할 수 있습니다/)
+assert.doesNotMatch(hubMaterials, /loadHubMaterialPreview/)
+assert.doesNotMatch(hubMaterials, /미리보기를 불러오는 중/)
+assert.doesNotMatch(hubMaterials, /renderPdfFileToPages/)
+assert.doesNotMatch(hubMaterials, /pdfToPageImages/)
+assert.doesNotMatch(hubMaterials, /AdmissionStrategyMaterialViewer/)
 assert.doesNotMatch(hubMaterials, /ConnectedAdmissionStrategyViewer/)
 assert.doesNotMatch(hubMaterials, /target=_blank/)
 assert.doesNotMatch(hubMaterials, /target: '_blank'/)
 assert.doesNotMatch(hubMaterials, /target=`_blank`/)
 assert.doesNotMatch(hubMaterials, /window\.open/)
+assert.doesNotMatch(hubMaterials, /window\.print/)
 assert.match(hubVideos, /useHubContentRefresh\(reload\)/)
 assert.match(hubRpc, /parseHubRpcArray\(row\.pages\)/)
 assert.match(hubRpc, /cache: 'no-store'/)
