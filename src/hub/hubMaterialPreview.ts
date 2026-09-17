@@ -8,9 +8,51 @@ export type HubPreviewIo = {
   objectUrl: (blob: Blob) => string
 }
 
+export type HubPreviewPathCode = 'PREVIEW-PAGES' | 'PREVIEW-PDF' | 'PREVIEW-IMAGE' | 'PREVIEW-NONE'
+
 export type HubPreviewResult =
-  | { ok: true; pages: HubMaterialPage[] }
-  | { ok: false; error: string }
+  | { ok: true; pages: HubMaterialPage[]; path: HubPreviewPathCode }
+  | { ok: false; error: string; code: string; path: HubPreviewPathCode }
+
+export function hubPreviewPathCode(
+  material: Pick<HubMaterial, 'kind' | 'pages' | 'sourceFilePath'>,
+): HubPreviewPathCode {
+  if (material.pages.length > 0) return 'PREVIEW-PAGES'
+  if (material.kind === 'pdf' && material.sourceFilePath) return 'PREVIEW-PDF'
+  if (material.kind === 'image' && material.sourceFilePath) return 'PREVIEW-IMAGE'
+  return 'PREVIEW-NONE'
+}
+
+export function hubPreviewFailureCode(error: string): string {
+  const text = error.trim()
+  if (/접근할 수 없습니다|forbidden/i.test(text)) return 'SIGN-403'
+  if (/미리보기 주소를 만들지/.test(text)) return 'SIGN-FAIL'
+  if (/413/.test(text)) return 'PDF-FETCH-413'
+  if (/미리보기 파일을 불러오지/.test(text)) return 'PDF-FETCH-FAIL'
+  if (/PDF에 페이지가 없습니다|페이지를 그릴 수 없습니다|페이지 이미지를 만들지/.test(text)) {
+    return 'PDFJS-ERROR'
+  }
+  if (/미리보기 페이지가 없습니다/.test(text)) return 'PREVIEW-NO-ASSET'
+  if (/지원하지 않습니다/.test(text)) return 'PREVIEW-NONE'
+  return 'PREVIEW-FAIL'
+}
+
+export function classifyHubServiceWorkerScript(source: string): 'SW-SIGNED-V1' | 'SW-OTHER' {
+  return source.includes('preview-signed-v1') ? 'SW-SIGNED-V1' : 'SW-OTHER'
+}
+
+export function formatHubPreviewDiag(codes: string[]): string {
+  const seen = new Set<string>()
+  const ordered: string[] = []
+  for (const code of codes) {
+    for (const part of code.split(/\s+/)) {
+      if (!part || seen.has(part)) continue
+      seen.add(part)
+      ordered.push(part)
+    }
+  }
+  return ordered.join(' ')
+}
 
 export function classifyHubPreviewBytes(bytes: Uint8Array): 'pdf' | 'image' | 'json' | 'html' | 'empty' | 'unknown' {
   if (bytes.length < 4) return 'empty'
@@ -44,8 +86,8 @@ export function hubPreviewSrcIsReady(src: string): boolean {
   return src.startsWith('blob:') || src.startsWith('https://') || src.startsWith('http://')
 }
 
-function fail(message: string): HubPreviewResult {
-  return { ok: false, error: message }
+function fail(message: string, path: HubPreviewPathCode): HubPreviewResult {
+  return { ok: false, error: message, code: hubPreviewFailureCode(message), path }
 }
 
 async function blobFromBytes(blob: Blob, expected: 'pdf' | 'image' | 'any'): Promise<Blob> {
@@ -69,6 +111,7 @@ export async function loadHubMaterialPreview(
   material: Pick<HubMaterial, 'kind' | 'pages' | 'sourceFilePath'> & { originalFileName?: string },
   io: HubPreviewIo,
 ): Promise<HubPreviewResult> {
+  const path = hubPreviewPathCode(material)
   try {
     if (material.pages.length > 0) {
       const pages = await Promise.all(
@@ -84,19 +127,20 @@ export async function loadHubMaterialPreview(
           }
         }),
       )
-      return { ok: true, pages }
+      return { ok: true, pages, path }
     }
 
     if (!material.sourceFilePath) {
-      return fail('이 자료는 미리보기를 지원하지 않습니다. 다운로드를 이용해 주세요.')
+      return fail('이 자료는 미리보기를 지원하지 않습니다. 다운로드를 이용해 주세요.', path)
     }
 
     if (material.kind === 'pdf') {
       const blob = await loadPdfBytes(io, material.sourceFilePath)
       const rendered = await io.renderPdf(blob)
-      if (rendered.length === 0) return fail('PDF에 페이지가 없습니다.')
+      if (rendered.length === 0) return fail('PDF에 페이지가 없습니다.', path)
       return {
         ok: true,
+        path,
         pages: rendered.map((page) => ({
           pageNumber: page.pageNumber,
           assetPath: io.objectUrl(page.blob),
@@ -108,16 +152,17 @@ export async function loadHubMaterialPreview(
 
     if (material.kind === 'image') {
       const signed = await io.signUrl(material.sourceFilePath)
-      if (!hubPreviewSrcIsReady(signed)) return fail('미리보기 주소를 만들지 못했습니다.')
+      if (!hubPreviewSrcIsReady(signed)) return fail('미리보기 주소를 만들지 못했습니다.', path)
       return {
         ok: true,
+        path,
         pages: [{ pageNumber: 1, assetPath: signed, width: null, height: null }],
       }
     }
 
-    return fail('이 자료는 미리보기를 지원하지 않습니다. 다운로드를 이용해 주세요.')
+    return fail('이 자료는 미리보기를 지원하지 않습니다. 다운로드를 이용해 주세요.', path)
   } catch (err) {
-    return fail(err instanceof Error ? err.message : '미리보기를 불러오지 못했습니다.')
+    return fail(err instanceof Error ? err.message : '미리보기를 불러오지 못했습니다.', path)
   }
 }
 

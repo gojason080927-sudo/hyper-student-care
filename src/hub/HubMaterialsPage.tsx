@@ -1,8 +1,14 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AdmissionStrategyMaterialViewer } from '../components/admissionStrategy/AdmissionStrategyMaterialViewer'
 import { HUB_LEARNING_MATERIALS_BUCKET } from './types'
 import { downloadHubObjectBlob, downloadHubObjectUrl } from './hubStorageClient'
-import { hubPreviewPagesToViewerPages, loadHubMaterialPreview } from './hubMaterialPreview'
+import {
+  classifyHubServiceWorkerScript,
+  formatHubPreviewDiag,
+  hubPreviewPagesToViewerPages,
+  hubPreviewPathCode,
+  loadHubMaterialPreview,
+} from './hubMaterialPreview'
 import { HubEmpty, HubPageHeader } from './HubChrome'
 import { useHub } from './HubContext'
 import { useHubContentRefresh } from './useHubContentRefresh'
@@ -18,7 +24,14 @@ export function HubMaterialsPage() {
   const [preview, setPreview] = useState<HubMaterial | null>(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [diag, setDiag] = useState('')
   const previewUrlsRef = useRef<string[]>([])
+  const swDiagRef = useRef('')
+  const pathDiagRef = useRef('')
+
+  const showDiag = (codes: string[]) => {
+    setDiag(formatHubPreviewDiag([...codes, swDiagRef.current]))
+  }
 
   const revokePreviewUrls = () => {
     for (const url of previewUrlsRef.current) URL.revokeObjectURL(url)
@@ -47,9 +60,32 @@ export function HubMaterialsPage() {
 
   const fetchUrl = async (url: string) => {
     const res = await fetch(url, { cache: 'no-store' })
+    if (res.status === 413) throw new Error('413')
     if (!res.ok) throw new Error('미리보기 파일을 불러오지 못했습니다.')
     return res.blob()
   }
+
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const codes: string[] = []
+      try {
+        const res = await fetch('/hub/sw.js', { cache: 'no-store' })
+        const source = res.ok ? await res.text() : ''
+        codes.push(classifyHubServiceWorkerScript(source))
+      } catch {
+        codes.push('SW-OTHER')
+      }
+      if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
+        codes.push('SW-NONE')
+      }
+      swDiagRef.current = formatHubPreviewDiag(codes)
+      if (!cancelled) setDiag((current) => formatHubPreviewDiag([current, swDiagRef.current]))
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const downloadSource = async (material: HubMaterial) => {
     if (!material.sourceFilePath) return
@@ -69,9 +105,12 @@ export function HubMaterialsPage() {
   }
 
   const openPreview = async (material: HubMaterial) => {
+    const pathCode = hubPreviewPathCode(material)
+    pathDiagRef.current = pathCode
     setError('')
     setBusy(true)
     setPreview(null)
+    showDiag([pathCode])
     revokePreviewUrls()
     try {
       const result = await loadHubMaterialPreview(material, {
@@ -86,13 +125,17 @@ export function HubMaterialsPage() {
       })
       if (!result.ok) {
         revokePreviewUrls()
+        showDiag([result.path, result.code])
         setError(result.error || '미리보기를 불러오지 못했습니다.')
         return
       }
+      showDiag([result.path])
       setPreview({ ...material, pages: result.pages })
     } catch (err) {
       revokePreviewUrls()
-      setError(err instanceof Error ? err.message : '미리보기를 불러오지 못했습니다.')
+      const message = err instanceof Error ? err.message : '미리보기를 불러오지 못했습니다.'
+      showDiag([pathCode, message === '413' ? 'PDF-FETCH-413' : 'PREVIEW-FAIL'])
+      setError(message === '413' ? '미리보기 파일을 불러오지 못했습니다.' : message)
     } finally {
       setBusy(false)
     }
@@ -101,6 +144,11 @@ export function HubMaterialsPage() {
   return (
     <div className="mx-auto w-full max-w-lg px-3 pb-8 pt-4">
       <HubPageHeader title="문제 자료실" />
+      {diag ? (
+        <p className="mb-3 font-mono text-xs text-slate-500" data-testid="hub-preview-diag">
+          진단코드: {diag}
+        </p>
+      ) : null}
       {error ? <p className="mb-3 text-sm text-rose-600">{error}</p> : null}
       {busy ? <p className="mb-3 text-sm text-slate-500">미리보기를 불러오는 중…</p> : null}
       {materials.length === 0 ? (
@@ -162,6 +210,9 @@ export function HubMaterialsPage() {
         onClose={() => {
           setPreview(null)
           revokePreviewUrls()
+        }}
+        onImageError={() => {
+          showDiag([pathDiagRef.current, 'IMAGE-ERROR'])
         }}
       />
     </div>

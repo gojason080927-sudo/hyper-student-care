@@ -41,6 +41,7 @@ type AdmissionStrategyMaterialViewerProps = {
   errorMessage?: string | null
   onClose: () => void
   onNeedPages?: (pageNumbers: number[]) => void
+  onImageError?: (pageNumber: number) => void
 }
 
 const MIN_SCALE = 1
@@ -59,6 +60,7 @@ export function AdmissionStrategyMaterialViewer({
   errorMessage,
   onClose,
   onNeedPages,
+  onImageError,
 }: AdmissionStrategyMaterialViewerProps) {
   const total = pages.length
   const [pageIndex, setPageIndex] = useState(() =>
@@ -75,8 +77,13 @@ export function AdmissionStrategyMaterialViewer({
   const stageRef = useRef<HTMLDivElement | null>(null)
   const pageIndexRef = useRef(pageIndex)
   pageIndexRef.current = pageIndex
+  const [imageFailed, setImageFailed] = useState(false)
 
   useViewerScrollLock(open)
+
+  useEffect(() => {
+    setImageFailed(false)
+  }, [pageIndex, pages[pageIndex]?.src])
 
   useEffect(() => {
     if (!open || !import.meta.env.DEV) return
@@ -378,7 +385,7 @@ export function AdmissionStrategyMaterialViewer({
             <div className="flex h-full items-center justify-center px-6 text-center text-sm text-white/80">
               표시할 페이지가 없습니다.
             </div>
-          ) : current.error ? (
+          ) : current.error || imageFailed ? (
             <p className="flex h-full items-center justify-center px-6 text-center text-sm text-white/80">
               이 페이지를 불러오지 못했습니다.
             </p>
@@ -389,6 +396,10 @@ export function AdmissionStrategyMaterialViewer({
                 alt={`${title} ${current.pageNumber}페이지`}
                 referrerPolicy="no-referrer"
                 draggable={false}
+                onError={() => {
+                  setImageFailed(true)
+                  onImageError?.(current.pageNumber)
+                }}
                 className="pointer-events-none max-h-full max-w-full min-h-0 min-w-0 select-none object-contain"
                 style={{
                   width: 'auto',

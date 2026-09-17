@@ -11,8 +11,12 @@ import { readFileSync } from 'node:fs'
 import { canStudentSignHubMaterialPath } from './hubAudience.ts'
 import {
   classifyHubPreviewBytes,
+  classifyHubServiceWorkerScript,
+  formatHubPreviewDiag,
+  hubPreviewFailureCode,
   hubPreviewFileLooksValid,
   hubPreviewPagesToViewerPages,
+  hubPreviewPathCode,
   hubPreviewSrcIsReady,
   hubServiceWorkerShouldIntercept,
   loadHubMaterialPreview,
@@ -120,6 +124,7 @@ const pageMaterial = {
   const result = await loadHubMaterialPreview(pageMaterial, io)
   assert.equal(result.ok, true)
   if (result.ok) {
+    assert.equal(result.path, 'PREVIEW-PAGES')
     assert.equal(result.pages[0]?.assetPath, 'https://signed.example/page-1.webp')
     assert.equal(hubPreviewSrcIsReady(result.pages[0]?.assetPath ?? ''), true)
   }
@@ -138,7 +143,11 @@ const pageMaterial = {
   })
   const result = await loadHubMaterialPreview(pageMaterial, io)
   assert.equal(result.ok, false)
-  if (!result.ok) assert.match(result.error, /접근할 수 없습니다/)
+  if (!result.ok) {
+    assert.match(result.error, /접근할 수 없습니다/)
+    assert.equal(result.code, 'SIGN-403')
+    assert.equal(result.path, 'PREVIEW-PAGES')
+  }
   assert.deepEqual(reads, [])
 }
 
@@ -162,10 +171,14 @@ const sourceMaterial = {
   const result = await loadHubMaterialPreview(sourceMaterial, io)
   assert.equal(result.ok, true)
   assert.equal(rendered, true)
+  if (result.ok) assert.equal(result.path, 'PREVIEW-PDF')
   assert.deepEqual(signs, ['mat-a/source/file.pdf'])
   assert.deepEqual(fetches, [signedPdf])
   assert.deepEqual(reads, [])
-  if (result.ok) assert.equal(result.pages[0]?.assetPath.startsWith('blob:'), true)
+  if (result.ok) {
+    assert.equal(result.path, 'PREVIEW-PDF')
+    assert.equal(result.pages[0]?.assetPath.startsWith('blob:'), true)
+  }
 }
 
 {
@@ -186,8 +199,20 @@ const sourceMaterial = {
     mockIo({}).io,
   )
   assert.equal(result.ok, false)
-  if (!result.ok) assert.match(result.error, /지원하지 않습니다/)
+  if (!result.ok) {
+    assert.match(result.error, /지원하지 않습니다/)
+    assert.equal(result.path, 'PREVIEW-NONE')
+    assert.equal(result.code, 'PREVIEW-NONE')
+  }
 }
+
+assert.equal(hubPreviewPathCode(pageMaterial), 'PREVIEW-PAGES')
+assert.equal(hubPreviewPathCode(sourceMaterial), 'PREVIEW-PDF')
+assert.equal(hubPreviewFailureCode('이 파일에 접근할 수 없습니다.'), 'SIGN-403')
+assert.equal(hubPreviewFailureCode('413'), 'PDF-FETCH-413')
+assert.equal(classifyHubServiceWorkerScript('preview-signed-v1: navigate'), 'SW-SIGNED-V1')
+assert.equal(classifyHubServiceWorkerScript('old intercept all'), 'SW-OTHER')
+assert.equal(formatHubPreviewDiag(['PREVIEW-PAGES', 'PREVIEW-PAGES SW-SIGNED-V1', 'IMAGE-ERROR']), 'PREVIEW-PAGES SW-SIGNED-V1 IMAGE-ERROR')
 
 const hubMaterials = readFileSync('src/hub/HubMaterialsPage.tsx', 'utf8')
 const hubLayout = readFileSync('src/hub/HubLayout.tsx', 'utf8')
@@ -198,7 +223,11 @@ assert.match(hubMaterials, /loadHubMaterialPreview/)
 assert.match(hubMaterials, /downloadHubObjectUrl/)
 assert.match(hubMaterials, /hubPreviewPagesToViewerPages/)
 assert.match(hubMaterials, /AdmissionStrategyMaterialViewer/)
-assert.match(hubMaterials, /미리보기를 불러오는 중/)
+assert.match(hubMaterials, /진단코드/)
+assert.match(hubMaterials, /hub-preview-diag/)
+assert.match(hubMaterials, /IMAGE-ERROR/)
+assert.match(hubMaterials, /onImageError/)
+assert.doesNotMatch(hubMaterials, /진단코드: \$\{accessKey\}/)
 assert.doesNotMatch(hubMaterials, /ConnectedAdmissionStrategyViewer/)
 assert.doesNotMatch(hubMaterials, /window\.open/)
 assert.doesNotMatch(hubMaterials, /target=_blank/)
