@@ -44,6 +44,12 @@ const navItems: NavItem[] = [
     icon: ClipboardList,
   },
   {
+    path: '/teacher/student-hub',
+    label: '학생 학습자료',
+    multilineLabel: ['학생', '학습자료'],
+    icon: BookOpen,
+  },
+  {
     path: '/monthly-learning-reports',
     label: '월간 학습진단 REPORT',
     multilineLabel: ['월간 학습진단', 'REPORT'],
@@ -74,12 +80,6 @@ const navItems: NavItem[] = [
     label: '고입 · 대입 입시전략',
     multilineLabel: ['고입 · 대입', '입시전략'],
     icon: GraduationCap,
-  },
-  {
-    path: '/teacher/student-hub',
-    label: '학생 학습 허브',
-    multilineLabel: ['학생 학습', '허브'],
-    icon: BookOpen,
   },
   { path: '/questions', label: '질문하기', icon: MessageCircleQuestion },
 ]

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import {
   ArrowRight,
+  BookOpen,
   ClipboardList,
   FileBarChart2,
   GraduationCap,
@@ -27,6 +28,12 @@ const featured: MenuCard = {
 }
 
 const gridCards: Array<MenuCard> = [
+  {
+    to: '/teacher/mobile/student-hub',
+    title: '학생 학습자료',
+    description: '문제 자료 · 영상 자료',
+    icon: BookOpen,
+  },
   {
     to: '/teacher/mobile/students',
     title: '학생관리',
