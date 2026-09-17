@@ -101,6 +101,7 @@ import { HubMaterialRequestPage } from './hub/HubMaterialRequestPage'
 import { HubSchedulePage } from './hub/HubSchedulePage'
 import { HubNoticesPage } from './hub/HubNoticesPage'
 import { HubSuggestionsPage } from './hub/HubSuggestionsPage'
+import { HubStudyPlanPage } from './hub/HubStudyPlanPage'
 
 import { EntranceExamAttemptPage } from './features/entranceExam/EntranceExamAttemptPage'
 import { EntranceExamHubPage } from './features/entranceExam/EntranceExamHubPage'
@@ -117,6 +118,8 @@ import { ParentCareerResultPage } from './features/careerAssessment/pages/Parent
 import { AdmissionStrategyViewerPreviewPage } from './pages/dev/AdmissionStrategyViewerPreviewPage'
 import { ParentMobileLayoutPreviewPage } from './pages/dev/ParentMobileLayoutPreviewPage'
 import { TeacherTodayReportLayoutPreviewPage } from './pages/dev/TeacherTodayReportLayoutPreviewPage'
+import { HubHomeLayoutPreviewPage } from './pages/dev/HubHomeLayoutPreviewPage'
+import { HubStudyPlanLayoutPreviewPage } from './pages/dev/HubStudyPlanLayoutPreviewPage'
 
 
 
@@ -136,6 +139,8 @@ function App() {
             <Route path="/dev/admission-viewer" element={<AdmissionStrategyViewerPreviewPage />} />
             <Route path="/dev/parent-mobile-layout" element={<ParentMobileLayoutPreviewPage />} />
             <Route path="/dev/teacher-today-report-layout" element={<TeacherTodayReportLayoutPreviewPage />} />
+            <Route path="/dev/hub-home-layout" element={<HubHomeLayoutPreviewPage />} />
+            <Route path="/dev/hub-study-plan-layout" element={<HubStudyPlanLayoutPreviewPage />} />
           </>
         ) : null}
 
@@ -151,6 +156,7 @@ function App() {
           <Route path="schedule" element={<HubSchedulePage />} />
           <Route path="notices" element={<HubNoticesPage />} />
           <Route path="suggestions" element={<HubSuggestionsPage />} />
+          <Route path="study-plan" element={<HubStudyPlanPage />} />
         </Route>
 
         <Route path="/care/:studentAccessKey" element={<ParentStudentLayout />}>
