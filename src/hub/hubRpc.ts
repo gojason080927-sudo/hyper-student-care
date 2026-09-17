@@ -37,9 +37,17 @@ function parseRpcJson(value: unknown): Record<string, unknown> | null {
   return null
 }
 
-function asArray(value: unknown): Record<string, unknown>[] {
-  if (!Array.isArray(value)) return []
-  return value.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
+export function parseHubRpcArray(value: unknown): Record<string, unknown>[] {
+  let current: unknown = value
+  if (typeof current === 'string') {
+    try {
+      current = JSON.parse(current)
+    } catch {
+      return []
+    }
+  }
+  if (!Array.isArray(current)) return []
+  return current.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === 'object')
 }
 
 export function identityFromRpc(raw: unknown): HubIdentity | null {
@@ -89,7 +97,7 @@ function materialFromRpc(row: Record<string, unknown>): HubMaterial {
     targetStudentId: typeof row.target_student_id === 'string' ? row.target_student_id : null,
     publishedAt: typeof row.published_at === 'string' ? row.published_at : null,
     createdAt: String(row.created_at ?? ''),
-    pages: asArray(row.pages).map((page) => ({
+    pages: parseHubRpcArray(row.pages).map((page) => ({
       pageNumber: Number(page.page_number ?? 0),
       assetPath: String(page.asset_path ?? ''),
       width: typeof page.width === 'number' ? page.width : null,
@@ -139,7 +147,7 @@ function questionFromRpc(row: Record<string, unknown>): HubQuestion {
     source: 'student',
     createdAt: String(row.created_at ?? ''),
     updatedAt: String(row.updated_at ?? ''),
-    attachments: asArray(row.attachments).map((item) => ({
+    attachments: parseHubRpcArray(row.attachments).map((item) => ({
       id: String(item.id ?? ''),
       kind: (item.kind as HubQuestion['attachments'][number]['kind']) || 'file',
       storagePath: String(item.storage_path ?? ''),
@@ -162,7 +170,7 @@ function inboxFromRpc(row: Record<string, unknown>): HubInboxItem {
     createdAt: String(row.created_at ?? ''),
     studentId: typeof row.student_id === 'string' ? row.student_id : undefined,
     studentName: typeof row.student_name === 'string' ? row.student_name : undefined,
-    attachments: asArray(row.attachments).map((item) => ({
+    attachments: parseHubRpcArray(row.attachments).map((item) => ({
       id: String(item.id ?? ''),
       storagePath: String(item.storage_path ?? ''),
       mime: String(item.mime ?? ''),
@@ -212,18 +220,18 @@ export async function rpcGetStudentHubBundle(accessKey: string): Promise<Student
   return {
     student,
     inactive: row.inactive === true,
-    weeklyLearningSummaries: asArray(row.weekly_learning_summaries).map((item) =>
+    weeklyLearningSummaries: parseHubRpcArray(row.weekly_learning_summaries).map((item) =>
       weeklyLearningSummaryFromRow(item as unknown as WeeklyLearningSummaryRow),
     ),
-    assignments: asArray(row.assignments).map(assignmentFromRpc),
-    materials: asArray(row.materials).map(materialFromRpc),
-    videos: asArray(row.videos).map(videoFromRpc),
-    questions: asArray(row.questions).map(questionFromRpc),
-    inbox: asArray(row.inbox).map(inboxFromRpc),
-    classScheduleGrids: asArray(row.class_schedule_grids).map((item) =>
+    assignments: parseHubRpcArray(row.assignments).map(assignmentFromRpc),
+    materials: parseHubRpcArray(row.materials).map(materialFromRpc),
+    videos: parseHubRpcArray(row.videos).map(videoFromRpc),
+    questions: parseHubRpcArray(row.questions).map(questionFromRpc),
+    inbox: parseHubRpcArray(row.inbox).map(inboxFromRpc),
+    classScheduleGrids: parseHubRpcArray(row.class_schedule_grids).map((item) =>
       classScheduleGridFromRow(item as unknown as ClassScheduleGridRow),
     ),
-    notices: asArray(row.notices).map((item) => noticeFromRow(item as unknown as NoticeRow)),
+    notices: parseHubRpcArray(row.notices).map((item) => noticeFromRow(item as unknown as NoticeRow)),
   }
 }
 
@@ -375,7 +383,7 @@ export async function rpcListStudentStudyPlans(
       parsed = []
     }
   }
-  return asArray(parsed).map(studyPlanFromRpc)
+  return parseHubRpcArray(parsed).map(studyPlanFromRpc)
 }
 
 export async function rpcUpsertStudentStudyPlan(input: {
