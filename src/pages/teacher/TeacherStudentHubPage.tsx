@@ -22,6 +22,7 @@ import {
 } from '../../hub/teacherHubRepo'
 import { parseTimestampLines, parseYoutubeVideoId } from '../../hub/youtube'
 import { HUB_MATERIAL_ACCEPT } from '../../hub/hubFilePolicy'
+import { hubAudienceSelectionError } from '../../hub/hubAudience'
 
 type Tab = 'materials' | 'videos' | 'requests' | 'suggestions'
 
@@ -237,6 +238,7 @@ function MaterialPanel({
     targetStudentId: '',
   })
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
   const [metaEdit, setMetaEdit] = useState<HubMaterial | null>(null)
   const [metaTitle, setMetaTitle] = useState('')
   const [metaDescription, setMetaDescription] = useState('')
@@ -251,7 +253,13 @@ function MaterialPanel({
   const submit = async (event: FormEvent) => {
     event.preventDefault()
     if (!file) return
+    const audienceError = hubAudienceSelectionError(audience)
+    if (audienceError) {
+      setError(audienceError)
+      return
+    }
     setBusy(true)
+    setError('')
     try {
       await teacherUploadMaterial({
         title,
@@ -267,6 +275,8 @@ function MaterialPanel({
       setDescription('')
       setFile(null)
       await onSaved()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '자료 업로드에 실패했습니다.')
     } finally {
       setBusy(false)
     }
@@ -288,19 +298,29 @@ function MaterialPanel({
   const saveMeta = async (event: FormEvent) => {
     event.preventDefault()
     if (!metaEdit) return
-    await teacherUpdateMaterialMetadata({
-      id: metaEdit.id,
-      title: metaTitle,
-      description: metaDescription,
-      audienceType: metaAudience.audienceType,
-      targetGrade: metaAudience.targetGrade || null,
-      targetClassName: metaAudience.targetClassName || null,
-      targetStudentId: metaAudience.audienceType === 'student' ? metaAudience.targetStudentId || null : null,
-      status: metaStatus,
-      publishedAt: metaEdit.publishedAt,
-    })
-    setMetaEdit(null)
-    await onSaved()
+    const audienceError = hubAudienceSelectionError(metaAudience)
+    if (audienceError) {
+      setError(audienceError)
+      return
+    }
+    setError('')
+    try {
+      await teacherUpdateMaterialMetadata({
+        id: metaEdit.id,
+        title: metaTitle,
+        description: metaDescription,
+        audienceType: metaAudience.audienceType,
+        targetGrade: metaAudience.targetGrade || null,
+        targetClassName: metaAudience.targetClassName || null,
+        targetStudentId: metaAudience.audienceType === 'student' ? metaAudience.targetStudentId || null : null,
+        status: metaStatus,
+        publishedAt: metaEdit.publishedAt,
+      })
+      setMetaEdit(null)
+      await onSaved()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '자료 정보 수정에 실패했습니다.')
+    }
   }
 
   return (
@@ -308,6 +328,7 @@ function MaterialPanel({
       <div className="space-y-4">
         <form onSubmit={(event) => void submit(event)} className="space-y-3 rounded-2xl bg-white p-5 shadow-sm">
           <h3 className="font-bold text-navy-900">자료 업로드</h3>
+          {error ? <p className="break-keep text-sm text-rose-600">{error}</p> : null}
           <input className={inputClass()} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="제목" required />
           <textarea className={inputClass()} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="설명 (선택)" />
           <AudienceFields {...audience} students={students} onChange={setAudience} />
@@ -405,6 +426,8 @@ function VideoPanel({
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
+    const audienceError = hubAudienceSelectionError(form)
+    if (audienceError) throw new Error(audienceError)
     const videoId = parseYoutubeVideoId(form.url)
     if (!videoId) throw new Error('YouTube URL을 확인해 주세요.')
     const existing = videos.find((item) => item.id === form.id)

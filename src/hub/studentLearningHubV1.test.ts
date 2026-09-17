@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs'
 import { parseTimestampLines, parseYoutubeVideoId, youtubeEmbedUrl } from './youtube.ts'
 import { STUDENT_QUESTION_CATEGORIES } from './types.ts'
 import { classifyHubUpload, isHubFileAllowed } from './hubFilePolicy.ts'
-import { canStudentSignHubMaterialPath, isHubAudienceVisible } from './hubAudience.ts'
+import { canStudentSignHubMaterialPath, hubAudienceSelectionError, isHubAudienceVisible } from './hubAudience.ts'
 
 const sql = readFileSync('supabase/student-learning-hub-v1-migration.sql', 'utf8')
 const app = readFileSync('src/App.tsx', 'utf8')
@@ -22,6 +22,9 @@ const mobileQuestions = readFileSync('src/pages/teacherMobile/TeacherMobileQuest
 const recordCard = readFileSync('src/components/question/QuestionRecordCard.tsx', 'utf8')
 const hubQuestions = readFileSync('src/hub/HubQuestionsPage.tsx', 'utf8')
 const hubMaterials = readFileSync('src/hub/HubMaterialsPage.tsx', 'utf8')
+const hubVideos = readFileSync('src/hub/HubVideosPage.tsx', 'utf8')
+const hubLayout = readFileSync('src/hub/HubLayout.tsx', 'utf8')
+const hubRefresh = readFileSync('src/hub/useHubContentRefresh.ts', 'utf8')
 const teacherCms = readFileSync('src/pages/teacher/TeacherStudentHubPage.tsx', 'utf8')
 const teacherRepo = readFileSync('src/hub/teacherHubRepo.ts', 'utf8')
 const teacherSidebar = readFileSync('src/components/Sidebar.tsx', 'utf8')
@@ -179,6 +182,18 @@ assert.doesNotMatch(sql, /CREATE POLICY[\s\S]{0,180}FOR INSERT\s+TO anon/)
 assert.doesNotMatch(sql, /CREATE POLICY[\s\S]{0,220}FOR SELECT\s+TO anon/)
 assert.doesNotMatch(hubMaterials, /createSignedUrl/)
 assert.match(hubMaterials, /downloadHubObjectUrl/)
+assert.match(hubRefresh, /export function useHubContentRefresh/)
+assert.match(hubRefresh, /visibilitychange/)
+assert.match(hubRefresh, /pageshow/)
+assert.match(hubMaterials, /useHubContentRefresh\(reload\)/)
+assert.match(hubVideos, /useHubContentRefresh\(reload\)/)
+assert.match(hubLayout, /}, \[accessKey\]\)/)
+assert.doesNotMatch(hubLayout, /useHubContentRefresh/)
+assert.match(teacherCms, /hubAudienceSelectionError/)
+assert.match(teacherCms, /자료 업로드에 실패했습니다/)
+assert.match(teacherCms, /catch \(err\)/)
+assert.match(sql, /IF p_audience_type = 'class'/)
+assert.match(sql, /IF v_target = v_trimmed THEN/)
 assert.match(questionsPage, /teacherFetchQuestionAttachments/)
 assert.match(questionsPage, /QuestionRecordCard/)
 assert.match(mobileQuestions, /QuestionStorageAttachments/)
@@ -213,6 +228,47 @@ assert.equal(isHubAudienceVisible(classA, studentB), false)
 assert.equal(isHubAudienceVisible(classB, studentA), false)
 assert.equal(isHubAudienceVisible(oneStudent, studentA), true)
 assert.equal(isHubAudienceVisible(oneStudent, studentB), false)
+assert.equal(
+  isHubAudienceVisible(
+    { audienceType: 'class', targetGrade: '', targetClassName: '고1 수학B', targetStudentId: null },
+    { id: 'stu-c', grade: '고1', className: '고1 수학B' },
+  ),
+  false,
+  'TS class audience requires grade; empty grade must not look visible client-side',
+)
+assert.equal(
+  isHubAudienceVisible(
+    { audienceType: 'grade', targetGrade: null, targetClassName: null, targetStudentId: null },
+    { id: 'stu-c', grade: '고1', className: '고1 수학B' },
+  ),
+  false,
+)
+assert.equal(hubAudienceSelectionError({ audienceType: 'all', targetGrade: '', targetClassName: '', targetStudentId: '' }), null)
+assert.equal(
+  hubAudienceSelectionError({ audienceType: 'grade', targetGrade: '고1', targetClassName: '', targetStudentId: '' }),
+  null,
+)
+assert.equal(
+  hubAudienceSelectionError({ audienceType: 'grade', targetGrade: '', targetClassName: '', targetStudentId: '' }),
+  '학년을 선택해 주세요.',
+)
+assert.equal(
+  hubAudienceSelectionError({ audienceType: 'class', targetGrade: '고1', targetClassName: '', targetStudentId: '' }),
+  '반을 선택해 주세요.',
+)
+assert.equal(
+  hubAudienceSelectionError({
+    audienceType: 'class',
+    targetGrade: '고1',
+    targetClassName: '고1 수학B',
+    targetStudentId: '',
+  }),
+  null,
+)
+assert.equal(
+  hubAudienceSelectionError({ audienceType: 'student', targetGrade: '고1', targetClassName: '고1 수학B', targetStudentId: '' }),
+  '학생을 선택해 주세요.',
+)
 
 const classBMaterial = {
   status: 'PUBLISHED' as const,

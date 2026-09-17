@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { HubEmpty, HubPageHeader } from './HubChrome'
 import { useHub } from './HubContext'
+import { useHubContentRefresh } from './useHubContentRefresh'
 import { youtubeEmbedUrl } from './youtube'
 
 export function HubVideosPage() {
-  const { videos } = useHub()
+  const { videos, reload } = useHub()
+  useHubContentRefresh(reload)
   const [starts, setStarts] = useState<Record<string, number>>({})
 
   return (
