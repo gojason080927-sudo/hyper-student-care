@@ -31,7 +31,7 @@ const gridCards: Array<MenuCard> = [
   {
     to: '/teacher/mobile/student-hub',
     title: '학생 학습자료',
-    description: '문제 자료 · 영상 자료',
+    description: '오늘의 과제 · 문제 자료 · 영상 자료',
     icon: BookOpen,
   },
   {

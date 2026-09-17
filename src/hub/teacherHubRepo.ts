@@ -126,6 +126,8 @@ export async function teacherFetchInbox(): Promise<HubInboxItem[]> {
       title: String(row.title ?? ''),
       content: String(row.content ?? ''),
       status: String(row.status ?? '접수'),
+      teacherReply: String(row.teacher_reply ?? ''),
+      teacherRepliedAt: typeof row.teacher_replied_at === 'string' ? row.teacher_replied_at : null,
       createdAt: String(row.created_at ?? ''),
       studentId: typeof row.student_id === 'string' ? row.student_id : undefined,
       studentName: student?.name,
@@ -147,6 +149,19 @@ export async function teacherFetchInbox(): Promise<HubInboxItem[]> {
 export async function teacherUpdateInboxStatus(id: string, status: string): Promise<void> {
   const { error } = await getSupabase().from('student_hub_inbox').update({ status }).eq('id', id)
   throwIfError(error, '상태 변경에 실패했습니다.')
+}
+
+export async function teacherReplyInbox(id: string, reply: string): Promise<void> {
+  const trimmed = reply.trim()
+  const { error } = await getSupabase()
+    .from('student_hub_inbox')
+    .update({
+      teacher_reply: trimmed,
+      teacher_replied_at: trimmed ? new Date().toISOString() : null,
+      status: trimmed ? '처리중' : '접수',
+    })
+    .eq('id', id)
+  throwIfError(error, '답변 저장에 실패했습니다.')
 }
 
 export async function teacherSignedUrl(bucket: string, path: string): Promise<string> {

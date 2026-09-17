@@ -12,7 +12,7 @@ import { materialPrepDisplay } from '../../components/studentCare/MaterialPrepPi
 import { WeeklySummaryDetail } from '../parent/ParentStudentWeeklySummaryPage'
 import { parentHomeCategoryItems, parentTodayReportHighlights, parentTodayReportItem } from '../../components/parent/parentNavItems'
 import type { Student } from '../../types/student'
-import type { WeeklyLearningSummaryRecord } from '../../types/records'
+import type { DailyTestRecord, WeeklyLearningSummaryRecord } from '../../types/records'
 import { computePriorDayLearningEvaluation } from '../../utils/studentCare'
 import '../../styles/parentMobileTheme.css'
 
@@ -138,6 +138,56 @@ const previewSummary: WeeklyLearningSummaryRecord = {
   updatedAt: '',
 }
 
+function previewDailyTest(
+  id: string,
+  date: string,
+  sessions: DailyTestRecord['sessionResults'],
+): DailyTestRecord {
+  return {
+    id,
+    studentId: previewStudent.id,
+    date,
+    testName: '일일테스트',
+    subject: '수학',
+    score: 0,
+    totalScore: 100,
+    percentage: 0,
+    incorrectCount: 0,
+    memo: '',
+    sessionResults: sessions,
+    learningDiagnosis: {
+      wrongAnswerItems: [],
+      questionTotal: 0,
+      conceptLackCount: 0,
+      calculationErrorCount: 0,
+      applicationLackCount: 0,
+      teacherFeedback: '',
+      fridayRetestTotal: null,
+      fridayRetestWrong: null,
+      englishVocabResult: null,
+      englishGrammarWrongCount: null,
+      englishReadingWrongCount: null,
+      englishListeningScore: null,
+      englishListeningResult: null,
+    },
+    createdAt: '',
+    updatedAt: '',
+  }
+}
+
+const previewDailyTests: DailyTestRecord[] = [
+  previewDailyTest('dt-mon', '2026-09-07', [{ session: 1, status: '합격', score: 90, totalScore: 100 }]),
+  previewDailyTest('dt-wed', '2026-09-09', [
+    { session: 1, status: '불합격', score: 70, totalScore: 100 },
+    { session: 2, status: '불합격', score: 80, totalScore: 100 },
+    { session: 3, status: '합격', score: 88, totalScore: 100 },
+  ]),
+  previewDailyTest('dt-fri', '2026-09-11', [
+    { session: 1, status: '불합격', score: 78, totalScore: 100 },
+    { session: 2, status: '합격', score: 85, totalScore: 100 },
+  ]),
+]
+
 /** 개발 전용: 학부모 HOME / Today Report / 주간 SUMMARY 모바일 레이아웃 확인 */
 export function ParentMobileLayoutPreviewPage() {
   const TodayIcon = parentTodayReportItem.icon
@@ -210,7 +260,11 @@ export function ParentMobileLayoutPreviewPage() {
           </section>
 
           <section data-preview-section="weekly-summary" className="parent-page space-y-4 pb-6">
-            <WeeklySummaryDetail summary={previewSummary} />
+            <WeeklySummaryDetail
+              summary={previewSummary}
+              dailyTests={previewDailyTests}
+              studentId={previewStudent.id}
+            />
           </section>
 
           <section data-preview-section="today-report" className="parent-page space-y-3 pb-4">

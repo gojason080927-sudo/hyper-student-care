@@ -28,7 +28,7 @@ const categories = [
   {
     to: '/teacher/student-hub',
     title: '학생 학습자료',
-    description: '학생 앱의 문제 자료·영상 자료를 등록하고 관리합니다',
+    description: '학생 앱의 오늘의 과제·문제 자료·영상 자료를 등록하고 관리합니다',
     icon: BookOpen,
   },
   {
