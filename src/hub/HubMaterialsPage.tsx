@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react'
 import { ConnectedAdmissionStrategyViewer } from '../components/admissionStrategy/ConnectedAdmissionStrategyViewer'
-import { renderPdfFileToPages } from '../lib/admissionStrategy/pdfToPageImages'
 import { HUB_LEARNING_MATERIALS_BUCKET } from './types'
 import { downloadHubObjectBlob } from './hubStorageClient'
 import { HubEmpty, HubPageHeader } from './HubChrome'
@@ -49,6 +48,7 @@ export function HubMaterialsPage() {
       path: material.sourceFilePath,
     })
     if (material.kind === 'pdf') {
+      const { renderPdfFileToPages } = await import('../lib/admissionStrategy/pdfToPageImages')
       const file = new File([blob], material.originalFileName || 'material.pdf', {
         type: blob.type || 'application/pdf',
       })
