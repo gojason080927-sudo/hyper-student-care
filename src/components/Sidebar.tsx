@@ -1,6 +1,7 @@
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import type { LucideIcon } from 'lucide-react'
 import {
+  BookOpen,
   CalendarCheck,
   ClipboardCheck,
   ClipboardList,
@@ -73,6 +74,12 @@ const navItems: NavItem[] = [
     label: '고입 · 대입 입시전략',
     multilineLabel: ['고입 · 대입', '입시전략'],
     icon: GraduationCap,
+  },
+  {
+    path: '/teacher/student-hub',
+    label: '학생 학습 허브',
+    multilineLabel: ['학생 학습', '허브'],
+    icon: BookOpen,
   },
   { path: '/questions', label: '질문하기', icon: MessageCircleQuestion },
 ]

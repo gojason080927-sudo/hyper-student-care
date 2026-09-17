@@ -5,8 +5,10 @@ import { useData } from '../../hooks/useData'
 import { getStudentLinkStatusLabel } from '../../utils/studentLinkStatus'
 import { hasStudentAccessKey } from '../../utils/studentStorage'
 import { btnSecondary } from '../../utils/labels'
-import { ConfirmDialog } from '../ui/ConfirmDialog'
+import { getStudentHubUrl } from '../../utils/studentCareUrl'
+import { copyTextToClipboard } from '../../utils/copyToClipboard'
 import { handleShareStudentCareToKakao, KakaoShareButton } from './KakaoShareButton'
+import { ConfirmDialog } from '../ui/ConfirmDialog'
 
 type StudentParentLinkToolbarProps = {
   student: Student
@@ -40,6 +42,7 @@ export function StudentParentLinkToolbar({ student }: StudentParentLinkToolbarPr
     generateStudentAccessKeyForStudent,
     openStudentCareInNewTab,
     regenerateStudentAccessKey,
+    setStudentAccessKeyActive,
     showToast,
   } = useData()
   const [regenerateOpen, setRegenerateOpen] = useState(false)
@@ -76,6 +79,24 @@ export function StudentParentLinkToolbar({ student }: StudentParentLinkToolbarPr
               label="재발급"
               onClick={() => setRegenerateOpen(true)}
               icon={<RefreshCw className="h-3.5 w-3.5 shrink-0" />}
+            />
+            <LinkActionBtn
+              label="학생 Hub"
+              onClick={async () => {
+                try {
+                  const url = getStudentHubUrl(student.studentAccessKey)
+                  const copied = await copyTextToClipboard(url)
+                  showToast(copied.ok ? '학생 Hub 링크를 복사했습니다.' : url)
+                } catch (error) {
+                  showToast(error instanceof Error ? error.message : 'Hub 링크를 만들지 못했습니다.')
+                }
+              }}
+              icon={<Link2 className="h-3.5 w-3.5 shrink-0" />}
+            />
+            <LinkActionBtn
+              label={student.accessKeyActive === false ? '링크 활성' : '링크 차단'}
+              onClick={() => setStudentAccessKeyActive(student.id, student.accessKeyActive === false)}
+              icon={<Link2 className="h-3.5 w-3.5 shrink-0" />}
             />
             <KakaoShareButton
               student={student}

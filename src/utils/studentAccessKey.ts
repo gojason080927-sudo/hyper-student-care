@@ -33,4 +33,4 @@ export function generateUniqueStudentAccessKey(
   throw new Error('고유한 학생 접근 키를 생성하지 못했습니다. 잠시 후 다시 시도해 주세요.')
 }
 
-export { buildStudentCareUrl, getPublicAppBaseUrl, getPublicAssetUrl, getStudentCareUrl } from './studentCareUrl'
+export { buildStudentCareUrl, getPublicAppBaseUrl, getPublicAssetUrl, getStudentCareUrl, getStudentHubUrl } from './studentCareUrl'

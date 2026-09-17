@@ -11,6 +11,7 @@ type ConnectedAdmissionStrategyViewerProps = {
   pages: PageSource[]
   errorMessage?: string | null
   onClose: () => void
+  resolvePageUrl?: (assetPath: string) => Promise<string>
 }
 
 export function ConnectedAdmissionStrategyViewer({
@@ -19,6 +20,7 @@ export function ConnectedAdmissionStrategyViewer({
   pages,
   errorMessage,
   onClose,
+  resolvePageUrl = createMaterialPageSignedUrl,
 }: ConnectedAdmissionStrategyViewerProps) {
   const cacheRef = useRef(new Map<string, string>())
   const [resolved, setResolved] = useState<Record<number, { src: string | null; loading: boolean; error: boolean }>>(
@@ -40,7 +42,7 @@ export function ConnectedAdmissionStrategyViewer({
           [pageNumber]: current[pageNumber] ?? { src: null, loading: true, error: false },
         }))
         try {
-          const src = await createMaterialPageSignedUrl(page.assetPath)
+          const src = await resolvePageUrl(page.assetPath)
           cacheRef.current.set(page.assetPath, src)
           setResolved((current) => ({ ...current, [pageNumber]: { src, loading: false, error: false } }))
         } catch {
@@ -48,7 +50,7 @@ export function ConnectedAdmissionStrategyViewer({
         }
       }),
     )
-  }, [pages])
+  }, [pages, resolvePageUrl])
 
   const viewerPages: AdmissionStrategyViewerPage[] = useMemo(
     () =>

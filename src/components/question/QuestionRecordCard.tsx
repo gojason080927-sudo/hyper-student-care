@@ -1,8 +1,10 @@
 import { formatKoreanDate } from '../../utils/date'
 import type { QuestionRecord } from '../../types/records'
+import type { HubQuestionAttachment } from '../../hub/types'
 import { StatusBadge } from '../ui/StatusBadge'
 import { getQuestionStatusColor } from '../../utils/labels'
 import { QuestionImageGallery } from './QuestionImageGallery'
+import { QuestionStorageAttachments } from './QuestionStorageAttachments'
 
 type QuestionRecordCardProps = {
   record: QuestionRecord
@@ -13,6 +15,8 @@ type QuestionRecordCardProps = {
   /** 학부모 앱: 질문/답변 구역 분리 및 답변 대기 문구 */
   parentView?: boolean
   actions?: React.ReactNode
+  storageAttachments?: HubQuestionAttachment[]
+  resolveStorageUrl?: (path: string) => Promise<string>
 }
 
 function hasAnswer(record: QuestionRecord): boolean {
@@ -31,10 +35,20 @@ export function QuestionRecordCard({
   fullWidthImages = false,
   parentView = false,
   actions,
+  storageAttachments,
+  resolveStorageUrl,
 }: QuestionRecordCardProps) {
   const questionImages = record.questionImages ?? []
   const answerImages = record.answerImages ?? []
   const answered = hasAnswer(record)
+  const storageBlock =
+    record.source === 'student' && storageAttachments && storageAttachments.length > 0 && resolveStorageUrl ? (
+      <QuestionStorageAttachments
+        attachments={storageAttachments}
+        resolveUrl={resolveStorageUrl}
+        compact={compactImages}
+      />
+    ) : null
 
   if (parentView) {
     return (
@@ -46,6 +60,11 @@ export function QuestionRecordCard({
               <span className="rounded-lg bg-[rgba(22,58,112,0.06)] px-2 py-0.5 text-xs font-medium text-[#6B7280]">
                 {record.category}
               </span>
+              {record.source === 'student' ? (
+                <span className="rounded-lg bg-[#28c7b7]/15 px-2 py-0.5 text-xs font-semibold text-[#0f766e]">
+                  학생 Hub
+                </span>
+              ) : null}
             </div>
             <p className="text-sm text-[#6B7280]">{formatKoreanDate(record.date)}</p>
             {record.title && (
@@ -65,6 +84,7 @@ export function QuestionRecordCard({
                   fullWidth={fullWidthImages}
                 />
               )}
+              {storageBlock}
             </section>
 
             <section className="tm-answer-section space-y-2">
@@ -111,6 +131,15 @@ export function QuestionRecordCard({
             <span className="rounded-lg bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
               {record.category}
             </span>
+            <span
+              className={`rounded-lg px-2 py-0.5 text-xs font-semibold ${
+                record.source === 'student'
+                  ? 'bg-[#28c7b7]/15 text-[#0f766e]'
+                  : 'bg-navy-50 text-navy-700'
+              }`}
+            >
+              {record.source === 'student' ? '학생 Hub' : '학부모'}
+            </span>
           </div>
 
           <p className="text-sm text-slate-500">{formatKoreanDate(record.date)}</p>
@@ -125,6 +154,7 @@ export function QuestionRecordCard({
               fullWidth={fullWidthImages}
             />
           )}
+          {storageBlock}
 
           {record.answer && (
             <p className="rounded-lg bg-blue-50 px-3 py-2 whitespace-pre-wrap break-anywhere text-sm text-blue-900">

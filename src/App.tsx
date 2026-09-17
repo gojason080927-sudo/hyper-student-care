@@ -88,6 +88,19 @@ import { ParentStudentQuestionsPage } from './pages/parent/ParentStudentQuestion
 
 import { ParentStudentTodayReportPage } from './pages/parent/ParentStudentTodayReportPage'
 import { ParentStudentWeeklySummaryPage } from './pages/parent/ParentStudentWeeklySummaryPage'
+import { TeacherStudentHubPage } from './pages/teacher/TeacherStudentHubPage'
+import { HubLayout } from './hub/HubLayout'
+import { HubHomePage } from './hub/HubHomePage'
+import { HubLaunchPage } from './hub/HubLaunchPage'
+import { HubWeeklyPage } from './hub/HubWeeklyPage'
+import { HubAssignmentsPage } from './hub/HubAssignmentsPage'
+import { HubMaterialsPage } from './hub/HubMaterialsPage'
+import { HubVideosPage } from './hub/HubVideosPage'
+import { HubQuestionsPage } from './hub/HubQuestionsPage'
+import { HubMaterialRequestPage } from './hub/HubMaterialRequestPage'
+import { HubSchedulePage } from './hub/HubSchedulePage'
+import { HubNoticesPage } from './hub/HubNoticesPage'
+import { HubSuggestionsPage } from './hub/HubSuggestionsPage'
 
 import { EntranceExamAttemptPage } from './features/entranceExam/EntranceExamAttemptPage'
 import { EntranceExamHubPage } from './features/entranceExam/EntranceExamHubPage'
@@ -125,6 +138,20 @@ function App() {
             <Route path="/dev/teacher-today-report-layout" element={<TeacherTodayReportLayoutPreviewPage />} />
           </>
         ) : null}
+
+        <Route path="/hub" element={<HubLaunchPage />} />
+        <Route path="/hub/:studentAccessKey" element={<HubLayout />}>
+          <Route index element={<HubHomePage />} />
+          <Route path="weekly" element={<HubWeeklyPage />} />
+          <Route path="assignments" element={<HubAssignmentsPage />} />
+          <Route path="materials" element={<HubMaterialsPage />} />
+          <Route path="videos" element={<HubVideosPage />} />
+          <Route path="questions" element={<HubQuestionsPage />} />
+          <Route path="requests" element={<HubMaterialRequestPage />} />
+          <Route path="schedule" element={<HubSchedulePage />} />
+          <Route path="notices" element={<HubNoticesPage />} />
+          <Route path="suggestions" element={<HubSuggestionsPage />} />
+        </Route>
 
         <Route path="/care/:studentAccessKey" element={<ParentStudentLayout />}>
 
@@ -379,6 +406,15 @@ function App() {
             />
 
             <Route
+              path="student-hub"
+              element={
+                <TeacherMobilePageShell title="학생 학습 허브">
+                  <TeacherStudentHubPage />
+                </TeacherMobilePageShell>
+              }
+            />
+
+            <Route
 
               path="admission-strategy"
 
@@ -482,6 +518,7 @@ function App() {
           <Route path="teacher/learning-notices" element={<TeacherLearningNoticesPage />} />
 
           <Route path="teacher/admission-strategy" element={<TeacherAdmissionStrategyPage />} />
+          <Route path="teacher/student-hub" element={<TeacherStudentHubPage />} />
 
           <Route
 

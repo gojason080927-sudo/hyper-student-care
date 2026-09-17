@@ -1,4 +1,5 @@
 import {
+  BookOpen,
   CalendarCheck,
   ClipboardCheck,
   ClipboardList,
@@ -58,6 +59,12 @@ const categories = [
     title: '고입 · 대입\n입시전략',
     description: '진학 · 입시 정보 관리',
     icon: GraduationCap,
+  },
+  {
+    to: '/teacher/student-hub',
+    title: '학생 학습 허브',
+    description: '과제 · 자료실 · 요청 · 건의',
+    icon: BookOpen,
   },
   {
     to: '/questions',

@@ -56,7 +56,9 @@ export function useParentStudentRecords(): ParentStudentRecords {
           .map(normalizeMonthlyEvaluationRecord),
       ),
       makeupPlans: sortMakeupPlans(makeupPlans.filter((record) => record.studentId === studentId)),
-      questions: sortByDateDesc(questions.filter((record) => record.studentId === studentId)),
+      questions: sortByDateDesc(
+        questions.filter((record) => record.studentId === studentId && record.source !== 'student'),
+      ),
     }
   }, [
     attendance,

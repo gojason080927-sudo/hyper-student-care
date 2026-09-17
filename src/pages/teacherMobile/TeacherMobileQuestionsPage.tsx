@@ -1,11 +1,12 @@
 import { Check, Pencil, Trash2 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { Modal } from '../../components/ui/Modal'
 import { RecordActions } from '../../components/ui/RecordActions'
 import { ImageAttachmentInput } from '../../components/question/ImageAttachmentInput'
 import { ImageLightbox } from '../../components/question/ImageLightbox'
+import { QuestionStorageAttachments } from '../../components/question/QuestionStorageAttachments'
 import {
   emptyQuestionForm,
   QuestionFormFields,
@@ -16,6 +17,13 @@ import { useData } from '../../hooks/useData'
 import type { QuestionImageAttachment, QuestionRecord } from '../../types/records'
 import { formatKoreanDate } from '../../utils/date'
 import { requireDate, requireNonEmpty } from '../../utils/validation'
+import type { HubQuestionAttachment } from '../../hub/types'
+import { HUB_QUESTION_ATTACHMENTS_BUCKET } from '../../hub/types'
+import {
+  groupAttachmentsByQuestion,
+  teacherFetchQuestionAttachments,
+  teacherSignedUrl,
+} from '../../hub/teacherHubRepo'
 
 function QuestionStatusBadge({ status }: { status: string }) {
   return (
@@ -50,6 +58,8 @@ type MobileQuestionListCardProps = {
   onSelect: () => void
   onEdit: () => void
   onDelete: () => void
+  storageAttachments?: HubQuestionAttachment[]
+  resolveStorageUrl?: (path: string) => Promise<string>
 }
 
 function MobileQuestionListCard({
@@ -59,6 +69,8 @@ function MobileQuestionListCard({
   onSelect,
   onEdit,
   onDelete,
+  storageAttachments,
+  resolveStorageUrl,
 }: MobileQuestionListCardProps) {
   const [previewImage, setPreviewImage] = useState<QuestionImageAttachment | null>(null)
   const firstImage = record.questionImages?.[0]
@@ -79,6 +91,13 @@ function MobileQuestionListCard({
             <p className="text-xs text-slate-500">{formatKoreanDate(record.date)}</p>
             <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
               {record.category}
+            </span>
+            <span
+              className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold ${
+                record.source === 'student' ? 'bg-teal-50 text-teal-800' : 'bg-navy-50 text-navy-700'
+              }`}
+            >
+              {record.source === 'student' ? '학생 Hub' : '학부모'}
             </span>
             {record.title && (
               <p className="text-sm font-medium text-navy-800">{record.title}</p>
@@ -115,6 +134,15 @@ function MobileQuestionListCard({
       <div className="mt-2 flex justify-end border-t border-slate-100 pt-2">
         <RecordActions onEdit={onEdit} onDelete={onDelete} />
       </div>
+      {record.source === 'student' && storageAttachments && storageAttachments.length > 0 && resolveStorageUrl ? (
+        <div className="mt-2" onClick={(event) => event.stopPropagation()}>
+          <QuestionStorageAttachments
+            attachments={storageAttachments}
+            resolveUrl={resolveStorageUrl}
+            compact
+          />
+        </div>
+      ) : null}
       <ImageLightbox
         open={!!previewImage}
         src={previewImage?.dataUrl ?? ''}
@@ -151,8 +179,33 @@ export function TeacherMobileQuestionsPage() {
   const [editForm, setEditForm] = useState<QuestionFormState>(emptyQuestionForm())
   const [editErrors, setEditErrors] = useState<Record<string, string>>({})
   const [deleteTarget, setDeleteTarget] = useState<QuestionRecord | null>(null)
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'parent' | 'student'>('all')
+  const [attachmentsByQuestion, setAttachmentsByQuestion] = useState<Record<string, HubQuestionAttachment[]>>({})
 
-  const sortedQuestions = useMemo(() => sortQuestionsForMobile(questions), [questions])
+  useEffect(() => {
+    let cancelled = false
+    void teacherFetchQuestionAttachments()
+      .then((items) => {
+        if (!cancelled) setAttachmentsByQuestion(groupAttachmentsByQuestion(items))
+      })
+      .catch(() => {
+        if (!cancelled) setAttachmentsByQuestion({})
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [questions])
+
+  const resolveStorageUrl = useCallback(
+    (path: string) => teacherSignedUrl(HUB_QUESTION_ATTACHMENTS_BUCKET, path),
+    [],
+  )
+
+  const sortedQuestions = useMemo(() => {
+    const list = sortQuestionsForMobile(questions)
+    if (sourceFilter === 'all') return list
+    return list.filter((record) => (record.source ?? 'parent') === sourceFilter)
+  }, [questions, sourceFilter])
   const selectedQuestion = useMemo(
     () => sortedQuestions.find((q) => q.id === selectedQuestionId) ?? null,
     [selectedQuestionId, sortedQuestions],
@@ -269,6 +322,29 @@ export function TeacherMobileQuestionsPage() {
       </div>
 
       {activeTab === 'list' ? (
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              { id: 'all' as const, label: '전체' },
+              { id: 'parent' as const, label: '학부모' },
+              { id: 'student' as const, label: '학생 Hub' },
+            ] as const
+          ).map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setSourceFilter(item.id)}
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                sourceFilter === item.id ? 'bg-[#163A70] text-white' : 'bg-white text-slate-600'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {activeTab === 'list' ? (
         sortedQuestions.length === 0 ? (
           <EmptyState title="등록된 질문이 없습니다." />
         ) : (
@@ -282,6 +358,8 @@ export function TeacherMobileQuestionsPage() {
                 onSelect={() => selectQuestion(record)}
                 onEdit={() => openEdit(record)}
                 onDelete={() => setDeleteTarget(record)}
+                storageAttachments={attachmentsByQuestion[record.id]}
+                resolveStorageUrl={resolveStorageUrl}
               />
             ))}
           </div>
@@ -306,6 +384,15 @@ export function TeacherMobileQuestionsPage() {
               <span className="inline-flex rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
                 {selectedQuestion.category}
               </span>
+              <span
+                className={`inline-flex rounded-md px-2 py-0.5 text-xs font-semibold ${
+                  selectedQuestion.source === 'student'
+                    ? 'bg-teal-50 text-teal-800'
+                    : 'bg-navy-50 text-navy-700'
+                }`}
+              >
+                {selectedQuestion.source === 'student' ? '학생 Hub' : '학부모'}
+              </span>
               {selectedQuestion.title && (
                 <p className="font-medium text-navy-800">{selectedQuestion.title}</p>
               )}
@@ -325,6 +412,13 @@ export function TeacherMobileQuestionsPage() {
                   disabled
                 />
               )}
+              {selectedQuestion.source === 'student' &&
+              (attachmentsByQuestion[selectedQuestion.id]?.length ?? 0) > 0 ? (
+                <QuestionStorageAttachments
+                  attachments={attachmentsByQuestion[selectedQuestion.id] ?? []}
+                  resolveUrl={resolveStorageUrl}
+                />
+              ) : null}
             </div>
           </section>
 
