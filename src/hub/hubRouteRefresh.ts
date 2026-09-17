@@ -15,6 +15,35 @@ export function hubMaterialPreviewKind(
   return 'none'
 }
 
+export function hubMaterialCanOpen(kind: string): boolean {
+  return kind === 'pdf' || kind === 'image'
+}
+
+export function hubMaterialFileRuntime(kind: string): {
+  canOpen: boolean
+  canDownload: true
+  viewer: 'system' | 'none'
+  popupAfterAwait: false
+  usesWindowPrint: false
+} {
+  if (hubMaterialCanOpen(kind)) {
+    return {
+      canOpen: true,
+      canDownload: true,
+      viewer: 'system',
+      popupAfterAwait: false,
+      usesWindowPrint: false,
+    }
+  }
+  return {
+    canOpen: false,
+    canDownload: true,
+    viewer: 'none',
+    popupAfterAwait: false,
+    usesWindowPrint: false,
+  }
+}
+
 /**
  * SPA HOME → 자료실 진입은 전체 새로고침과 같이 Outlet을 내린다.
  * in-place setBundle 은 Production 삼성에서 최신 자료를 보여주지 못했다.
@@ -27,10 +56,10 @@ export function hubMaterialPreviewRuntime(material: {
   kind: string
   pages: unknown[]
   sourceFilePath: string | null
-}): { kind: 'pages' | 'source' | 'none'; viewer: 'in-app' | 'none'; popupAfterAwait: false } {
+}): { kind: 'pages' | 'source' | 'none'; viewer: 'system' | 'none'; popupAfterAwait: false } {
   const kind = hubMaterialPreviewKind(material)
-  if (kind === 'none') return { kind, viewer: 'none', popupAfterAwait: false }
-  return { kind, viewer: 'in-app', popupAfterAwait: false }
+  const runtime = hubMaterialFileRuntime(material.kind)
+  return { kind, viewer: runtime.viewer, popupAfterAwait: false }
 }
 
 export type HubSpaRuntime = {

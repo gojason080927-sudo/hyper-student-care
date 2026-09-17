@@ -74,10 +74,15 @@ export function hubPreviewFileLooksValid(bytes: Uint8Array, expected: 'pdf' | 'i
 }
 
 /**
- * Hub SW는 navigate와 RPC만 no-store로 가로챈다.
- * /api, Storage signed URL, worker, 이미지는 브라우저 기본 fetch를 탄다.
+ * Hub SW는 같은 origin 의 navigate와 RPC만 no-store로 가로챈다.
+ * 다른 origin signed URL, /api, Storage 이미지, worker는 브라우저 기본 fetch를 탄다.
  */
-export function hubServiceWorkerShouldIntercept(pathname: string, requestMode = ''): boolean {
+export function hubServiceWorkerShouldIntercept(
+  pathname: string,
+  requestMode = '',
+  sameOrigin = true,
+): boolean {
+  if (!sameOrigin) return false
   if (pathname.startsWith('/api/')) return false
   return requestMode === 'navigate' || pathname.includes('/rest/v1/rpc/')
 }

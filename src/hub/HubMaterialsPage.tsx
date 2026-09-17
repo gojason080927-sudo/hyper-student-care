@@ -1,221 +1,114 @@
-import { useEffect, useRef, useState } from 'react'
-import { AdmissionStrategyMaterialViewer } from '../components/admissionStrategy/AdmissionStrategyMaterialViewer'
+import { useState } from 'react'
 import { HUB_LEARNING_MATERIALS_BUCKET } from './types'
 import { downloadHubObjectBlob, downloadHubObjectUrl } from './hubStorageClient'
 import {
-  classifyHubServiceWorkerScript,
-  formatHubPreviewDiag,
-  hubPreviewPagesToViewerPages,
-  hubPreviewPathCode,
-  loadHubMaterialPreview,
-} from './hubMaterialPreview'
+  canOpenHubMaterial,
+  createBrowserHubMaterialFileIo,
+  downloadHubMaterialFile,
+  openHubMaterialInSystemViewer,
+} from './hubMaterialFileAccess'
 import { HubEmpty, HubPageHeader } from './HubChrome'
 import { useHub } from './HubContext'
 import { useHubContentRefresh } from './useHubContentRefresh'
 import type { HubMaterial } from './types'
 
-function canPreview(kind: HubMaterial['kind']): boolean {
-  return kind === 'pdf' || kind === 'image'
-}
-
 export function HubMaterialsPage() {
   const { accessKey, materials, reload } = useHub()
   useHubContentRefresh(reload)
-  const [preview, setPreview] = useState<HubMaterial | null>(null)
   const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [diag, setDiag] = useState('')
-  const previewUrlsRef = useRef<string[]>([])
-  const swDiagRef = useRef('')
-  const pathDiagRef = useRef('')
+  const [busy, setBusy] = useState<'open' | 'download' | null>(null)
 
-  const showDiag = (codes: string[]) => {
-    setDiag(formatHubPreviewDiag([...codes, swDiagRef.current]))
+  const fileIo = {
+    ...createBrowserHubMaterialFileIo(),
+    signUrl: (path: string) =>
+      downloadHubObjectUrl({
+        accessKey,
+        bucket: HUB_LEARNING_MATERIALS_BUCKET,
+        path,
+      }),
+    readFile: (path: string) =>
+      downloadHubObjectBlob({
+        accessKey,
+        bucket: HUB_LEARNING_MATERIALS_BUCKET,
+        path,
+      }),
+    assignLocation: (url: string) => {
+      window.location.assign(url)
+    },
   }
 
-  const revokePreviewUrls = () => {
-    for (const url of previewUrlsRef.current) URL.revokeObjectURL(url)
-    previewUrlsRef.current = []
-  }
-
-  const objectUrlFromBlob = (blob: Blob) => {
-    const url = URL.createObjectURL(blob)
-    previewUrlsRef.current.push(url)
-    return url
-  }
-
-  const signUrl = (path: string) =>
-    downloadHubObjectUrl({
-      accessKey,
-      bucket: HUB_LEARNING_MATERIALS_BUCKET,
-      path,
-    })
-
-  const readFile = (path: string) =>
-    downloadHubObjectBlob({
-      accessKey,
-      bucket: HUB_LEARNING_MATERIALS_BUCKET,
-      path,
-    })
-
-  const fetchUrl = async (url: string) => {
-    const res = await fetch(url, { cache: 'no-store' })
-    if (res.status === 413) throw new Error('413')
-    if (!res.ok) throw new Error('미리보기 파일을 불러오지 못했습니다.')
-    return res.blob()
-  }
-
-  useEffect(() => {
-    let cancelled = false
-    void (async () => {
-      const codes: string[] = []
-      try {
-        const res = await fetch('/hub/sw.js', { cache: 'no-store' })
-        const source = res.ok ? await res.text() : ''
-        codes.push(classifyHubServiceWorkerScript(source))
-      } catch {
-        codes.push('SW-OTHER')
-      }
-      if ('serviceWorker' in navigator && !navigator.serviceWorker.controller) {
-        codes.push('SW-NONE')
-      }
-      swDiagRef.current = formatHubPreviewDiag(codes)
-      if (!cancelled) setDiag((current) => formatHubPreviewDiag([current, swDiagRef.current]))
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
-  const downloadSource = async (material: HubMaterial) => {
-    if (!material.sourceFilePath) return
-    let blob: Blob
-    try {
-      blob = await fetchUrl(await signUrl(material.sourceFilePath))
-    } catch {
-      blob = await readFile(material.sourceFilePath)
-    }
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = material.originalFileName || 'download'
-    link.rel = 'noopener'
-    link.click()
-    URL.revokeObjectURL(url)
-  }
-
-  const openPreview = async (material: HubMaterial) => {
-    const pathCode = hubPreviewPathCode(material)
-    pathDiagRef.current = pathCode
+  const openMaterial = async (material: HubMaterial) => {
     setError('')
-    setBusy(true)
-    setPreview(null)
-    showDiag([pathCode])
-    revokePreviewUrls()
+    setBusy('open')
     try {
-      const result = await loadHubMaterialPreview(material, {
-        signUrl,
-        readFile,
-        fetchUrl,
-        renderPdf: async (file) => {
-          const { renderPdfFileToPages } = await import('../lib/admissionStrategy/pdfToPageImages')
-          return renderPdfFileToPages(file)
-        },
-        objectUrl: objectUrlFromBlob,
-      })
-      if (!result.ok) {
-        revokePreviewUrls()
-        showDiag([result.path, result.code])
-        setError(result.error || '미리보기를 불러오지 못했습니다.')
-        return
-      }
-      showDiag([result.path])
-      setPreview({ ...material, pages: result.pages })
+      await openHubMaterialInSystemViewer(material, fileIo)
     } catch (err) {
-      revokePreviewUrls()
-      const message = err instanceof Error ? err.message : '미리보기를 불러오지 못했습니다.'
-      showDiag([pathCode, message === '413' ? 'PDF-FETCH-413' : 'PREVIEW-FAIL'])
-      setError(message === '413' ? '미리보기 파일을 불러오지 못했습니다.' : message)
+      setError(err instanceof Error ? err.message : '파일을 열지 못했습니다.')
     } finally {
-      setBusy(false)
+      setBusy(null)
+    }
+  }
+
+  const downloadMaterial = async (material: HubMaterial) => {
+    setError('')
+    setBusy('download')
+    try {
+      await downloadHubMaterialFile(material, fileIo)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '다운로드에 실패했습니다.')
+    } finally {
+      setBusy(null)
     }
   }
 
   return (
     <div className="mx-auto w-full max-w-lg px-3 pb-8 pt-4">
       <HubPageHeader title="문제 자료실" />
-      {diag ? (
-        <p className="mb-3 font-mono text-xs text-slate-500" data-testid="hub-preview-diag">
-          진단코드: {diag}
-        </p>
-      ) : null}
+      <p className="mb-3 text-xs leading-5 text-slate-500">
+        열기 후 인쇄할 수 있습니다. 기기에 따라 다운로드가 공유 화면으로 열릴 수 있습니다.
+      </p>
       {error ? <p className="mb-3 text-sm text-rose-600">{error}</p> : null}
-      {busy ? <p className="mb-3 text-sm text-slate-500">미리보기를 불러오는 중…</p> : null}
+      {busy === 'open' ? <p className="mb-3 text-sm text-slate-500">파일을 여는 중…</p> : null}
+      {busy === 'download' ? <p className="mb-3 text-sm text-slate-500">다운로드 준비 중…</p> : null}
       {materials.length === 0 ? (
         <HubEmpty message="아직 공개된 문제 자료가 없습니다." />
       ) : (
         <ul className="space-y-3">
-          {materials.map((material) => (
-            <li key={material.id} className="rounded-2xl bg-white p-4 shadow-sm">
-              <button
-                type="button"
-                className="w-full text-left"
-                onClick={() => void openPreview(material)}
-              >
+          {materials.map((material) => {
+            const openable = canOpenHubMaterial(material.kind) && Boolean(material.sourceFilePath)
+            const downloadable = Boolean(material.sourceFilePath)
+            return (
+              <li key={material.id} className="rounded-2xl bg-white p-4 shadow-sm">
                 <p className="font-bold text-[#163A70]">{material.title}</p>
                 {material.description ? (
                   <p className="mt-1 text-sm text-slate-600">{material.description}</p>
                 ) : null}
                 <p className="mt-1 text-xs text-slate-400">{material.kind.toUpperCase()}</p>
-              </button>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {canPreview(material.kind) ? (
-                  <button
-                    type="button"
-                    className="rounded-full bg-[#163A70] px-3 py-2 text-xs font-semibold text-white"
-                    onClick={() => void openPreview(material)}
-                  >
-                    미리보기
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  className="rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700"
-                  onClick={() => {
-                    void downloadSource(material).catch((err) => {
-                      setError(err instanceof Error ? err.message : '다운로드에 실패했습니다.')
-                    })
-                  }}
-                >
-                  다운로드
-                </button>
-                {canPreview(material.kind) ? (
-                  <button
-                    type="button"
-                    className="rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700"
-                    onClick={() => void openPreview(material)}
-                  >
-                    출력
-                  </button>
-                ) : null}
-              </div>
-            </li>
-          ))}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {openable ? (
+                    <button
+                      type="button"
+                      className="rounded-full bg-[#163A70] px-3 py-2 text-xs font-semibold text-white"
+                      onClick={() => void openMaterial(material)}
+                    >
+                      열기
+                    </button>
+                  ) : null}
+                  {downloadable ? (
+                    <button
+                      type="button"
+                      className="rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700"
+                      onClick={() => void downloadMaterial(material)}
+                    >
+                      다운로드
+                    </button>
+                  ) : null}
+                </div>
+              </li>
+            )
+          })}
         </ul>
       )}
-      <AdmissionStrategyMaterialViewer
-        open={Boolean(preview)}
-        title={preview?.title ?? ''}
-        pages={preview ? hubPreviewPagesToViewerPages(preview.pages) : []}
-        diagCode={diag || null}
-        onClose={() => {
-          setPreview(null)
-          revokePreviewUrls()
-        }}
-        onImageError={() => {
-          showDiag([pathDiagRef.current, 'IMAGE-ERROR'])
-        }}
-      />
     </div>
   )
 }
