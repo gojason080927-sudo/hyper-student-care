@@ -4,6 +4,7 @@ import { HUB_LEARNING_MATERIALS_BUCKET } from './types'
 import { downloadHubObjectUrl } from './hubStorageClient'
 import { HubEmpty, HubPageHeader } from './HubChrome'
 import { useHub } from './HubContext'
+import { useHubContentRefresh } from './useHubContentRefresh'
 import type { HubMaterial } from './types'
 
 function canPreview(kind: HubMaterial['kind']): boolean {
@@ -11,7 +12,8 @@ function canPreview(kind: HubMaterial['kind']): boolean {
 }
 
 export function HubMaterialsPage() {
-  const { accessKey, materials } = useHub()
+  const { accessKey, materials, reload } = useHub()
+  useHubContentRefresh(reload)
   const [preview, setPreview] = useState<HubMaterial | null>(null)
   const [error, setError] = useState('')
 

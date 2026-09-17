@@ -13,6 +13,31 @@ export type HubStudentIdentity = {
   className: string
 }
 
+export type HubAudienceSelection = {
+  audienceType: HubAudienceType
+  targetGrade: string
+  targetClassName: string
+  targetStudentId: string
+}
+
+/** 강사 UI가 비어 있는 학년/반/학생을 저장하면 SQL 비교가 실패해 학생 목록에서 사라진다. */
+export function hubAudienceSelectionError(audience: HubAudienceSelection): string | null {
+  const type = audience.audienceType || 'all'
+  if (type === 'all') return null
+  if (type === 'grade') {
+    return audience.targetGrade.trim() ? null : '학년을 선택해 주세요.'
+  }
+  if (type === 'class') {
+    if (!audience.targetGrade.trim()) return '학년을 선택해 주세요.'
+    if (!audience.targetClassName.trim()) return '반을 선택해 주세요.'
+    return null
+  }
+  if (type === 'student') {
+    return audience.targetStudentId.trim() ? null : '학생을 선택해 주세요.'
+  }
+  return null
+}
+
 export function isHubAudienceVisible(
   record: HubAudienceRecord,
   student: HubStudentIdentity,
