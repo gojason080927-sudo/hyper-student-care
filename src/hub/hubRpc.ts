@@ -205,12 +205,55 @@ export async function rpcGetStudentHubIdentity(accessKey: string): Promise<HubId
   return identityFromRpc(data)
 }
 
+async function postStudentHubRpc(functionName: string, args: Record<string, unknown>): Promise<{
+  data: unknown
+  errorMessage: string | null
+}> {
+  const url = (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.trim() ?? ''
+  const key = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)?.trim() ?? ''
+  if (!url || !key) return { data: null, errorMessage: 'not_configured' }
+  try {
+    const res = await fetch(`${url.replace(/\/$/, '')}/rest/v1/rpc/${functionName}`, {
+      method: 'POST',
+      cache: 'no-store',
+      headers: {
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
+        Pragma: 'no-cache',
+      },
+      body: JSON.stringify(args),
+    })
+    const text = await res.text()
+    let parsed: unknown = null
+    if (text) {
+      try {
+        parsed = JSON.parse(text) as unknown
+      } catch {
+        parsed = text
+      }
+    }
+    if (!res.ok) {
+      const message =
+        parsed && typeof parsed === 'object' && parsed !== null && 'message' in parsed
+          ? String((parsed as { message: unknown }).message)
+          : text || res.statusText
+      return { data: null, errorMessage: message }
+    }
+    return { data: parsed, errorMessage: null }
+  } catch (err) {
+    return { data: null, errorMessage: err instanceof Error ? err.message : 'rpc_failed' }
+  }
+}
+
 export async function rpcGetStudentHubBundle(accessKey: string): Promise<StudentHubBundle | null> {
-  const { data, error } = await getSupabase().rpc('get_student_hub_bundle', {
+  const { data, errorMessage } = await postStudentHubRpc('get_student_hub_bundle', {
     p_access_key: accessKey.trim(),
   })
-  if (error) {
-    console.error('[StudentHub] get_student_hub_bundle', error.message)
+  if (errorMessage) {
+    console.error('[StudentHub] get_student_hub_bundle', errorMessage)
     return null
   }
   const row = parseRpcJson(data)

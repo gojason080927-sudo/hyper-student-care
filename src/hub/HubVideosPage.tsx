@@ -6,7 +6,7 @@ import { youtubeEmbedUrl } from './youtube'
 
 export function HubVideosPage() {
   const { videos, reload } = useHub()
-  const { refreshing } = useHubContentRefresh(reload)
+  useHubContentRefresh(reload)
   const [starts, setStarts] = useState<Record<string, number>>({})
 
   return (
@@ -15,9 +15,7 @@ export function HubVideosPage() {
       <p className="mb-3 text-xs text-slate-500">
         YouTube 일부공개(unlisted) 링크입니다. 링크를 아는 사람은 볼 수 있습니다.
       </p>
-      {refreshing && videos.length === 0 ? (
-        <p className="rounded-2xl bg-white px-4 py-10 text-center text-sm text-slate-500">불러오는 중…</p>
-      ) : videos.length === 0 ? (
+      {videos.length === 0 ? (
         <HubEmpty message="게시된 영상이 없습니다." />
       ) : (
         <ul className="space-y-4">

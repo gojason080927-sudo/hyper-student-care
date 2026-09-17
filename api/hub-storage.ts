@@ -78,7 +78,14 @@ export async function handleHubStorage(request: Request, env = envFromProcess())
     return json({ error: 'invalid_json' }, 400)
   }
 
-  const action = payload.action === 'upload' ? 'upload' : payload.action === 'download' ? 'download' : ''
+  const action =
+    payload.action === 'upload'
+      ? 'upload'
+      : payload.action === 'download'
+        ? 'download'
+        : payload.action === 'file'
+          ? 'file'
+          : ''
   const accessKey = payload.accessKey?.trim() ?? ''
   const bucket = payload.bucket?.trim() ?? ''
   const path = payload.path?.trim() ?? ''
@@ -99,7 +106,7 @@ export async function handleHubStorage(request: Request, env = envFromProcess())
     p_access_key: accessKey,
     p_bucket: bucket,
     p_path: path,
-    p_mode: action,
+    p_mode: action === 'upload' ? 'upload' : 'download',
   })
   if (authError || allowed !== true) {
     return json({ error: 'forbidden', message: '이 파일에 접근할 수 없습니다.' }, 403)
@@ -117,11 +124,37 @@ export async function handleHubStorage(request: Request, env = envFromProcess())
     return json({ signedUrl: data.signedUrl, token: data.token, path })
   }
 
+  if (action === 'file') {
+    const { data, error } = await admin.storage.from(bucket).download(path)
+    if (error || !data) {
+      return json({ error: 'download_failed', message: error?.message || '파일을 불러오지 못했습니다.' }, 500)
+    }
+    const contentType = data.type || contentTypeFromPath(path)
+    return new Response(data, {
+      status: 200,
+      headers: {
+        'Content-Type': contentType,
+        'Cache-Control': 'no-store',
+        'Content-Disposition': `inline; filename="${(path.split('/').pop() || 'file').replace(/["\r\n]/g, '')}"`,
+      },
+    })
+  }
+
   const { data, error } = await admin.storage.from(bucket).createSignedUrl(path, 60 * 10)
   if (error || !data?.signedUrl) {
     return json({ error: 'sign_failed', message: error?.message || '다운로드 URL을 만들지 못했습니다.' }, 500)
   }
   return json({ signedUrl: data.signedUrl, path })
+}
+
+function contentTypeFromPath(path: string): string {
+  const ext = path.split('.').pop()?.toLowerCase() ?? ''
+  if (ext === 'pdf') return 'application/pdf'
+  if (ext === 'png') return 'image/png'
+  if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg'
+  if (ext === 'webp') return 'image/webp'
+  if (ext === 'gif') return 'image/gif'
+  return 'application/octet-stream'
 }
 
 export default async function handler(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -131,6 +164,6 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   response.headers.forEach((value, key) => {
     res.setHeader(key, value)
   })
-  const text = await response.text()
-  res.end(text)
+  const buffer = Buffer.from(await response.arrayBuffer())
+  res.end(buffer)
 }
