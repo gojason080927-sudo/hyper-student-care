@@ -2,7 +2,9 @@ import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import {
   BookOpen,
+  CalendarCheck,
   CalendarDays,
+  ChevronRight,
   Clapperboard,
   ClipboardList,
   FileQuestion,
@@ -12,6 +14,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { useHub } from './HubContext'
+import { HUB_ACADEMY_LOGO_PNG, HUB_ACADEMY_LOGO_WEBP } from './types'
 
 const tiles = [
   { to: 'weekly', label: '주간 SUMMARY', icon: Sparkles, badge: 'weekly' },
@@ -43,34 +46,54 @@ export function HubHomePage() {
     }
   }, [assignments.length, inbox, materials.length, notices, questions, videos.length])
 
-  return (
-    <div className="mx-auto w-full max-w-lg px-3 pb-8 pt-4">
-      <header className="mb-4 flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-extrabold tracking-[0.18em] text-[#28c7b7]">HYPER ACADEMY</p>
-          <h1 className="mt-1 text-lg font-black text-[#163A70]">학습 허브</h1>
-        </div>
-        <div className="max-w-[46%] text-right">
-          <p className="truncate text-sm font-bold text-[#163A70]">{student.name}</p>
-          <p className="truncate text-[11px] text-slate-500">
-            {[student.school, student.grade, student.className].filter(Boolean).join(' · ')}
-          </p>
-        </div>
-      </header>
+  const meta = [student.school, student.grade, student.className].filter(Boolean).join(' · ')
 
-      <nav aria-label="학생 학습 허브" className="grid grid-cols-3 gap-2">
+  return (
+    <div className="hub-home mx-auto w-full max-w-lg px-3 pb-10">
+      <section className="hub-hero" aria-label="학생 정보">
+        <picture>
+          <source type="image/webp" srcSet={HUB_ACADEMY_LOGO_WEBP} />
+          <img
+            src={HUB_ACADEMY_LOGO_PNG}
+            alt="HYPER ACADEMY"
+            className="hub-hero-logo"
+            width={720}
+            height={720}
+            decoding="async"
+          />
+        </picture>
+        <p className="hub-hero-kicker">HYPER ACADEMY</p>
+        <h1 className="hub-hero-title">학습 허브</h1>
+        <p className="hub-hero-name">{student.name}</p>
+        {meta ? <p className="hub-hero-meta">{meta}</p> : null}
+      </section>
+
+      <nav aria-label="학생 학습 허브" className="hub-menu-grid grid grid-cols-3">
         {tiles.map((tile) => {
           const Icon = tile.icon
           const count = badges[tile.badge]
           return (
             <Link key={tile.to} to={`/hub/${accessKey}/${tile.to}`} className="hub-tile">
               {count > 0 ? <span className="hub-badge">{count > 9 ? '9+' : count}</span> : null}
-              <Icon className="h-6 w-6 text-[#28c7b7]" strokeWidth={2.2} />
+              <span className="hub-tile-icon" aria-hidden>
+                <Icon strokeWidth={2.15} />
+              </span>
               <span className="hub-tile-label">{tile.label}</span>
             </Link>
           )
         })}
       </nav>
+
+      <Link to={`/hub/${accessKey}/study-plan`} className="hub-feature-card">
+        <span className="hub-feature-icon" aria-hidden>
+          <CalendarCheck strokeWidth={2.1} />
+        </span>
+        <span className="hub-feature-copy">
+          <span className="hub-feature-title">My Study Plan</span>
+          <span className="hub-feature-sub">나만의 학습 계획 관리</span>
+        </span>
+        <ChevronRight className="h-5 w-5 shrink-0 text-[#5b348a]" aria-hidden />
+      </Link>
     </div>
   )
 }

@@ -136,3 +136,20 @@ export const HUB_VIDEO_MIMES = ['video/mp4', 'video/quicktime', 'video/webm'] as
 export const HUB_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] as const
 
 export const STUDENT_QUESTION_CATEGORIES = ['수업질문', '숙제질문', '시험질문', '기타'] as const
+
+export const HUB_ACADEMY_LOGO_WEBP = '/hub/hyper-academy-logo-v1.webp'
+export const HUB_ACADEMY_LOGO_PNG = '/hub/hyper-academy-logo-v1.png'
+
+export const STUDY_PLAN_SUBJECT_PRESETS = ['수학', '영어'] as const
+
+export type StudentStudyPlan = {
+  id: string
+  planDate: string
+  subject: string
+  content: string
+  startTime: string
+  endTime: string
+  completed: boolean
+  createdAt: string
+  updatedAt: string
+}

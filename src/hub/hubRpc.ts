@@ -15,6 +15,7 @@ import type {
   HubMaterial,
   HubQuestion,
   HubVideo,
+  StudentStudyPlan,
 } from './types'
 
 function parseRpcJson(value: unknown): Record<string, unknown> | null {
@@ -329,6 +330,90 @@ export async function rpcFinalizeInboxAttachment(accessKey: string, attachmentId
   const { error } = await getSupabase().rpc('finalize_hub_inbox_attachment', {
     p_access_key: accessKey.trim(),
     p_attachment_id: attachmentId,
+  })
+  if (error) throw error
+}
+
+function studyPlanFromRpc(row: Record<string, unknown>): StudentStudyPlan {
+  return {
+    id: String(row.id ?? ''),
+    planDate: String(row.plan_date ?? ''),
+    subject: String(row.subject ?? ''),
+    content: String(row.content ?? ''),
+    startTime: String(row.start_time ?? ''),
+    endTime: String(row.end_time ?? ''),
+    completed: row.completed === true,
+    createdAt: String(row.created_at ?? ''),
+    updatedAt: String(row.updated_at ?? ''),
+  }
+}
+
+export async function rpcListStudentStudyPlans(
+  accessKey: string,
+  fromDate: string,
+  toDate: string,
+): Promise<StudentStudyPlan[]> {
+  const { data, error } = await getSupabase().rpc('list_student_study_plans', {
+    p_access_key: accessKey.trim(),
+    p_from_date: fromDate,
+    p_to_date: toDate,
+  })
+  if (error) throw error
+  let parsed: unknown = data
+  if (typeof data === 'string') {
+    try {
+      parsed = JSON.parse(data)
+    } catch {
+      parsed = []
+    }
+  }
+  return asArray(parsed).map(studyPlanFromRpc)
+}
+
+export async function rpcUpsertStudentStudyPlan(input: {
+  accessKey: string
+  id?: string | null
+  planDate: string
+  subject: string
+  content: string
+  startTime: string
+  endTime: string
+}): Promise<StudentStudyPlan> {
+  const { data, error } = await getSupabase().rpc('upsert_student_study_plan', {
+    p_access_key: input.accessKey.trim(),
+    p_id: input.id ?? null,
+    p_plan_date: input.planDate,
+    p_subject: input.subject,
+    p_content: input.content,
+    p_start_time: input.startTime,
+    p_end_time: input.endTime,
+  })
+  if (error) throw error
+  const row = parseRpcJson(data)
+  if (!row) throw new Error('학습 계획 저장에 실패했습니다.')
+  return studyPlanFromRpc(row)
+}
+
+export async function rpcSetStudentStudyPlanCompleted(
+  accessKey: string,
+  planId: string,
+  completed: boolean,
+): Promise<StudentStudyPlan> {
+  const { data, error } = await getSupabase().rpc('set_student_study_plan_completed', {
+    p_access_key: accessKey.trim(),
+    p_id: planId,
+    p_completed: completed,
+  })
+  if (error) throw error
+  const row = parseRpcJson(data)
+  if (!row) throw new Error('완료 상태 변경에 실패했습니다.')
+  return studyPlanFromRpc(row)
+}
+
+export async function rpcDeleteStudentStudyPlan(accessKey: string, planId: string): Promise<void> {
+  const { error } = await getSupabase().rpc('delete_student_study_plan', {
+    p_access_key: accessKey.trim(),
+    p_id: planId,
   })
   if (error) throw error
 }
