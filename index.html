@@ -84,7 +84,7 @@
           hubApple.href = '/hub/hyper-hub-icon-v1-192.png'
           if ('serviceWorker' in navigator) {
             navigator.serviceWorker
-              .register('/hub/sw.js', { scope: '/hub/' })
+              .register('/hub/sw.js', { scope: '/hub/', updateViaCache: 'none' })
               .catch(function () {})
           }
           return

@@ -140,7 +140,7 @@ export async function handleHubStorage(request: Request, env = envFromProcess())
     })
   }
 
-  const { data, error } = await admin.storage.from(bucket).createSignedUrl(path, 60 * 10)
+  const { data, error } = await admin.storage.from(bucket).createSignedUrl(path, 60 * 30)
   if (error || !data?.signedUrl) {
     return json({ error: 'sign_failed', message: error?.message || '다운로드 URL을 만들지 못했습니다.' }, 500)
   }
