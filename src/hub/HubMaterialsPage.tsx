@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react'
-import { ConnectedAdmissionStrategyViewer } from '../components/admissionStrategy/ConnectedAdmissionStrategyViewer'
+import { AdmissionStrategyMaterialViewer } from '../components/admissionStrategy/AdmissionStrategyMaterialViewer'
 import { HUB_LEARNING_MATERIALS_BUCKET } from './types'
-import { downloadHubObjectBlob } from './hubStorageClient'
-import { loadHubMaterialPreview } from './hubMaterialPreview'
+import { downloadHubObjectBlob, downloadHubObjectUrl } from './hubStorageClient'
+import { hubPreviewPagesToViewerPages, loadHubMaterialPreview } from './hubMaterialPreview'
 import { HubEmpty, HubPageHeader } from './HubChrome'
 import { useHub } from './HubContext'
 import { useHubContentRefresh } from './useHubContentRefresh'
@@ -31,22 +31,34 @@ export function HubMaterialsPage() {
     return url
   }
 
-  const readFile = async (path: string) =>
+  const signUrl = (path: string) =>
+    downloadHubObjectUrl({
+      accessKey,
+      bucket: HUB_LEARNING_MATERIALS_BUCKET,
+      path,
+    })
+
+  const readFile = (path: string) =>
     downloadHubObjectBlob({
       accessKey,
       bucket: HUB_LEARNING_MATERIALS_BUCKET,
       path,
     })
 
-  const resolvePageUrl = async (assetPath: string) => {
-    if (assetPath.startsWith('blob:')) return assetPath
-    const blob = await readFile(assetPath)
-    return objectUrlFromBlob(blob)
+  const fetchUrl = async (url: string) => {
+    const res = await fetch(url, { cache: 'no-store' })
+    if (!res.ok) throw new Error('미리보기 파일을 불러오지 못했습니다.')
+    return res.blob()
   }
 
   const downloadSource = async (material: HubMaterial) => {
     if (!material.sourceFilePath) return
-    const blob = await readFile(material.sourceFilePath)
+    let blob: Blob
+    try {
+      blob = await fetchUrl(await signUrl(material.sourceFilePath))
+    } catch {
+      blob = await readFile(material.sourceFilePath)
+    }
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
@@ -63,7 +75,9 @@ export function HubMaterialsPage() {
     revokePreviewUrls()
     try {
       const result = await loadHubMaterialPreview(material, {
+        signUrl,
         readFile,
+        fetchUrl,
         renderPdf: async (file) => {
           const { renderPdfFileToPages } = await import('../lib/admissionStrategy/pdfToPageImages')
           return renderPdfFileToPages(file)
@@ -141,15 +155,14 @@ export function HubMaterialsPage() {
           ))}
         </ul>
       )}
-      <ConnectedAdmissionStrategyViewer
+      <AdmissionStrategyMaterialViewer
         open={Boolean(preview)}
         title={preview?.title ?? ''}
-        pages={preview?.pages ?? []}
+        pages={preview ? hubPreviewPagesToViewerPages(preview.pages) : []}
         onClose={() => {
           setPreview(null)
           revokePreviewUrls()
         }}
-        resolvePageUrl={resolvePageUrl}
       />
     </div>
   )

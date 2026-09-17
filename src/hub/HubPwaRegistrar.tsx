@@ -43,7 +43,9 @@ export function HubPwaRegistrar({ accessKey = '' }: { accessKey?: string }) {
     appleTitle.content = 'HYPER STUDENT HUB'
 
     if ('serviceWorker' in navigator) {
-      void navigator.serviceWorker.register('/hub/sw.js', { scope: '/hub/' }).catch(() => {})
+      void navigator.serviceWorker
+        .register('/hub/sw.js', { scope: '/hub/', updateViaCache: 'none' })
+        .catch(() => {})
     }
   }, [accessKey])
 

@@ -1,7 +1,9 @@
 import type { HubMaterial, HubMaterialPage } from './types'
 
 export type HubPreviewIo = {
+  signUrl: (path: string) => Promise<string>
   readFile: (path: string) => Promise<Blob>
+  fetchUrl: (url: string) => Promise<Blob>
   renderPdf: (file: Blob) => Promise<{ pageNumber: number; blob: Blob; width: number; height: number }[]>
   objectUrl: (blob: Blob) => string
 }
@@ -29,26 +31,38 @@ export function hubPreviewFileLooksValid(bytes: Uint8Array, expected: 'pdf' | 'i
   return kind === expected || kind === 'unknown'
 }
 
-/** Hub SW must not intercept /api so Samsung Chrome can POST the file body. */
-export function hubServiceWorkerShouldIntercept(pathname: string): boolean {
-  return !pathname.startsWith('/api/')
+/**
+ * Hub SW는 navigate와 RPC만 no-store로 가로챈다.
+ * /api, Storage signed URL, worker, 이미지는 브라우저 기본 fetch를 탄다.
+ */
+export function hubServiceWorkerShouldIntercept(pathname: string, requestMode = ''): boolean {
+  if (pathname.startsWith('/api/')) return false
+  return requestMode === 'navigate' || pathname.includes('/rest/v1/rpc/')
+}
+
+export function hubPreviewSrcIsReady(src: string): boolean {
+  return src.startsWith('blob:') || src.startsWith('https://') || src.startsWith('http://')
 }
 
 function fail(message: string): HubPreviewResult {
   return { ok: false, error: message }
 }
 
-async function blobFromPath(
-  io: HubPreviewIo,
-  path: string,
-  expected: 'pdf' | 'image' | 'any',
-): Promise<Blob> {
-  const blob = await io.readFile(path)
+async function blobFromBytes(blob: Blob, expected: 'pdf' | 'image' | 'any'): Promise<Blob> {
   const bytes = new Uint8Array(await blob.arrayBuffer())
   if (!hubPreviewFileLooksValid(bytes, expected)) {
     throw new Error('미리보기 파일을 불러오지 못했습니다.')
   }
   return new Blob([bytes], { type: blob.type || (expected === 'pdf' ? 'application/pdf' : 'image/jpeg') })
+}
+
+async function loadPdfBytes(io: HubPreviewIo, path: string): Promise<Blob> {
+  try {
+    const url = await io.signUrl(path)
+    return blobFromBytes(await io.fetchUrl(url), 'pdf')
+  } catch {
+    return blobFromBytes(await io.readFile(path), 'pdf')
+  }
 }
 
 export async function loadHubMaterialPreview(
@@ -57,17 +71,19 @@ export async function loadHubMaterialPreview(
 ): Promise<HubPreviewResult> {
   try {
     if (material.pages.length > 0) {
-      const pages: HubMaterialPage[] = []
-      for (const page of material.pages) {
-        if (!page.assetPath) return fail('미리보기 페이지가 없습니다.')
-        const blob = await blobFromPath(io, page.assetPath, 'image')
-        pages.push({
-          pageNumber: page.pageNumber,
-          assetPath: io.objectUrl(blob),
-          width: page.width,
-          height: page.height,
-        })
-      }
+      const pages = await Promise.all(
+        material.pages.map(async (page) => {
+          if (!page.assetPath) throw new Error('미리보기 페이지가 없습니다.')
+          const signed = await io.signUrl(page.assetPath)
+          if (!hubPreviewSrcIsReady(signed)) throw new Error('미리보기 주소를 만들지 못했습니다.')
+          return {
+            pageNumber: page.pageNumber,
+            assetPath: signed,
+            width: page.width,
+            height: page.height,
+          }
+        }),
+      )
       return { ok: true, pages }
     }
 
@@ -76,7 +92,7 @@ export async function loadHubMaterialPreview(
     }
 
     if (material.kind === 'pdf') {
-      const blob = await blobFromPath(io, material.sourceFilePath, 'pdf')
+      const blob = await loadPdfBytes(io, material.sourceFilePath)
       const rendered = await io.renderPdf(blob)
       if (rendered.length === 0) return fail('PDF에 페이지가 없습니다.')
       return {
@@ -91,10 +107,11 @@ export async function loadHubMaterialPreview(
     }
 
     if (material.kind === 'image') {
-      const blob = await blobFromPath(io, material.sourceFilePath, 'image')
+      const signed = await io.signUrl(material.sourceFilePath)
+      if (!hubPreviewSrcIsReady(signed)) return fail('미리보기 주소를 만들지 못했습니다.')
       return {
         ok: true,
-        pages: [{ pageNumber: 1, assetPath: io.objectUrl(blob), width: null, height: null }],
+        pages: [{ pageNumber: 1, assetPath: signed, width: null, height: null }],
       }
     }
 
@@ -102,4 +119,25 @@ export async function loadHubMaterialPreview(
   } catch (err) {
     return fail(err instanceof Error ? err.message : '미리보기를 불러오지 못했습니다.')
   }
+}
+
+export function hubPreviewPagesToViewerPages(pages: HubMaterialPage[]): {
+  pageNumber: number
+  src: string | null
+  width: number | null
+  height: number | null
+  loading: boolean
+  error: boolean
+}[] {
+  return pages.map((page) => {
+    const ready = hubPreviewSrcIsReady(page.assetPath)
+    return {
+      pageNumber: page.pageNumber,
+      src: ready ? page.assetPath : null,
+      width: page.width,
+      height: page.height,
+      loading: false,
+      error: !ready,
+    }
+  })
 }

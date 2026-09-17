@@ -12,6 +12,7 @@ type SignResponse = {
 async function hubStorageRequest(body: Record<string, unknown>): Promise<SignResponse> {
   const res = await fetch('/api/hub-storage', {
     method: 'POST',
+    cache: 'no-store',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })

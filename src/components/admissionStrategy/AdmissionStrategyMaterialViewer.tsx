@@ -387,6 +387,7 @@ export function AdmissionStrategyMaterialViewer({
               <img
                 src={current.src}
                 alt={`${title} ${current.pageNumber}페이지`}
+                referrerPolicy="no-referrer"
                 draggable={false}
                 className="pointer-events-none max-h-full max-w-full min-h-0 min-w-0 select-none object-contain"
                 style={{
