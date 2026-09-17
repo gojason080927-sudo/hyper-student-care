@@ -207,6 +207,7 @@ export function HubMaterialsPage() {
         open={Boolean(preview)}
         title={preview?.title ?? ''}
         pages={preview ? hubPreviewPagesToViewerPages(preview.pages) : []}
+        diagCode={diag || null}
         onClose={() => {
           setPreview(null)
           revokePreviewUrls()
