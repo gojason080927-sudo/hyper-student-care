@@ -236,11 +236,13 @@ export function computeWeeklyAchievement(input: {
 
   for (const plan of input.plans) {
     if (plan.planDate < input.weekStart || plan.planDate > weekEnd) continue
-    if (plan.planDate > input.today) {
+    const effective = effectiveStudyPlanResult(plan, input.nowMs)
+    // Stored/effective completed|failed always counts, even if plan_date is after today.
+    // Only unjudged future plans are excluded (pending/future).
+    if (plan.planDate > input.today && effective === 'pending') {
       futureCount += 1
       continue
     }
-    const effective = effectiveStudyPlanResult(plan, input.nowMs)
     if (effective === 'completed') completedCount += 1
     else if (effective === 'failed') failedCount += 1
     else pendingGraceCount += 1

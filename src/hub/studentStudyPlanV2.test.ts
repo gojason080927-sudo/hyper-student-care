@@ -308,9 +308,25 @@ assert.equal(autoFailed.percent, 60)
 assert.equal(autoFailed.message, '곤란해요')
 
 // ---------------------------------------------------------------------------
-// F. future plans exclusion
+// F. unjudged future plans exclusion; judged later-in-week plans count immediately
 // ---------------------------------------------------------------------------
-const withFuture = computeWeeklyAchievement({
+const withFuturePending = computeWeeklyAchievement({
+  plans: [
+    ...many(2, 'completed', '2026-09-17'),
+    ...many(2, 'pending', '2026-09-18'),
+    ...many(2, 'pending', '2026-09-19'),
+  ],
+  weekStart,
+  today: '2026-09-17',
+  nowMs: noonKst,
+})
+assert.equal(withFuturePending.completedCount, 2)
+assert.equal(withFuturePending.failedCount, 0)
+assert.equal(withFuturePending.futureCount, 4)
+assert.equal(withFuturePending.percent, 100)
+assert.equal(withFuturePending.message, '좋아요')
+
+const withJudgedLaterDays = computeWeeklyAchievement({
   plans: [
     ...many(2, 'completed', '2026-09-17'),
     ...many(2, 'completed', '2026-09-18'),
@@ -320,11 +336,12 @@ const withFuture = computeWeeklyAchievement({
   today: '2026-09-17',
   nowMs: noonKst,
 })
-assert.equal(withFuture.completedCount, 2)
-assert.equal(withFuture.failedCount, 0)
-assert.equal(withFuture.futureCount, 4)
-assert.equal(withFuture.percent, 100)
-assert.equal(withFuture.message, '좋아요')
+assert.equal(withJudgedLaterDays.completedCount, 4)
+assert.equal(withJudgedLaterDays.failedCount, 2)
+assert.equal(withJudgedLaterDays.futureCount, 0)
+assert.equal(withJudgedLaterDays.judgedCount, 6)
+assert.equal(withJudgedLaterDays.percent, 67)
+assert.equal(withJudgedLaterDays.message, '곤란해요')
 
 assert.equal(studyPlanErrorMessage({ message: 'result_locked' }), '종료 후 48시간이 지나 결과를 바꿀 수 없습니다.')
 assert.equal(studyPlanErrorMessage({ message: 'schedule_locked' }), '종료된 계획의 날짜와 시간은 바꿀 수 없습니다.')
@@ -390,5 +407,141 @@ assert.equal(lastWeek.message, '부족해요')
 assert.equal(weeklyRateTitle('2026-09-07', '2026-09-17'), '지난 주 달성률')
 
 assert.equal(canMutateStudyPlan({ actorStudentId: 'A', planOwnerStudentId: 'B', planId: 'p1', requestedPlanId: 'p1' }), false)
+
+// ---------------------------------------------------------------------------
+// Device repro: judge Mon/Thu, then add+judge next day in the same week.
+// Weekly counts must update immediately without waiting for that date to become today.
+// ---------------------------------------------------------------------------
+const todayKst = '2026-09-17'
+const sameWeek = startOfWeekMonday(todayKst)
+assert.equal(sameWeek, '2026-09-14')
+assert.deepEqual(weekDatesFromMonday(sameWeek), [
+  '2026-09-14',
+  '2026-09-15',
+  '2026-09-16',
+  '2026-09-17',
+  '2026-09-18',
+  '2026-09-19',
+  '2026-09-20',
+])
+
+let livePlans: StudentStudyPlan[] = [
+  ...many(2, 'completed', '2026-09-17'),
+  ...many(1, 'failed', '2026-09-17'),
+]
+const afterThu = computeWeeklyAchievement({
+  plans: livePlans,
+  weekStart: sameWeek,
+  today: todayKst,
+  nowMs: noonKst,
+})
+assert.equal(afterThu.completedCount, 2)
+assert.equal(afterThu.judgedCount, 3)
+assert.equal(afterThu.percent, 67)
+
+livePlans = [
+  ...livePlans,
+  plan({ id: 'fri-pending-1', result: 'pending', planDate: '2026-09-18' }),
+  plan({ id: 'fri-pending-2', result: 'pending', planDate: '2026-09-18' }),
+  plan({ id: 'fri-pending-3', result: 'pending', planDate: '2026-09-18' }),
+]
+assert.equal(
+  computeWeeklyAchievement({ plans: livePlans, weekStart: sameWeek, today: todayKst, nowMs: noonKst }).judgedCount,
+  3,
+)
+
+function applyStoredResult(
+  rows: StudentStudyPlan[],
+  id: string,
+  result: Extract<StudyPlanResult, 'completed' | 'failed'>,
+): StudentStudyPlan[] {
+  return rows.map((item) =>
+    item.id === id ? { ...item, result, completed: result === 'completed' } : item,
+  )
+}
+
+livePlans = applyStoredResult(livePlans, 'fri-pending-1', 'completed')
+const afterFirstFri = computeWeeklyAchievement({
+  plans: livePlans,
+  weekStart: sameWeek,
+  today: todayKst,
+  nowMs: noonKst,
+})
+assert.equal(afterFirstFri.completedCount, 3)
+assert.equal(afterFirstFri.failedCount, 1)
+assert.equal(afterFirstFri.judgedCount, 4)
+assert.equal(afterFirstFri.percent, 75)
+
+livePlans = applyStoredResult(livePlans, 'fri-pending-2', 'completed')
+const afterSecondFri = computeWeeklyAchievement({
+  plans: livePlans,
+  weekStart: sameWeek,
+  today: todayKst,
+  nowMs: noonKst,
+})
+assert.equal(afterSecondFri.completedCount, 4)
+assert.equal(afterSecondFri.judgedCount, 5)
+assert.equal(afterSecondFri.percent, 80)
+
+livePlans = applyStoredResult(livePlans, 'fri-pending-3', 'failed')
+const afterFriJudged = computeWeeklyAchievement({
+  plans: livePlans,
+  weekStart: sameWeek,
+  today: todayKst,
+  nowMs: noonKst,
+})
+assert.equal(afterFriJudged.completedCount, 4)
+assert.equal(afterFriJudged.failedCount, 2)
+assert.equal(afterFriJudged.judgedCount, 6)
+assert.equal(afterFriJudged.percent, 67)
+assert.equal(afterFriJudged.futureCount, 0)
+assert.equal(afterFriJudged.pendingGraceCount, 0)
+
+assert.equal(startOfWeekMonday('2026-09-18'), sameWeek)
+const afterNavToFri = computeWeeklyAchievement({
+  plans: livePlans,
+  weekStart: startOfWeekMonday('2026-09-18'),
+  today: todayKst,
+  nowMs: noonKst,
+})
+assert.equal(afterNavToFri.completedCount, 4)
+assert.equal(afterNavToFri.judgedCount, 6)
+assert.equal(afterNavToFri.percent, 67)
+
+const afterRefresh = computeWeeklyAchievement({
+  plans: livePlans,
+  weekStart: sameWeek,
+  today: todayKst,
+  nowMs: noonKst,
+})
+assert.equal(afterRefresh.percent, afterFriJudged.percent)
+assert.equal(afterRefresh.completedCount, afterFriJudged.completedCount)
+assert.equal(afterRefresh.judgedCount, afterFriJudged.judgedCount)
+
+const nextWeekPlans = [
+  ...livePlans,
+  ...many(2, 'completed', '2026-09-21'),
+  ...many(2, 'failed', '2026-09-22'),
+]
+const nextWeek = computeWeeklyAchievement({
+  plans: nextWeekPlans,
+  weekStart: '2026-09-21',
+  today: todayKst,
+  nowMs: noonKst,
+})
+assert.equal(nextWeek.title, '다음 주 달성률')
+assert.equal(nextWeek.completedCount, 2)
+assert.equal(nextWeek.failedCount, 2)
+assert.equal(nextWeek.judgedCount, 4)
+assert.equal(nextWeek.percent, 50)
+assert.equal(
+  computeWeeklyAchievement({
+    plans: nextWeekPlans,
+    weekStart: sameWeek,
+    today: todayKst,
+    nowMs: noonKst,
+  }).judgedCount,
+  6,
+)
 
 console.log('studentStudyPlanV2.test.ts passed')
