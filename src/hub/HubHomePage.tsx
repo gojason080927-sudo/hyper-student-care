@@ -51,21 +51,25 @@ export function HubHomePage() {
   return (
     <div className="hub-home mx-auto w-full max-w-lg px-3 pb-10">
       <section className="hub-hero" aria-label="학생 정보">
-        <picture>
-          <source type="image/webp" srcSet={HUB_ACADEMY_LOGO_WEBP} />
-          <img
-            src={HUB_ACADEMY_LOGO_PNG}
-            alt="HYPER ACADEMY"
-            className="hub-hero-logo"
-            width={720}
-            height={720}
-            decoding="async"
-          />
-        </picture>
-        <p className="hub-hero-kicker">HYPER ACADEMY</p>
-        <h1 className="hub-hero-title">학습 허브</h1>
-        <p className="hub-hero-name">{student.name}</p>
-        {meta ? <p className="hub-hero-meta">{meta}</p> : null}
+        <div className="hub-hero-brand">
+          <picture>
+            <source type="image/webp" srcSet={HUB_ACADEMY_LOGO_WEBP} />
+            <img
+              src={HUB_ACADEMY_LOGO_PNG}
+              alt="HYPER ACADEMY"
+              className="hub-hero-logo"
+              width={720}
+              height={720}
+              decoding="async"
+            />
+          </picture>
+          <p className="hub-hero-kicker">HYPER ACADEMY</p>
+          <h1 className="hub-hero-title">학습 허브</h1>
+        </div>
+        <div className="hub-hero-identity">
+          <p className="hub-hero-name">{student.name}</p>
+          {meta ? <p className="hub-hero-meta">{meta}</p> : null}
+        </div>
       </section>
 
       <nav aria-label="학생 학습 허브" className="hub-menu-grid grid grid-cols-3">
@@ -76,7 +80,7 @@ export function HubHomePage() {
             <Link key={tile.to} to={`/hub/${accessKey}/${tile.to}`} className="hub-tile">
               {count > 0 ? <span className="hub-badge">{count > 9 ? '9+' : count}</span> : null}
               <span className="hub-tile-icon" aria-hidden>
-                <Icon strokeWidth={2.15} />
+                <Icon strokeWidth={2.4} />
               </span>
               <span className="hub-tile-label">{tile.label}</span>
             </Link>
@@ -86,13 +90,15 @@ export function HubHomePage() {
 
       <Link to={`/hub/${accessKey}/study-plan`} className="hub-feature-card">
         <span className="hub-feature-icon" aria-hidden>
-          <CalendarCheck strokeWidth={2.1} />
+          <CalendarCheck strokeWidth={2.35} />
         </span>
         <span className="hub-feature-copy">
           <span className="hub-feature-title">My Study Plan</span>
           <span className="hub-feature-sub">나만의 학습 계획 관리</span>
         </span>
-        <ChevronRight className="h-5 w-5 shrink-0 text-[#5b348a]" aria-hidden />
+        <span className="hub-feature-arrow" aria-hidden>
+          <ChevronRight strokeWidth={2.4} />
+        </span>
       </Link>
     </div>
   )
