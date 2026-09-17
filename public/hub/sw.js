@@ -11,6 +11,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const request = event.request
   const url = new URL(request.url)
+  if (url.pathname.startsWith('/api/')) return
   const bypassHttpCache =
     request.mode === 'navigate' || url.pathname.includes('/rest/v1/rpc/')
   event.respondWith(fetch(request, bypassHttpCache ? { cache: 'no-store' } : undefined))

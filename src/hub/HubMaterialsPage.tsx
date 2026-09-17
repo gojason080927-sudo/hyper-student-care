@@ -2,10 +2,10 @@ import { useRef, useState } from 'react'
 import { ConnectedAdmissionStrategyViewer } from '../components/admissionStrategy/ConnectedAdmissionStrategyViewer'
 import { HUB_LEARNING_MATERIALS_BUCKET } from './types'
 import { downloadHubObjectBlob } from './hubStorageClient'
+import { loadHubMaterialPreview } from './hubMaterialPreview'
 import { HubEmpty, HubPageHeader } from './HubChrome'
 import { useHub } from './HubContext'
 import { useHubContentRefresh } from './useHubContentRefresh'
-import { hubMaterialPreviewKind, hubRenderedPagesToViewerPages } from './hubRouteRefresh'
 import type { HubMaterial } from './types'
 
 function canPreview(kind: HubMaterial['kind']): boolean {
@@ -17,6 +17,7 @@ export function HubMaterialsPage() {
   useHubContentRefresh(reload)
   const [preview, setPreview] = useState<HubMaterial | null>(null)
   const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
   const previewUrlsRef = useRef<string[]>([])
 
   const revokePreviewUrls = () => {
@@ -30,50 +31,22 @@ export function HubMaterialsPage() {
     return url
   }
 
+  const readFile = async (path: string) =>
+    downloadHubObjectBlob({
+      accessKey,
+      bucket: HUB_LEARNING_MATERIALS_BUCKET,
+      path,
+    })
+
   const resolvePageUrl = async (assetPath: string) => {
     if (assetPath.startsWith('blob:')) return assetPath
-    const blob = await downloadHubObjectBlob({
-      accessKey,
-      bucket: HUB_LEARNING_MATERIALS_BUCKET,
-      path: assetPath,
-    })
+    const blob = await readFile(assetPath)
     return objectUrlFromBlob(blob)
-  }
-
-  const openSourceInViewer = async (material: HubMaterial) => {
-    if (!material.sourceFilePath) return
-    const blob = await downloadHubObjectBlob({
-      accessKey,
-      bucket: HUB_LEARNING_MATERIALS_BUCKET,
-      path: material.sourceFilePath,
-    })
-    if (material.kind === 'pdf') {
-      const { renderPdfFileToPages } = await import('../lib/admissionStrategy/pdfToPageImages')
-      const file = new File([blob], material.originalFileName || 'material.pdf', {
-        type: blob.type || 'application/pdf',
-      })
-      const rendered = await renderPdfFileToPages(file)
-      const urls = rendered.map((page) => objectUrlFromBlob(page.blob))
-      setPreview({
-        ...material,
-        pages: hubRenderedPagesToViewerPages(rendered, urls),
-      })
-      return
-    }
-    const url = objectUrlFromBlob(blob)
-    setPreview({
-      ...material,
-      pages: [{ pageNumber: 1, assetPath: url, width: null, height: null }],
-    })
   }
 
   const downloadSource = async (material: HubMaterial) => {
     if (!material.sourceFilePath) return
-    const blob = await downloadHubObjectBlob({
-      accessKey,
-      bucket: HUB_LEARNING_MATERIALS_BUCKET,
-      path: material.sourceFilePath,
-    })
+    const blob = await readFile(material.sourceFilePath)
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
@@ -85,30 +58,37 @@ export function HubMaterialsPage() {
 
   const openPreview = async (material: HubMaterial) => {
     setError('')
-    const mode = hubMaterialPreviewKind(material)
+    setBusy(true)
+    setPreview(null)
+    revokePreviewUrls()
     try {
-      if (mode === 'pages') {
-        setPreview(material)
+      const result = await loadHubMaterialPreview(material, {
+        readFile,
+        renderPdf: async (file) => {
+          const { renderPdfFileToPages } = await import('../lib/admissionStrategy/pdfToPageImages')
+          return renderPdfFileToPages(file)
+        },
+        objectUrl: objectUrlFromBlob,
+      })
+      if (!result.ok) {
+        revokePreviewUrls()
+        setError(result.error || '미리보기를 불러오지 못했습니다.')
         return
       }
-      if (mode === 'source') {
-        await openSourceInViewer(material)
-        return
-      }
-      setError('이 자료는 미리보기를 지원하지 않습니다. 다운로드를 이용해 주세요.')
+      setPreview({ ...material, pages: result.pages })
     } catch (err) {
-      setError(err instanceof Error ? err.message : '미리보기에 실패했습니다.')
+      revokePreviewUrls()
+      setError(err instanceof Error ? err.message : '미리보기를 불러오지 못했습니다.')
+    } finally {
+      setBusy(false)
     }
-  }
-
-  const printMaterial = async (material: HubMaterial) => {
-    await openPreview(material)
   }
 
   return (
     <div className="mx-auto w-full max-w-lg px-3 pb-8 pt-4">
       <HubPageHeader title="문제 자료실" />
       {error ? <p className="mb-3 text-sm text-rose-600">{error}</p> : null}
+      {busy ? <p className="mb-3 text-sm text-slate-500">미리보기를 불러오는 중…</p> : null}
       {materials.length === 0 ? (
         <HubEmpty message="아직 공개된 문제 자료가 없습니다." />
       ) : (
@@ -151,7 +131,7 @@ export function HubMaterialsPage() {
                   <button
                     type="button"
                     className="rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700"
-                    onClick={() => void printMaterial(material)}
+                    onClick={() => void openPreview(material)}
                   >
                     출력
                   </button>
