@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Outlet, useParams } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Outlet, useLocation, useParams } from 'react-router-dom'
 import { isSupabaseConfigured, normalizeRouteAccessKey } from '../lib/supabase'
 import { HubProvider } from './HubContext'
 import { HubPwaRegistrar } from './HubPwaRegistrar'
 import { rpcGetStudentHubBundle, rpcGetStudentHubIdentity, type StudentHubBundle } from './hubRpc'
+import { hubRouteReloadNeeded } from './hubRouteRefresh'
 import '../styles/hyperDesignTokens.css'
 import './hub.css'
 
@@ -20,6 +21,7 @@ function HubMessage({ title, body }: { title: string; body: string }) {
 
 export function HubLayout() {
   const { studentAccessKey = '' } = useParams()
+  const location = useLocation()
   const accessKey = useMemo(() => normalizeRouteAccessKey(studentAccessKey), [studentAccessKey])
   const [bundle, setBundle] = useState<StudentHubBundle | null | undefined>(undefined)
   const [mode, setMode] = useState<'loading' | 'config' | 'invalid' | 'inactive' | 'ready'>('loading')
@@ -39,6 +41,22 @@ export function HubLayout() {
     setBundle(next)
     setMode('ready')
   }
+
+  const reloadRef = useRef(reload)
+  reloadRef.current = reload
+  const prevPathRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    prevPathRef.current = null
+  }, [accessKey])
+
+  useEffect(() => {
+    if (mode !== 'ready') return
+    const previous = prevPathRef.current
+    prevPathRef.current = location.pathname
+    if (!hubRouteReloadNeeded(previous, location.pathname)) return
+    void reloadRef.current()
+  }, [mode, location.pathname])
 
   useEffect(() => {
     let cancelled = false
