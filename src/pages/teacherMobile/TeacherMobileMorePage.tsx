@@ -17,13 +17,13 @@ import {
 import { TeacherMobileHeader } from '../../components/teacherMobile/TeacherMobileHeader'
 
 const links = [
+  { to: '/teacher/mobile/student-hub', label: '학생 학습자료', icon: BookOpen },
   { to: '/teacher/mobile/monthly-learning-reports', label: '월간 학습진단 REPORT', icon: FileBarChart2 },
   { to: '/entrance-exam', label: '신입생 평가 및 성향 진단', icon: ClipboardCheck },
   { to: '/teacher/mobile/career-assessment', label: '진로·학과 적성검사', icon: Compass },
   { to: '/teacher/mobile/notices', label: '학습정보 & 공지사항', icon: Megaphone },
   { to: '/teacher/mobile/makeup', label: '보강계획', icon: CalendarCheck },
   { to: '/teacher/mobile/admission-strategy', label: '고입 · 대입 입시전략', icon: GraduationCap },
-  { to: '/teacher/mobile/student-hub', label: '학생 학습 허브', icon: BookOpen },
   { to: '/teacher/mobile/questions', label: '질문하기', icon: HelpCircle },
   { to: '/teacher/mobile/progress', label: '학습진행 상황 (교재 진도)', icon: TrendingUp },
   { to: '/teacher/mobile/evaluation', label: '월말평가 결과', icon: GraduationCap },

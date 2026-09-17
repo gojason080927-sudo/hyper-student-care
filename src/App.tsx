@@ -414,7 +414,7 @@ function App() {
             <Route
               path="student-hub"
               element={
-                <TeacherMobilePageShell title="학생 학습 허브">
+                <TeacherMobilePageShell title="학생 학습자료">
                   <TeacherStudentHubPage />
                 </TeacherMobilePageShell>
               }

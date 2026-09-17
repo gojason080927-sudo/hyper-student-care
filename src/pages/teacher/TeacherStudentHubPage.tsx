@@ -5,18 +5,14 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { useData } from '../../hooks/useData'
 import { GRADES, btnPrimary, btnSecondary, inputClass } from '../../utils/labels'
 import { getClassOptionsForGrade } from '../../utils/studentGradeClass'
-import { TEXTBOOK_SUBJECTS } from '../../types/records'
 import { createId } from '../../utils/id'
-import type { HubAssignment, HubAudienceType, HubInboxItem, HubMaterial, HubVideo } from '../../hub/types'
+import type { HubAudienceType, HubInboxItem, HubMaterial, HubVideo } from '../../hub/types'
 import { HUB_QUESTION_ATTACHMENTS_BUCKET } from '../../hub/types'
 import {
-  teacherDeleteAssignment,
   teacherDeleteVideo,
-  teacherFetchAssignments,
   teacherFetchInbox,
   teacherFetchMaterials,
   teacherFetchVideos,
-  teacherSaveAssignment,
   teacherSaveVideo,
   teacherSetMaterialStatus,
   teacherSignedUrl,
@@ -27,12 +23,11 @@ import {
 import { parseTimestampLines, parseYoutubeVideoId } from '../../hub/youtube'
 import { HUB_MATERIAL_ACCEPT } from '../../hub/hubFilePolicy'
 
-type Tab = 'assignments' | 'materials' | 'videos' | 'requests' | 'suggestions'
+type Tab = 'materials' | 'videos' | 'requests' | 'suggestions'
 
 const tabs: { id: Tab; label: string }[] = [
-  { id: 'assignments', label: '오늘의 과제' },
-  { id: 'materials', label: '문제 자료실' },
-  { id: 'videos', label: '영상 자료실' },
+  { id: 'materials', label: '문제 자료' },
+  { id: 'videos', label: '영상 자료' },
   { id: 'requests', label: '자료 요청' },
   { id: 'suggestions', label: '건의' },
 ]
@@ -136,22 +131,19 @@ function AudienceFields(props: {
 
 export function TeacherStudentHubPage() {
   const { showToast, students } = useData()
-  const [tab, setTab] = useState<Tab>('assignments')
+  const [tab, setTab] = useState<Tab>('materials')
   const [error, setError] = useState('')
-  const [assignments, setAssignments] = useState<HubAssignment[]>([])
   const [materials, setMaterials] = useState<HubMaterial[]>([])
   const [videos, setVideos] = useState<HubVideo[]>([])
   const [inbox, setInbox] = useState<HubInboxItem[]>([])
 
   const reload = async () => {
     try {
-      const [nextAssignments, nextMaterials, nextVideos, nextInbox] = await Promise.all([
-        teacherFetchAssignments(),
+      const [nextMaterials, nextVideos, nextInbox] = await Promise.all([
         teacherFetchMaterials(),
         teacherFetchVideos(),
         teacherFetchInbox(),
       ])
-      setAssignments(nextAssignments)
       setMaterials(nextMaterials)
       setVideos(nextVideos)
       setInbox(nextInbox)
@@ -168,9 +160,13 @@ export function TeacherStudentHubPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="학생 학습 허브"
-        description="반 과제 · 문제/영상 자료실 · 자료요청 · 건의를 관리합니다. YouTube 일부공개는 ACL이 아닙니다."
+        title="학생 학습자료"
+        description="학생 앱의 문제 자료·영상 자료를 등록하고 관리합니다. YouTube 일부공개는 ACL이 아닙니다."
       />
+      <p className="break-keep rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700">
+        오늘의 과제는 Today Report의 「반 공통 오늘 과제」에서 입력합니다. 학생 앱 연결은 다음 단계에서
+        적용됩니다. 이 화면에서 과제를 다시 입력하지 마세요.
+      </p>
       <p className="text-sm text-slate-600">
         학생 질문은 기존 <Link className="font-semibold text-navy-700" to="/questions">질문하기</Link>에서
         source 필터로 확인합니다.
@@ -182,7 +178,7 @@ export function TeacherStudentHubPage() {
             key={item.id}
             type="button"
             onClick={() => setTab(item.id)}
-            className={`rounded-full px-4 py-2 text-sm font-semibold ${
+            className={`min-h-11 rounded-full px-4 py-2 text-sm font-semibold ${
               tab === item.id ? 'bg-[#163A70] text-white' : 'bg-white text-slate-600'
             }`}
           >
@@ -190,15 +186,6 @@ export function TeacherStudentHubPage() {
           </button>
         ))}
       </div>
-      {tab === 'assignments' ? (
-        <AssignmentPanel
-          assignments={assignments}
-          onSaved={async () => {
-            showToast('과제를 저장했습니다.')
-            await reload()
-          }}
-        />
-      ) : null}
       {tab === 'materials' ? (
         <MaterialPanel
           materials={materials}
@@ -230,176 +217,6 @@ export function TeacherStudentHubPage() {
   )
 }
 
-function AssignmentPanel({
-  assignments,
-  onSaved,
-}: {
-  assignments: HubAssignment[]
-  onSaved: () => Promise<void>
-}) {
-  const emptyForm = {
-    id: '',
-    grade: '',
-    className: '',
-    subject: '수학',
-    textbookName: '',
-    content: '',
-    dueDate: '',
-    published: true,
-  }
-  const [form, setForm] = useState(emptyForm)
-  const classOptions = getClassOptionsForGrade(form.grade)
-  const editing = Boolean(form.id)
-
-  const submit = async (event: FormEvent) => {
-    event.preventDefault()
-    const existing = assignments.find((item) => item.id === form.id)
-    await teacherSaveAssignment({
-      id: form.id || createId(),
-      grade: form.grade,
-      className: form.className,
-      subject: form.subject,
-      textbookName: form.textbookName,
-      content: form.content,
-      dueDate: form.dueDate || null,
-      studentId: existing?.studentId ?? null,
-      published: form.published,
-      publishedAt: form.published
-        ? existing?.publishedAt || new Date().toISOString()
-        : null,
-      createdAt: existing?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    })
-    setForm(emptyForm)
-    await onSaved()
-  }
-
-  return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <form onSubmit={(event) => void submit(event)} className="space-y-3 rounded-2xl bg-white p-5 shadow-sm">
-        <h3 className="font-bold text-navy-900">{editing ? '과제 수정' : '반 과제 게시'}</h3>
-        <select
-          className={inputClass()}
-          value={form.grade}
-          onChange={(event) => setForm((prev) => ({ ...prev, grade: event.target.value, className: '' }))}
-          required
-        >
-          <option value="">학년</option>
-          {GRADES.map((item) => (
-            <option key={item} value={item}>
-              {item}
-            </option>
-          ))}
-        </select>
-        <select
-          className={inputClass()}
-          value={form.className}
-          onChange={(event) => setForm((prev) => ({ ...prev, className: event.target.value }))}
-          required
-        >
-          <option value="">반</option>
-          {classOptions.map((item) => (
-            <option key={item} value={item}>
-              {item}
-            </option>
-          ))}
-        </select>
-        <select
-          className={inputClass()}
-          value={form.subject}
-          onChange={(event) => setForm((prev) => ({ ...prev, subject: event.target.value }))}
-        >
-          {TEXTBOOK_SUBJECTS.map((item) => (
-            <option key={item} value={item}>
-              {item}
-            </option>
-          ))}
-        </select>
-        <input
-          className={inputClass()}
-          value={form.textbookName}
-          onChange={(event) => setForm((prev) => ({ ...prev, textbookName: event.target.value }))}
-          placeholder="교재 (선택)"
-        />
-        <textarea
-          className={inputClass()}
-          rows={4}
-          value={form.content}
-          onChange={(event) => setForm((prev) => ({ ...prev, content: event.target.value }))}
-          placeholder="과제 내용"
-          required
-        />
-        <input
-          className={inputClass()}
-          type="date"
-          value={form.dueDate}
-          onChange={(event) => setForm((prev) => ({ ...prev, dueDate: event.target.value }))}
-        />
-        <label className="flex items-center gap-2 text-sm text-slate-700">
-          <input
-            type="checkbox"
-            checked={form.published}
-            onChange={(event) => setForm((prev) => ({ ...prev, published: event.target.checked }))}
-          />
-          학생에게 게시
-        </label>
-        <div className="flex flex-wrap gap-2">
-          <button type="submit" className={btnPrimary}>
-            {editing ? '수정 저장' : '게시'}
-          </button>
-          {editing ? (
-            <button type="button" className={btnSecondary} onClick={() => setForm(emptyForm)}>
-              취소
-            </button>
-          ) : null}
-        </div>
-      </form>
-      <div className="space-y-3">
-        {assignments.length === 0 ? <EmptyState title="과제가 없습니다." /> : null}
-        {assignments.map((item) => (
-          <article key={item.id} className="rounded-2xl bg-white p-4 shadow-sm">
-            <p className="break-keep text-xs text-slate-500">
-              {item.grade} {item.className} · {item.subject}
-              {item.published ? ' · 게시' : ' · 숨김'}
-            </p>
-            <p className="mt-1 whitespace-pre-wrap break-anywhere text-sm">{item.content}</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button
-                type="button"
-                className={btnSecondary}
-                onClick={() =>
-                  setForm({
-                    id: item.id,
-                    grade: item.grade,
-                    className: item.className,
-                    subject: item.subject,
-                    textbookName: item.textbookName,
-                    content: item.content,
-                    dueDate: item.dueDate ?? '',
-                    published: item.published,
-                  })
-                }
-              >
-                수정
-              </button>
-              <button
-                type="button"
-                className={btnSecondary}
-                onClick={async () => {
-                  await teacherDeleteAssignment(item.id)
-                  if (form.id === item.id) setForm(emptyForm)
-                  await onSaved()
-                }}
-              >
-                삭제
-              </button>
-            </div>
-          </article>
-        ))}
-      </div>
-    </div>
-  )
-}
 
 function MaterialPanel({
   materials,

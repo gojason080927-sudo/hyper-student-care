@@ -26,6 +26,12 @@ const categories = [
     icon: ClipboardList,
   },
   {
+    to: '/teacher/student-hub',
+    title: '학생 학습자료',
+    description: '학생 앱의 문제 자료·영상 자료를 등록하고 관리합니다',
+    icon: BookOpen,
+  },
+  {
     to: '/monthly-learning-reports',
     title: '월간 학습진단\nREPORT',
     description: '실시간 예상점수 · 확정 공개',
@@ -59,12 +65,6 @@ const categories = [
     title: '고입 · 대입\n입시전략',
     description: '진학 · 입시 정보 관리',
     icon: GraduationCap,
-  },
-  {
-    to: '/teacher/student-hub',
-    title: '학생 학습 허브',
-    description: '과제 · 자료실 · 요청 · 건의',
-    icon: BookOpen,
   },
   {
     to: '/questions',
