@@ -118,23 +118,38 @@ const pageMaterial = {
 }
 
 {
-  const { signs, reads, fetches, io } = mockIo({
-    signed: { 'mat-a/pages/001.webp': 'https://signed.example/page-1.webp' },
+  const { signs, reads, fetches, opened, io } = mockIo({
+    files: { 'mat-a/pages/001.webp': new Blob([jpegBytes], { type: 'image/webp' }) },
   })
   const result = await loadHubMaterialPreview(pageMaterial, io)
   assert.equal(result.ok, true)
   if (result.ok) {
     assert.equal(result.path, 'PREVIEW-PAGES')
-    assert.equal(result.pages[0]?.assetPath, 'https://signed.example/page-1.webp')
-    assert.equal(hubPreviewSrcIsReady(result.pages[0]?.assetPath ?? ''), true)
+    assert.equal(result.pages[0]?.assetPath.startsWith('blob:'), true)
   }
-  assert.deepEqual(signs, ['mat-a/pages/001.webp'])
-  assert.deepEqual(reads, [])
+  assert.deepEqual(reads, ['mat-a/pages/001.webp'])
+  assert.deepEqual(signs, [])
   assert.deepEqual(fetches, [])
+  assert.equal(opened.length, 1)
   const viewerPages = hubPreviewPagesToViewerPages(result.ok ? result.pages : [])
-  assert.equal(viewerPages[0]?.src, 'https://signed.example/page-1.webp')
+  assert.equal(viewerPages[0]?.src?.startsWith('blob:'), true)
   assert.equal(viewerPages[0]?.loading, false)
   assert.equal(viewerPages[0]?.error, false)
+}
+
+{
+  const signedPage = 'https://signed.example/page-1.webp'
+  const { signs, reads, fetches, opened, io } = mockIo({
+    signed: { 'mat-a/pages/001.webp': signedPage },
+    urls: { [signedPage]: new Blob([jpegBytes], { type: 'image/jpeg' }) },
+  })
+  const result = await loadHubMaterialPreview(pageMaterial, io)
+  assert.equal(result.ok, true)
+  if (result.ok) assert.equal(result.pages[0]?.assetPath.startsWith('blob:'), true)
+  assert.deepEqual(reads, ['mat-a/pages/001.webp'])
+  assert.deepEqual(signs, ['mat-a/pages/001.webp'])
+  assert.deepEqual(fetches, [signedPage])
+  assert.equal(opened.length, 1)
 }
 
 {
@@ -148,7 +163,7 @@ const pageMaterial = {
     assert.equal(result.code, 'SIGN-403')
     assert.equal(result.path, 'PREVIEW-PAGES')
   }
-  assert.deepEqual(reads, [])
+  assert.deepEqual(reads, ['mat-a/pages/001.webp'])
 }
 
 const sourceMaterial = {
@@ -225,7 +240,10 @@ assert.match(hubMaterials, /hubPreviewPagesToViewerPages/)
 assert.match(hubMaterials, /AdmissionStrategyMaterialViewer/)
 assert.match(hubMaterials, /진단코드/)
 assert.match(hubMaterials, /hub-preview-diag/)
+assert.match(hubMaterials, /diagCode/)
 assert.match(hubMaterials, /IMAGE-ERROR/)
+assert.match(hubMaterials, /diagCode/)
+assert.match(readFileSync('src/components/admissionStrategy/AdmissionStrategyMaterialViewer.tsx', 'utf8'), /viewer-diag/)
 assert.match(hubMaterials, /onImageError/)
 assert.doesNotMatch(hubMaterials, /진단코드: \$\{accessKey\}/)
 assert.doesNotMatch(hubMaterials, /ConnectedAdmissionStrategyViewer/)

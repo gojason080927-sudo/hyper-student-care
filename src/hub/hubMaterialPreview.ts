@@ -95,7 +95,36 @@ async function blobFromBytes(blob: Blob, expected: 'pdf' | 'image' | 'any'): Pro
   if (!hubPreviewFileLooksValid(bytes, expected)) {
     throw new Error('미리보기 파일을 불러오지 못했습니다.')
   }
-  return new Blob([bytes], { type: blob.type || (expected === 'pdf' ? 'application/pdf' : 'image/jpeg') })
+  const kind = classifyHubPreviewBytes(bytes)
+  const type =
+    kind === 'pdf'
+      ? 'application/pdf'
+      : bytes[0] === 0xff && bytes[1] === 0xd8
+        ? 'image/jpeg'
+        : bytes[0] === 0x89 && bytes[1] === 0x50
+          ? 'image/png'
+          : bytes[0] === 0x52 && bytes[1] === 0x49
+            ? 'image/webp'
+            : blob.type && blob.type.startsWith('image/')
+              ? blob.type
+              : expected === 'pdf'
+                ? 'application/pdf'
+                : 'image/jpeg'
+  return new Blob([bytes], { type })
+}
+
+async function loadImageSrc(io: HubPreviewIo, path: string): Promise<string> {
+  try {
+    return io.objectUrl(await blobFromBytes(await io.readFile(path), 'image'))
+  } catch {
+    const signed = await io.signUrl(path)
+    try {
+      return io.objectUrl(await blobFromBytes(await io.fetchUrl(signed), 'image'))
+    } catch {
+      if (!hubPreviewSrcIsReady(signed)) throw new Error('미리보기 주소를 만들지 못했습니다.')
+      return signed
+    }
+  }
 }
 
 async function loadPdfBytes(io: HubPreviewIo, path: string): Promise<Blob> {
@@ -117,11 +146,11 @@ export async function loadHubMaterialPreview(
       const pages = await Promise.all(
         material.pages.map(async (page) => {
           if (!page.assetPath) throw new Error('미리보기 페이지가 없습니다.')
-          const signed = await io.signUrl(page.assetPath)
-          if (!hubPreviewSrcIsReady(signed)) throw new Error('미리보기 주소를 만들지 못했습니다.')
+          const src = await loadImageSrc(io, page.assetPath)
+          if (!hubPreviewSrcIsReady(src)) throw new Error('미리보기 주소를 만들지 못했습니다.')
           return {
             pageNumber: page.pageNumber,
-            assetPath: signed,
+            assetPath: src,
             width: page.width,
             height: page.height,
           }
@@ -151,12 +180,12 @@ export async function loadHubMaterialPreview(
     }
 
     if (material.kind === 'image') {
-      const signed = await io.signUrl(material.sourceFilePath)
-      if (!hubPreviewSrcIsReady(signed)) return fail('미리보기 주소를 만들지 못했습니다.', path)
+      const src = await loadImageSrc(io, material.sourceFilePath)
+      if (!hubPreviewSrcIsReady(src)) return fail('미리보기 주소를 만들지 못했습니다.', path)
       return {
         ok: true,
         path,
-        pages: [{ pageNumber: 1, assetPath: signed, width: null, height: null }],
+        pages: [{ pageNumber: 1, assetPath: src, width: null, height: null }],
       }
     }
 

@@ -42,6 +42,7 @@ type AdmissionStrategyMaterialViewerProps = {
   onClose: () => void
   onNeedPages?: (pageNumbers: number[]) => void
   onImageError?: (pageNumber: number) => void
+  diagCode?: string | null
 }
 
 const MIN_SCALE = 1
@@ -61,6 +62,7 @@ export function AdmissionStrategyMaterialViewer({
   onClose,
   onNeedPages,
   onImageError,
+  diagCode,
 }: AdmissionStrategyMaterialViewerProps) {
   const total = pages.length
   const [pageIndex, setPageIndex] = useState(() =>
@@ -360,6 +362,11 @@ export function AdmissionStrategyMaterialViewer({
           {pageLabel}
         </p>
       </header>
+      {diagCode ? (
+        <p className="shrink-0 px-3 py-1 font-mono text-[11px] text-amber-200/90" data-testid="viewer-diag">
+          {diagCode}
+        </p>
+      ) : null}
 
       <div className="relative min-h-0 min-w-0 flex-1">
         <div
@@ -386,9 +393,12 @@ export function AdmissionStrategyMaterialViewer({
               표시할 페이지가 없습니다.
             </div>
           ) : current.error || imageFailed ? (
-            <p className="flex h-full items-center justify-center px-6 text-center text-sm text-white/80">
-              이 페이지를 불러오지 못했습니다.
-            </p>
+            <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
+              <p className="text-sm text-white/80">이 페이지를 불러오지 못했습니다.</p>
+              {diagCode ? (
+                <p className="font-mono text-[11px] text-amber-200/90">{diagCode}</p>
+              ) : null}
+            </div>
           ) : current.src ? (
             <div className="flex h-full w-full items-center justify-center overflow-hidden">
               <img
