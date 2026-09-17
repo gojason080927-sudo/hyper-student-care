@@ -18,6 +18,7 @@ const bundle: StudentHubBundle = {
   },
   inactive: false,
   weeklyLearningSummaries: [],
+  dailyTests: [],
   assignments: [],
   materials: [],
   videos: [],

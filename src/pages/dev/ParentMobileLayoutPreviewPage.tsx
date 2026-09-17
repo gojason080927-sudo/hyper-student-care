@@ -210,7 +210,11 @@ export function ParentMobileLayoutPreviewPage() {
           </section>
 
           <section data-preview-section="weekly-summary" className="parent-page space-y-4 pb-6">
-            <WeeklySummaryDetail summary={previewSummary} />
+            <WeeklySummaryDetail
+              summary={previewSummary}
+              dailyTests={[]}
+              studentId={previewStudent.id}
+            />
           </section>
 
           <section data-preview-section="today-report" className="parent-page space-y-3 pb-4">

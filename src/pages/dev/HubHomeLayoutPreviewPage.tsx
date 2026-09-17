@@ -14,6 +14,7 @@ const longBundle: StudentHubBundle = {
   },
   inactive: false,
   weeklyLearningSummaries: [],
+  dailyTests: [],
   assignments: [],
   materials: [],
   videos: [],
