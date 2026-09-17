@@ -1,27 +1,33 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { Check, ChevronLeft, ChevronRight, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Angry, Annoyed, ChevronLeft, ChevronRight, Frown, Laugh, Meh, Pencil, Plus, Smile, Trash2 } from 'lucide-react'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
-import { addDays, formatKoreanDate, getTodayString } from '../utils/date'
+import { addDays, formatKoreanDate } from '../utils/date'
 import { HubPageHeader } from './HubChrome'
 import { useHub } from './HubContext'
 import {
   rpcDeleteStudentStudyPlan,
   rpcListStudentStudyPlans,
-  rpcSetStudentStudyPlanCompleted,
+  rpcSetStudentStudyPlanResult,
   rpcUpsertStudentStudyPlan,
 } from './hubRpc'
 import {
+  computeWeeklyAchievement,
   dayNumber,
+  effectiveStudyPlanResult,
   emptyDateMessage,
   formatPlanTimeRange,
+  isStudyPlanResultLocked,
   plansOnDate,
   startOfWeekMonday,
   studyPlanErrorMessage,
   timeInputValue,
+  todayInSeoul,
   weekDatesFromMonday,
   weekdayKo,
+  type StudyPlanRateBand,
+  type WeeklyAchievement,
 } from './studyPlan'
-import { STUDY_PLAN_SUBJECT_PRESETS, type StudentStudyPlan } from './types'
+import { STUDY_PLAN_SUBJECT_PRESETS, type StudentStudyPlan, type StudyPlanResult } from './types'
 
 type EditorDraft = {
   id: string | null
@@ -65,10 +71,53 @@ function resolvedSubject(draft: EditorDraft): string {
   return draft.subjectPreset.trim()
 }
 
+function RateFace({ band }: { band: Exclude<StudyPlanRateBand, 'neutral'> }) {
+  const Icon =
+    band === 'great' ? Laugh : band === 'try_more' ? Smile : band === 'lack' ? Meh : band === 'trouble' ? Frown : band === 'danger' ? Annoyed : Angry
+  return (
+    <span className="hub-rate-face" data-band={band} aria-hidden="true">
+      <Icon className="h-5 w-5" strokeWidth={2.2} />
+    </span>
+  )
+}
+
+function WeeklyRateCard({ summary }: { summary: WeeklyAchievement }) {
+  const percentLabel = summary.percent == null ? '—' : `${summary.percent}%`
+  const width = summary.percent == null ? 0 : summary.percent
+  return (
+    <section className="hub-rate-card" data-study-plan-rate={summary.band} aria-label={summary.title}>
+      <p className="hub-rate-kicker">{summary.title}</p>
+      <div className="hub-rate-top">
+        <p className={`hub-rate-percent ${summary.percent == null ? 'is-empty' : ''}`} data-study-plan-percent={percentLabel}>
+          {percentLabel}
+        </p>
+        <p className="hub-rate-counts">
+          완료 {summary.completedCount} / 판정 {summary.judgedCount}
+        </p>
+      </div>
+      <div className="hub-rate-bar" aria-hidden="true">
+        <span style={{ width: `${width}%` }} />
+      </div>
+      <div className="hub-rate-mood">
+        {summary.band === 'neutral' ? null : <RateFace band={summary.band} />}
+        <div className="min-w-0">
+          <p className="hub-rate-message">{summary.message}</p>
+          {summary.band === 'neutral' ? (
+            <p className="hub-rate-hint">아직 결과가 나온 계획만 반영됩니다.</p>
+          ) : (
+            <p className="hub-rate-hint">유예 중인 계획은 아직 포함하지 않습니다.</p>
+          )}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 export function HubStudyPlanScreen({
   selectedDate,
   weekStart,
   today,
+  nowMs,
   plans,
   loading,
   error,
@@ -79,7 +128,7 @@ export function HubStudyPlanScreen({
   onToday,
   onAdd,
   onEdit,
-  onToggle,
+  onSetResult,
   onAskDelete,
   onSave,
   onCancel,
@@ -88,6 +137,7 @@ export function HubStudyPlanScreen({
   selectedDate: string
   weekStart: string
   today: string
+  nowMs: number
   plans: StudentStudyPlan[]
   loading: boolean
   error: string
@@ -98,7 +148,7 @@ export function HubStudyPlanScreen({
   onToday: () => void
   onAdd: () => void
   onEdit: (plan: StudentStudyPlan) => void
-  onToggle: (plan: StudentStudyPlan) => void
+  onSetResult: (plan: StudentStudyPlan, result: Extract<StudyPlanResult, 'completed' | 'failed'>) => void
   onAskDelete: (plan: StudentStudyPlan) => void
   onSave: (event: FormEvent) => void
   onCancel: () => void
@@ -107,10 +157,12 @@ export function HubStudyPlanScreen({
   const weekDates = weekDatesFromMonday(weekStart)
   const visible = plansOnDate(plans, selectedDate)
   const selectedLabel = formatKoreanDate(selectedDate)
+  const weekly = computeWeeklyAchievement({ plans, weekStart, today, nowMs })
 
   return (
     <div className="mx-auto w-full max-w-lg px-3 pb-10 pt-4">
       <HubPageHeader title="My Study Plan" />
+      <WeeklyRateCard summary={weekly} />
 
       <div className="mb-3 flex items-center gap-2">
         <button
@@ -176,46 +228,67 @@ export function HubStudyPlanScreen({
         </div>
       ) : (
         <ul className="mt-3 space-y-3">
-          {visible.map((plan) => (
-            <li key={plan.id} className={`hub-plan-card ${plan.completed ? 'is-done' : ''}`}>
-              <div className="flex items-start gap-3">
-                <button
-                  type="button"
-                  className={`hub-check ${plan.completed ? 'is-on' : ''}`}
-                  aria-label={plan.completed ? '완료 해제' : '완료'}
-                  onClick={() => onToggle(plan)}
-                  disabled={busy}
-                >
-                  <Check className="h-4 w-4" strokeWidth={2.6} />
-                </button>
-                <div className="min-w-0 flex-1">
+          {visible.map((plan) => {
+            const effective = effectiveStudyPlanResult(plan, nowMs)
+            const locked = isStudyPlanResultLocked(plan, nowMs)
+            return (
+              <li
+                key={plan.id}
+                className={`hub-plan-card ${effective === 'completed' ? 'is-done' : ''} ${effective === 'failed' ? 'is-failed' : ''}`}
+              >
+                <div className="min-w-0">
                   <p className="text-sm font-extrabold text-[#161b3a]">{plan.subject}</p>
                   <p className="mt-0.5 text-xs font-semibold text-[#5b348a]">
                     {formatPlanTimeRange(plan.startTime, plan.endTime)}
                   </p>
                   <p className="mt-1 whitespace-pre-wrap break-keep text-sm leading-6 text-slate-700">{plan.content}</p>
                 </div>
-              </div>
-              <div className="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  className="inline-flex min-h-10 flex-1 items-center justify-center gap-1 rounded-xl bg-[#f3eef8] text-sm font-bold text-[#5b348a]"
-                  onClick={() => onEdit(plan)}
-                >
-                  <Pencil className="h-4 w-4" />
-                  수정
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex min-h-10 flex-1 items-center justify-center gap-1 rounded-xl bg-rose-50 text-sm font-bold text-rose-600"
-                  onClick={() => onAskDelete(plan)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                  삭제
-                </button>
-              </div>
-            </li>
-          ))}
+                <div className="hub-result-row">
+                  <button
+                    type="button"
+                    className={`hub-result-btn ${effective === 'completed' ? 'is-completed' : 'is-idle'}`}
+                    aria-pressed={effective === 'completed'}
+                    data-result-completed=""
+                    disabled={busy || locked}
+                    onClick={() => onSetResult(plan, 'completed')}
+                  >
+                    완료
+                  </button>
+                  <button
+                    type="button"
+                    className={`hub-result-btn ${effective === 'failed' ? 'is-failed' : 'is-idle'}`}
+                    aria-pressed={effective === 'failed'}
+                    data-result-failed=""
+                    disabled={busy || locked}
+                    onClick={() => onSetResult(plan, 'failed')}
+                  >
+                    실패
+                  </button>
+                </div>
+                {locked ? (
+                  <p className="hub-result-lock">종료 후 48시간이 지나 결과가 확정되었습니다.</p>
+                ) : null}
+                <div className="mt-3 flex gap-2">
+                  <button
+                    type="button"
+                    className="inline-flex min-h-10 flex-1 items-center justify-center gap-1 rounded-xl bg-[#f3eef8] text-sm font-bold text-[#5b348a]"
+                    onClick={() => onEdit(plan)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                    수정
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex min-h-10 flex-1 items-center justify-center gap-1 rounded-xl bg-rose-50 text-sm font-bold text-rose-600"
+                    onClick={() => onAskDelete(plan)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    삭제
+                  </button>
+                </div>
+              </li>
+            )
+          })}
         </ul>
       )}
 
@@ -336,7 +409,7 @@ export function HubStudyPlanScreen({
 
 export function HubStudyPlanPage() {
   const { accessKey } = useHub()
-  const today = getTodayString()
+  const today = todayInSeoul()
   const [selectedDate, setSelectedDate] = useState(today)
   const [weekStart, setWeekStart] = useState(() => startOfWeekMonday(today))
   const [plans, setPlans] = useState<StudentStudyPlan[]>([])
@@ -345,6 +418,7 @@ export function HubStudyPlanPage() {
   const [error, setError] = useState('')
   const [editor, setEditor] = useState<EditorDraft | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<StudentStudyPlan | null>(null)
+  const [nowMs, setNowMs] = useState(() => Date.now())
 
   const range = useMemo(() => {
     const from = weekStart
@@ -430,11 +504,14 @@ export function HubStudyPlanPage() {
     }
   }
 
-  const toggle = async (plan: StudentStudyPlan) => {
+  const setResult = async (plan: StudentStudyPlan, result: Extract<StudyPlanResult, 'completed' | 'failed'>) => {
+    setNowMs(Date.now())
+    if (isStudyPlanResultLocked(plan, Date.now())) return
+    if (storedEquals(plan, result)) return
     setBusy(true)
     setError('')
     try {
-      const next = await rpcSetStudentStudyPlanCompleted(accessKey, plan.id, !plan.completed)
+      const next = await rpcSetStudentStudyPlanResult(accessKey, plan.id, result)
       setPlans((current) => current.map((item) => (item.id === next.id ? next : item)))
     } catch (err) {
       setError(studyPlanErrorMessage(err))
@@ -464,6 +541,7 @@ export function HubStudyPlanPage() {
         selectedDate={selectedDate}
         weekStart={weekStart}
         today={today}
+        nowMs={nowMs}
         plans={plans}
         loading={loading}
         error={error}
@@ -480,7 +558,7 @@ export function HubStudyPlanPage() {
           setError('')
           setEditor(draftFromPlan(plan))
         }}
-        onToggle={(plan) => void toggle(plan)}
+        onSetResult={(plan, result) => void setResult(plan, result)}
         onAskDelete={setDeleteTarget}
         onSave={(event) => void save(event)}
         onCancel={() => setEditor(null)}
@@ -496,4 +574,8 @@ export function HubStudyPlanPage() {
       />
     </>
   )
+}
+
+function storedEquals(plan: StudentStudyPlan, result: Extract<StudyPlanResult, 'completed' | 'failed'>): boolean {
+  return plan.result === result
 }

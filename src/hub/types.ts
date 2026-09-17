@@ -142,6 +142,9 @@ export const HUB_ACADEMY_LOGO_PNG = '/hub/hyper-academy-logo-v1.png'
 
 export const STUDY_PLAN_SUBJECT_PRESETS = ['수학', '영어'] as const
 
+export const STUDY_PLAN_RESULTS = ['pending', 'completed', 'failed'] as const
+export type StudyPlanResult = (typeof STUDY_PLAN_RESULTS)[number]
+
 export type StudentStudyPlan = {
   id: string
   planDate: string
@@ -150,6 +153,7 @@ export type StudentStudyPlan = {
   startTime: string
   endTime: string
   completed: boolean
+  result: StudyPlanResult
   createdAt: string
   updatedAt: string
 }

@@ -27,6 +27,8 @@ const bundle: StudentHubBundle = {
   notices: [],
 }
 
+const previewNowMs = Date.parse('2026-09-17T12:00:00+09:00')
+
 const samplePlans: StudentStudyPlan[] = [
   {
     id: 'p1',
@@ -36,6 +38,7 @@ const samplePlans: StudentStudyPlan[] = [
     startTime: '19:00:00',
     endTime: '20:30:00',
     completed: true,
+    result: 'completed',
     createdAt: '2026-09-17T00:00:00.000Z',
     updatedAt: '2026-09-17T00:00:00.000Z',
   },
@@ -47,6 +50,19 @@ const samplePlans: StudentStudyPlan[] = [
     startTime: '21:00:00',
     endTime: '21:40:00',
     completed: false,
+    result: 'failed',
+    createdAt: '2026-09-17T00:00:00.000Z',
+    updatedAt: '2026-09-17T00:00:00.000Z',
+  },
+  {
+    id: 'p3',
+    planDate: '2026-09-17',
+    subject: '국어',
+    content: '비문학 지문 2개',
+    startTime: '22:00:00',
+    endTime: '22:40:00',
+    completed: false,
+    result: 'pending',
     createdAt: '2026-09-17T00:00:00.000Z',
     updatedAt: '2026-09-17T00:00:00.000Z',
   },
@@ -105,6 +121,7 @@ export function HubStudyPlanLayoutPreviewPage() {
             selectedDate={selectedDate}
             weekStart={weekStart}
             today={today}
+            nowMs={previewNowMs}
             plans={mode === 'empty' ? [] : plans}
             loading={false}
             error=""
@@ -144,9 +161,13 @@ export function HubStudyPlanLayoutPreviewPage() {
                 endTime: plan.endTime.slice(0, 5),
               })
             }
-            onToggle={(plan) =>
+            onSetResult={(plan, result) =>
               setPlans((current) =>
-                current.map((item) => (item.id === plan.id ? { ...item, completed: !item.completed } : item)),
+                current.map((item) =>
+                  item.id === plan.id
+                    ? { ...item, result, completed: result === 'completed' }
+                    : item,
+                ),
               )
             }
             onAskDelete={(plan) => setPlans((current) => current.filter((item) => item.id !== plan.id))}

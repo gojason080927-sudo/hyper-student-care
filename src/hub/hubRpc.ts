@@ -16,6 +16,7 @@ import type {
   HubQuestion,
   HubVideo,
   StudentStudyPlan,
+  StudyPlanResult,
 } from './types'
 
 function parseRpcJson(value: unknown): Record<string, unknown> | null {
@@ -334,7 +335,13 @@ export async function rpcFinalizeInboxAttachment(accessKey: string, attachmentId
   if (error) throw error
 }
 
+function parseStudyPlanResult(value: unknown, completed: boolean): StudyPlanResult {
+  if (value === 'pending' || value === 'completed' || value === 'failed') return value
+  return completed ? 'completed' : 'pending'
+}
+
 function studyPlanFromRpc(row: Record<string, unknown>): StudentStudyPlan {
+  const completed = row.completed === true
   return {
     id: String(row.id ?? ''),
     planDate: String(row.plan_date ?? ''),
@@ -342,7 +349,8 @@ function studyPlanFromRpc(row: Record<string, unknown>): StudentStudyPlan {
     content: String(row.content ?? ''),
     startTime: String(row.start_time ?? ''),
     endTime: String(row.end_time ?? ''),
-    completed: row.completed === true,
+    completed,
+    result: parseStudyPlanResult(row.result, completed),
     createdAt: String(row.created_at ?? ''),
     updatedAt: String(row.updated_at ?? ''),
   }
@@ -407,6 +415,22 @@ export async function rpcSetStudentStudyPlanCompleted(
   if (error) throw error
   const row = parseRpcJson(data)
   if (!row) throw new Error('완료 상태 변경에 실패했습니다.')
+  return studyPlanFromRpc(row)
+}
+
+export async function rpcSetStudentStudyPlanResult(
+  accessKey: string,
+  planId: string,
+  result: Extract<StudyPlanResult, 'completed' | 'failed'>,
+): Promise<StudentStudyPlan> {
+  const { data, error } = await getSupabase().rpc('set_student_study_plan_result', {
+    p_access_key: accessKey.trim(),
+    p_id: planId,
+    p_result: result,
+  })
+  if (error) throw error
+  const row = parseRpcJson(data)
+  if (!row) throw new Error('결과 변경에 실패했습니다.')
   return studyPlanFromRpc(row)
 }
 

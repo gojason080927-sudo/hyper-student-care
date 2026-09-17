@@ -1,5 +1,8 @@
 import { addDays } from '../utils/date'
-import type { StudentStudyPlan } from './types'
+import type { StudentStudyPlan, StudyPlanResult } from './types'
+
+export const STUDY_PLAN_GRACE_MS = 48 * 60 * 60 * 1000
+export const STUDY_PLAN_TIMEZONE = 'Asia/Seoul'
 
 const WEEKDAY_KO = ['일', '월', '화', '수', '목', '금', '토'] as const
 
@@ -73,10 +76,159 @@ export function studyPlanErrorMessage(err: unknown): string {
   if (/subject_required/.test(raw)) return '과목을 입력해 주세요.'
   if (/content_required/.test(raw)) return '공부할 내용을 입력해 주세요.'
   if (/invalid_date_range/.test(raw)) return '날짜 범위가 올바르지 않습니다.'
+  if (/result_locked/.test(raw)) return '종료 후 48시간이 지나 결과를 바꿀 수 없습니다.'
+  if (/invalid_result/.test(raw)) return '올바른 결과가 아닙니다.'
   if (/Could not find the function|schema cache|404/i.test(raw)) {
     return '학습 계획 기능이 아직 서버에 적용되지 않았습니다. 학원에 문의해 주세요.'
   }
   return raw.trim() || '저장에 실패했습니다.'
+}
+
+export function todayInSeoul(nowMs: number = Date.now()): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: STUDY_PLAN_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(nowMs))
+}
+
+export function storedStudyPlanResult(plan: Pick<StudentStudyPlan, 'result' | 'completed'>): StudyPlanResult {
+  if (plan.result === 'pending' || plan.result === 'completed' || plan.result === 'failed') {
+    return plan.result
+  }
+  return plan.completed ? 'completed' : 'pending'
+}
+
+export function planEndAtUtcMs(planDate: string, endTime: string): number | null {
+  const clock = formatClock(endTime)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(planDate) || !/^\d{2}:\d{2}$/.test(clock)) return null
+  const ms = Date.parse(`${planDate}T${clock}:00+09:00`)
+  return Number.isFinite(ms) ? ms : null
+}
+
+export function planDeadlineUtcMs(planDate: string, endTime: string): number | null {
+  const endAt = planEndAtUtcMs(planDate, endTime)
+  if (endAt == null) return null
+  return endAt + STUDY_PLAN_GRACE_MS
+}
+
+export function effectiveStudyPlanResult(
+  plan: Pick<StudentStudyPlan, 'result' | 'completed' | 'planDate' | 'endTime'>,
+  nowMs: number,
+): StudyPlanResult {
+  const stored = storedStudyPlanResult(plan)
+  if (stored === 'completed' || stored === 'failed') return stored
+  const deadline = planDeadlineUtcMs(plan.planDate, plan.endTime)
+  if (deadline != null && nowMs >= deadline) return 'failed'
+  return 'pending'
+}
+
+export function isStudyPlanResultLocked(
+  plan: Pick<StudentStudyPlan, 'planDate' | 'endTime'>,
+  nowMs: number,
+): boolean {
+  const deadline = planDeadlineUtcMs(plan.planDate, plan.endTime)
+  return deadline != null && nowMs >= deadline
+}
+
+export type StudyPlanRateBand = 'great' | 'try_more' | 'lack' | 'trouble' | 'danger' | 'fall' | 'neutral'
+
+export const STUDY_PLAN_RATE_COPY: Record<Exclude<StudyPlanRateBand, 'neutral'>, string> = {
+  great: '좋아요',
+  try_more: '좀 더 노력해요',
+  lack: '부족해요',
+  trouble: '곤란해요',
+  danger: '위험해요',
+  fall: '이러다 나락가요',
+}
+
+export function roundedStudyPlanPercent(completedCount: number, judgedCount: number): number {
+  if (judgedCount <= 0) return 0
+  return Math.round((completedCount / judgedCount) * 100)
+}
+
+export function studyPlanRateBand(percent: number): Exclude<StudyPlanRateBand, 'neutral'> {
+  if (percent >= 90) return 'great'
+  if (percent >= 80) return 'try_more'
+  if (percent >= 70) return 'lack'
+  if (percent >= 60) return 'trouble'
+  if (percent >= 50) return 'danger'
+  return 'fall'
+}
+
+export function weeklyRateTitle(weekStart: string, today: string): string {
+  const thisMonday = startOfWeekMonday(today)
+  if (weekStart === thisMonday) return '이번 주 달성률'
+  if (weekStart < thisMonday) return '지난 주 달성률'
+  return '다음 주 달성률'
+}
+
+export type WeeklyAchievement = {
+  title: string
+  completedCount: number
+  failedCount: number
+  judgedCount: number
+  pendingGraceCount: number
+  futureCount: number
+  percent: number | null
+  band: StudyPlanRateBand
+  message: string
+}
+
+export function computeWeeklyAchievement(input: {
+  plans: Array<Pick<StudentStudyPlan, 'result' | 'completed' | 'planDate' | 'endTime'>>
+  weekStart: string
+  today: string
+  nowMs: number
+}): WeeklyAchievement {
+  const weekEnd = addDays(input.weekStart, 6)
+  let completedCount = 0
+  let failedCount = 0
+  let pendingGraceCount = 0
+  let futureCount = 0
+
+  for (const plan of input.plans) {
+    if (plan.planDate < input.weekStart || plan.planDate > weekEnd) continue
+    if (plan.planDate > input.today) {
+      futureCount += 1
+      continue
+    }
+    const effective = effectiveStudyPlanResult(plan, input.nowMs)
+    if (effective === 'completed') completedCount += 1
+    else if (effective === 'failed') failedCount += 1
+    else pendingGraceCount += 1
+  }
+
+  const judgedCount = completedCount + failedCount
+  const title = weeklyRateTitle(input.weekStart, input.today)
+  if (judgedCount === 0) {
+    return {
+      title,
+      completedCount,
+      failedCount,
+      judgedCount,
+      pendingGraceCount,
+      futureCount,
+      percent: null,
+      band: 'neutral',
+      message: '아직 평가할 계획이 없어요',
+    }
+  }
+
+  const percent = roundedStudyPlanPercent(completedCount, judgedCount)
+  const band = studyPlanRateBand(percent)
+  return {
+    title,
+    completedCount,
+    failedCount,
+    judgedCount,
+    pendingGraceCount,
+    futureCount,
+    percent,
+    band,
+    message: STUDY_PLAN_RATE_COPY[band],
+  }
 }
 
 /** SQL isolation contract used by tests: actor identity comes from access_key, never from a client student_id. */
