@@ -1,4 +1,3 @@
-import { MemoryRouter } from 'react-router-dom'
 import { HubProvider } from '../../hub/HubContext'
 import { HubHomePage } from '../../hub/HubHomePage'
 import type { StudentHubBundle } from '../../hub/hubRpc'
@@ -27,12 +26,10 @@ const longBundle: StudentHubBundle = {
 /** 개발 전용: Student Hub HOME 프리미엄 레이아웃 확인 */
 export function HubHomeLayoutPreviewPage() {
   return (
-    <MemoryRouter initialEntries={['/hub/preview-key']}>
-      <HubProvider accessKey="preview-key" bundle={longBundle} reload={async () => {}}>
-        <div className="student-hub-app min-h-svh">
-          <HubHomePage />
-        </div>
-      </HubProvider>
-    </MemoryRouter>
+    <HubProvider accessKey="preview-key" bundle={longBundle} reload={async () => {}}>
+      <div className="student-hub-app min-h-svh">
+        <HubHomePage />
+      </div>
+    </HubProvider>
   )
 }

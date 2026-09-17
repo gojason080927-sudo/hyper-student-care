@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from 'react'
-import { MemoryRouter } from 'react-router-dom'
 import { HubProvider } from '../../hub/HubContext'
 import { HubStudyPlanScreen } from '../../hub/HubStudyPlanPage'
 import type { StudentHubBundle } from '../../hub/hubRpc'
@@ -75,9 +74,8 @@ export function HubStudyPlanLayoutPreviewPage() {
   }
 
   return (
-    <MemoryRouter initialEntries={['/hub/preview-key/study-plan']}>
-      <HubProvider accessKey="preview-key" bundle={bundle} reload={async () => {}}>
-        <div className="student-hub-app min-h-svh">
+    <HubProvider accessKey="preview-key" bundle={bundle} reload={async () => {}}>
+      <div className="student-hub-app min-h-svh">
           <div className="mx-auto flex max-w-lg gap-2 px-3 pt-3">
             <button
               type="button"
@@ -158,6 +156,5 @@ export function HubStudyPlanLayoutPreviewPage() {
           />
         </div>
       </HubProvider>
-    </MemoryRouter>
   )
 }
