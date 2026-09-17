@@ -77,6 +77,8 @@ export function studyPlanErrorMessage(err: unknown): string {
   if (/content_required/.test(raw)) return '공부할 내용을 입력해 주세요.'
   if (/invalid_date_range/.test(raw)) return '날짜 범위가 올바르지 않습니다.'
   if (/result_locked/.test(raw)) return '종료 후 48시간이 지나 결과를 바꿀 수 없습니다.'
+  if (/schedule_locked/.test(raw)) return '종료된 계획의 날짜와 시간은 바꿀 수 없습니다.'
+  if (/plan_not_deletable/.test(raw)) return '확정된 계획은 삭제할 수 없습니다.'
   if (/invalid_result/.test(raw)) return '올바른 결과가 아닙니다.'
   if (/Could not find the function|schema cache|404/i.test(raw)) {
     return '학습 계획 기능이 아직 서버에 적용되지 않았습니다. 학원에 문의해 주세요.'
@@ -130,6 +132,50 @@ export function isStudyPlanResultLocked(
 ): boolean {
   const deadline = planDeadlineUtcMs(plan.planDate, plan.endTime)
   return deadline != null && nowMs >= deadline
+}
+
+export function isStudyPlanEnded(
+  plan: Pick<StudentStudyPlan, 'planDate' | 'endTime'>,
+  nowMs: number,
+): boolean {
+  const endAt = planEndAtUtcMs(plan.planDate, plan.endTime)
+  return endAt != null && nowMs >= endAt
+}
+
+/** Freeze date/time after end_at, or once a judged result is stored (prevents moving a completed plan across weeks). */
+export function isStudyPlanScheduleLocked(
+  plan: Pick<StudentStudyPlan, 'result' | 'completed' | 'planDate' | 'endTime'>,
+  nowMs: number,
+): boolean {
+  const stored = storedStudyPlanResult(plan)
+  if (stored === 'completed' || stored === 'failed') return true
+  return isStudyPlanEnded(plan, nowMs)
+}
+
+export function canDeleteStudyPlan(
+  plan: Pick<StudentStudyPlan, 'result' | 'completed' | 'planDate' | 'endTime'>,
+  nowMs: number,
+): boolean {
+  return effectiveStudyPlanResult(plan, nowMs) === 'pending'
+}
+
+export function canChangeStudyPlanResult(
+  plan: Pick<StudentStudyPlan, 'result' | 'completed' | 'planDate' | 'endTime'>,
+  next: Extract<StudyPlanResult, 'completed' | 'failed'>,
+  nowMs: number,
+): boolean {
+  if (next !== 'completed' && next !== 'failed') return false
+  return !isStudyPlanResultLocked(plan, nowMs)
+}
+
+export function rejectDeletedStudyPlan(
+  plans: StudentStudyPlan[],
+  planId: string,
+  nowMs: number,
+): StudentStudyPlan[] {
+  const target = plans.find((item) => item.id === planId)
+  if (!target || !canDeleteStudyPlan(target, nowMs)) return plans
+  return plans.filter((item) => item.id !== planId)
 }
 
 export type StudyPlanRateBand = 'great' | 'try_more' | 'lack' | 'trouble' | 'danger' | 'fall' | 'neutral'

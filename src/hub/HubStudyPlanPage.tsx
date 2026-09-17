@@ -11,12 +11,14 @@ import {
   rpcUpsertStudentStudyPlan,
 } from './hubRpc'
 import {
+  canDeleteStudyPlan,
   computeWeeklyAchievement,
   dayNumber,
   effectiveStudyPlanResult,
   emptyDateMessage,
   formatPlanTimeRange,
   isStudyPlanResultLocked,
+  isStudyPlanScheduleLocked,
   plansOnDate,
   startOfWeekMonday,
   studyPlanErrorMessage,
@@ -158,6 +160,8 @@ export function HubStudyPlanScreen({
   const visible = plansOnDate(plans, selectedDate)
   const selectedLabel = formatKoreanDate(selectedDate)
   const weekly = computeWeeklyAchievement({ plans, weekStart, today, nowMs })
+  const editingPlan = editor?.id ? plans.find((item) => item.id === editor.id) : undefined
+  const scheduleLocked = editingPlan ? isStudyPlanScheduleLocked(editingPlan, nowMs) : false
 
   return (
     <div className="mx-auto w-full max-w-lg px-3 pb-10 pt-4">
@@ -231,6 +235,7 @@ export function HubStudyPlanScreen({
           {visible.map((plan) => {
             const effective = effectiveStudyPlanResult(plan, nowMs)
             const locked = isStudyPlanResultLocked(plan, nowMs)
+            const deletable = canDeleteStudyPlan(plan, nowMs)
             return (
               <li
                 key={plan.id}
@@ -277,14 +282,17 @@ export function HubStudyPlanScreen({
                     <Pencil className="h-4 w-4" />
                     수정
                   </button>
-                  <button
-                    type="button"
-                    className="inline-flex min-h-10 flex-1 items-center justify-center gap-1 rounded-xl bg-rose-50 text-sm font-bold text-rose-600"
-                    onClick={() => onAskDelete(plan)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    삭제
-                  </button>
+                  {deletable ? (
+                    <button
+                      type="button"
+                      data-plan-delete=""
+                      className="inline-flex min-h-10 flex-1 items-center justify-center gap-1 rounded-xl bg-rose-50 text-sm font-bold text-rose-600"
+                      onClick={() => onAskDelete(plan)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      삭제
+                    </button>
+                  ) : null}
                 </div>
               </li>
             )
@@ -312,8 +320,9 @@ export function HubStudyPlanScreen({
               type="date"
               value={editor.planDate}
               onChange={(event) => onDraftChange({ ...editor, planDate: event.target.value })}
-              className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
+              className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm disabled:bg-slate-100"
               required
+              disabled={scheduleLocked}
             />
           </label>
           <div>
@@ -370,8 +379,9 @@ export function HubStudyPlanScreen({
                 type="time"
                 value={editor.startTime}
                 onChange={(event) => onDraftChange({ ...editor, startTime: event.target.value })}
-                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
+                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm disabled:bg-slate-100"
                 required
+                disabled={scheduleLocked}
               />
             </label>
             <label className="block text-xs font-bold text-slate-500">
@@ -380,11 +390,15 @@ export function HubStudyPlanScreen({
                 type="time"
                 value={editor.endTime}
                 onChange={(event) => onDraftChange({ ...editor, endTime: event.target.value })}
-                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm"
+                className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm disabled:bg-slate-100"
                 required
+                disabled={scheduleLocked}
               />
             </label>
           </div>
+          {scheduleLocked ? (
+            <p className="text-xs font-semibold text-slate-500">종료된 계획의 날짜와 시간은 바꿀 수 없습니다. 과목과 내용은 수정할 수 있습니다.</p>
+          ) : null}
           <div className="flex gap-2 pt-1">
             <button
               type="button"
@@ -481,6 +495,17 @@ export function HubStudyPlanPage() {
       setError('종료 시간은 시작 시간보다 늦어야 합니다.')
       return
     }
+    const original = editor.id ? plans.find((item) => item.id === editor.id) : undefined
+    if (original && isStudyPlanScheduleLocked(original, Date.now())) {
+      if (
+        editor.planDate !== original.planDate ||
+        timeInputValue(editor.startTime) !== timeInputValue(original.startTime) ||
+        timeInputValue(editor.endTime) !== timeInputValue(original.endTime)
+      ) {
+        setError('종료된 계획의 날짜와 시간은 바꿀 수 없습니다.')
+        return
+      }
+    }
     setBusy(true)
     setError('')
     try {
@@ -522,6 +547,11 @@ export function HubStudyPlanPage() {
 
   const confirmDelete = async () => {
     if (!deleteTarget) return
+    if (!canDeleteStudyPlan(deleteTarget, Date.now())) {
+      setError('확정된 계획은 삭제할 수 없습니다.')
+      setDeleteTarget(null)
+      return
+    }
     setBusy(true)
     setError('')
     try {

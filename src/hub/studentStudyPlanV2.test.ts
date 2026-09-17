@@ -8,12 +8,16 @@ import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 
 import {
+  canChangeStudyPlanResult,
+  canDeleteStudyPlan,
   canMutateStudyPlan,
   computeWeeklyAchievement,
   effectiveStudyPlanResult,
   isStudyPlanResultLocked,
+  isStudyPlanScheduleLocked,
   planDeadlineUtcMs,
   planEndAtUtcMs,
+  rejectDeletedStudyPlan,
   roundedStudyPlanPercent,
   startOfWeekMonday,
   storedStudyPlanResult,
@@ -89,7 +93,13 @@ assert.match(v2Sql, /REVOKE ALL ON TABLE public\.student_study_plans FROM anon/)
 assert.match(v2Sql, /v_student_id := public\._parent_active_student_id\(p_access_key\)/)
 assert.match(v2Sql, /SET search_path = public/)
 assert.match(v2Sql, /SECURITY DEFINER/)
-assert.match(v2Sql, /true → completed, false → pending/)
+assert.match(v2Sql, /true → completed/)
+assert.match(v2Sql, /RAISE EXCEPTION 'plan_not_deletable'/)
+assert.match(v2Sql, /RAISE EXCEPTION 'schedule_locked'/)
+assert.match(v2Sql, /_study_plan_is_deletable/)
+assert.match(v2Sql, /_study_plan_schedule_locked/)
+assert.match(v2Sql, /CREATE OR REPLACE FUNCTION public\.delete_student_study_plan/)
+assert.doesNotMatch(v2Sql, /DELETE FROM public\.student_study_plans p\s+WHERE p\.plan_date/)
 assert.equal(v2Sql.includes('pg_cron'), false)
 assert.equal(v2Sql.includes('cron.schedule'), false)
 
@@ -317,6 +327,68 @@ assert.equal(withFuture.percent, 100)
 assert.equal(withFuture.message, '좋아요')
 
 assert.equal(studyPlanErrorMessage({ message: 'result_locked' }), '종료 후 48시간이 지나 결과를 바꿀 수 없습니다.')
+assert.equal(studyPlanErrorMessage({ message: 'schedule_locked' }), '종료된 계획의 날짜와 시간은 바꿀 수 없습니다.')
+assert.equal(studyPlanErrorMessage({ message: 'plan_not_deletable' }), '확정된 계획은 삭제할 수 없습니다.')
 assert.equal(studyPlanErrorMessage({ message: 'invalid_result' }), '올바른 결과가 아닙니다.')
+
+assert.match(page, /data-plan-delete/)
+assert.match(page, /canDeleteStudyPlan/)
+assert.match(page, /isStudyPlanScheduleLocked/)
+assert.doesNotMatch(home, /plan_not_deletable/)
+
+// ---------------------------------------------------------------------------
+// Integrity: delete / schedule freeze / result transitions / past week
+// ---------------------------------------------------------------------------
+const beforeEnd = Date.parse('2026-09-17T19:59:00+09:00')
+const afterEnd = Date.parse('2026-09-17T20:01:00+09:00')
+const pendingLive = plan({ id: 'pend-live', result: 'pending' })
+const completedLive = plan({ id: 'done-live', result: 'completed' })
+const failedLive = plan({ id: 'fail-live', result: 'failed' })
+const autoFail = plan({ id: 'auto-fail', result: 'pending' })
+
+assert.equal(canDeleteStudyPlan(pendingLive, beforeEnd), true)
+assert.equal(isStudyPlanScheduleLocked(pendingLive, beforeEnd), false)
+assert.equal(canDeleteStudyPlan(completedLive, beforeEnd), false)
+assert.equal(canDeleteStudyPlan(failedLive, beforeEnd), false)
+assert.equal(canDeleteStudyPlan(autoFail, deadline ?? 0), false)
+assert.equal(canDeleteStudyPlan(pendingLive, afterEnd), true)
+assert.equal(isStudyPlanScheduleLocked(pendingLive, afterEnd), true)
+assert.equal(isStudyPlanScheduleLocked(completedLive, beforeEnd), true)
+
+assert.equal(canChangeStudyPlanResult(pendingLive, 'completed', beforeEnd), true)
+assert.equal(canChangeStudyPlanResult(pendingLive, 'failed', beforeEnd), true)
+assert.equal(canChangeStudyPlanResult(completedLive, 'failed', beforeEnd), true)
+assert.equal(canChangeStudyPlanResult(failedLive, 'completed', beforeEnd), true)
+assert.equal(canChangeStudyPlanResult(pendingLive, 'completed', afterEnd), true)
+assert.equal(canChangeStudyPlanResult(autoFail, 'completed', deadline ?? 0), false)
+assert.equal(canChangeStudyPlanResult(completedLive, 'failed', deadline ?? 0), false)
+
+const judged = [...many(5, 'completed'), completedLive, failedLive, ...many(1, 'failed'), pendingLive]
+const afterFailedDelete = rejectDeletedStudyPlan(judged, failedLive.id, noonKst)
+assert.equal(afterFailedDelete.length, judged.length)
+assert.equal(
+  computeWeeklyAchievement({ plans: afterFailedDelete, weekStart, today: '2026-09-17', nowMs: noonKst }).judgedCount,
+  computeWeeklyAchievement({ plans: judged, weekStart, today: '2026-09-17', nowMs: noonKst }).judgedCount,
+)
+const afterCompletedDelete = rejectDeletedStudyPlan(judged, completedLive.id, noonKst)
+assert.equal(
+  computeWeeklyAchievement({ plans: afterCompletedDelete, weekStart, today: '2026-09-17', nowMs: noonKst }).completedCount,
+  computeWeeklyAchievement({ plans: judged, weekStart, today: '2026-09-17', nowMs: noonKst }).completedCount,
+)
+const afterPendingDelete = rejectDeletedStudyPlan(judged, pendingLive.id, noonKst)
+assert.equal(afterPendingDelete.length, judged.length - 1)
+
+const lastWeek = computeWeeklyAchievement({
+  plans: [...many(3, 'completed', '2026-09-07'), ...many(1, 'failed', '2026-09-08')],
+  weekStart: '2026-09-07',
+  today: '2026-09-17',
+  nowMs: noonKst,
+})
+assert.equal(lastWeek.title, '지난 주 달성률')
+assert.equal(lastWeek.percent, 75)
+assert.equal(lastWeek.message, '부족해요')
+assert.equal(weeklyRateTitle('2026-09-07', '2026-09-17'), '지난 주 달성률')
+
+assert.equal(canMutateStudyPlan({ actorStudentId: 'A', planOwnerStudentId: 'B', planId: 'p1', requestedPlanId: 'p1' }), false)
 
 console.log('studentStudyPlanV2.test.ts passed')

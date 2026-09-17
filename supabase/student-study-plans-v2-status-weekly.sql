@@ -60,12 +60,26 @@ COMMENT ON COLUMN public.student_study_plans.result IS
   'Stored result: pending | completed | failed. completed=true iff result=completed. Auto-fail is computed on read from plan end (KST) + 48 hours and does not rewrite this column.';
 
 -- ---------------------------------------------------------------------------
--- 2. KST deadline + effective result (Option B: compute-on-read, no cron)
+-- 2. KST end/deadline + effective result (Option B: compute-on-read, no cron)
 --    end_at = (plan_date + end_time) interpreted as Asia/Seoul
 --    deadline = end_at + 48 hours
 --    Boundary: now >= deadline → effective failed
 --    Example: 2026-09-17 20:00 KST → deadline 2026-09-19 20:00 KST
+--    No auto-delete and no scheduler. Past weeks remain queryable.
 -- ---------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION public._study_plan_end_at(
+  p_plan_date date,
+  p_end_time time
+)
+RETURNS timestamptz
+LANGUAGE sql
+IMMUTABLE
+PARALLEL SAFE
+SET search_path = public
+AS $$
+  SELECT (p_plan_date + p_end_time) AT TIME ZONE 'Asia/Seoul';
+$$;
 
 CREATE OR REPLACE FUNCTION public._study_plan_deadline_at(
   p_plan_date date,
@@ -77,7 +91,7 @@ IMMUTABLE
 PARALLEL SAFE
 SET search_path = public
 AS $$
-  SELECT ((p_plan_date + p_end_time) AT TIME ZONE 'Asia/Seoul') + interval '48 hours';
+  SELECT public._study_plan_end_at(p_plan_date, p_end_time) + interval '48 hours';
 $$;
 
 CREATE OR REPLACE FUNCTION public._study_plan_effective_result(
@@ -113,6 +127,37 @@ AS $$
   SELECT p_now >= public._study_plan_deadline_at(p_plan_date, p_end_time);
 $$;
 
+CREATE OR REPLACE FUNCTION public._study_plan_schedule_locked(
+  p_result text,
+  p_plan_date date,
+  p_end_time time,
+  p_now timestamptz DEFAULT now()
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+PARALLEL SAFE
+SET search_path = public
+AS $$
+  SELECT p_result IN ('completed', 'failed')
+      OR p_now >= public._study_plan_end_at(p_plan_date, p_end_time);
+$$;
+
+CREATE OR REPLACE FUNCTION public._study_plan_is_deletable(
+  p_result text,
+  p_plan_date date,
+  p_end_time time,
+  p_now timestamptz DEFAULT now()
+)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+PARALLEL SAFE
+SET search_path = public
+AS $$
+  SELECT public._study_plan_effective_result(p_result, p_plan_date, p_end_time, p_now) = 'pending';
+$$;
+
 CREATE OR REPLACE FUNCTION public._study_plan_public_json(p public.student_study_plans)
 RETURNS jsonb
 LANGUAGE sql
@@ -130,10 +175,16 @@ AS $$
     'result', p.result,
     'effective_result', public._study_plan_effective_result(p.result, p.plan_date, p.end_time, now()),
     'result_locked', public._study_plan_result_locked(p.plan_date, p.end_time, now()),
+    'schedule_locked', public._study_plan_schedule_locked(p.result, p.plan_date, p.end_time, now()),
+    'deletable', public._study_plan_is_deletable(p.result, p.plan_date, p.end_time, now()),
     'created_at', p.created_at,
     'updated_at', p.updated_at
   );
 $$;
+
+REVOKE ALL ON FUNCTION public._study_plan_end_at(date, time) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public._study_plan_end_at(date, time) FROM anon;
+REVOKE ALL ON FUNCTION public._study_plan_end_at(date, time) FROM authenticated;
 
 REVOKE ALL ON FUNCTION public._study_plan_deadline_at(date, time) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public._study_plan_deadline_at(date, time) FROM anon;
@@ -146,6 +197,14 @@ REVOKE ALL ON FUNCTION public._study_plan_effective_result(text, date, time, tim
 REVOKE ALL ON FUNCTION public._study_plan_result_locked(date, time, timestamptz) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public._study_plan_result_locked(date, time, timestamptz) FROM anon;
 REVOKE ALL ON FUNCTION public._study_plan_result_locked(date, time, timestamptz) FROM authenticated;
+
+REVOKE ALL ON FUNCTION public._study_plan_schedule_locked(text, date, time, timestamptz) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public._study_plan_schedule_locked(text, date, time, timestamptz) FROM anon;
+REVOKE ALL ON FUNCTION public._study_plan_schedule_locked(text, date, time, timestamptz) FROM authenticated;
+
+REVOKE ALL ON FUNCTION public._study_plan_is_deletable(text, date, time, timestamptz) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public._study_plan_is_deletable(text, date, time, timestamptz) FROM anon;
+REVOKE ALL ON FUNCTION public._study_plan_is_deletable(text, date, time, timestamptz) FROM authenticated;
 
 REVOKE ALL ON FUNCTION public._study_plan_public_json(public.student_study_plans) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public._study_plan_public_json(public.student_study_plans) FROM anon;
@@ -268,13 +327,13 @@ BEGIN
       RAISE EXCEPTION 'plan_not_found';
     END IF;
 
-    -- Auto-failed pending rows must not move their deadline by editing times.
-    IF v_row.result = 'pending'
-       AND public._study_plan_result_locked(v_row.plan_date, v_row.end_time) THEN
+    -- After end_at, or once a judged result is stored, date/time cannot move.
+    -- Subject/content remain editable (they do not change weekly rate or deadline).
+    IF public._study_plan_schedule_locked(v_row.result, v_row.plan_date, v_row.end_time) THEN
       IF p_plan_date IS DISTINCT FROM v_row.plan_date
          OR p_start_time IS DISTINCT FROM v_row.start_time
          OR p_end_time IS DISTINCT FROM v_row.end_time THEN
-        RAISE EXCEPTION 'result_locked';
+        RAISE EXCEPTION 'schedule_locked';
       END IF;
     END IF;
 
@@ -334,8 +393,14 @@ BEGIN
     RAISE EXCEPTION 'result_locked';
   END IF;
 
-  -- V1 mapping: true → completed, false → pending (never failed).
-  v_result := CASE WHEN coalesce(p_completed, false) THEN 'completed' ELSE 'pending' END;
+  -- V1 compatibility: true → completed. false cannot unwind a judged result to pending.
+  IF coalesce(p_completed, false) THEN
+    v_result := 'completed';
+  ELSIF v_row.result IN ('completed', 'failed') THEN
+    RAISE EXCEPTION 'result_locked';
+  ELSE
+    v_result := 'pending';
+  END IF;
 
   UPDATE public.student_study_plans p
   SET
@@ -422,6 +487,56 @@ GRANT EXECUTE ON FUNCTION public.upsert_student_study_plan(text, uuid, date, tex
 
 REVOKE ALL ON FUNCTION public.set_student_study_plan_completed(text, uuid, boolean) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.set_student_study_plan_completed(text, uuid, boolean) TO anon;
+
+CREATE OR REPLACE FUNCTION public.delete_student_study_plan(
+  p_access_key text,
+  p_id uuid
+)
+RETURNS jsonb
+LANGUAGE plpgsql
+VOLATILE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_student_id uuid;
+  v_row public.student_study_plans;
+  v_id uuid;
+BEGIN
+  v_student_id := public._parent_active_student_id(p_access_key);
+  IF v_student_id IS NULL THEN
+    RAISE EXCEPTION 'invalid or inactive access key';
+  END IF;
+  IF p_id IS NULL THEN
+    RAISE EXCEPTION 'plan_not_found';
+  END IF;
+
+  SELECT * INTO v_row
+  FROM public.student_study_plans p
+  WHERE p.id = p_id
+    AND p.student_id = v_student_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'plan_not_found';
+  END IF;
+
+  IF NOT public._study_plan_is_deletable(v_row.result, v_row.plan_date, v_row.end_time) THEN
+    RAISE EXCEPTION 'plan_not_deletable';
+  END IF;
+
+  DELETE FROM public.student_study_plans p
+  WHERE p.id = p_id
+    AND p.student_id = v_student_id
+  RETURNING p.id INTO v_id;
+
+  IF v_id IS NULL THEN
+    RAISE EXCEPTION 'plan_not_found';
+  END IF;
+  RETURN jsonb_build_object('ok', true, 'id', v_id);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.delete_student_study_plan(text, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.delete_student_study_plan(text, uuid) TO anon;
 
 REVOKE ALL ON TABLE public.student_study_plans FROM PUBLIC;
 REVOKE ALL ON TABLE public.student_study_plans FROM anon;

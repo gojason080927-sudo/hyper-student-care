@@ -87,7 +87,14 @@ try {
     if ((await page.locator('text=미실행').count()) > 0) fails.push('미실행 present')
     if ((await page.locator('text=보류').count()) > 0) fails.push('보류 present')
 
-    const shot = `${ARTIFACT_DIR}/study-plan-weekly-rate-${name}.png`
+    const deleteBtns = await page.locator('[data-plan-delete]').count()
+    if (deleteBtns < 1) fails.push('pending delete missing')
+    const completedCards = await page.locator('.hub-plan-card.is-done [data-plan-delete]').count()
+    const failedCards = await page.locator('.hub-plan-card.is-failed [data-plan-delete]').count()
+    if (completedCards !== 0) fails.push('completed plan still has delete')
+    if (failedCards !== 0) fails.push('failed plan still has delete')
+
+    const shot = `${ARTIFACT_DIR}/study-plan-integrity-${name}.png`
     await page.screenshot({ path: shot, fullPage: true })
     report.push({ name, width, overflowX, fails, shot })
     await page.close()
