@@ -86,7 +86,7 @@ function WeeklyRateCard({ summary }: { summary: WeeklyAchievement }) {
   const width = summary.percent == null ? 0 : summary.percent
   return (
     <section className="hub-rate-card" data-study-plan-rate={summary.band} aria-label={summary.title}>
-      <p className="hub-rate-kicker">{summary.title}</p>
+      <p className="hub-rate-kicker whitespace-nowrap">{summary.title}</p>
       <div className="hub-rate-top">
         <p className={`hub-rate-percent ${summary.percent == null ? 'is-empty' : ''}`} data-study-plan-percent={percentLabel}>
           {percentLabel}
