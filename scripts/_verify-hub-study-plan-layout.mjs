@@ -87,7 +87,7 @@ try {
     if ((await page.locator('text=미실행').count()) > 0) fails.push('미실행 present')
     if ((await page.locator('text=보류').count()) > 0) fails.push('보류 present')
 
-    const shot = `${ARTIFACT_DIR}/study-plan-${name}.png`
+    const shot = `${ARTIFACT_DIR}/study-plan-weekly-rate-${name}.png`
     await page.screenshot({ path: shot, fullPage: true })
     report.push({ name, width, overflowX, fails, shot })
     await page.close()

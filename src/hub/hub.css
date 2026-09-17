@@ -382,8 +382,9 @@
 .hub-rate-kicker {
   font-size: 0.68rem;
   font-weight: 800;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   color: var(--hub-purple);
+  white-space: nowrap;
 }
 
 .hub-rate-top {
@@ -483,6 +484,7 @@
   font-weight: 800;
   color: var(--hub-navy);
   line-height: 1.35;
+  word-break: keep-all;
 }
 
 .hub-rate-hint {
