@@ -1,36 +1,28 @@
-import { useEffect, useRef, useState } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useEffect, useRef } from 'react'
 
 /**
- * 문제/영상 자료실: SPA 라우트 진입 시 bundle을 다시 읽고, 앱 재개 시에도 갱신한다.
- * visibility/focus는 HOME → 자료실 탭 이동에서 발생하지 않는다.
+ * 자료실 화면이 이미 열린 뒤 앱 재개(백그라운드→포그라운드, bfcache) 시에만 다시 읽는다.
+ * HOME → 자료실 SPA 진입 갱신은 HubLayout이 Outlet을 내리고 다시 읽는다.
+ * 여기서 pathname/mount reload를 다시 넣으면 하드 리로드와 루프가 생긴다.
  */
 export function useHubContentRefresh(reload: () => Promise<void>): { refreshing: boolean } {
-  const location = useLocation()
   const reloadRef = useRef(reload)
   reloadRef.current = reload
-  const [refreshing, setRefreshing] = useState(true)
 
   useEffect(() => {
-    let cancelled = false
-    setRefreshing(true)
-    void reloadRef.current().finally(() => {
-      if (!cancelled) setRefreshing(false)
-    })
-    const runSilent = () => {
-      void reloadRef.current()
-    }
     const onVisible = () => {
-      if (document.visibilityState === 'visible') runSilent()
+      if (document.visibilityState === 'visible') void reloadRef.current()
+    }
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) void reloadRef.current()
     }
     document.addEventListener('visibilitychange', onVisible)
-    window.addEventListener('pageshow', runSilent)
+    window.addEventListener('pageshow', onPageShow)
     return () => {
-      cancelled = true
       document.removeEventListener('visibilitychange', onVisible)
-      window.removeEventListener('pageshow', runSilent)
+      window.removeEventListener('pageshow', onPageShow)
     }
-  }, [location.pathname])
+  }, [])
 
-  return { refreshing }
+  return { refreshing: false }
 }

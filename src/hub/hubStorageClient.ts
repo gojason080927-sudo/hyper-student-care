@@ -72,6 +72,29 @@ export async function downloadHubObjectUrl(params: {
   return signed.signedUrl
 }
 
+export async function downloadHubObjectBlob(params: {
+  accessKey: string
+  bucket: string
+  path: string
+}): Promise<Blob> {
+  const res = await fetch('/api/hub-storage', {
+    method: 'POST',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'file',
+      accessKey: params.accessKey,
+      bucket: params.bucket,
+      path: params.path,
+    }),
+  })
+  if (!res.ok) {
+    const payload = (await res.json().catch(() => ({}))) as { error?: string; message?: string }
+    throw new Error(payload.message || payload.error || '파일을 불러오지 못했습니다.')
+  }
+  return res.blob()
+}
+
 export function questionAttachmentBucket(): string {
   return HUB_QUESTION_ATTACHMENTS_BUCKET
 }

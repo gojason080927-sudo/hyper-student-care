@@ -25,9 +25,11 @@ export function HubLayout() {
   const accessKey = useMemo(() => normalizeRouteAccessKey(studentAccessKey), [studentAccessKey])
   const [bundle, setBundle] = useState<StudentHubBundle | null | undefined>(undefined)
   const [mode, setMode] = useState<'loading' | 'config' | 'invalid' | 'inactive' | 'ready'>('loading')
+  const loadGenRef = useRef(0)
+  const prevPathRef = useRef<string | null>(null)
 
-  const reload = async () => {
-    const next = await rpcGetStudentHubBundle(accessKey)
+  const applyBundle = (gen: number, next: StudentHubBundle | null) => {
+    if (gen !== loadGenRef.current) return
     if (!next) {
       setMode('invalid')
       setBundle(null)
@@ -42,33 +44,48 @@ export function HubLayout() {
     setMode('ready')
   }
 
-  const reloadRef = useRef(reload)
-  reloadRef.current = reload
-  const prevPathRef = useRef<string | null>(null)
+  const reload = async () => {
+    const gen = ++loadGenRef.current
+    setMode('loading')
+    setBundle(undefined)
+    const next = await rpcGetStudentHubBundle(accessKey)
+    applyBundle(gen, next)
+  }
 
   useEffect(() => {
     prevPathRef.current = null
   }, [accessKey])
 
   useEffect(() => {
-    if (mode !== 'ready') return
     const previous = prevPathRef.current
     prevPathRef.current = location.pathname
     if (!hubRouteReloadNeeded(previous, location.pathname)) return
-    void reloadRef.current()
-  }, [mode, location.pathname])
+    const gen = ++loadGenRef.current
+    setMode('loading')
+    setBundle(undefined)
+    let cancelled = false
+    void (async () => {
+      const next = await rpcGetStudentHubBundle(accessKey)
+      if (cancelled) return
+      applyBundle(gen, next)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [accessKey, location.pathname])
 
   useEffect(() => {
     let cancelled = false
+    const gen = ++loadGenRef.current
     setMode('loading')
     setBundle(undefined)
     void (async () => {
       if (!isSupabaseConfigured()) {
-        if (!cancelled) setMode('config')
+        if (!cancelled && gen === loadGenRef.current) setMode('config')
         return
       }
       const identity = await rpcGetStudentHubIdentity(accessKey)
-      if (cancelled) return
+      if (cancelled || gen !== loadGenRef.current) return
       if (!identity) {
         setMode('invalid')
         return
@@ -78,17 +95,8 @@ export function HubLayout() {
         return
       }
       const next = await rpcGetStudentHubBundle(accessKey)
-      if (cancelled) return
-      if (!next) {
-        setMode('invalid')
-        return
-      }
-      if (next.inactive) {
-        setMode('inactive')
-        return
-      }
-      setBundle(next)
-      setMode('ready')
+      if (cancelled || gen !== loadGenRef.current) return
+      applyBundle(gen, next)
     })()
     return () => {
       cancelled = true
