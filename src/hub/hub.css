@@ -286,6 +286,61 @@
   height: 1.05rem;
 }
 
+.hub-install-card {
+  margin-top: 0.85rem;
+  border-radius: 20px;
+  background: #fff;
+  border: 1px solid var(--hub-border);
+  box-shadow: 0 8px 20px rgba(36, 20, 72, 0.06);
+  padding: 0.9rem 0.95rem;
+}
+
+.hub-install-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.hub-install-title {
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--hub-navy);
+}
+
+.hub-install-body {
+  margin-top: 0.28rem;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--hub-muted);
+  word-break: keep-all;
+}
+
+.hub-install-close {
+  flex-shrink: 0;
+  display: inline-flex;
+  min-width: 2rem;
+  min-height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: var(--hub-muted);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hub-install-btn {
+  margin-top: 0.7rem;
+  width: 100%;
+  min-height: 2.75rem;
+  border-radius: 14px;
+  background: var(--hub-purple);
+  color: #fff;
+  font-size: 0.86rem;
+  font-weight: 800;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
 .hub-week-strip {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));

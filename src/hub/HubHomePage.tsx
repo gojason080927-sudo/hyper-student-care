@@ -13,6 +13,7 @@ import {
   MessageSquare,
   Sparkles,
 } from 'lucide-react'
+import { HubInstallGuide } from '../components/hub/HubInstallGuide'
 import { StudentPushOptIn } from '../components/hub/StudentPushOptIn'
 import { useHub } from './HubContext'
 import { HUB_ACADEMY_LOGO_PNG, HUB_ACADEMY_LOGO_WEBP } from './types'
@@ -102,6 +103,7 @@ export function HubHomePage() {
         </span>
       </Link>
 
+      <HubInstallGuide />
       <StudentPushOptIn accessKey={accessKey} />
     </div>
   )
