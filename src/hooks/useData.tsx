@@ -35,6 +35,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { loadAppData, loadParentCareData as fetchParentCareData, loadTodayReportFromSupabase, shouldDeferInitialLoadForParentRoute, type DataSource } from '../lib/dataLoader'
 import { rpcSubmitParentQuestion } from '../lib/db/parentAccessRpc'
 import { notifyHubPush } from '../lib/hubPushInvoke'
+import { syncHubAssignmentsFromTodayReport } from '../lib/hubFromTodayReport'
 import { getParentAccessKeyFromPath } from '../lib/supabase'
 import { mergeTodayReportIntoState } from '../lib/db/mergeTodayReport'
 import { mergeClassTodayReportCommonRecords } from '../utils/mergeClassTodayReportCommon'
@@ -120,6 +121,7 @@ import {
   type ClassTodayReportSyncContext,
 } from '../utils/classTodayReportCommon'
 import { getCommonStorageClassNames } from '../utils/classCommonDataKey'
+import { teacherSaveAssignment } from '../hub/teacherHubRepo'
 
 type ToastMessage = { id: string; text: string }
 
@@ -1888,6 +1890,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
         let commonSyncFailed = false
         let commonSyncError = ''
+        const upsertedCommons: ClassTodayReportCommon[] = []
         for (const common of commonRecords) {
           try {
             if (import.meta.env.DEV) {
@@ -1897,6 +1900,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
               })
             }
             await upsertClassTodayReportCommon(common)
+            upsertedCommons.push(common)
             setClassTodayReportCommon((prev) => {
               const next = prev.filter(
                 (item) =>
@@ -1932,6 +1936,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
             })
           }
         }
+
+        await syncHubAssignmentsFromTodayReport(
+          upsertedCommons,
+          teacherSaveAssignment,
+          (assignment) => {
+            notifyHubPush({ event: 'assignment_saved', entityId: assignment.id })
+          },
+        )
 
         if (commonSyncFailed) {
           if (!options?.silent) {

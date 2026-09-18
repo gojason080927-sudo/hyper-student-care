@@ -237,6 +237,7 @@ export function ClassCommonTodayAssignmentPanel({
               slotNumber,
               previousAssignment: '',
               todayAssignment: draft?.todayAssignment ?? '',
+              textbookName: draft?.textbookName ?? '',
               status: '' as HomeworkStatus | '',
             }
           })
