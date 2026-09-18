@@ -6,11 +6,7 @@ import { useData } from '../../hooks/useData'
 import { useParentAdmissionStrategyMaterials } from '../../hooks/useParentAdmissionStrategyMaterials'
 import { hasUnreadAdmissionStrategyMaterials } from '../../lib/db/admissionStrategyMaterial'
 import { hasUnreadWeeklySummary } from '../../utils/studentCare/weeklySummaryDisplay'
-import {
-  parentHomeCategoryItems,
-  parentTodayReportHighlights,
-  parentTodayReportItem,
-} from './parentNavItems'
+import { parentHomeCategoryItems, parentTodayReportItem } from './parentNavItems'
 
 export function ParentCategoryGrid() {
   const student = useParentStudent()
@@ -21,14 +17,6 @@ export function ParentCategoryGrid() {
   const basePath = `/care/${student.studentAccessKey}`
   const todayPath = `${basePath}/${parentTodayReportItem.segment}`
   const TodayIcon = parentTodayReportItem.icon
-  const highlightTop = parentTodayReportHighlights
-    .slice(0, 3)
-    .map((item) => item.label)
-    .join(' · ')
-  const highlightBottom = parentTodayReportHighlights
-    .slice(3)
-    .map((item) => item.label)
-    .join(' · ')
 
   useEffect(() => {
     void ensureWeeklyLearningSummaries()
@@ -61,8 +49,8 @@ export function ParentCategoryGrid() {
         <span className="hub-feature-copy">
           <span className="hub-feature-title">{parentTodayReportItem.label}</span>
           <span className="hub-feature-sub">
-            <span className="block break-keep">{highlightTop}</span>
-            <span className="block break-keep">{highlightBottom}</span>
+            <span className="block break-keep">출결 · 진도 · 숙제</span>
+            <span className="block break-keep">일일테스트 · 수업태도</span>
           </span>
         </span>
         <span className="hub-feature-arrow" aria-hidden>
