@@ -152,7 +152,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 ? isMonthlyEvaluationMenuActive(location.pathname)
                 : path === '/'
                   ? location.pathname === '/'
-                  : location.pathname.startsWith(path)
+                  : location.pathname === path || location.pathname.startsWith(`${path}/`)
               return (
                 <li key={path}>
                   <NavLink
