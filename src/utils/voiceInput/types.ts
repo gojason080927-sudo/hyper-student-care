@@ -85,6 +85,7 @@ export type DailyTestVoiceAssignment = {
   conceptLackDelta: number
   calculationErrorDelta: number
   applicationLackDelta: number
+  comprehensionLackDelta: number
   teacherFeedback: string
 }
 

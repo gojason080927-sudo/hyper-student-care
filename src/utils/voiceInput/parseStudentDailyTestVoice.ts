@@ -21,6 +21,7 @@ export type StudentDailyTestParseResult = {
   conceptLackCount?: number
   calculationErrorCount?: number
   applicationLackCount?: number
+  comprehensionLackCount?: number
   teacherFeedback?: string
   needsReview: VoiceReviewItem[]
 }
@@ -137,21 +138,24 @@ function maskRanges(text: string, ranges: Array<{ start: number; end: number }>)
 }
 
 const ERROR_SPAN_RE =
-  /(?:개념(?:이|이해)?\s*부족|계산\s*실수|응용(?:\s*능력)?\s*부족)\s*\d{1,3}\s*개?/g
+  /(?:문제\s*이해\s*부족|개념(?:이|이해)?\s*부족|계산\s*실수|응용(?:\s*능력)?\s*부족)\s*\d{1,3}\s*개?/g
 
 function extractErrorAnalysisSpans(text: string): {
   rest: string
   conceptLackCount?: number
   calculationErrorCount?: number
   applicationLackCount?: number
+  comprehensionLackCount?: number
 } {
   let conceptLackCount: number | undefined
   let calculationErrorCount: number | undefined
   let applicationLackCount: number | undefined
+  let comprehensionLackCount: number | undefined
   const rest = text.replace(ERROR_SPAN_RE, (full) => {
     const n = Number(full.match(/(\d+)/)?.[1])
     if (!Number.isInteger(n) || n < 0) return ' '
-    if (/개념/.test(full)) conceptLackCount = n
+    if (/문제\s*이해/.test(full)) comprehensionLackCount = n
+    else if (/개념/.test(full)) conceptLackCount = n
     else if (/계산/.test(full)) calculationErrorCount = n
     else applicationLackCount = n
     return ' '
@@ -161,6 +165,7 @@ function extractErrorAnalysisSpans(text: string): {
     conceptLackCount,
     calculationErrorCount,
     applicationLackCount,
+    comprehensionLackCount,
   }
 }
 
@@ -169,6 +174,7 @@ function consumeMentionOnlyErrorPhrase(text: string): {
   conceptLackCount?: number
   calculationErrorCount?: number
   applicationLackCount?: number
+  comprehensionLackCount?: number
 } {
   const compact = compactText(text)
   if (/^(개념(?:이|이해)?부족|개념문제)$/.test(compact)) {
@@ -179,6 +185,9 @@ function consumeMentionOnlyErrorPhrase(text: string): {
   }
   if (/^(응용(?:능력)?부족|응용이약|응용못함|응용도부족)$/.test(compact)) {
     return { rest: '', applicationLackCount: 1 }
+  }
+  if (/^(문제이해부족)$/.test(compact)) {
+    return { rest: '', comprehensionLackCount: 1 }
   }
   return { rest: text }
 }
@@ -465,12 +474,16 @@ export function parseStudentDailyTestVoice(
   let conceptLackCount = errorSpans.conceptLackCount
   let calculationErrorCount = errorSpans.calculationErrorCount
   let applicationLackCount = errorSpans.applicationLackCount
+  let comprehensionLackCount = errorSpans.comprehensionLackCount
   if (mentionOnly.conceptLackCount !== undefined) conceptLackCount = mentionOnly.conceptLackCount
   if (mentionOnly.calculationErrorCount !== undefined) {
     calculationErrorCount = mentionOnly.calculationErrorCount
   }
   if (mentionOnly.applicationLackCount !== undefined) {
     applicationLackCount = mentionOnly.applicationLackCount
+  }
+  if (mentionOnly.comprehensionLackCount !== undefined) {
+    comprehensionLackCount = mentionOnly.comprehensionLackCount
   }
 
   const residual = stripLeadingScoreDebris(
@@ -480,7 +493,8 @@ export function parseStudentDailyTestVoice(
     attempts.length > 0 ||
     conceptLackCount !== undefined ||
     calculationErrorCount !== undefined ||
-    applicationLackCount !== undefined
+    applicationLackCount !== undefined ||
+    comprehensionLackCount !== undefined
 
   let teacherFeedback = feedback?.slice(0, 500)
   const confidenceBlocked =
@@ -517,6 +531,7 @@ export function parseStudentDailyTestVoice(
     conceptLackCount,
     calculationErrorCount,
     applicationLackCount,
+    comprehensionLackCount,
     teacherFeedback,
     needsReview,
   }

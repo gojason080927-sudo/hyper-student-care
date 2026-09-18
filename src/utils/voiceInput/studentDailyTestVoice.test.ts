@@ -1000,6 +1000,29 @@ for (const variant of [
 }
 
 {
+  const parsed = caseOf('문제 이해 부족 2개')
+  assert.equal(parsed.comprehensionLackCount, 2)
+  assert.equal(parsed.applicationLackCount, undefined)
+  assert.equal(parsed.conceptLackCount, undefined)
+  const applied = applyCard('문제 이해 부족 2개')
+  assert.equal(applied.drafts.nagyeong?.learningDiagnosis.comprehensionLackCount, 2)
+}
+
+{
+  const parsed = caseOf('문제 이해 부족')
+  assert.equal(parsed.comprehensionLackCount, 1)
+  assert.equal(parsed.applicationLackCount, undefined)
+}
+
+{
+  const parsed = caseOf('개념 부족 2개 계산 실수 1개 응용 능력 부족 3개 문제 이해 부족 1개')
+  assert.equal(parsed.conceptLackCount, 2)
+  assert.equal(parsed.calculationErrorCount, 1)
+  assert.equal(parsed.applicationLackCount, 3)
+  assert.equal(parsed.comprehensionLackCount, 1)
+}
+
+{
   const parsed = caseOf('개념 부족 2개 계산 실수 1개 응용 능력 부족 3개')
   assert.equal(parsed.conceptLackCount, 2)
   assert.equal(parsed.calculationErrorCount, 1)

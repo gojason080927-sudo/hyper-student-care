@@ -8,6 +8,7 @@ import { EMPTY_DAILY_LEARNING_DIAGNOSIS } from '../learningDiagnosis.ts'
 import {
   buildDailyTestWeeklyFlow,
   buildWeeklyFlowDaySessions,
+  buildWeeklyWrongAnalysis,
 } from './dailyTestWeeklyFlow.ts'
 import { ATTENDANCE_WEEKLY_MAX, DAILY_TEST_WEEKLY_MAX, WEEKLY_SUMMARY_TOTAL_MAX } from './constants.ts'
 
@@ -24,9 +25,10 @@ function testRecord(
   subject: string,
   sessionResults: TestSessionResult[],
   updatedAt = '2026-09-12T00:00:00.000Z',
+  diagnosis: Partial<typeof EMPTY_DAILY_LEARNING_DIAGNOSIS> = {},
 ): DailyTestRecord {
   return {
-    id: `${date}-${subject}`,
+    id: `${date}-${subject}-${updatedAt}`,
     studentId: 'stu-1',
     date,
     testName: '일일테스트',
@@ -37,7 +39,7 @@ function testRecord(
     incorrectCount: 0,
     memo: '',
     sessionResults,
-    learningDiagnosis: { ...EMPTY_DAILY_LEARNING_DIAGNOSIS },
+    learningDiagnosis: { ...EMPTY_DAILY_LEARNING_DIAGNOSIS, ...diagnosis },
     createdAt: updatedAt,
     updatedAt,
   }
@@ -179,6 +181,75 @@ assert.equal(noZeroForMissingScore[0]?.kind, 'absent')
 assert.equal(noZeroForMissingScore[0]?.score, null)
 assert.equal(noZeroForMissingScore[1]?.score, 90)
 
+const mondayWrong = testRecord('2026-09-07', '수학', [session(1, '합격', 90)], '2026-09-07T00:00:00.000Z', {
+  calculationErrorCount: 2,
+  conceptLackCount: 1,
+})
+const wednesdayWrong = testRecord('2026-09-09', '수학', [session(1, '합격', 80)], '2026-09-09T00:00:00.000Z', {
+  calculationErrorCount: 1,
+  applicationLackCount: 2,
+})
+const fridayWrong = testRecord('2026-09-11', '수학', [session(1, '합격', 88)], '2026-09-11T00:00:00.000Z', {
+  comprehensionLackCount: 1,
+})
+const tuesdayWrong = testRecord('2026-09-08', '수학', [session(1, '합격', 70)], '2026-09-08T00:00:00.000Z', {
+  conceptLackCount: 4,
+})
+const weeklyWrong = buildWeeklyWrongAnalysis({
+  studentId: 'stu-1',
+  weekStart: '2026-09-07',
+  dailyTests: [mondayWrong, wednesdayWrong, fridayWrong, tuesdayWrong],
+})
+assert.equal(weeklyWrong.calculationError, 3)
+assert.equal(weeklyWrong.conceptLack, 5)
+assert.equal(weeklyWrong.applicationLack, 2)
+assert.equal(weeklyWrong.comprehensionLack, 1)
+
+const stale = testRecord('2026-09-07', '수학', [session(1, '합격', 50)], '2026-09-07T00:00:00.000Z', {
+  calculationErrorCount: 9,
+})
+const latest = testRecord('2026-09-07', '수학', [session(1, '합격', 50)], '2026-09-07T12:00:00.000Z', {
+  calculationErrorCount: 1,
+})
+const latestWins = buildWeeklyWrongAnalysis({
+  studentId: 'stu-1',
+  weekStart: '2026-09-07',
+  dailyTests: [stale, latest],
+})
+assert.equal(latestWins.calculationError, 1)
+
+const legacyItems = testRecord('2026-09-07', '수학', [session(1, '합격', 70)], '2026-09-07T00:00:00.000Z', {
+  wrongAnswerItems: [
+    { id: 'a', label: '1', cause: '문제 이해 부족' },
+    { id: 'b', label: '2', cause: '계산 실수' },
+  ],
+})
+const legacyCounts = buildWeeklyWrongAnalysis({
+  studentId: 'stu-1',
+  weekStart: '2026-09-07',
+  dailyTests: [legacyItems],
+})
+assert.equal(legacyCounts.applicationLack, 1)
+assert.equal(legacyCounts.calculationError, 1)
+assert.equal(legacyCounts.comprehensionLack, 0)
+
+const otherStudentIgnored = buildWeeklyWrongAnalysis({
+  studentId: 'stu-1',
+  weekStart: '2026-09-07',
+  dailyTests: [{ ...mondayWrong, studentId: 'stu-2' }],
+})
+assert.equal(otherStudentIgnored.calculationError, 0)
+assert.equal(otherStudentIgnored.conceptLack, 0)
+
+const flowWithWrong = buildDailyTestWeeklyFlow({
+  studentId: 'stu-1',
+  weekStart: '2026-09-07',
+  dailyTests: [mondayWrong, wednesdayWrong, fridayWrong],
+})
+assert.equal(flowWithWrong.wrongTypeTotal, 7)
+assert.equal(flowWithWrong.max, 90)
+assert.equal(flowWithWrong.min, 80)
+
 const scoring = readFileSync('src/utils/studentCare/constants.ts', 'utf8')
 assert.match(scoring, /ATTENDANCE_WEEKLY_MAX = 20/)
 assert.match(scoring, /MATERIAL_WEEKLY_MAX = 10/)
@@ -193,5 +264,33 @@ assert.doesNotMatch(sql, /CREATE OR REPLACE FUNCTION public\._build_weekly_learn
 assert.doesNotMatch(sql, /CREATE OR REPLACE FUNCTION public\.get_parent_care_bundle/)
 assert.doesNotMatch(sql, /^\s*TRUNCATE/im)
 assert.doesNotMatch(sql, /^\s*DROP TABLE/im)
+
+const card = readFileSync('src/components/studentCare/DailyTestWeeklyFlowCard.tsx', 'utf8')
+assert.match(card, /주간 오답 현황/)
+assert.match(card, /주간 최고/)
+assert.match(card, /주간 최저/)
+assert.match(card, /주간 평균/)
+assert.doesNotMatch(card, /fill="#cbd5e1"/)
+assert.doesNotMatch(card, /월요일/)
+assert.doesNotMatch(card, /수요일/)
+assert.doesNotMatch(card, /금요일/)
+assert.match(
+  readFileSync('src/pages/parent/ParentStudentWeeklySummaryPage.tsx', 'utf8'),
+  /DailyTestWeeklyFlowCard/,
+)
+assert.match(readFileSync('src/hub/HubWeeklyPage.tsx', 'utf8'), /WeeklySummaryDetail/)
+
+const weeklySummary = readFileSync('src/utils/studentCare/weeklySummary.ts', 'utf8')
+assert.doesNotMatch(weeklySummary, /comprehensionLackCount/)
+assert.doesNotMatch(weeklySummary, /주간 오답 현황/)
+assert.doesNotMatch(
+  readFileSync('supabase/weekly-student-care-migration.sql', 'utf8'),
+  /comprehensionLackCount/,
+)
+
+const fields = readFileSync('src/components/diagnosis/DailyLearningDiagnosisFields.tsx', 'utf8')
+assert.match(fields, /문제 이해 부족/)
+assert.match(fields, /응용 능력 부족/)
+assert.match(fields, /comprehensionLackCount/)
 
 console.log('dailyTestWeeklyFlow.test.ts passed')

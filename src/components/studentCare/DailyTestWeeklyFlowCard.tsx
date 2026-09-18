@@ -1,9 +1,9 @@
 import { useId, useMemo, useState } from 'react'
 import type { DailyTestRecord } from '../../types/records'
+import { DAILY_WRONG_TYPES } from '../../utils/learningDiagnosis'
 import {
   buildDailyTestWeeklyFlow,
   WEEKLY_FLOW_COLORS,
-  WEEKLY_FLOW_DAY_LABELS,
   type WeeklyFlowDay,
   type WeeklyFlowSessionPoint,
   type WeeklyFlowWeekday,
@@ -15,7 +15,6 @@ type ChartPoint = {
   session: WeeklyFlowSessionPoint
   x: number
   y: number | null
-  markerY: number
 }
 
 const WEEKLY_FLOW_WEEKDAYS_CLIP = ['monday', 'wednesday', 'friday'] as const
@@ -69,7 +68,7 @@ function FlowChart({ days, clipId }: { days: WeeklyFlowDay[]; clipId: string }) 
   const padL = 18
   const padR = 10
   const padT = 28
-  const padB = 28
+  const padB = 16
   const plotW = width - padL - padR
   const plotH = height - padT - padB
   const slots = days.flatMap((day) => day.sessions.map((session) => ({ day, session })))
@@ -85,7 +84,6 @@ function FlowChart({ days, clipId }: { days: WeeklyFlowDay[]; clipId: string }) 
       session: slot.session,
       x,
       y: scoreY,
-      markerY: padT + plotH + 7,
     }
   })
   const scored = points.filter((point): point is ChartPoint & { y: number } => point.y != null)
@@ -142,27 +140,17 @@ function FlowChart({ days, clipId }: { days: WeeklyFlowDay[]; clipId: string }) 
             ))
           : null}
         {points.map((point) =>
-          point.session.kind === 'absent' ? (
+          point.session.kind === 'score' && point.y != null ? (
             <circle
               key={point.key}
               cx={point.x}
-              cy={point.markerY}
-              r="3.4"
-              fill="#cbd5e1"
-              stroke="#94a3b8"
-              strokeWidth="1"
-            />
-          ) : (
-            <circle
-              key={point.key}
-              cx={point.x}
-              cy={point.y ?? 0}
+              cy={point.y}
               r={point.session.passed ? 5 : 4.2}
               fill={WEEKLY_FLOW_COLORS[point.weekday]}
               stroke="#fff"
               strokeWidth="1.6"
             />
-          ),
+          ) : null,
         )}
       </svg>
       {points.map((point) => {
@@ -186,11 +174,6 @@ function FlowChart({ days, clipId }: { days: WeeklyFlowDay[]; clipId: string }) 
           </span>
         )
       })}
-      <div className="mt-1 grid grid-cols-3 text-center text-[11px] font-bold text-[#163A70] sm:text-xs">
-        {days.map((day) => (
-          <p key={day.weekday}>{WEEKLY_FLOW_DAY_LABELS[day.weekday]}</p>
-        ))}
-      </div>
     </div>
   )
 }
@@ -242,6 +225,27 @@ export function DailyTestWeeklyFlowCard({
       ) : null}
       <div className="mt-3 overflow-visible pt-5">
         <FlowChart days={model.days} clipId={clipId} />
+      </div>
+      <div className="mt-3">
+        <h4 className="text-sm font-bold text-navy-900">주간 오답 현황</h4>
+        <div className="mt-2 grid grid-cols-2 gap-1.5">
+          {DAILY_WRONG_TYPES.map((item) => {
+            const count = model.wrongTypes[item.key]
+            const percent =
+              model.wrongTypeTotal > 0 ? Math.round((count / model.wrongTypeTotal) * 100) : null
+            return (
+              <div key={item.key} className="rounded-xl bg-slate-50 px-2.5 py-2">
+                <p className="text-[11px] font-semibold leading-tight text-slate-600">{item.label}</p>
+                <p className="mt-0.5 text-sm font-bold tabular-nums text-[#163A70]">
+                  {count}문제
+                  {percent != null ? (
+                    <span className="ml-1 text-[11px] font-semibold text-slate-400">{percent}%</span>
+                  ) : null}
+                </p>
+              </div>
+            )
+          })}
+        </div>
       </div>
       <div className="mt-3 grid grid-cols-3 gap-2">
         {[

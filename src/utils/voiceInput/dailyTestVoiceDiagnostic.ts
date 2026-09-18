@@ -72,7 +72,8 @@ export function formatDailyTestVoiceApplyResult(
   const wrongCauseApplyCount =
     (parseResult?.conceptLackCount !== undefined ? 1 : 0) +
     (parseResult?.calculationErrorCount !== undefined ? 1 : 0) +
-    (parseResult?.applicationLackCount !== undefined ? 1 : 0)
+    (parseResult?.applicationLackCount !== undefined ? 1 : 0) +
+    (parseResult?.comprehensionLackCount !== undefined ? 1 : 0)
   const feedbackApplyCount = parseResult?.teacherFeedback ? 1 : 0
   const needsReviewCount = parseResult?.needsReview.length ?? summary?.needsReviewCount ?? 0
   return {

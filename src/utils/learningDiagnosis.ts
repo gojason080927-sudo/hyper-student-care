@@ -23,6 +23,8 @@ export type DailyLearningDiagnosis = {
   calculationErrorCount: number
   /** 오답 분석: 응용 능력 부족 문항 수 */
   applicationLackCount: number
+  /** 오답 분석: 문제 이해 부족 문항 수 (일일테스트 4번째 유형. 월간 MathWrongCause 별칭과 별개) */
+  comprehensionLackCount: number
   /** 강사 피드백 */
   teacherFeedback: string
   fridayRetestTotal: number | null
@@ -42,6 +44,7 @@ export const EMPTY_DAILY_LEARNING_DIAGNOSIS: DailyLearningDiagnosis = {
   conceptLackCount: 0,
   calculationErrorCount: 0,
   applicationLackCount: 0,
+  comprehensionLackCount: 0,
   teacherFeedback: '',
   fridayRetestTotal: null,
   fridayRetestWrong: null,
@@ -107,13 +110,71 @@ function toNonNegInt(value: unknown): number {
   return Math.floor(n)
 }
 
-/** 오답 분석 3항목 합계 */
+/** 월간 집계용 기존 3항목 합계. 4번째 유형을 넣으면 월간 산식이 바뀌므로 유지. */
 export function sumWrongAnalysisCounts(diagnosis: DailyLearningDiagnosis): number {
   return (
     diagnosis.conceptLackCount +
     diagnosis.calculationErrorCount +
     diagnosis.applicationLackCount
   )
+}
+
+export const DAILY_WRONG_TYPES = [
+  { key: 'calculationError', label: '계산 실수' },
+  { key: 'conceptLack', label: '개념 부족' },
+  { key: 'applicationLack', label: '응용 능력 부족' },
+  { key: 'comprehensionLack', label: '문제 이해 부족' },
+] as const
+
+export type DailyWrongTypeKey = (typeof DAILY_WRONG_TYPES)[number]['key']
+
+export type DailyWrongTypeCounts = Record<DailyWrongTypeKey, number>
+
+export function emptyDailyWrongTypeCounts(): DailyWrongTypeCounts {
+  return {
+    calculationError: 0,
+    conceptLack: 0,
+    applicationLack: 0,
+    comprehensionLack: 0,
+  }
+}
+
+export function sumDailyWrongTypeCounts(counts: DailyWrongTypeCounts): number {
+  return (
+    counts.calculationError +
+    counts.conceptLack +
+    counts.applicationLack +
+    counts.comprehensionLack
+  )
+}
+
+/** 일일테스트 4종 문항 수. 레거시 문항 배열의 '문제 이해 부족'은 기존처럼 응용 능력 부족으로 둔다. */
+export function dailyWrongTypeCounts(
+  diagnosis: DailyLearningDiagnosis,
+): DailyWrongTypeCounts {
+  const d = normalizeDailyLearningDiagnosis(diagnosis)
+  const countSum =
+    d.conceptLackCount +
+    d.calculationErrorCount +
+    d.applicationLackCount +
+    d.comprehensionLackCount
+  if (countSum > 0) {
+    return {
+      calculationError: d.calculationErrorCount,
+      conceptLack: d.conceptLackCount,
+      applicationLack: d.applicationLackCount,
+      comprehensionLack: d.comprehensionLackCount,
+    }
+  }
+  if (d.wrongAnswerItems.length > 0) {
+    return {
+      calculationError: d.wrongAnswerItems.filter((item) => item.cause === '계산 실수').length,
+      conceptLack: d.wrongAnswerItems.filter((item) => item.cause === '개념 부족').length,
+      applicationLack: d.wrongAnswerItems.filter((item) => item.cause === '문제 이해 부족').length,
+      comprehensionLack: 0,
+    }
+  }
+  return emptyDailyWrongTypeCounts()
 }
 
 /** 원인별 오답 수 — 신규 count 우선, 없으면 레거시 문항 배열 */
@@ -149,6 +210,7 @@ export function normalizeDailyLearningDiagnosis(raw: unknown): DailyLearningDiag
   const conceptLackCount = toNonNegInt(row.conceptLackCount)
   const calculationErrorCount = toNonNegInt(row.calculationErrorCount)
   const applicationLackCount = toNonNegInt(row.applicationLackCount)
+  const comprehensionLackCount = toNonNegInt(row.comprehensionLackCount)
   let questionTotal = toNonNegInt(row.questionTotal)
   if (questionTotal <= 0) {
     const sum = conceptLackCount + calculationErrorCount + applicationLackCount
@@ -160,6 +222,7 @@ export function normalizeDailyLearningDiagnosis(raw: unknown): DailyLearningDiag
     conceptLackCount,
     calculationErrorCount,
     applicationLackCount,
+    comprehensionLackCount,
     teacherFeedback: String(row.teacherFeedback ?? '').trim(),
     fridayRetestTotal: toNullableNonNegInt(row.fridayRetestTotal),
     fridayRetestWrong: toNullableNonNegInt(row.fridayRetestWrong),
@@ -184,6 +247,7 @@ export function hasDailyLearningDiagnosisContent(
   if (d.wrongAnswerItems.length > 0) return true
   if (d.questionTotal > 0) return true
   if (sumWrongAnalysisCounts(d) > 0) return true
+  if (d.comprehensionLackCount > 0) return true
   if (d.teacherFeedback.trim()) return true
   if (d.fridayRetestTotal !== null || d.fridayRetestWrong !== null) return true
   if (d.englishVocabResult !== null) return true
@@ -196,7 +260,11 @@ export function hasDailyLearningDiagnosisContent(
 
 export function hasParentWrongAnalysisContent(diagnosis: DailyLearningDiagnosis): boolean {
   const d = normalizeDailyLearningDiagnosis(diagnosis)
-  return sumWrongAnalysisCounts(d) > 0 || d.wrongAnswerItems.length > 0
+  return (
+    sumWrongAnalysisCounts(d) > 0 ||
+    d.comprehensionLackCount > 0 ||
+    d.wrongAnswerItems.length > 0
+  )
 }
 
 export function clampScore(value: number): number {

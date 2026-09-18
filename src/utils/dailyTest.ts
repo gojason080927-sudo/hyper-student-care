@@ -414,6 +414,7 @@ export function hasDailyTestDisplayData(record?: DailyTestRecord): boolean {
     diagnosis.conceptLackCount > 0 ||
     diagnosis.calculationErrorCount > 0 ||
     diagnosis.applicationLackCount > 0 ||
+    diagnosis.comprehensionLackCount > 0 ||
     diagnosis.teacherFeedback.trim() ||
     diagnosis.fridayRetestTotal !== null ||
     diagnosis.fridayRetestWrong !== null ||

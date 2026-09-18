@@ -113,6 +113,8 @@ export type DailyLearningDiagnosisData = {
   calculationErrorCount: number
   /** 오답 분석 — 응용 능력 부족 문항 수 */
   applicationLackCount: number
+  /** 오답 분석 — 문제 이해 부족 문항 수 */
+  comprehensionLackCount: number
   /** 강사 피드백 */
   teacherFeedback: string
   fridayRetestTotal: number | null

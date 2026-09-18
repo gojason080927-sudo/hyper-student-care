@@ -550,6 +550,7 @@ function parseWrongCauseDeltas(clause: string): {
   conceptLackDelta: number
   calculationErrorDelta: number
   applicationLackDelta: number
+  comprehensionLackDelta: number
 } {
   return parseWrongCausePhrases(clause)
 }
@@ -587,7 +588,7 @@ export function parseDailyTestVoice(
     const { clause, memo } = extractMemo(piece)
     const scoreParsed = extractScoreValue(clause)
     const causes = parseWrongCauseDeltas(clause)
-    if (!scoreParsed && !causes.conceptLackDelta && !causes.calculationErrorDelta && !causes.applicationLackDelta && !memo) {
+    if (!scoreParsed && !causes.conceptLackDelta && !causes.calculationErrorDelta && !causes.applicationLackDelta && !causes.comprehensionLackDelta && !memo) {
       continue
     }
     if (scoreParsed?.invalid) {
@@ -605,6 +606,7 @@ export function parseDailyTestVoice(
       conceptLackDelta: causes.conceptLackDelta,
       calculationErrorDelta: causes.calculationErrorDelta,
       applicationLackDelta: causes.applicationLackDelta,
+      comprehensionLackDelta: causes.comprehensionLackDelta,
       teacherFeedback: memo.slice(0, 500),
     })
   }
