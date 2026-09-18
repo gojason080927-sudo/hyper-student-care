@@ -329,14 +329,20 @@
 }
 
 .hub-install-btn {
+  display: flex;
   margin-top: 0.7rem;
   width: 100%;
   min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
   border-radius: 14px;
   background: var(--hub-purple);
   color: #fff;
   font-size: 0.86rem;
   font-weight: 800;
+  text-align: center;
+  text-decoration: none;
+  box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 }
