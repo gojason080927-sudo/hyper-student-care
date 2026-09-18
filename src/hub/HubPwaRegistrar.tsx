@@ -1,7 +1,5 @@
 import { useEffect } from 'react'
-import { rememberHubAccessKey } from './hubSession'
-
-const MANIFEST_HREF = '/hub/manifest.webmanifest?v=1-installable'
+import { hubPwaManifestHref, rememberHubAccessKey } from './hubSession'
 
 export function HubPwaRegistrar({ accessKey = '' }: { accessKey?: string }) {
   useEffect(() => {
@@ -15,7 +13,7 @@ export function HubPwaRegistrar({ accessKey = '' }: { accessKey?: string }) {
       manifestLink.id = 'app-manifest'
       document.head.appendChild(manifestLink)
     }
-    manifestLink.href = MANIFEST_HREF
+    manifestLink.href = hubPwaManifestHref(key)
 
     const theme = document.querySelector('meta[name="theme-color"]')
     if (theme) theme.setAttribute('content', '#0B1F4A')

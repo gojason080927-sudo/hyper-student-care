@@ -69,7 +69,17 @@
         }
 
         if (isHub) {
-          if (manifest) manifest.href = '/hub/manifest.webmanifest?v=1-installable'
+          var hubHref = '/hub/manifest.webmanifest?v=1-installable'
+          var hubKeyMatch = path.match(/^\/hub\/([^/]+)/)
+          if (hubKeyMatch) {
+            try {
+              var hubKey = decodeURIComponent(hubKeyMatch[1]).trim()
+              if (/^[A-Za-z0-9_-]{12,128}$/.test(hubKey)) {
+                hubHref += '&start=' + encodeURIComponent('/hub/' + hubKey)
+              }
+            } catch (e) {}
+          }
+          if (manifest) manifest.href = hubHref
           var hubIcon = document.querySelector('link[rel="icon"]')
           if (hubIcon) {
             hubIcon.setAttribute('href', '/hub/hyper-hub-icon-v1-192.png')
