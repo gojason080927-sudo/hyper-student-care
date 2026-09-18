@@ -6,16 +6,13 @@ import { useData } from '../../hooks/useData'
 import { GRADES, btnPrimary, btnSecondary, inputClass } from '../../utils/labels'
 import { getClassOptionsForGrade } from '../../utils/studentGradeClass'
 import { createId } from '../../utils/id'
-import type { HubAssignment, HubAudienceType, HubInboxItem, HubMaterial, HubVideo } from '../../hub/types'
+import type { HubAudienceType, HubInboxItem, HubMaterial, HubVideo } from '../../hub/types'
 import { HUB_QUESTION_ATTACHMENTS_BUCKET } from '../../hub/types'
 import {
-  teacherDeleteAssignment,
   teacherDeleteVideo,
-  teacherFetchAssignments,
   teacherFetchInbox,
   teacherFetchMaterials,
   teacherFetchVideos,
-  teacherSaveAssignment,
   teacherSaveInboxReply,
   teacherSaveVideo,
   teacherSetMaterialStatus,
@@ -27,13 +24,11 @@ import {
 import { parseTimestampLines, parseYoutubeVideoId } from '../../hub/youtube'
 import { HUB_MATERIAL_ACCEPT } from '../../hub/hubFilePolicy'
 import { hubAudienceSelectionError } from '../../hub/hubAudience'
-import { assignmentFingerprint } from '../../lib/hubPushEvents'
 import { notifyHubPush } from '../../lib/hubPushInvoke'
 
-type Tab = 'assignments' | 'materials' | 'videos' | 'requests' | 'suggestions'
+type Tab = 'materials' | 'videos' | 'requests' | 'suggestions'
 
 const tabs: { id: Tab; label: string }[] = [
-  { id: 'assignments', label: '오늘의 과제' },
   { id: 'materials', label: '문제 자료' },
   { id: 'videos', label: '영상 자료' },
   { id: 'requests', label: '자료 요청' },
@@ -141,20 +136,17 @@ export function TeacherStudentHubPage() {
   const { showToast, students } = useData()
   const [tab, setTab] = useState<Tab>('materials')
   const [error, setError] = useState('')
-  const [assignments, setAssignments] = useState<HubAssignment[]>([])
   const [materials, setMaterials] = useState<HubMaterial[]>([])
   const [videos, setVideos] = useState<HubVideo[]>([])
   const [inbox, setInbox] = useState<HubInboxItem[]>([])
 
   const reload = async () => {
     try {
-      const [nextAssignments, nextMaterials, nextVideos, nextInbox] = await Promise.all([
-        teacherFetchAssignments(),
+      const [nextMaterials, nextVideos, nextInbox] = await Promise.all([
         teacherFetchMaterials(),
         teacherFetchVideos(),
         teacherFetchInbox(),
       ])
-      setAssignments(nextAssignments)
       setMaterials(nextMaterials)
       setVideos(nextVideos)
       setInbox(nextInbox)
@@ -175,8 +167,9 @@ export function TeacherStudentHubPage() {
         description="학생 앱의 문제 자료·영상 자료를 등록하고 관리합니다. YouTube 일부공개는 ACL이 아닙니다."
       />
       <p className="break-keep rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-700">
-        학생 Hub 「오늘의 과제」는 이 화면에서 반별로 따로 등록합니다. Today Report 출결·숙제·일일테스트
-        입력과는 연결되어 있지 않습니다.
+        오늘의 과제는 Today Report의 「반 공통 오늘 과제」에서 한 번만 입력합니다. 학생 Hub 「오늘의
+        과제」와 학부모 Today Report에 자동으로 표시됩니다. 이 화면에서 같은 과제를 다시 입력하지
+        마세요.
       </p>
       <p className="text-sm text-slate-600">
         학생 질문은 기존 <Link className="font-semibold text-navy-700" to="/questions">질문하기</Link>에서
@@ -197,21 +190,6 @@ export function TeacherStudentHubPage() {
           </button>
         ))}
       </div>
-      {tab === 'assignments' ? (
-        <AssignmentPanel
-          assignments={assignments}
-          students={students.map((student) => ({
-            id: student.id,
-            name: student.name,
-            grade: student.grade,
-            className: student.className,
-          }))}
-          onSaved={async () => {
-            showToast('오늘의 과제를 저장했습니다.')
-            await reload()
-          }}
-        />
-      ) : null}
       {tab === 'materials' ? (
         <MaterialPanel
           materials={materials}
@@ -239,248 +217,6 @@ export function TeacherStudentHubPage() {
           onChanged={reload}
         />
       ) : null}
-    </div>
-  )
-}
-
-
-function AssignmentPanel({
-  assignments,
-  students,
-  onSaved,
-}: {
-  assignments: HubAssignment[]
-  students: { id: string; name: string; grade: string; className: string }[]
-  onSaved: () => Promise<void>
-}) {
-  const emptyForm = {
-    id: '',
-    grade: '',
-    className: '',
-    subject: '',
-    textbookName: '',
-    content: '',
-    dueDate: '',
-    studentId: '',
-    published: true,
-  }
-  const [form, setForm] = useState(emptyForm)
-  const [error, setError] = useState('')
-  const editing = Boolean(form.id)
-  const classOptions = getClassOptionsForGrade(form.grade)
-  const classStudents = students.filter(
-    (student) => student.grade === form.grade && student.className === form.className,
-  )
-
-  const submit = async (event: FormEvent) => {
-    event.preventDefault()
-    setError('')
-    if (!form.grade.trim() || !form.className.trim()) {
-      setError('학년과 반을 선택해 주세요.')
-      return
-    }
-    if (!form.content.trim()) {
-      setError('과제 내용을 입력해 주세요.')
-      return
-    }
-    const existing = assignments.find((item) => item.id === form.id)
-    const saved = {
-      id: form.id || createId(),
-      grade: form.grade.trim(),
-      className: form.className.trim(),
-      subject: form.subject.trim(),
-      textbookName: form.textbookName.trim(),
-      content: form.content.trim(),
-      dueDate: form.dueDate || null,
-      studentId: form.studentId || null,
-      published: form.published,
-      publishedAt: form.published ? existing?.publishedAt || new Date().toISOString() : null,
-      createdAt: existing?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-    await teacherSaveAssignment(saved)
-    notifyHubPush({
-      event: 'assignment_saved',
-      entityId: saved.id,
-      previous: existing
-        ? {
-            published: existing.published,
-            fingerprint: assignmentFingerprint(existing),
-          }
-        : undefined,
-    })
-    setForm(emptyForm)
-    await onSaved()
-  }
-
-  return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <form
-        onSubmit={(event) => {
-          void submit(event).catch((err) => {
-            setError(err instanceof Error ? err.message : '저장에 실패했습니다.')
-          })
-        }}
-        className="space-y-3 rounded-2xl bg-white p-5 shadow-sm"
-      >
-        <h3 className="font-bold text-navy-900">{editing ? '과제 수정' : '반 과제 게시'}</h3>
-        {error ? <p className="break-keep text-sm text-rose-600">{error}</p> : null}
-        <div className="grid gap-3 sm:grid-cols-2">
-          <select
-            className={inputClass()}
-            value={form.grade}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, grade: event.target.value, className: '', studentId: '' }))
-            }
-            required
-          >
-            <option value="">학년 선택</option>
-            {GRADES.map((grade) => (
-              <option key={grade} value={grade}>
-                {grade}
-              </option>
-            ))}
-          </select>
-          <select
-            className={inputClass()}
-            value={form.className}
-            onChange={(event) =>
-              setForm((prev) => ({ ...prev, className: event.target.value, studentId: '' }))
-            }
-            required
-          >
-            <option value="">반 선택</option>
-            {classOptions.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </div>
-        <input
-          className={inputClass()}
-          value={form.subject}
-          onChange={(event) => setForm((prev) => ({ ...prev, subject: event.target.value }))}
-          placeholder="과목 (선택)"
-        />
-        <input
-          className={inputClass()}
-          value={form.textbookName}
-          onChange={(event) => setForm((prev) => ({ ...prev, textbookName: event.target.value }))}
-          placeholder="교재명 (선택)"
-        />
-        <textarea
-          className={inputClass()}
-          value={form.content}
-          onChange={(event) => setForm((prev) => ({ ...prev, content: event.target.value }))}
-          placeholder="오늘 과제 내용"
-          rows={4}
-          required
-        />
-        <input
-          type="date"
-          className={inputClass()}
-          value={form.dueDate}
-          onChange={(event) => setForm((prev) => ({ ...prev, dueDate: event.target.value }))}
-        />
-        <select
-          className={inputClass()}
-          value={form.studentId}
-          onChange={(event) => setForm((prev) => ({ ...prev, studentId: event.target.value }))}
-        >
-          <option value="">반 전체</option>
-          {classStudents.map((student) => (
-            <option key={student.id} value={student.id}>
-              {student.name}만
-            </option>
-          ))}
-        </select>
-        <label className="flex items-center gap-2 text-sm text-slate-700">
-          <input
-            type="checkbox"
-            checked={form.published}
-            onChange={(event) => setForm((prev) => ({ ...prev, published: event.target.checked }))}
-          />
-          학생에게 게시
-        </label>
-        <div className="flex flex-wrap gap-2">
-          <button type="submit" className={btnPrimary}>
-            {editing ? '수정 저장' : '게시'}
-          </button>
-          {editing ? (
-            <button type="button" className={btnSecondary} onClick={() => setForm(emptyForm)}>
-              취소
-            </button>
-          ) : null}
-        </div>
-      </form>
-      <div className="space-y-3">
-        {assignments.length === 0 ? <EmptyState title="게시된 과제가 없습니다." /> : null}
-        {assignments.map((item) => (
-          <article key={item.id} className="rounded-2xl bg-white p-4 shadow-sm">
-            <p className="break-anywhere font-semibold">{item.content}</p>
-            <p className="mt-1 break-keep text-xs text-slate-500">
-              {item.grade} {item.className}
-              {item.subject ? ` · ${item.subject}` : ''}
-              {item.published ? ' · 게시' : ' · 숨김'}
-              {item.studentId
-                ? ` · ${students.find((student) => student.id === item.studentId)?.name ?? '개별'}`
-                : ' · 반 전체'}
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <button
-                type="button"
-                className={btnSecondary}
-                onClick={() =>
-                  setForm({
-                    id: item.id,
-                    grade: item.grade,
-                    className: item.className,
-                    subject: item.subject,
-                    textbookName: item.textbookName,
-                    content: item.content,
-                    dueDate: item.dueDate ?? '',
-                    studentId: item.studentId ?? '',
-                    published: item.published,
-                  })
-                }
-              >
-                수정
-              </button>
-              <button
-                type="button"
-                className={btnSecondary}
-                onClick={async () => {
-                  await teacherSaveAssignment({ ...item, published: !item.published })
-                  notifyHubPush({
-                    event: 'assignment_saved',
-                    entityId: item.id,
-                    previous: {
-                      published: item.published,
-                      fingerprint: assignmentFingerprint(item),
-                    },
-                  })
-                  await onSaved()
-                }}
-              >
-                {item.published ? '숨기기' : '게시'}
-              </button>
-              <button
-                type="button"
-                className={btnSecondary}
-                onClick={async () => {
-                  if (!window.confirm('이 과제를 삭제할까요?')) return
-                  await teacherDeleteAssignment(item.id)
-                  if (form.id === item.id) setForm(emptyForm)
-                  await onSaved()
-                }}
-              >
-                삭제
-              </button>
-            </div>
-          </article>
-        ))}
-      </div>
     </div>
   )
 }

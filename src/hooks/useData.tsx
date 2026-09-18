@@ -35,7 +35,12 @@ import { useAuth } from '../contexts/AuthContext'
 import { loadAppData, loadParentCareData as fetchParentCareData, loadTodayReportFromSupabase, shouldDeferInitialLoadForParentRoute, type DataSource } from '../lib/dataLoader'
 import { rpcSubmitParentQuestion } from '../lib/db/parentAccessRpc'
 import { notifyHubPush } from '../lib/hubPushInvoke'
-import { syncHubAssignmentsFromTodayReport } from '../lib/hubFromTodayReport'
+import { assignmentFingerprint, type HubAssignmentSnapshot } from '../lib/hubPushEvents'
+import {
+  hubAssignmentFromTodayReportCommon,
+  syncHubAssignmentsFromTodayReport,
+  upsertHubAssignmentRow,
+} from '../lib/hubFromTodayReport'
 import { getParentAccessKeyFromPath } from '../lib/supabase'
 import { mergeTodayReportIntoState } from '../lib/db/mergeTodayReport'
 import { mergeClassTodayReportCommonRecords } from '../utils/mergeClassTodayReportCommon'
@@ -1845,6 +1850,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
       const ts = createTimestamps()
       const commonRecords: ClassTodayReportCommon[] = []
+      const previousById = new Map<string, HubAssignmentSnapshot>()
 
       try {
         for (const slot of slotsToSync) {
@@ -1870,6 +1876,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
               subject,
               slot.slotNumber,
             )
+            const previousSource = classExisting ?? existingCommon
+            const previousAssignment = previousSource
+              ? hubAssignmentFromTodayReportCommon(
+                  previousSource,
+                  previousSource.updatedAt || ts.updatedAt,
+                )
+              : null
+            if (previousAssignment) {
+              previousById.set(previousAssignment.id, previousAssignment)
+            }
             commonRecords.push(
               buildClassCommonRecord({
                 grade: classSync.grade,
@@ -1879,7 +1895,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
                 slotNumber: slot.slotNumber,
                 textbookName: slot.textbookName,
                 todayAssignment: slot.todayAssignment,
-                existing: classExisting ?? existingCommon,
+                existing: previousSource,
                 timestamps: ts,
                 createId,
               }),
@@ -1938,12 +1954,19 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
         await syncHubAssignmentsFromTodayReport(
           upsertedCommons,
-          async (assignment) => {
-            const { teacherSaveAssignment } = await import('../hub/teacherHubRepo')
-            await teacherSaveAssignment(assignment)
-          },
+          upsertHubAssignmentRow,
           (assignment) => {
-            notifyHubPush({ event: 'assignment_saved', entityId: assignment.id })
+            const previous = previousById.get(assignment.id)
+            notifyHubPush({
+              event: 'assignment_saved',
+              entityId: assignment.id,
+              previous: previous
+                ? {
+                    published: previous.published,
+                    fingerprint: assignmentFingerprint(previous),
+                  }
+                : undefined,
+            })
           },
         )
 
