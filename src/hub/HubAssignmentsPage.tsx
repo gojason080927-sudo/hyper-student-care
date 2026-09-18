@@ -8,7 +8,7 @@ export function HubAssignmentsPage() {
     <div className="mx-auto w-full max-w-lg px-3 pb-8 pt-4">
       <HubPageHeader title="오늘의 과제" />
       {assignments.length === 0 ? (
-        <HubEmpty message="게시된 과제가 없습니다." />
+        <HubEmpty message="오늘 등록된 과제가 없습니다." />
       ) : (
         <ul className="space-y-3">
           {assignments.map((item) => (

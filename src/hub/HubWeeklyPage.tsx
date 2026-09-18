@@ -3,12 +3,15 @@ import { getSupabase } from '../lib/supabase'
 import { WeeklySummaryDetail } from '../pages/parent/ParentStudentWeeklySummaryPage'
 import { latestWeeklySummary } from '../utils/studentCare/weeklySummaryDisplay'
 import { weeklySummaryPeriodLabel } from '../utils/studentCare'
+import type { DailyTestRecord } from '../types/records'
 import { HubEmpty, HubPageHeader } from './HubChrome'
 import { useHub } from './HubContext'
+import { rpcGetStudentHubDailyTests } from './hubRpc'
 
 export function HubWeeklyPage() {
-  const { student, weeklyLearningSummaries } = useHub()
+  const { accessKey, student, weeklyLearningSummaries } = useHub()
   const [selectedId, setSelectedId] = useState('')
+  const [dailyTests, setDailyTests] = useState<DailyTestRecord[]>([])
 
   const summaries = useMemo(
     () =>
@@ -22,7 +25,10 @@ export function HubWeeklyPage() {
 
   useEffect(() => {
     void getSupabase().rpc('ensure_weekly_learning_summaries')
-  }, [])
+    void rpcGetStudentHubDailyTests(accessKey)
+      .then(setDailyTests)
+      .catch(() => setDailyTests([]))
+  }, [accessKey])
 
   useEffect(() => {
     if (!selectedId && latest) setSelectedId(latest.id)
@@ -48,7 +54,11 @@ export function HubWeeklyPage() {
               ))}
             </select>
           ) : null}
-          <WeeklySummaryDetail summary={active} />
+          <WeeklySummaryDetail
+            summary={active}
+            dailyTests={dailyTests}
+            studentId={student.id}
+          />
         </div>
       )}
     </div>
