@@ -89,6 +89,7 @@ import { ParentStudentQuestionsPage } from './pages/parent/ParentStudentQuestion
 import { ParentStudentTodayReportPage } from './pages/parent/ParentStudentTodayReportPage'
 import { ParentStudentWeeklySummaryPage } from './pages/parent/ParentStudentWeeklySummaryPage'
 import { TeacherStudentHubPage } from './pages/teacher/TeacherStudentHubPage'
+import { TeacherStudentHubSharePage } from './pages/teacher/TeacherStudentHubSharePage'
 import { HubLayout } from './hub/HubLayout'
 import { HubHomePage } from './hub/HubHomePage'
 import { HubLaunchPage } from './hub/HubLaunchPage'
@@ -419,6 +420,14 @@ function App() {
                 </TeacherMobilePageShell>
               }
             />
+            <Route
+              path="student-hub-share"
+              element={
+                <TeacherMobilePageShell title="학생 Hub 배포">
+                  <TeacherStudentHubSharePage />
+                </TeacherMobilePageShell>
+              }
+            />
 
             <Route
 
@@ -525,6 +534,7 @@ function App() {
 
           <Route path="teacher/admission-strategy" element={<TeacherAdmissionStrategyPage />} />
           <Route path="teacher/student-hub" element={<TeacherStudentHubPage />} />
+          <Route path="teacher/student-hub-share" element={<TeacherStudentHubSharePage />} />
 
           <Route
 

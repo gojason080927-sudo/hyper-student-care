@@ -38,9 +38,6 @@ export function StudentAccessLinkPanel({ student }: StudentAccessLinkPanelProps)
       <p className="mt-3 break-all rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700">
         {careUrl}
       </p>
-      <p className="mt-2 break-all rounded-xl border border-mint-100 bg-white px-3 py-2.5 text-sm text-slate-700">
-        학생 Hub: {hubUrl || 'URL을 만들 수 없습니다.'}
-      </p>
       <div className="mt-4 flex flex-wrap gap-2">
         <button
           type="button"

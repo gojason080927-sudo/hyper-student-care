@@ -87,15 +87,21 @@ assert.match(sql, /timestamps/)
 
 assert.match(app, /path="\/hub\/:studentAccessKey"/)
 assert.match(app, /path="teacher\/student-hub"/)
+assert.match(app, /path="teacher\/student-hub-share"/)
 assert.match(app, /path="student-hub"/)
+assert.match(app, /path="student-hub-share"/)
 assert.match(app, /TeacherMobilePageShell title="학생 학습자료"/)
 assert.match(teacherSidebar, /label: '학생 학습자료'/)
 assert.match(teacherSidebar, /path: '\/teacher\/student-hub'/)
+assert.match(teacherSidebar, /path: '\/teacher\/student-hub-share'/)
 assert.match(teacherDashboard, /title: '학생 학습자료'/)
+assert.match(teacherDashboard, /title: '학생 Hub 배포'/)
 assert.match(teacherDashboard, /학생 앱의 문제 자료·영상 자료/)
 assert.match(teacherMobileHome, /title: '학생 학습자료'/)
 assert.match(teacherMobileHome, /to: '\/teacher\/mobile\/student-hub'/)
+assert.match(teacherMobileHome, /to: '\/teacher\/mobile\/student-hub-share'/)
 assert.match(teacherMobileMore, /label: '학생 학습자료'/)
+assert.match(teacherMobileMore, /label: '학생 Hub 배포'/)
 assert.match(
   teacherMobileMore,
   /const links = \[\s*\{ to: '\/teacher\/mobile\/student-hub', label: '학생 학습자료'/,

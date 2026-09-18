@@ -4,7 +4,7 @@ const CARE_PATH_PREFIX = '/care/'
 const HUB_PATH_PREFIX = '/hub/'
 
 /** Vite가 빌드/ dev 서버 시작 시 주입하는 공개 앱 URL */
-const VITE_PUBLIC_APP_URL = import.meta.env.VITE_PUBLIC_APP_URL
+const VITE_PUBLIC_APP_URL = import.meta.env?.VITE_PUBLIC_APP_URL
 
 /** env·URL 문자열에서 따옴표·공백·줄바꿈 제거 */
 export function sanitizeUrlString(raw: string): string {
@@ -139,6 +139,19 @@ export function tryGetStudentHubUrl(studentAccessKey: string): string | null {
   } catch {
     return null
   }
+}
+
+export function buildStudentHubShareMessage(studentName: string, hubUrl: string): string {
+  const name = studentName.trim() || '학생'
+  return `[HYPER Student Hub]\n${name} 학생 학습앱입니다.\n${sanitizeUrlString(hubUrl)}`
+}
+
+export function buildClassHubShareList(
+  rows: Array<{ name: string; hubUrl: string }>,
+): string {
+  return rows
+    .map((row) => `${row.name.trim()}\n${sanitizeUrlString(row.hubUrl)}`)
+    .join('\n\n')
 }
 
 /** @deprecated getStudentCareUrl 사용 */
