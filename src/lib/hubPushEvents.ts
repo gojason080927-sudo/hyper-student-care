@@ -36,6 +36,8 @@ export type StudentHubPushKind =
   | 'inbox_replied'
   | 'question_answered'
   | 'notice_published'
+  | 'material_published'
+  | 'video_published'
   | 'weekly_summary'
 
 export type TeacherHubPushKind = 'student_question' | 'material_request' | 'suggestion'
@@ -110,6 +112,14 @@ export function studentNoticeEventKey(noticeId: string): string {
   return hubPushEventKey('student:notice', noticeId, 'published')
 }
 
+export function studentMaterialEventKey(materialId: string): string {
+  return hubPushEventKey('student:material', materialId, 'published')
+}
+
+export function studentVideoEventKey(videoId: string): string {
+  return hubPushEventKey('student:video', videoId, 'published')
+}
+
 export function studentWeeklySummaryEventKey(studentId: string, weekStart: string): string {
   return hubPushEventKey('student:weekly', studentId, weekStart)
 }
@@ -155,6 +165,18 @@ export function studentPushCopy(
         title: 'HYPER Student Hub',
         body: '새 공지사항이 등록되었습니다.',
         path: 'notices',
+      }
+    case 'material_published':
+      return {
+        title: 'HYPER Student Hub',
+        body: '새 문제 자료가 등록되었습니다.',
+        path: 'materials',
+      }
+    case 'video_published':
+      return {
+        title: 'HYPER Student Hub',
+        body: '새 영상이 등록되었습니다.',
+        path: 'videos',
       }
     case 'weekly_summary':
       return {
