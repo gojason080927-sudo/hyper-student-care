@@ -112,14 +112,16 @@ function FlowChart({ days, clipId }: { days: WeeklyFlowDay[]; clipId: string }) 
           const y = padT + plotH * (1 - tick / 100)
           return (
             <g key={tick}>
-              <line
-                x1={padL}
-                x2={width - padR}
-                y1={y}
-                y2={y}
-                stroke="rgba(22, 58, 112, 0.08)"
-                strokeWidth="1"
-              />
+              {tick > 0 ? (
+                <line
+                  x1={padL}
+                  x2={width - padR}
+                  y1={y}
+                  y2={y}
+                  stroke="rgba(22, 58, 112, 0.08)"
+                  strokeWidth="1"
+                />
+              ) : null}
               <text x={padL - 3} y={y + 3} textAnchor="end" fontSize="8" fill="#94a3b8">
                 {tick}
               </text>
