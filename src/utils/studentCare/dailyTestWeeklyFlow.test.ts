@@ -266,18 +266,26 @@ assert.doesNotMatch(sql, /^\s*TRUNCATE/im)
 assert.doesNotMatch(sql, /^\s*DROP TABLE/im)
 
 const card = readFileSync('src/components/studentCare/DailyTestWeeklyFlowCard.tsx', 'utf8')
+const parentWeekly = readFileSync('src/pages/parent/ParentStudentWeeklySummaryPage.tsx', 'utf8')
 assert.match(card, /주간 오답 현황/)
 assert.match(card, /주간 최고/)
 assert.match(card, /주간 최저/)
 assert.match(card, /주간 평균/)
+assert.match(card, /WEEKLY_GRADE_CLASS/)
+assert.match(card, /const padB = 28/)
+assert.match(card, /\[0, 50, 100\]/)
+assert.doesNotMatch(card, /border-t/)
 assert.doesNotMatch(card, /fill="#cbd5e1"/)
 assert.doesNotMatch(card, /월요일/)
 assert.doesNotMatch(card, /수요일/)
 assert.doesNotMatch(card, /금요일/)
 assert.match(
-  readFileSync('src/pages/parent/ParentStudentWeeklySummaryPage.tsx', 'utf8'),
-  /DailyTestWeeklyFlowCard/,
+  parentWeekly,
+  /const AREA_ORDER: WeeklySummaryAreaKey\[] = \[\s*'attendance',\s*'material',\s*'homework',\s*'attitude',\s*\]/,
 )
+assert.doesNotMatch(parentWeekly, /AREA_ORDER: WeeklySummaryAreaKey\[] = \[[^\]]*dailyTest/)
+assert.match(parentWeekly, /DailyTestWeeklyFlowCard/)
+assert.match(parentWeekly, /grade=\{summary\.scores\.dailyTest\.grade\}/)
 assert.match(readFileSync('src/hub/HubWeeklyPage.tsx', 'utf8'), /WeeklySummaryDetail/)
 
 const weeklySummary = readFileSync('src/utils/studentCare/weeklySummary.ts', 'utf8')

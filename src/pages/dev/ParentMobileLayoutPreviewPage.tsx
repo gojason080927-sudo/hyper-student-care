@@ -102,7 +102,13 @@ function previewDailyTest(
     incorrectCount: 0,
     memo: '',
     sessionResults: sessions,
-    learningDiagnosis: { ...EMPTY_DAILY_LEARNING_DIAGNOSIS },
+    learningDiagnosis: {
+      ...EMPTY_DAILY_LEARNING_DIAGNOSIS,
+      calculationErrorCount: date === '2026-09-07' ? 2 : date === '2026-09-09' ? 1 : 0,
+      conceptLackCount: date === '2026-09-09' ? 2 : date === '2026-09-11' ? 1 : 0,
+      applicationLackCount: date === '2026-09-11' ? 1 : 0,
+      comprehensionLackCount: date === '2026-09-09' ? 1 : 0,
+    },
     createdAt: '2026-09-12T00:00:00.000Z',
     updatedAt: '2026-09-12T00:00:00.000Z',
   }

@@ -1,6 +1,7 @@
 import { useId, useMemo, useState } from 'react'
-import type { DailyTestRecord } from '../../types/records'
+import type { DailyTestRecord, WeeklySummaryGrade } from '../../types/records'
 import { DAILY_WRONG_TYPES } from '../../utils/learningDiagnosis'
+import { WEEKLY_GRADE_CLASS } from '../../utils/studentCare/weeklySummaryDisplay'
 import {
   buildDailyTestWeeklyFlow,
   WEEKLY_FLOW_COLORS,
@@ -68,7 +69,7 @@ function FlowChart({ days, clipId }: { days: WeeklyFlowDay[]; clipId: string }) 
   const padL = 18
   const padR = 10
   const padT = 28
-  const padB = 16
+  const padB = 28
   const plotW = width - padL - padR
   const plotH = height - padT - padB
   const slots = days.flatMap((day) => day.sessions.map((session) => ({ day, session })))
@@ -182,10 +183,12 @@ export function DailyTestWeeklyFlowCard({
   studentId,
   weekStart,
   dailyTests,
+  grade,
 }: {
   studentId: string
   weekStart: string
   dailyTests: DailyTestRecord[]
+  grade: WeeklySummaryGrade | null
 }) {
   const [subject, setSubject] = useState<string | null>(null)
   const clipId = useId().replace(/:/g, '')
@@ -203,7 +206,18 @@ export function DailyTestWeeklyFlowCard({
   return (
     <section className="rounded-2xl border border-slate-200 bg-white px-3 py-4 shadow-sm sm:px-4">
       <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Daily Test</p>
-      <h3 className="mt-0.5 text-sm font-bold text-navy-900">일일테스트 주간 흐름</h3>
+      <div className="mt-0.5 flex items-center justify-between gap-2">
+        <h3 className="text-sm font-bold text-navy-900">일일테스트 주간 흐름</h3>
+        {grade ? (
+          <span
+            className={`inline-flex shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold ${WEEKLY_GRADE_CLASS[grade]}`}
+          >
+            {grade}
+          </span>
+        ) : (
+          <span className="shrink-0 text-xs text-slate-400">기록 없음</span>
+        )}
+      </div>
       {model.subjects.length > 1 ? (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {model.subjects.map((item) => {

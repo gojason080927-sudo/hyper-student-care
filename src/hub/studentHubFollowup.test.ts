@@ -51,10 +51,17 @@ assert.match(readFileSync('src/hub/HubInboxItemCard.tsx', 'utf8'), /교사 답�
 
 assert.match(parentWeekly, /DailyTestWeeklyFlowCard/)
 assert.match(hubWeekly, /WeeklySummaryDetail/)
+assert.doesNotMatch(hubWeekly, /DailyTestWeeklyFlowCard/)
 assert.match(hubWeekly, /dailyTests=\{dailyTests\}/)
 assert.match(parentWeekly, /dailyTests=\{dailyTests\}/)
 assert.match(parentWeekly, /studentId=\{student\.id\}/)
 assert.match(hubWeekly, /studentId=\{student\.id\}/)
+assert.match(parentWeekly, /grade=\{summary\.scores\.dailyTest\.grade\}/)
+assert.match(
+  parentWeekly,
+  /const AREA_ORDER: WeeklySummaryAreaKey\[] = \[\s*'attendance',\s*'material',\s*'homework',\s*'attitude',\s*\]/,
+)
+assert.doesNotMatch(parentWeekly, /AREA_ORDER: WeeklySummaryAreaKey\[] = \[[^\]]*dailyTest/)
 
 assert.match(scoring, /ATTENDANCE_WEEKLY_MAX = 20/)
 assert.match(scoring, /MATERIAL_WEEKLY_MAX = 10/)

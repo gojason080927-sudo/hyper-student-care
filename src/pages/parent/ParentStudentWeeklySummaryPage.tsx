@@ -19,7 +19,6 @@ const AREA_ORDER: WeeklySummaryAreaKey[] = [
   'attendance',
   'material',
   'homework',
-  'dailyTest',
   'attitude',
 ]
 
@@ -169,6 +168,7 @@ export function WeeklySummaryDetail({
         studentId={studentId}
         weekStart={summary.weekStart}
         dailyTests={dailyTests}
+        grade={summary.scores.dailyTest.grade}
       />
 
       <section className="rounded-2xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm">
