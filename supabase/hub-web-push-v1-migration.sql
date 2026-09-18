@@ -289,3 +289,5 @@ REVOKE ALL ON FUNCTION public.list_hub_push_assignment_recipients(uuid) FROM PUB
 REVOKE ALL ON FUNCTION public.list_hub_push_notice_recipients(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.list_hub_push_assignment_recipients(uuid) TO service_role;
 GRANT EXECUTE ON FUNCTION public.list_hub_push_notice_recipients(uuid) TO service_role;
+
+NOTIFY pgrst, 'reload schema';

@@ -122,5 +122,6 @@ assert.match(sql, /list_hub_push_notice_recipients/)
 assert.match(sql, /_notice_visible_to_student/)
 assert.doesNotMatch(sql, /CREATE OR REPLACE FUNCTION public\.upsert_parent_push_subscription/)
 assert.doesNotMatch(sql, /CREATE OR REPLACE FUNCTION public\.get_parent_care_bundle/)
+assert.match(sql, /NOTIFY pgrst, 'reload schema'/)
 
 console.log('hubPushEvents tests passed')
