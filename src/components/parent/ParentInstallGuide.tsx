@@ -12,7 +12,7 @@ const COPY: Record<
 > = {
   'in-app': {
     title: 'HYPER 학부모 앱 설치',
-    body: '지금 화면(카카오 등 앱 안 브라우저)에서는 설치하거나 알림을 받을 수 없습니다. 오른쪽 위 ⋮ 메뉴에서 Chrome 또는 Safari로 연 다음 다시 들어와 주세요.',
+    body: '카카오 등 앱 안 브라우저에서는 설치하거나 알림을 받을 수 없습니다. 오른쪽 위 메뉴에서 Chrome 또는 Safari로 연 다음 다시 들어와 주세요.',
   },
   'android-install': {
     title: '홈 화면에 학부모 앱 넣기',

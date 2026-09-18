@@ -79,7 +79,6 @@ assert.equal(
 
 assert.match(guide, /HYPER 학부모 앱 설치/)
 assert.match(guide, /앱 안 브라우저/)
-assert.match(guide, /학부모 앱 설치/)
 assert.match(guide, /홈 화면에 추가/)
 assert.match(guide, /usePwaInstall/)
 assert.doesNotMatch(guide, /intent:\/\//)
