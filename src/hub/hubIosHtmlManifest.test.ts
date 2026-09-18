@@ -244,7 +244,15 @@ try {
       headers: { 'user-agent': iphone },
     }),
   )
-  assert.equal(careSafari, undefined)
+  assert.ok(careSafari)
+  const careHtml = await careSafari.text()
+  assert.match(careHtml, /\/care\/manifest\.webmanifest\?v=10-installable&start=/)
+  assert.match(careHtml, /start=%2Fcare%2FparentAccessKeyAAA/)
+  assert.match(careHtml, /<div id="root"><\/div>/)
+  assert.doesNotMatch(
+    careHtml,
+    /<link rel="manifest" id="app-manifest" href="\/teacher\/manifest.webmanifest" \/>/,
+  )
 
   const teacherSafari = await runHubMiddleware(
     new Request('https://hyper-student-care.vercel.app/teacher/mobile', {

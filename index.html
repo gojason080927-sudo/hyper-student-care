@@ -100,7 +100,17 @@
           return
         }
 
-        if (manifest) manifest.href = '/care/manifest.webmanifest?v=10-installable'
+        var careHref = '/care/manifest.webmanifest?v=10-installable'
+        var careKeyMatch = path.match(/^\/care\/([^/]+)/)
+        if (careKeyMatch) {
+          try {
+            var careKey = decodeURIComponent(careKeyMatch[1]).trim()
+            if (/^[A-Za-z0-9_-]{12,128}$/.test(careKey)) {
+              careHref += '&start=' + encodeURIComponent('/care/' + careKey)
+            }
+          } catch (e) {}
+        }
+        if (manifest) manifest.href = careHref
         var careIcon = document.querySelector('link[rel="icon"]')
         if (careIcon) {
           careIcon.setAttribute('href', '/care/hyper-parent-icon-v10-192.png')

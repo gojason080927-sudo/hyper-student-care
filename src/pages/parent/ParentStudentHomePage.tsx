@@ -1,6 +1,7 @@
 import { Menu } from 'lucide-react'
 import { useOutletContext } from 'react-router-dom'
 import { ParentCategoryGrid } from '../../components/parent/ParentCategoryGrid'
+import { ParentInstallGuide } from '../../components/parent/ParentInstallGuide'
 import { ParentPushOptIn } from '../../components/parent/ParentPushOptIn'
 import { useParentStudent } from '../../contexts/ParentStudentContext'
 import { HUB_ACADEMY_LOGO_PNG, HUB_ACADEMY_LOGO_WEBP } from '../../hub/types'
@@ -54,6 +55,7 @@ export function ParentStudentHomePage() {
         </section>
 
         <ParentCategoryGrid />
+        <ParentInstallGuide />
         <ParentPushOptIn accessKey={student.studentAccessKey} />
       </div>
     </div>

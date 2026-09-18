@@ -93,6 +93,7 @@ import { TeacherStudentHubSharePage } from './pages/teacher/TeacherStudentHubSha
 import { HubLayout } from './hub/HubLayout'
 import { HubHomePage } from './hub/HubHomePage'
 import { HubLaunchPage } from './hub/HubLaunchPage'
+import { ParentLaunchPage } from './pages/parent/ParentLaunchPage'
 import { HubWeeklyPage } from './hub/HubWeeklyPage'
 import { HubAssignmentsPage } from './hub/HubAssignmentsPage'
 import { HubMaterialsPage } from './hub/HubMaterialsPage'
@@ -164,6 +165,7 @@ function App() {
           <Route path="study-plan" element={<HubStudyPlanPage />} />
         </Route>
 
+        <Route path="/care" element={<ParentLaunchPage />} />
         <Route path="/care/:studentAccessKey" element={<ParentStudentLayout />}>
 
           <Route index element={<ParentStudentHomePage />} />
