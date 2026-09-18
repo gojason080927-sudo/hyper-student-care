@@ -55,7 +55,7 @@ export function ParentStudentHomePage() {
         </section>
 
         <ParentCategoryGrid />
-        <ParentInstallGuide />
+        <ParentInstallGuide studentAccessKey={student.studentAccessKey} />
         <ParentPushOptIn accessKey={student.studentAccessKey} />
       </div>
     </div>

@@ -16,6 +16,11 @@ import {
 } from '../../../middleware.ts'
 import { resolveHubInstallGuide } from '../../hub/hubInstallEnv.ts'
 import {
+  kakaoOpenExternalHref,
+  parentCareHomeAbsoluteUrl,
+  resolveParentInstallGuide,
+} from '../../lib/parentInstallGuide.ts'
+import {
   parentCareHomePath,
   parentPwaManifestHref,
 } from '../../lib/parentLastCareRoute.ts'
@@ -41,16 +46,22 @@ const KEY_A = 'parentKeyAAA1234567890ab'
 const KEY_B = 'parentKeyBBBB1234567890ab'
 const START_A = `/care/${KEY_A}`
 const START_B = `/care/${KEY_B}`
+const ORIGIN = 'https://hyper-student-care.vercel.app'
+const CARE_A = `${ORIGIN}${START_A}`
 const HREF_A = `/care/manifest.webmanifest?v=10-installable&start=${encodeURIComponent(START_A)}`
 const HREF_B = `/care/manifest.webmanifest?v=10-installable&start=${encodeURIComponent(START_B)}`
 const ANDROID_KAKAO =
   'Mozilla/5.0 (Linux; Android 14; SM-S911N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36 KAKAOTALK'
 const ANDROID_CHROME =
   'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36'
+const ANDROID_INSTAGRAM =
+  'Mozilla/5.0 (Linux; Android 14; SM-S911N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36 Instagram'
 const IOS_SAFARI =
   'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1'
 const IOS_KAKAO =
   'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 KAKAOTALK Safari/604.1'
+const hubGuide = readFileSync('src/components/hub/HubInstallGuide.tsx', 'utf8')
+const installLib = readFileSync('src/lib/parentInstallGuide.ts', 'utf8')
 
 assert.equal(
   resolveHubInstallGuide({ userAgent: ANDROID_KAKAO, standalone: false, canInstall: false }),
@@ -77,15 +88,72 @@ assert.equal(
   'hidden',
 )
 
+assert.equal(
+  resolveParentInstallGuide({ userAgent: ANDROID_KAKAO, standalone: false, canInstall: false }),
+  'kakao-android',
+)
+assert.equal(
+  resolveParentInstallGuide({ userAgent: ANDROID_KAKAO, standalone: false, canInstall: true }),
+  'android-install',
+)
+assert.equal(
+  resolveParentInstallGuide({ userAgent: ANDROID_CHROME, standalone: false, canInstall: true }),
+  'android-install',
+)
+assert.equal(
+  resolveParentInstallGuide({ userAgent: ANDROID_CHROME, standalone: true, canInstall: true }),
+  'hidden',
+)
+assert.equal(
+  resolveParentInstallGuide({ userAgent: IOS_KAKAO, standalone: false, canInstall: false }),
+  'kakao-ios',
+)
+assert.equal(
+  resolveParentInstallGuide({ userAgent: IOS_SAFARI, standalone: false, canInstall: false }),
+  'ios-safari',
+)
+assert.equal(
+  resolveParentInstallGuide({ userAgent: ANDROID_INSTAGRAM, standalone: false, canInstall: false }),
+  'in-app',
+)
+
+assert.equal(parentCareHomeAbsoluteUrl(ORIGIN, KEY_A), CARE_A)
+assert.equal(parentCareHomeAbsoluteUrl(ORIGIN, 'short'), null)
+assert.equal(parentCareHomeAbsoluteUrl('not-a-url', KEY_A), null)
+assert.equal(
+  kakaoOpenExternalHref(CARE_A, ORIGIN),
+  `kakaotalk://web/openExternal?url=${encodeURIComponent(CARE_A)}`,
+)
+assert.doesNotMatch(kakaoOpenExternalHref(CARE_A, ORIGIN) ?? '', /intent:\/\//)
+assert.equal(kakaoOpenExternalHref(`${ORIGIN}/hub/${KEY_A}`, ORIGIN), null)
+assert.equal(kakaoOpenExternalHref(`${ORIGIN}/teacher/mobile`, ORIGIN), null)
+assert.equal(kakaoOpenExternalHref(`${ORIGIN}/care/${KEY_A}?x=1`, ORIGIN), null)
+assert.equal(kakaoOpenExternalHref('https://evil.example/care/' + KEY_A, ORIGIN), null)
+assert.equal(kakaoOpenExternalHref('javascript:alert(1)', ORIGIN), null)
+assert.match(kakaoOpenExternalHref(CARE_A, ORIGIN) ?? '', new RegExp(encodeURIComponent(START_A)))
+assert.doesNotMatch(kakaoOpenExternalHref(CARE_A, ORIGIN) ?? '', new RegExp(encodeURIComponent(START_B)))
+
+assert.match(guide, /Chrome에서 HYPER 학부모 앱 설치/)
 assert.match(guide, /HYPER 학부모 앱 설치/)
-assert.match(guide, /앱 안 브라우저/)
+assert.match(guide, /다른 브라우저로 열기/)
+assert.match(guide, /화면 아래쪽/)
+assert.match(guide, /kakaoOpenExternalHref/)
+assert.match(guide, /parentCareHomeAbsoluteUrl/)
+assert.match(installLib, /kakaotalk:\/\/web\/openExternal/)
+assert.doesNotMatch(installLib, /package=com\.android\.chrome/)
 assert.match(guide, /홈 화면에 추가/)
 assert.match(guide, /usePwaInstall/)
+assert.match(guide, /Safari로 열기/)
+assert.doesNotMatch(guide, /오른쪽 위 메뉴에서 Chrome/)
 assert.doesNotMatch(guide, /intent:\/\//)
 assert.doesNotMatch(guide, /package=com\.android\.chrome/)
 assert.doesNotMatch(guide, /googlechrome:/)
 
-assert.match(home, /ParentInstallGuide/)
+assert.match(hubGuide, /오른쪽 위 메뉴에서 Chrome 또는 Safari로 연 다음/)
+assert.doesNotMatch(hubGuide, /kakaoOpenExternalHref/)
+assert.doesNotMatch(hubGuide, /Chrome에서 HYPER 학부모 앱 설치/)
+
+assert.match(home, /ParentInstallGuide studentAccessKey=\{student\.studentAccessKey\}/)
 assert.match(home, /ParentPushOptIn/)
 assert.match(layout, /ParentPwaRegistrar/)
 assert.match(registrar, /parentPwaManifestHref\(key\)/)
