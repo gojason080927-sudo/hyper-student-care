@@ -12,7 +12,8 @@ import { materialPrepDisplay } from '../../components/studentCare/MaterialPrepPi
 import { WeeklySummaryDetail } from '../parent/ParentStudentWeeklySummaryPage'
 import { parentHomeCategoryItems, parentTodayReportHighlights, parentTodayReportItem } from '../../components/parent/parentNavItems'
 import type { Student } from '../../types/student'
-import type { WeeklyLearningSummaryRecord } from '../../types/records'
+import type { DailyTestRecord, WeeklyLearningSummaryRecord } from '../../types/records'
+import { EMPTY_DAILY_LEARNING_DIAGNOSIS } from '../../utils/learningDiagnosis'
 import { computePriorDayLearningEvaluation } from '../../utils/studentCare'
 import '../../styles/parentMobileTheme.css'
 
@@ -84,6 +85,49 @@ const previewEvaluation = computePriorDayLearningEvaluation(
   },
   '2026-09-07',
 )
+
+function previewDailyTest(
+  date: string,
+  sessions: DailyTestRecord['sessionResults'],
+): DailyTestRecord {
+  return {
+    id: `preview-${date}`,
+    studentId: previewStudent.id,
+    date,
+    testName: '일일테스트',
+    subject: '수학',
+    score: sessions.find((item) => item.score != null)?.score ?? 0,
+    totalScore: 100,
+    percentage: sessions.find((item) => item.score != null)?.score ?? 0,
+    incorrectCount: 0,
+    memo: '',
+    sessionResults: sessions,
+    learningDiagnosis: { ...EMPTY_DAILY_LEARNING_DIAGNOSIS },
+    createdAt: '2026-09-12T00:00:00.000Z',
+    updatedAt: '2026-09-12T00:00:00.000Z',
+  }
+}
+
+const previewDailyTests: DailyTestRecord[] = [
+  previewDailyTest('2026-09-07', [
+    { session: 1, status: '합격', score: 92, totalScore: 100 },
+    { session: 2, status: '미응시' },
+    { session: 3, status: '미응시' },
+    { session: 4, status: '미응시' },
+  ]),
+  previewDailyTest('2026-09-09', [
+    { session: 1, status: '불합격', score: 70, totalScore: 100 },
+    { session: 2, status: '불합격', score: 80, totalScore: 100 },
+    { session: 3, status: '합격', score: 88, totalScore: 100 },
+    { session: 4, status: '미응시' },
+  ]),
+  previewDailyTest('2026-09-11', [
+    { session: 1, status: '불합격', score: 78, totalScore: 100 },
+    { session: 2, status: '합격', score: 85, totalScore: 100 },
+    { session: 3, status: '미응시' },
+    { session: 4, status: '미응시' },
+  ]),
+]
 
 const previewSummary: WeeklyLearningSummaryRecord = {
   id: 'sum-preview',
@@ -212,7 +256,7 @@ export function ParentMobileLayoutPreviewPage() {
           <section data-preview-section="weekly-summary" className="parent-page space-y-4 pb-6">
             <WeeklySummaryDetail
               summary={previewSummary}
-              dailyTests={[]}
+              dailyTests={previewDailyTests}
               studentId={previewStudent.id}
             />
           </section>

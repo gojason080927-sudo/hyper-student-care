@@ -10,10 +10,8 @@
 --   3) 학생 본인 글 수정/삭제 RPC
 --   4) get_student_hub_bundle: 답변 · 본인 일일테스트 포함
 --
--- 금지:
---   DROP/TRUNCATE of existing parent/teacher tables
---   주간 SUMMARY 100점 산식 / _build_weekly_learning_summary 변경
---   get_parent_care_bundle / submit_parent_question 변경
+-- 이 파일은 기존 parent/teacher 원본 테이블을 지우지 않습니다.
+-- 주간 SUMMARY 100점 산식은 변경하지 않습니다.
 -- =============================================================================
 
 ALTER TABLE public.student_hub_inbox

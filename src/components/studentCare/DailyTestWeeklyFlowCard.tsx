@@ -18,9 +18,10 @@ type ChartPoint = {
   markerY: number
 }
 
+const WEEKLY_FLOW_WEEKDAYS_CLIP = ['monday', 'wednesday', 'friday'] as const
+
 function catmullRomPath(points: Array<{ x: number; y: number }>): string {
-  if (points.length === 0) return ''
-  if (points.length === 1) return ''
+  if (points.length < 2) return ''
   if (points.length === 2) {
     return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`
   }
@@ -39,25 +40,36 @@ function catmullRomPath(points: Array<{ x: number; y: number }>): string {
   return path
 }
 
-function labelOffset(index: number, passed: boolean): { dy: number; anchor: 'start' | 'middle' | 'end' } {
-  const column = index % 4
-  const anchor = column === 0 ? 'start' : column === 3 ? 'end' : 'middle'
-  const dy = passed ? -28 : index % 2 === 0 ? -18 : 20
-  return { dy, anchor }
-}
-
 function formatStat(value: number | null): string {
   if (value == null) return '—'
-  return Number.isInteger(value) ? `${value}` : `${value}`
+  return `${value}`
+}
+
+function sessionLabel(session: WeeklyFlowSessionPoint): string {
+  if (session.kind !== 'score' || session.score == null) return ''
+  return session.passed
+    ? `${session.session}차시 ${session.score} 합격`
+    : `${session.session}차시 ${session.score}`
+}
+
+function labelShift(session: WeeklyFlowSessionPoint, indexInDay: number, score: number): {
+  x: string
+  y: string
+} {
+  const above = session.passed || score >= 82 || indexInDay % 2 === 0
+  return {
+    x: indexInDay === 0 ? '-8%' : indexInDay === 3 ? '-92%' : '-50%',
+    y: above ? '-118%' : '18%',
+  }
 }
 
 function FlowChart({ days, clipId }: { days: WeeklyFlowDay[]; clipId: string }) {
-  const width = 640
-  const height = 268
-  const padL = 22
-  const padR = 22
-  const padT = 42
-  const padB = 46
+  const width = 360
+  const height = 210
+  const padL = 18
+  const padR = 10
+  const padT = 28
+  const padB = 28
   const plotW = width - padL - padR
   const plotH = height - padT - padB
   const slots = days.flatMap((day) => day.sessions.map((session) => ({ day, session })))
@@ -73,133 +85,115 @@ function FlowChart({ days, clipId }: { days: WeeklyFlowDay[]; clipId: string }) 
       session: slot.session,
       x,
       y: scoreY,
-      markerY: padT + plotH + 8,
+      markerY: padT + plotH + 7,
     }
   })
   const scored = points.filter((point): point is ChartPoint & { y: number } => point.y != null)
   const curve = catmullRomPath(scored.map((point) => ({ x: point.x, y: point.y })))
   const dayWidth = plotW / 3
+  const dayIndex = (weekday: WeeklyFlowWeekday) =>
+    weekday === 'monday' ? 0 : weekday === 'wednesday' ? 1 : 2
 
   return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      className="h-auto w-full"
-      role="img"
-      aria-label="일일테스트 주간 흐름"
-    >
-      <defs>
-        {WEEKLY_FLOW_WEEKDAYS_CLIP.map((weekday, index) => (
-          <clipPath key={weekday} id={`${clipId}-${weekday}`}>
-            <rect x={padL + dayWidth * index} y={padT - 8} width={dayWidth} height={plotH + 16} />
-          </clipPath>
-        ))}
-      </defs>
-      {[0, 50, 100].map((tick) => {
-        const y = padT + plotH * (1 - tick / 100)
-        return (
-          <g key={tick}>
-            <line
-              x1={padL}
-              x2={width - padR}
-              y1={y}
-              y2={y}
-              stroke="rgba(22, 58, 112, 0.08)"
-              strokeWidth="1"
-            />
-            <text
-              x={padL - 4}
-              y={y + 3}
-              textAnchor="end"
-              fontSize="9"
-              fill="#94a3b8"
-            >
-              {tick}
-            </text>
-          </g>
-        )
-      })}
-      {curve
-        ? (['monday', 'wednesday', 'friday'] as const).map((weekday) => (
-            <path
-              key={weekday}
-              d={curve}
-              fill="none"
-              stroke={WEEKLY_FLOW_COLORS[weekday]}
-              strokeWidth="3.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              clipPath={`url(#${clipId}-${weekday})`}
-            />
-          ))
-        : null}
-      {points.map((point, index) => {
-        if (point.session.kind === 'absent') {
+    <div className="relative">
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="h-auto w-full"
+        role="img"
+        aria-label="일일테스트 주간 흐름"
+      >
+        <defs>
+          {WEEKLY_FLOW_WEEKDAYS_CLIP.map((weekday, index) => (
+            <clipPath key={weekday} id={`${clipId}-${weekday}`}>
+              <rect x={padL + dayWidth * index} y={padT - 6} width={dayWidth} height={plotH + 12} />
+            </clipPath>
+          ))}
+        </defs>
+        {[0, 50, 100].map((tick) => {
+          const y = padT + plotH * (1 - tick / 100)
           return (
+            <g key={tick}>
+              <line
+                x1={padL}
+                x2={width - padR}
+                y1={y}
+                y2={y}
+                stroke="rgba(22, 58, 112, 0.08)"
+                strokeWidth="1"
+              />
+              <text x={padL - 3} y={y + 3} textAnchor="end" fontSize="8" fill="#94a3b8">
+                {tick}
+              </text>
+            </g>
+          )
+        })}
+        {curve
+          ? WEEKLY_FLOW_WEEKDAYS_CLIP.map((weekday) => (
+              <path
+                key={weekday}
+                d={curve}
+                fill="none"
+                stroke={WEEKLY_FLOW_COLORS[weekday]}
+                strokeWidth="2.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                clipPath={`url(#${clipId}-${weekday})`}
+              />
+            ))
+          : null}
+        {points.map((point) =>
+          point.session.kind === 'absent' ? (
             <circle
               key={point.key}
               cx={point.x}
               cy={point.markerY}
-              r="4"
+              r="3.4"
               fill="#cbd5e1"
               stroke="#94a3b8"
               strokeWidth="1"
             />
-          )
-        }
-        const { dy, anchor } = labelOffset(index, point.session.passed)
-        return (
-          <g key={point.key}>
+          ) : (
             <circle
+              key={point.key}
               cx={point.x}
               cy={point.y ?? 0}
-              r={point.session.passed ? 6 : 5}
+              r={point.session.passed ? 5 : 4.2}
               fill={WEEKLY_FLOW_COLORS[point.weekday]}
               stroke="#fff"
-              strokeWidth="2"
+              strokeWidth="1.6"
             />
-            <text
-              x={point.x}
-              y={(point.y ?? 0) + dy}
-              textAnchor={anchor}
-              fontSize="10"
-              fontWeight="700"
-              fill="#163A70"
-            >
-              {point.session.session}차시 {point.session.score}
-            </text>
-            {point.session.passed ? (
-              <text
-                x={point.x}
-                y={(point.y ?? 0) + dy - 13}
-                textAnchor={anchor}
-                fontSize="10"
-                fontWeight="800"
-                fill={WEEKLY_FLOW_COLORS[point.weekday] === '#ef4444' ? '#b91c1c' : '#163A70'}
-              >
-                {point.session.session}차시 합격
-              </text>
-            ) : null}
-          </g>
+          ),
+        )}
+      </svg>
+      {points.map((point) => {
+        if (point.session.kind !== 'score' || point.y == null || point.session.score == null) {
+          return null
+        }
+        const indexInDay = point.session.session - 1
+        const shift = labelShift(point.session, indexInDay, point.session.score)
+        return (
+          <span
+            key={`${point.key}-label`}
+            className="pointer-events-none absolute whitespace-nowrap text-[10px] font-bold leading-tight text-[#163A70] sm:text-[11px]"
+            style={{
+              left: `${(point.x / width) * 100}%`,
+              top: `${(point.y / height) * 100}%`,
+              transform: `translate(${shift.x}, ${shift.y})`,
+              color: point.session.passed && dayIndex(point.weekday) === 1 ? '#b91c1c' : '#163A70',
+            }}
+          >
+            {sessionLabel(point.session)}
+          </span>
         )
       })}
-      {days.map((day, index) => (
-        <text
-          key={day.weekday}
-          x={padL + dayWidth * index + dayWidth / 2}
-          y={height - 14}
-          textAnchor="middle"
-          fontSize="12"
-          fontWeight="700"
-          fill="#163A70"
-        >
-          {WEEKLY_FLOW_DAY_LABELS[day.weekday]}
-        </text>
-      ))}
-    </svg>
+      <div className="mt-1 grid grid-cols-3 text-center text-[11px] font-bold text-[#163A70] sm:text-xs">
+        {days.map((day) => (
+          <p key={day.weekday}>{WEEKLY_FLOW_DAY_LABELS[day.weekday]}</p>
+        ))}
+      </div>
+    </div>
   )
 }
-
-const WEEKLY_FLOW_WEEKDAYS_CLIP = ['monday', 'wednesday', 'friday'] as const
 
 export function DailyTestWeeklyFlowCard({
   studentId,
@@ -225,14 +219,8 @@ export function DailyTestWeeklyFlowCard({
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white px-3 py-4 shadow-sm sm:px-4">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
-            Daily Test
-          </p>
-          <h3 className="mt-0.5 text-sm font-bold text-navy-900">일일테스트 주간 흐름</h3>
-        </div>
-      </div>
+      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">Daily Test</p>
+      <h3 className="mt-0.5 text-sm font-bold text-navy-900">일일테스트 주간 흐름</h3>
       {model.subjects.length > 1 ? (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {model.subjects.map((item) => {
@@ -252,10 +240,10 @@ export function DailyTestWeeklyFlowCard({
           })}
         </div>
       ) : null}
-      <div className="mt-2 overflow-visible">
+      <div className="mt-3 overflow-visible pt-5">
         <FlowChart days={model.days} clipId={clipId} />
       </div>
-      <div className="mt-1 grid grid-cols-3 gap-2">
+      <div className="mt-3 grid grid-cols-3 gap-2">
         {[
           { label: '주간 최고', value: model.max },
           { label: '주간 최저', value: model.min },

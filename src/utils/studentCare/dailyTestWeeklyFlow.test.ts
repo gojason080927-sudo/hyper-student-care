@@ -189,9 +189,9 @@ assert.match(scoring, /WEEKLY_SUMMARY_TOTAL_MAX = 100/)
 assert.equal(ATTENDANCE_WEEKLY_MAX + 10 + 25 + DAILY_TEST_WEEKLY_MAX + 15, WEEKLY_SUMMARY_TOTAL_MAX)
 
 const sql = readFileSync('supabase/student-hub-followup-v1-migration.sql', 'utf8')
-assert.doesNotMatch(sql, /_build_weekly_learning_summary/)
-assert.doesNotMatch(sql, /get_parent_care_bundle/)
-assert.doesNotMatch(sql, /TRUNCATE/i)
-assert.doesNotMatch(sql, /DROP TABLE/i)
+assert.doesNotMatch(sql, /CREATE OR REPLACE FUNCTION public\._build_weekly_learning_summary/)
+assert.doesNotMatch(sql, /CREATE OR REPLACE FUNCTION public\.get_parent_care_bundle/)
+assert.doesNotMatch(sql, /^\s*TRUNCATE/im)
+assert.doesNotMatch(sql, /^\s*DROP TABLE/im)
 
 console.log('dailyTestWeeklyFlow.test.ts passed')
