@@ -20,3 +20,46 @@ self.addEventListener('fetch', (event) => {
   if (!bypassHttpCache) return
   event.respondWith(fetch(request, { cache: 'no-store' }))
 })
+
+self.addEventListener('push', (event) => {
+  let payload = { title: 'HYPER Student Hub', body: '', url: '/hub/' }
+  try {
+    payload = { ...payload, ...(event.data ? event.data.json() : {}) }
+  } catch {
+    if (event.data) {
+      payload.body = event.data.text()
+    }
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(payload.title || 'HYPER Student Hub', {
+      body: payload.body || '학생 학습 알림이 도착했습니다.',
+      icon: '/hub/hyper-hub-icon-v1-192.png',
+      badge: '/hub/hyper-hub-icon-v1-192.png',
+      data: { url: payload.url || '/hub/' },
+    }),
+  )
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const targetUrl = event.notification.data?.url || '/hub/'
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        const url = client.url || ''
+        if (url.includes('/hub/') && 'focus' in client) {
+          if ('navigate' in client && typeof client.navigate === 'function') {
+            return client.navigate(targetUrl).then((navigated) => navigated || client.focus())
+          }
+          return client.focus()
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl)
+      }
+      return undefined
+    }),
+  )
+})

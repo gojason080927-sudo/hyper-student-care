@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { notifyHubPush } from '../lib/hubPushInvoke'
 import { rpcSubmitHubInbox } from './hubRpc'
 import { HubEmpty, HubPageHeader } from './HubChrome'
 import { useHub } from './HubContext'
@@ -20,12 +21,19 @@ export function HubSuggestionsPage() {
     }
     setBusy(true)
     try {
-      await rpcSubmitHubInbox({
+      const created = await rpcSubmitHubInbox({
         accessKey,
         kind: 'suggestion',
         title: '건의',
         content,
       })
+      if (created) {
+        notifyHubPush({
+          event: 'student_inbox_created',
+          accessKey,
+          entityId: created.id,
+        })
+      }
       setContent('')
       await reload()
     } catch (err) {

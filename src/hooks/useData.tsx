@@ -34,6 +34,7 @@ import type { Student, StudentFormData } from '../types/student'
 import { useAuth } from '../contexts/AuthContext'
 import { loadAppData, loadParentCareData as fetchParentCareData, loadTodayReportFromSupabase, shouldDeferInitialLoadForParentRoute, type DataSource } from '../lib/dataLoader'
 import { rpcSubmitParentQuestion } from '../lib/db/parentAccessRpc'
+import { notifyHubPush } from '../lib/hubPushInvoke'
 import { getParentAccessKeyFromPath } from '../lib/supabase'
 import { mergeTodayReportIntoState } from '../lib/db/mergeTodayReport'
 import { mergeClassTodayReportCommonRecords } from '../utils/mergeClassTodayReportCommon'
@@ -1586,7 +1587,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
         record = { ...full, id: createId(), ...ts }
         setQuestions((prev) => [...prev, record])
       }
-      void persistWithReload(() => upsertQuestion(record), '질문 저장에 실패했습니다.')
+      const existingForPush = data.id ? questions.find((r) => r.id === data.id) : undefined
+      void persistWithReload(async () => {
+        await upsertQuestion(record)
+        notifyHubPush({
+          event: 'question_answered',
+          entityId: record.id,
+          previous: {
+            answer: existingForPush?.answer ?? '',
+            answerImageCount: existingForPush?.answerImages?.length ?? 0,
+          },
+        })
+      }, '질문 저장에 실패했습니다.')
       showToast('질문이 저장되었습니다.')
       return true
     },
@@ -2357,7 +2369,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setContentPosts((prev) => [...prev, record])
         showToast('게시글이 저장되었습니다.')
       }
-      void persistWithReload(() => upsertNotice(record), '게시글 저장에 실패했습니다.')
+      void persistWithReload(async () => {
+        await upsertNotice(record)
+        notifyHubPush({
+          event: 'notice_saved',
+          entityId: record.id,
+          previous: { published: existing?.isPublished === true },
+        })
+      }, '게시글 저장에 실패했습니다.')
       return true
     },
     [contentPosts, handlePersistError, showToast],

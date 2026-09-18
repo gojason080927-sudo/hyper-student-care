@@ -69,7 +69,8 @@ export function TeacherPwaRegistrar() {
         const isLegacyRootSw =
           scriptUrl.includes('/sw.js') &&
           !scriptUrl.includes('/teacher/sw.js') &&
-          !scriptUrl.includes('/care/sw.js')
+          !scriptUrl.includes('/care/sw.js') &&
+          !scriptUrl.includes('/hub/sw.js')
         if (isLegacyRootSw) {
           void registration.unregister()
         }
