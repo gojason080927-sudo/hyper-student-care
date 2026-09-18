@@ -9,6 +9,10 @@
  * /hub/* HTML must advertise the Hub manifest in the first bytes. iOS Safari
  * Add to Home Screen uses that static <link rel="manifest"> and ignores the
  * later JS rewrite, which would otherwise install Teacher PWA.
+ *
+ * When the page is /hub/{accessKey}, that first HTML must point at a unique
+ * Hub manifest URL whose start_url is /hub/{accessKey}. iOS standalone storage
+ * is isolated from Safari, so a shared start_url of /hub/ cannot restore the key.
  */
 const APP_ORIGIN = 'https://hyper-student-care.vercel.app'
 const OG_IMAGE = `${APP_ORIGIN}/hyper-student-care-share-v3.jpg`
@@ -20,9 +24,22 @@ const STATIC_ASSET =
   /\.(?:webmanifest|js|mjs|cjs|css|png|ico|svg|webp|json|map|txt|woff2?|ttf|otf|eot|jpg|jpeg|gif|avif)$/i
 
 const TEACHER_MANIFEST_HREF = '/teacher/manifest.webmanifest'
+const HUB_MANIFEST_PATH = '/hub/manifest.webmanifest'
 const HUB_MANIFEST_HREF = '/hub/manifest.webmanifest?v=1-installable'
 const TEACHER_MANIFEST_LINK = `<link rel="manifest" id="app-manifest" href="${TEACHER_MANIFEST_HREF}" />`
-const HUB_MANIFEST_LINK = `<link rel="manifest" id="app-manifest" href="${HUB_MANIFEST_HREF}" />`
+const HUB_KEY_RE = /^[A-Za-z0-9_-]{12,128}$/
+
+const HUB_HTML_HEADERS = {
+  'Content-Type': 'text/html; charset=utf-8',
+  'Cache-Control': 'no-store, no-cache, must-revalidate',
+  'CDN-Cache-Control': 'no-store',
+} as const
+
+const HUB_MANIFEST_HEADERS = {
+  'Content-Type': 'application/manifest+json; charset=utf-8',
+  'Cache-Control': 'private, no-store, no-cache, must-revalidate',
+  'CDN-Cache-Control': 'no-store',
+} as const
 
 function isHubPath(pathname: string): boolean {
   return pathname === '/hub' || pathname.startsWith('/hub/')
@@ -32,15 +49,58 @@ function isCarePath(pathname: string): boolean {
   return pathname === '/care' || pathname.startsWith('/care/')
 }
 
+function decodePathSegment(raw: string): string | null {
+  try {
+    return decodeURIComponent(raw).trim()
+  } catch {
+    return null
+  }
+}
+
+/** /hub/{accessKey} launch path only. Subpages normalize to the student home. */
+export function hubLaunchPathFromPathname(pathname: string): string | null {
+  const match = pathname.match(/^\/hub\/([^/]+)(?:\/.*)?$/)
+  if (!match) return null
+  const key = decodePathSegment(match[1])
+  if (!key || !HUB_KEY_RE.test(key)) return null
+  return `/hub/${key}`
+}
+
+export function parseHubManifestStartParam(raw: string | null): string | null {
+  if (!raw) return null
+  const value = decodePathSegment(raw)
+  if (!value) return null
+  return hubLaunchPathFromPathname(value)
+}
+
+export function hubManifestHrefForPath(pathname = ''): string {
+  const startUrl = hubLaunchPathFromPathname(pathname)
+  if (!startUrl) return HUB_MANIFEST_HREF
+  return `${HUB_MANIFEST_HREF}&start=${encodeURIComponent(startUrl)}`
+}
+
+export function applyHubManifestStartUrl(rawManifest: string, startUrl: string): string {
+  const parsed = JSON.parse(rawManifest) as Record<string, unknown>
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('invalid hub manifest')
+  }
+  return `${JSON.stringify({ ...parsed, start_url: startUrl }, null, 2)}\n`
+}
+
+function hubManifestLink(pathname = ''): string {
+  return `<link rel="manifest" id="app-manifest" href="${hubManifestHrefForPath(pathname)}" />`
+}
+
 /** Swap only the first Teacher manifest link so iOS does not install Teacher PWA from Hub URLs. */
-export function patchIndexHtmlForHub(html: string): string {
+export function patchIndexHtmlForHub(html: string, pathname = ''): string {
+  const nextLink = hubManifestLink(pathname)
   if (html.includes(TEACHER_MANIFEST_LINK)) {
-    return html.replace(TEACHER_MANIFEST_LINK, HUB_MANIFEST_LINK)
+    return html.replace(TEACHER_MANIFEST_LINK, nextLink)
   }
   const marker = `href="${TEACHER_MANIFEST_HREF}"`
   const first = html.indexOf(marker)
   if (first === -1) return html
-  return `${html.slice(0, first)}href="${HUB_MANIFEST_HREF}"${html.slice(first + marker.length)}`
+  return `${html.slice(0, first)}href="${hubManifestHrefForPath(pathname)}"${html.slice(first + marker.length)}`
 }
 
 function buildCareOgHtml(pageUrl: string, title = 'HYPER STUDENT CARE', description = '하이퍼 학생 관리 시스템'): string {
@@ -74,6 +134,21 @@ function buildCareOgHtml(pageUrl: string, title = 'HYPER STUDENT CARE', descript
 </html>`
 }
 
+async function serveHubStartManifest(request: Request, startUrl: string): Promise<Response | undefined> {
+  try {
+    const manifestResponse = await fetch(new URL(HUB_MANIFEST_PATH, request.url))
+    if (!manifestResponse.ok) return
+    const raw = await manifestResponse.text()
+    const body = applyHubManifestStartUrl(raw, startUrl)
+    return new Response(request.method === 'HEAD' ? null : body, {
+      status: 200,
+      headers: HUB_MANIFEST_HEADERS,
+    })
+  } catch {
+    return
+  }
+}
+
 export default async function middleware(request: Request) {
   const url = new URL(request.url)
   const ua = request.headers.get('user-agent') ?? ''
@@ -82,6 +157,17 @@ export default async function middleware(request: Request) {
   const isCare = isCarePath(pathname)
 
   if (!isCare && !isHub) {
+    return
+  }
+
+  const isSafeMethod = request.method === 'GET' || request.method === 'HEAD'
+
+  if (isHub && pathname === HUB_MANIFEST_PATH && isSafeMethod) {
+    const startUrl = parseHubManifestStartParam(url.searchParams.get('start'))
+    if (startUrl) {
+      const dynamicManifest = await serveHubStartManifest(request, startUrl)
+      if (dynamicManifest) return dynamicManifest
+    }
     return
   }
 
@@ -108,7 +194,7 @@ export default async function middleware(request: Request) {
     )
   }
 
-  if (!isHub || (request.method !== 'GET' && request.method !== 'HEAD')) {
+  if (!isHub || !isSafeMethod) {
     return
   }
 
@@ -116,13 +202,10 @@ export default async function middleware(request: Request) {
     const indexResponse = await fetch(new URL('/index.html', request.url))
     if (!indexResponse.ok) return
     const html = await indexResponse.text()
-    const patched = patchIndexHtmlForHub(html)
+    const patched = patchIndexHtmlForHub(html, pathname)
     return new Response(request.method === 'HEAD' ? null : patched, {
       status: 200,
-      headers: {
-        'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'no-store, no-cache, must-revalidate',
-      },
+      headers: HUB_HTML_HEADERS,
     })
   } catch {
     return
