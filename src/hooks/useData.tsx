@@ -121,7 +121,6 @@ import {
   type ClassTodayReportSyncContext,
 } from '../utils/classTodayReportCommon'
 import { getCommonStorageClassNames } from '../utils/classCommonDataKey'
-import { teacherSaveAssignment } from '../hub/teacherHubRepo'
 
 type ToastMessage = { id: string; text: string }
 
@@ -1939,7 +1938,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
         await syncHubAssignmentsFromTodayReport(
           upsertedCommons,
-          teacherSaveAssignment,
+          async (assignment) => {
+            const { teacherSaveAssignment } = await import('../hub/teacherHubRepo')
+            await teacherSaveAssignment(assignment)
+          },
           (assignment) => {
             notifyHubPush({ event: 'assignment_saved', entityId: assignment.id })
           },
