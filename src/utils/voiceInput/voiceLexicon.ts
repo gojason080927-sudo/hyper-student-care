@@ -163,6 +163,7 @@ export function parseWrongCausePhrases(clause: string): {
   conceptLackDelta: number
   calculationErrorDelta: number
   applicationLackDelta: number
+  comprehensionLackDelta: number
 } {
   const compact = compactText(clause)
   return {
@@ -173,6 +174,7 @@ export function parseWrongCausePhrases(clause: string): {
     )
       ? 1
       : 0,
+    comprehensionLackDelta: /문제이해부족/.test(compact) ? 1 : 0,
   }
 }
 

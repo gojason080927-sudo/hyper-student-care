@@ -1,7 +1,8 @@
 import type { ClassNoteRecord, DailyTestRecord } from '../../types/records'
 import {
+  dailyWrongTypeCounts,
+  DAILY_WRONG_TYPES,
   normalizeDailyLearningDiagnosis,
-  sumWrongAnalysisCounts,
 } from '../../utils/learningDiagnosis'
 import { getDailyTestSessionColor } from '../../utils/labels'
 import { SectionTitleWithHint } from '../ui/SectionTitleWithHint'
@@ -13,28 +14,6 @@ type ParentDailyTestDiagnosisBlockProps = {
   /** 하단 강사 피드백(class_notes) — 일일테스트 teacherFeedback이 비어 있을 때 보조 표시 */
   classNote?: ClassNoteRecord
   className?: string
-}
-
-function resolveAnalysisCounts(diagnosis: ReturnType<typeof normalizeDailyLearningDiagnosis>) {
-  if (sumWrongAnalysisCounts(diagnosis) > 0) {
-    return {
-      concept: diagnosis.conceptLackCount,
-      calculation: diagnosis.calculationErrorCount,
-      application: diagnosis.applicationLackCount,
-    }
-  }
-  if (diagnosis.wrongAnswerItems.length > 0) {
-    return {
-      concept: diagnosis.wrongAnswerItems.filter((i) => i.cause === '개념 부족').length,
-      calculation: diagnosis.wrongAnswerItems.filter((i) => i.cause === '계산 실수').length,
-      application: diagnosis.wrongAnswerItems.filter((i) => i.cause === '문제 이해 부족').length,
-    }
-  }
-  return {
-    concept: diagnosis.conceptLackCount,
-    calculation: diagnosis.calculationErrorCount,
-    application: diagnosis.applicationLackCount,
-  }
 }
 
 function resolveTeacherFeedbackText(
@@ -98,34 +77,22 @@ export function ParentDailyTestDiagnosisBlock({
   const diagnosis = normalizeDailyLearningDiagnosis(record.learningDiagnosis)
   const isMath = record.subject.includes('수학')
   const isEnglish = record.subject.includes('영어')
-  const counts = resolveAnalysisCounts(diagnosis)
+  const counts = dailyWrongTypeCounts(diagnosis)
 
   return (
     <div className={`space-y-2.5 ${className}`.trim()}>
       {isMath ? (
         <div>
           <h4 className={TITLE_EMPHASIS_CLASS}>오답 분석</h4>
-          <div className="mt-1.5 grid grid-cols-3 gap-1.5 text-center">
-            <div className="rounded-lg bg-[rgba(22,58,112,0.04)] px-1.5 py-2">
-              <p className="text-[11px] font-semibold text-slate-600">개념 부족</p>
-              <p className="mt-0.5 text-sm font-bold tabular-nums text-[#163A70]">
-                {counts.concept}문항
-              </p>
-            </div>
-            <div className="rounded-lg bg-[rgba(22,58,112,0.04)] px-1.5 py-2">
-              <p className="text-[11px] font-semibold text-slate-600">계산 실수</p>
-              <p className="mt-0.5 text-sm font-bold tabular-nums text-[#163A70]">
-                {counts.calculation}문항
-              </p>
-            </div>
-            <div className="rounded-lg bg-[rgba(22,58,112,0.04)] px-1.5 py-2">
-              <p className="text-[11px] font-semibold leading-tight text-slate-600">
-                응용 능력 부족
-              </p>
-              <p className="mt-0.5 text-sm font-bold tabular-nums text-[#163A70]">
-                {counts.application}문항
-              </p>
-            </div>
+          <div className="mt-1.5 grid grid-cols-2 gap-1.5 text-center">
+            {DAILY_WRONG_TYPES.map((item) => (
+              <div key={item.key} className="rounded-lg bg-[rgba(22,58,112,0.04)] px-1.5 py-2">
+                <p className="text-[11px] font-semibold leading-tight text-slate-600">{item.label}</p>
+                <p className="mt-0.5 text-sm font-bold tabular-nums text-[#163A70]">
+                  {counts[item.key]}문항
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       ) : null}

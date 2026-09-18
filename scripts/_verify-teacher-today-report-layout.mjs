@@ -203,6 +203,7 @@ try {
     if (!dailyCard.includes('개념 부족')) fails.push('daily-test concept error missing')
     if (!dailyCard.includes('계산 실수')) fails.push('daily-test calculation error missing')
     if (!dailyCard.includes('응용 능력 부족')) fails.push('daily-test application error missing')
+    if (!dailyCard.includes('문제 이해 부족')) fails.push('daily-test comprehension error missing')
     for (const round of ['1차', '2차', '3차', '4차']) {
       if (!dailyCard.includes(round)) fails.push(`daily-test ${round} missing`)
     }

@@ -57,7 +57,7 @@ export function DailyLearningDiagnosisFields({
       {isMath ? (
         <div className="space-y-2">
           <p className="text-sm font-semibold text-slate-700">오답 분석</p>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <label>
               <span className="mb-1 block text-xs font-semibold text-slate-600">개념 부족</span>
               <input
@@ -89,7 +89,7 @@ export function DailyLearningDiagnosisFields({
               />
             </label>
             <label>
-              <span className="mb-1 block text-xs font-semibold text-slate-600">
+              <span className="mb-1 block text-xs font-semibold leading-tight text-slate-600">
                 응용 능력 부족
               </span>
               <input
@@ -101,6 +101,24 @@ export function DailyLearningDiagnosisFields({
                 value={diagnosis.applicationLackCount || ''}
                 onChange={(e) =>
                   patch({ applicationLackCount: parseNonNegIntInput(e.target.value) })
+                }
+                className={inputClass()}
+                placeholder="0"
+              />
+            </label>
+            <label>
+              <span className="mb-1 block text-xs font-semibold leading-tight text-slate-600">
+                문제 이해 부족
+              </span>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                inputMode="numeric"
+                disabled={disabled}
+                value={diagnosis.comprehensionLackCount || ''}
+                onChange={(e) =>
+                  patch({ comprehensionLackCount: parseNonNegIntInput(e.target.value) })
                 }
                 className={inputClass()}
                 placeholder="0"

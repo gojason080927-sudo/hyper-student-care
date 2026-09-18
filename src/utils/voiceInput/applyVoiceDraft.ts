@@ -262,6 +262,10 @@ function patchDailyTestDraft<T extends {
     diagnosis.applicationLackCount =
       (diagnosis.applicationLackCount || 0) + row.applicationLackDelta
   }
+  if (row.comprehensionLackDelta) {
+    diagnosis.comprehensionLackCount =
+      (diagnosis.comprehensionLackCount || 0) + row.comprehensionLackDelta
+  }
   if (row.teacherFeedback) {
     diagnosis.teacherFeedback = row.teacherFeedback
   }
@@ -301,6 +305,7 @@ export function applyStudentDailyTestDraft<T extends {
     (parsed.conceptLackCount !== undefined ? 1 : 0) +
     (parsed.calculationErrorCount !== undefined ? 1 : 0) +
     (parsed.applicationLackCount !== undefined ? 1 : 0) +
+    (parsed.comprehensionLackCount !== undefined ? 1 : 0) +
     (parsed.teacherFeedback ? 1 : 0)
   return {
     drafts: next,
@@ -318,6 +323,7 @@ function patchStudentDailyTestDraft<T extends {
     conceptLackCount?: number
     calculationErrorCount?: number
     applicationLackCount?: number
+    comprehensionLackCount?: number
     teacherFeedback?: string
   },
 ): T {
@@ -334,6 +340,9 @@ function patchStudentDailyTestDraft<T extends {
   }
   if (parsed.applicationLackCount !== undefined) {
     diagnosis.applicationLackCount = parsed.applicationLackCount
+  }
+  if (parsed.comprehensionLackCount !== undefined) {
+    diagnosis.comprehensionLackCount = parsed.comprehensionLackCount
   }
   if (parsed.teacherFeedback) {
     diagnosis.teacherFeedback = parsed.teacherFeedback

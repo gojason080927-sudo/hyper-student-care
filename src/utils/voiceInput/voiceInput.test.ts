@@ -203,6 +203,7 @@ const emptyDiagnosis = {
   conceptLackCount: 0,
   calculationErrorCount: 0,
   applicationLackCount: 0,
+  comprehensionLackCount: 0,
   teacherFeedback: '',
   fridayRetestTotal: null,
   fridayRetestWrong: null,

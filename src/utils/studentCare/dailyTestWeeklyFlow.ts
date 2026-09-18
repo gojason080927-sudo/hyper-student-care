@@ -5,6 +5,12 @@ import {
   migrateSessionResults,
   TEST_SESSION_NUMBERS,
 } from '../dailyTest.ts'
+import {
+  dailyWrongTypeCounts,
+  emptyDailyWrongTypeCounts,
+  sumDailyWrongTypeCounts,
+  type DailyWrongTypeCounts,
+} from '../learningDiagnosis.ts'
 import { addDaysInSeoul } from '../seoulDate.ts'
 import { roundScore } from './constants.ts'
 import { getFridayOfWeek, getMondayOfWeek } from './week.ts'
@@ -47,6 +53,8 @@ export type DailyTestWeeklyFlowModel = {
   max: number | null
   min: number | null
   avg: number | null
+  wrongTypes: DailyWrongTypeCounts
+  wrongTypeTotal: number
 }
 
 const FALLBACK_SUBJECT = '일일테스트'
@@ -137,6 +145,51 @@ export function buildWeeklyFlowDaySessions(
   })
 }
 
+export function weekDatesMondayToFriday(weekStart: string): string[] {
+  const monday = getMondayOfWeek(weekStart)
+  return [0, 1, 2, 3, 4].map((offset) => addDaysInSeoul(monday, offset))
+}
+
+export function pickLatestWeeklyTestRecords(
+  records: DailyTestRecord[],
+  studentId: string,
+  weekStart: string,
+): DailyTestRecord[] {
+  const dates = new Set(weekDatesMondayToFriday(weekStart))
+  const latest = new Map<string, DailyTestRecord>()
+  for (const record of records) {
+    if (record.studentId !== studentId) continue
+    if (!dates.has(record.date)) continue
+    const key = `${record.date}::${weeklyFlowSubjectLabel(record.subject)}`
+    const current = latest.get(key)
+    if (
+      !current ||
+      record.updatedAt.localeCompare(current.updatedAt) > 0 ||
+      (record.updatedAt === current.updatedAt && record.createdAt.localeCompare(current.createdAt) > 0)
+    ) {
+      latest.set(key, record)
+    }
+  }
+  return [...latest.values()]
+}
+
+export function buildWeeklyWrongAnalysis(input: {
+  studentId: string
+  weekStart: string
+  dailyTests: DailyTestRecord[]
+}): DailyWrongTypeCounts {
+  const picked = pickLatestWeeklyTestRecords(input.dailyTests, input.studentId, input.weekStart)
+  const totals = emptyDailyWrongTypeCounts()
+  for (const record of picked) {
+    const counts = dailyWrongTypeCounts(record.learningDiagnosis)
+    totals.calculationError += counts.calculationError
+    totals.conceptLack += counts.conceptLack
+    totals.applicationLack += counts.applicationLack
+    totals.comprehensionLack += counts.comprehensionLack
+  }
+  return totals
+}
+
 export function summarizeAttemptedScores(scores: number[]): {
   attemptedScores: number[]
   max: number | null
@@ -184,6 +237,11 @@ export function buildDailyTestWeeklyFlow(input: {
       session.kind === 'score' && session.score != null ? [session.score] : [],
     ),
   )
+  const wrongTypes = buildWeeklyWrongAnalysis({
+    studentId: input.studentId,
+    weekStart,
+    dailyTests: input.dailyTests,
+  })
 
   return {
     weekStart,
@@ -192,5 +250,7 @@ export function buildDailyTestWeeklyFlow(input: {
     selectedSubject,
     days,
     ...summarizeAttemptedScores(attemptedScores),
+    wrongTypes,
+    wrongTypeTotal: sumDailyWrongTypeCounts(wrongTypes),
   }
 }

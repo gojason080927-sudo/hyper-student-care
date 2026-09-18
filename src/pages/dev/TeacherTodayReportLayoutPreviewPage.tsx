@@ -315,8 +315,8 @@ export function TeacherTodayReportLayoutPreviewPage() {
               ))}
             </div>
             <p className="mt-2 text-sm font-semibold text-slate-700">오답 분석</p>
-            <div className="mt-1 grid grid-cols-3 gap-2">
-              {['개념 부족', '계산 실수', '응용 능력 부족'].map((label) => (
+            <div className="mt-1 grid grid-cols-2 gap-2">
+              {['개념 부족', '계산 실수', '응용 능력 부족', '문제 이해 부족'].map((label) => (
                 <div key={label}>
                   <p className="mb-1 text-[11px] font-semibold text-slate-600">{label}</p>
                   <div className="min-h-9 rounded-lg border border-slate-200 bg-white" />
