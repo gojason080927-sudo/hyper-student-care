@@ -1,6 +1,6 @@
 import { Menu } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Outlet, useLocation, useParams } from 'react-router-dom'
+import { Outlet, Navigate, useLocation, useParams } from 'react-router-dom'
 import { resolveStudentByAccessKey } from '../../lib/dataLoader'
 import { isSupabaseConfigured, normalizeRouteAccessKey } from '../../lib/supabase'
 import { ParentStudentProvider } from '../../contexts/ParentStudentContext'
@@ -8,6 +8,7 @@ import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 import { useData } from '../../hooks/useData'
 import type { Student } from '../../types/student'
 import { ParentStudentSidebar } from '../parent/ParentStudentSidebar'
+import { ParentPwaRegistrar } from '../parent/ParentPwaRegistrar'
 import '../../styles/parentMobileTheme.css'
 
 function InvalidStudentAccessPage() {
@@ -184,6 +185,7 @@ function ParentStudentLayoutInner({ studentAccessKey }: ParentStudentLayoutInner
 
   return (
     <ParentStudentProvider student={student}>
+      <ParentPwaRegistrar studentAccessKey={student.studentAccessKey} />
       <div className="parent-mobile-app flex min-h-svh overflow-x-hidden">
         <ParentStudentSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex min-w-0 flex-1 flex-col">
@@ -232,6 +234,7 @@ function ParentStudentLayoutInner({ studentAccessKey }: ParentStudentLayoutInner
 export function ParentStudentLayout() {
   const { studentAccessKey = '' } = useParams()
   const normalizedKey = normalizeRouteAccessKey(studentAccessKey)
+  if (!normalizedKey) return <Navigate to="/care" replace />
   return (
     <ParentStudentLayoutInner key={normalizedKey} studentAccessKey={normalizedKey} />
   )

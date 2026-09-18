@@ -1,17 +1,16 @@
 import { useEffect } from 'react'
-import { rememberParentAccessKey } from '../../lib/parentLastCareRoute'
+import { parentPwaManifestHref, rememberParentAccessKey } from '../../lib/parentLastCareRoute'
 import { registerParentServiceWorker } from '../../lib/parentPushClient'
 
 const MANIFEST_VERSION = '10'
-const PARENT_MANIFEST_HREF = `/care/manifest.webmanifest?v=${MANIFEST_VERSION}-installable`
 
 type ParentPwaRegistrarProps = {
   studentAccessKey?: string
 }
 
 /**
- * 학부모 /care PWA — 정적 manifest + /care/sw.js 등록.
- * start_url은 학생 ID를 하드코딩하지 않고 /care/ 를 사용한다.
+ * 학부모 /care PWA — 개인 /care/{key} start_url manifest + /care/sw.js 등록.
+ * start_url 고정이 1차이고, localStorage 기억은 보조 백업이다.
  */
 export function ParentPwaRegistrar({ studentAccessKey = '' }: ParentPwaRegistrarProps) {
   useEffect(() => {
@@ -27,7 +26,7 @@ export function ParentPwaRegistrar({ studentAccessKey = '' }: ParentPwaRegistrar
       manifestLink.id = 'app-manifest'
       document.head.appendChild(manifestLink)
     }
-    manifestLink.href = PARENT_MANIFEST_HREF
+    manifestLink.href = parentPwaManifestHref(key)
 
     const theme = document.querySelector('meta[name="theme-color"]')
     if (theme) theme.setAttribute('content', '#0B1F4A')
