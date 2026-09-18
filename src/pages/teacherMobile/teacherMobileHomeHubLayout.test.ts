@@ -75,9 +75,10 @@ assert.doesNotMatch(dashboard, /질문관리/)
 assert.doesNotMatch(dashboard, /hub-hero/)
 
 assert.match(parentHome, /ParentCategoryGrid/)
-assert.match(parentGrid, /pm-featured-card/)
-assert.doesNotMatch(parentHome, /hub-hero/)
-assert.doesNotMatch(parentGrid, /hub-tile/)
+assert.match(parentHome, /hub-hero/)
+assert.match(parentGrid, /hub-feature-card/)
+assert.match(parentGrid, /hub-tile/)
+assert.doesNotMatch(parentGrid, /pm-featured-card/)
 
 assert.match(hubHome, /학습 허브/)
 assert.match(hubHome, /My Study Plan/)

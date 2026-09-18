@@ -21,15 +21,27 @@ assert.deepEqual(labels, [
 
 const homeLabels = parentHomeCategoryItems.map((item) => item.label.replace(/\n/g, ' '))
 assert.deepEqual(homeLabels, [
-  '주간 학습 SUMMARY',
-  '월말평가 결과',
-  '공지사항 · 보강계획',
-  '고입 · 대입 입시전략',
+  '주간 SUMMARY',
+  '월간 학습진단',
+  '월말평가',
+  '공지·보강',
+  '입시전략',
   '질문하기',
 ])
 assert.equal(
   parentHomeCategoryItems.some((item) => item.segment === 'monthly-learning-report'),
-  false,
+  true,
+)
+assert.deepEqual(
+  parentHomeCategoryItems.map((item) => item.segment),
+  [
+    'weekly-learning-summary',
+    'monthly-learning-report',
+    'monthly-evaluation',
+    'notices-makeup',
+    'admission-strategy',
+    'questions',
+  ],
 )
 assert.equal(parentSidebarItems[0]?.segment, 'weekly-learning-summary')
 assert.equal(parentSidebarItems[1]?.segment, 'monthly-learning-report')

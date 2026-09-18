@@ -560,3 +560,42 @@
   white-space: normal;
   word-break: break-word;
 }
+
+/* Parent HOME reuses Hub shell; keep Hub density and a Hub-matching menu button. */
+.parent-mobile-app .parent-hub-home.student-hub-app {
+  padding-bottom: 0;
+  min-height: 0;
+}
+
+.parent-hub-menu {
+  position: absolute;
+  top: 0.65rem;
+  left: 0.65rem;
+  z-index: 2;
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #5b348a;
+  box-shadow: 0 4px 10px rgba(45, 22, 78, 0.1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.parent-hub-menu:active {
+  transform: scale(0.96);
+}
+
+.parent-hub-unread {
+  position: absolute;
+  top: 0.38rem;
+  right: 0.38rem;
+  height: 0.5rem;
+  width: 0.5rem;
+  border-radius: 999px;
+  background: #ff8a3d;
+}
+

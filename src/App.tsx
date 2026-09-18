@@ -122,6 +122,7 @@ import { TeacherTodayReportLayoutPreviewPage } from './pages/dev/TeacherTodayRep
 import { HubHomeLayoutPreviewPage } from './pages/dev/HubHomeLayoutPreviewPage'
 import { HubStudyPlanLayoutPreviewPage } from './pages/dev/HubStudyPlanLayoutPreviewPage'
 import { TeacherMobileHomeLayoutPreviewPage } from './pages/dev/TeacherMobileHomeLayoutPreviewPage'
+import { ParentHomeLayoutPreviewPage } from './pages/dev/ParentHomeLayoutPreviewPage'
 
 
 
@@ -144,6 +145,7 @@ function App() {
             <Route path="/dev/hub-home-layout" element={<HubHomeLayoutPreviewPage />} />
             <Route path="/dev/hub-study-plan-layout" element={<HubStudyPlanLayoutPreviewPage />} />
             <Route path="/dev/teacher-home-layout" element={<TeacherMobileHomeLayoutPreviewPage />} />
+            <Route path="/dev/parent-home-layout" element={<ParentHomeLayoutPreviewPage />} />
           </>
         ) : null}
 
