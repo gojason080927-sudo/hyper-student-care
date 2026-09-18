@@ -27,6 +27,8 @@ import {
 import { parseTimestampLines, parseYoutubeVideoId } from '../../hub/youtube'
 import { HUB_MATERIAL_ACCEPT } from '../../hub/hubFilePolicy'
 import { hubAudienceSelectionError } from '../../hub/hubAudience'
+import { assignmentFingerprint } from '../../lib/hubPushEvents'
+import { notifyHubPush } from '../../lib/hubPushInvoke'
 
 type Tab = 'assignments' | 'materials' | 'videos' | 'requests' | 'suggestions'
 
@@ -282,7 +284,7 @@ function AssignmentPanel({
       return
     }
     const existing = assignments.find((item) => item.id === form.id)
-    await teacherSaveAssignment({
+    const saved = {
       id: form.id || createId(),
       grade: form.grade.trim(),
       className: form.className.trim(),
@@ -295,6 +297,17 @@ function AssignmentPanel({
       publishedAt: form.published ? existing?.publishedAt || new Date().toISOString() : null,
       createdAt: existing?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+    }
+    await teacherSaveAssignment(saved)
+    notifyHubPush({
+      event: 'assignment_saved',
+      entityId: saved.id,
+      previous: existing
+        ? {
+            published: existing.published,
+            fingerprint: assignmentFingerprint(existing),
+          }
+        : undefined,
     })
     setForm(emptyForm)
     await onSaved()
@@ -439,6 +452,14 @@ function AssignmentPanel({
                 className={btnSecondary}
                 onClick={async () => {
                   await teacherSaveAssignment({ ...item, published: !item.published })
+                  notifyHubPush({
+                    event: 'assignment_saved',
+                    entityId: item.id,
+                    previous: {
+                      published: item.published,
+                      fingerprint: assignmentFingerprint(item),
+                    },
+                  })
                   await onSaved()
                 }}
               >
@@ -880,6 +901,11 @@ function InboxPanel({
                 setBusyId(item.id)
                 try {
                   await teacherSaveInboxReply(item.id, drafts[item.id] ?? item.teacherReply)
+                  notifyHubPush({
+                    event: 'inbox_replied',
+                    entityId: item.id,
+                    previous: { teacherReply: item.teacherReply },
+                  })
                   setDrafts((prev) => {
                     const next = { ...prev }
                     delete next[item.id]

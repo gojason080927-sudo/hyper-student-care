@@ -15,6 +15,7 @@ import {
   X,
 } from 'lucide-react'
 import { BrandMark } from './brand/BrandMark'
+import { TeacherPushOptIn } from './teacherMobile/TeacherPushOptIn'
 
 type NavItem = {
   path: string
@@ -180,6 +181,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             })}
           </ul>
         </nav>
+        <TeacherPushOptIn placement="sidebar" />
       </aside>
     </>
   )

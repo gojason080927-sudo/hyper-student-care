@@ -20,6 +20,7 @@ import {
   uploadHubObject,
   downloadHubObjectUrl,
 } from './hubStorageClient'
+import { notifyHubPush } from '../lib/hubPushInvoke'
 import { HubEmpty, HubPageHeader } from './HubChrome'
 import { useHub } from './HubContext'
 
@@ -72,6 +73,11 @@ export function HubQuestionsPage() {
         content,
       })
       if (!created) throw new Error('질문 저장에 실패했습니다.')
+      notifyHubPush({
+        event: 'student_question_created',
+        accessKey,
+        entityId: created.id,
+      })
       for (const { file, decision } of classified) {
         const kind = decision.kind
         if (kind === 'image' && file.size > HUB_IMAGE_MAX_BYTES) throw new Error('이미지는 5MB 이하만 가능합니다.')

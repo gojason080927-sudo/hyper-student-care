@@ -29,6 +29,20 @@ Deno.serve(async (request) => {
     return jsonResponse({ ok: false, error: error.message }, 500)
   }
 
+  try {
+    await fetch(`${url.replace(/\/$/, '')}/functions/v1/send-hub-push-notification`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${key}`,
+        apikey: key,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ event: 'weekly_summary_scan' }),
+    })
+  } catch {
+    // Push must not fail Saturday summary generation.
+  }
+
   return jsonResponse({
     ok: true,
     inserted: typeof data === 'number' ? data : Number(data ?? 0),

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { notifyHubPush } from '../lib/hubPushInvoke'
 import { getSupabase } from '../lib/supabase'
 import { WeeklySummaryDetail } from '../pages/parent/ParentStudentWeeklySummaryPage'
 import { latestWeeklySummary } from '../utils/studentCare/weeklySummaryDisplay'
@@ -21,7 +22,14 @@ export function HubWeeklyPage() {
   const active = summaries.find((item) => item.id === selectedId) ?? latest ?? null
 
   useEffect(() => {
-    void getSupabase().rpc('ensure_weekly_learning_summaries')
+    void (async () => {
+      try {
+        await getSupabase().rpc('ensure_weekly_learning_summaries')
+        notifyHubPush({ event: 'weekly_summary_scan' })
+      } catch {
+        // Weekly page must still render if ensure/push fails.
+      }
+    })()
   }, [])
 
   useEffect(() => {

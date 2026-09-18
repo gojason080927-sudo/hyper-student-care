@@ -13,6 +13,7 @@ import {
   MessageSquare,
   Sparkles,
 } from 'lucide-react'
+import { StudentPushOptIn } from '../components/hub/StudentPushOptIn'
 import { useHub } from './HubContext'
 import { HUB_ACADEMY_LOGO_PNG, HUB_ACADEMY_LOGO_WEBP } from './types'
 
@@ -100,6 +101,8 @@ export function HubHomePage() {
           <ChevronRight strokeWidth={2.4} />
         </span>
       </Link>
+
+      <StudentPushOptIn accessKey={accessKey} />
     </div>
   )
 }

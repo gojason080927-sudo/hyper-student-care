@@ -7,6 +7,7 @@ import {
   rpcSubmitHubInbox,
 } from './hubRpc'
 import { questionAttachmentBucket, uploadHubObject } from './hubStorageClient'
+import { notifyHubPush } from '../lib/hubPushInvoke'
 import { HubEmpty, HubPageHeader } from './HubChrome'
 import { useHub } from './HubContext'
 import { HubInboxItemCard } from './HubInboxItemCard'
@@ -35,6 +36,11 @@ export function HubMaterialRequestPage() {
         content,
       })
       if (!created) throw new Error('저장에 실패했습니다.')
+      notifyHubPush({
+        event: 'student_inbox_created',
+        accessKey,
+        entityId: created.id,
+      })
       for (const file of files.slice(0, HUB_MAX_ATTACHMENTS)) {
         const decision = classifyHubUpload(file)
         if (!decision.ok) throw new Error(decision.error)

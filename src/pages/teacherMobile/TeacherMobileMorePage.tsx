@@ -15,6 +15,7 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import { TeacherMobileHeader } from '../../components/teacherMobile/TeacherMobileHeader'
+import { TeacherPushOptIn } from '../../components/teacherMobile/TeacherPushOptIn'
 
 const links = [
   { to: '/teacher/mobile/student-hub', label: '학생 학습자료', icon: BookOpen },
@@ -54,6 +55,7 @@ export function TeacherMobileMorePage() {
           <span className="flex-1">PC 강사용 화면</span>
           <ExternalLink className="h-4 w-4 opacity-60" strokeWidth={2} aria-hidden />
         </a>
+        <TeacherPushOptIn />
       </div>
     </div>
   )
