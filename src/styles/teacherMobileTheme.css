@@ -648,3 +648,31 @@
   border-color: rgba(15, 118, 110, 0.22) !important;
   color: #0f766e !important;
 }
+
+/* Teacher HOME reuses Hub shell; avoid double bottom safe-area under the tab bar. */
+.teacher-mobile-app .teacher-hub-home.student-hub-app {
+  padding-bottom: 0;
+  min-height: 0;
+}
+
+.teacher-hub-logout {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  z-index: 2;
+  display: inline-flex;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #5b348a;
+  box-shadow: 0 4px 10px rgba(45, 22, 78, 0.1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.teacher-hub-logout:active {
+  transform: scale(0.96);
+}
