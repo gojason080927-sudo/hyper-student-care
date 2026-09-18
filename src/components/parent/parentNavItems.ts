@@ -47,10 +47,14 @@ export const parentCategoryItems: ParentCategoryItem[] = [
   { segment: 'questions', label: '질문하기', icon: MessageCircleQuestion, description: '학습 질문·답변' },
 ]
 
-/** HOME 카드: 월간 학습진단 카드 위치에 주간 SUMMARY만 노출. 월간 기능/경로는 유지. */
+/** HOME 3×2 타일. 사이드바 문구와 달리 짧은 Hub 타일용 라벨을 쓴다. */
 export const parentHomeCategoryItems: ParentCategoryItem[] = [
-  weeklyLearningSummaryItem,
-  ...parentCategoryItems.filter((item) => item.segment !== 'monthly-learning-report'),
+  { ...weeklyLearningSummaryItem, label: '주간 SUMMARY' },
+  { ...parentCategoryItems[0], label: '월간 학습진단' },
+  { ...parentCategoryItems[1], label: '월말평가' },
+  { ...parentCategoryItems[2], label: '공지·보강' },
+  { ...parentCategoryItems[3], label: '입시전략' },
+  { ...parentCategoryItems[4], label: '질문하기' },
 ]
 
 /** 사이드바·더보기용 — 주간 SUMMARY 추가, 월간 학습진단 유지 */

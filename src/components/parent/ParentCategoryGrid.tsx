@@ -1,112 +1,62 @@
 import { useEffect } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
+import { ChevronRight } from 'lucide-react'
 import { useParentStudent } from '../../contexts/ParentStudentContext'
 import { useData } from '../../hooks/useData'
 import { useParentAdmissionStrategyMaterials } from '../../hooks/useParentAdmissionStrategyMaterials'
 import { hasUnreadAdmissionStrategyMaterials } from '../../lib/db/admissionStrategyMaterial'
-import { formatKoreanDateLong, getTodayString } from '../../utils/date'
 import { hasUnreadWeeklySummary } from '../../utils/studentCare/weeklySummaryDisplay'
-import {
-  isParentCategoryPathActive,
-  parentHomeCategoryItems,
-  parentTodayReportHighlights,
-  parentTodayReportItem,
-  parentTodayReportSectionHash,
-} from './parentNavItems'
+import { parentHomeCategoryItems, parentTodayReportItem } from './parentNavItems'
 
 export function ParentCategoryGrid() {
   const student = useParentStudent()
-  const location = useLocation()
   const { materials } = useParentAdmissionStrategyMaterials()
-  const {
-    weeklyLearningSummaries,
-    weeklySummaryRead,
-    ensureWeeklyLearningSummaries,
-  } = useData()
+  const { weeklyLearningSummaries, weeklySummaryRead, ensureWeeklyLearningSummaries } = useData()
   const admissionUnread = hasUnreadAdmissionStrategyMaterials(materials)
-  const weeklyUnread = hasUnreadWeeklySummary(
-    weeklyLearningSummaries,
-    student.id,
-    weeklySummaryRead,
-  )
+  const weeklyUnread = hasUnreadWeeklySummary(weeklyLearningSummaries, student.id, weeklySummaryRead)
   const basePath = `/care/${student.studentAccessKey}`
-  const todayLabel = formatKoreanDateLong(getTodayString())
+  const todayPath = `${basePath}/${parentTodayReportItem.segment}`
+  const TodayIcon = parentTodayReportItem.icon
 
   useEffect(() => {
     void ensureWeeklyLearningSummaries()
   }, [ensureWeeklyLearningSummaries])
 
-  const todayPath = `${basePath}/${parentTodayReportItem.segment}`
-  const TodayIcon = parentTodayReportItem.icon
-
   return (
-    <div className="parent-home-menu space-y-3 sm:space-y-3.5">
-      <div className="pm-featured-card">
-        <Link to={todayPath} className="block text-inherit no-underline">
-          <div className="flex items-start gap-3.5 sm:gap-4">
-            <span className="pm-featured-icon">
-              <TodayIcon className="h-7 w-7 sm:h-8 sm:w-8" strokeWidth={2} aria-hidden />
-            </span>
-            <div className="min-w-0 flex-1 pt-0.5">
-              <span className="block text-lg font-bold leading-tight sm:text-xl">
-                {parentTodayReportItem.label}
-              </span>
-              <span className="mt-1 block text-[15px] leading-snug text-white/90 sm:text-base">
-                {student.name} · {todayLabel}
-              </span>
-              <span className="mt-1 block text-sm leading-snug text-white/80">
-                {parentTodayReportItem.description}
-              </span>
-            </div>
-          </div>
-        </Link>
-
-        <div className="mt-3.5 flex flex-wrap gap-1.5 sm:gap-2">
-          {parentTodayReportHighlights.map((tag) => (
-            <Link
-              key={tag.id}
-              to={`${todayPath}#${parentTodayReportSectionHash(tag.id)}`}
-              className="pm-featured-tag"
-            >
-              {tag.label}
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid auto-rows-fr grid-cols-2 gap-2.5 sm:gap-3 lg:max-w-2xl">
-        {parentHomeCategoryItems.map(({ segment, label, icon: Icon, description }) => {
-          const path = `${basePath}/${segment}`
-          const isActive = isParentCategoryPathActive(segment, location.pathname)
-
+    <>
+      <nav aria-label="학부모 메뉴" className="hub-menu-grid grid grid-cols-3">
+        {parentHomeCategoryItems.map(({ segment, label, icon: Icon }) => {
           const showAdmissionUnread = segment === 'admission-strategy' && admissionUnread
           const showWeeklyUnread = segment === 'weekly-learning-summary' && weeklyUnread
-
           return (
-            <Link
-              key={segment}
-              to={path}
-              className={`pm-menu-card relative ${isActive ? 'pm-menu-card--active' : ''}`}
-            >
+            <Link key={segment} to={`${basePath}/${segment}`} className="hub-tile">
               {showAdmissionUnread || showWeeklyUnread ? (
-                <span
-                  className="absolute right-2.5 top-2.5 h-2 w-2 shrink-0 rounded-full bg-[#FF8A3D]"
-                  aria-label="확인하지 않은 새 자료"
-                />
+                <span className="parent-hub-unread" aria-label="확인하지 않은 새 자료" />
               ) : null}
-              <span className="pm-menu-icon">
-                <Icon className="h-[18px] w-[18px] sm:h-5 sm:w-5" strokeWidth={2} aria-hidden />
+              <span className="hub-tile-icon" aria-hidden>
+                <Icon strokeWidth={2.4} />
               </span>
-              <span className="mt-2 min-w-0">
-                <span className="pm-menu-title whitespace-pre-line break-keep">{label}</span>
-                {description && (
-                  <span className="pm-menu-desc line-clamp-2 break-anywhere">{description}</span>
-                )}
-              </span>
+              <span className="hub-tile-label">{label}</span>
             </Link>
           )
         })}
-      </div>
-    </div>
+      </nav>
+
+      <Link to={todayPath} className="hub-feature-card">
+        <span className="hub-feature-icon" aria-hidden>
+          <TodayIcon strokeWidth={2.35} />
+        </span>
+        <span className="hub-feature-copy">
+          <span className="hub-feature-title">{parentTodayReportItem.label}</span>
+          <span className="hub-feature-sub">
+            <span className="block break-keep">출결 · 진도 · 숙제</span>
+            <span className="block break-keep">일일테스트 · 수업태도</span>
+          </span>
+        </span>
+        <span className="hub-feature-arrow" aria-hidden>
+          <ChevronRight strokeWidth={2.4} />
+        </span>
+      </Link>
+    </>
   )
 }
