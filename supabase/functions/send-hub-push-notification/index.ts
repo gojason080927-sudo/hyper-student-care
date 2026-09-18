@@ -64,6 +64,18 @@ function asBool(value: unknown): boolean {
   return value === true
 }
 
+function hubAssignmentSubjectLabel(subject: unknown, slotNumber: unknown): string {
+  const name = asString(subject)
+  const slot = Number(slotNumber)
+  if (name === '수학' && slot === 1) return '수학 · 개념교재'
+  if (name === '수학' && slot === 2) return '수학 · 유형교재'
+  if (name === '수학' && slot === 3) return '수학 · 부교재'
+  if (name === '영어' && slot === 1) return '영어 · 문법교재'
+  if (name === '영어' && slot === 2) return '영어 · 독해 교재'
+  if (name === '영어' && slot === 3) return '영어 · 단어장'
+  return name
+}
+
 async function claimDelivery(supabase: SupabaseClient, eventKey: string): Promise<boolean> {
   const { error } = await supabase.from('hub_push_deliveries').insert({ event_key: eventKey })
   if (!error) return true
@@ -226,12 +238,38 @@ async function handleStudentInboxCreated(
   return { status: result.sent > 0 ? 'sent' : 'push_failed', ...result }
 }
 
+async function loadAssignmentPushSource(
+  supabase: SupabaseClient,
+  entityId: string,
+): Promise<Record<string, unknown> | null> {
+  const { data } = await supabase.from('class_hub_assignments').select('*').eq('id', entityId).maybeSingle()
+  if (data && data.published === true) return data as Record<string, unknown>
+
+  const { data: common } = await supabase
+    .from('class_today_report_common')
+    .select('id, grade, class_name, subject, slot_number, textbook_name, today_assignment, report_date')
+    .eq('id', entityId)
+    .maybeSingle()
+  const content = asString(common?.today_assignment).trim()
+  if (!common || !content) return null
+  return {
+    grade: common.grade,
+    class_name: common.class_name,
+    subject: hubAssignmentSubjectLabel(common.subject, common.slot_number),
+    textbook_name: common.textbook_name,
+    content,
+    due_date: common.report_date,
+    student_id: null,
+    published: true,
+  }
+}
+
 async function handleAssignmentSaved(
   supabase: SupabaseClient,
   entityId: string,
   previous: Record<string, unknown> | undefined,
 ): Promise<Record<string, unknown>> {
-  const { data } = await supabase.from('class_hub_assignments').select('*').eq('id', entityId).maybeSingle()
+  const data = await loadAssignmentPushSource(supabase, entityId)
   if (!data || data.published !== true) return { status: 'ignored' }
 
   const nextFingerprint = [
