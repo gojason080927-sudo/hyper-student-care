@@ -1,7 +1,8 @@
-import { ArrowLeft, ArrowRight, Pencil } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Pencil, QrCode } from 'lucide-react'
 import { useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import { StudentFormModal } from '../components/students/StudentFormModal'
+import { StudentHubQrCard } from '../components/students/StudentHubQrCard'
 import { EmptyState } from '../components/ui/EmptyState'
 import { StatusBadge } from '../components/ui/StatusBadge'
 import { useData } from '../hooks/useData'
@@ -9,6 +10,7 @@ import type { Student } from '../types/student'
 import { formatSubjects } from '../utils/filters'
 import { formatKoreanDate } from '../utils/date'
 import { btnPrimary, btnSecondary, getStudentStatusColor } from '../utils/labels'
+import { tryGetStudentHubUrl } from '../utils/studentCareUrl'
 
 function buildTodayReportBulkPath(student: Student): string {
   const params = new URLSearchParams()
@@ -34,6 +36,7 @@ function InfoField({ label, value }: { label: string; value: string }) {
 export function StudentDetailPage() {
   const { id } = useParams<{ id: string }>()
   const data = useData()
+  const location = useLocation()
   const [editOpen, setEditOpen] = useState(false)
 
   const student = id ? data.getStudentById(id) : undefined
@@ -56,6 +59,13 @@ export function StudentDetailPage() {
   }
 
   const todayReportBulkPath = buildTodayReportBulkPath(student)
+  const hubUrl = tryGetStudentHubUrl(student.studentAccessKey)
+  const shareBase = location.pathname.startsWith('/teacher/mobile')
+    ? '/teacher/mobile/student-hub-share'
+    : '/teacher/student-hub-share'
+  const classSharePath = student.className.trim()
+    ? `${shareBase}?grade=${encodeURIComponent(student.grade)}&class=${encodeURIComponent(student.className.trim())}`
+    : shareBase
 
   return (
     <div className="space-y-6">
@@ -111,6 +121,29 @@ export function StudentDetailPage() {
           )}
         </div>
       </div>
+
+      {hubUrl ? (
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-semibold text-navy-900">학생 Hub</h3>
+              <p className="mt-1 break-keep text-sm text-slate-600">
+                이름 QR을 보여 주거나 링크를 복사해 이 학생에게만 보내 주세요.
+              </p>
+            </div>
+            <Link
+              to={classSharePath}
+              className={`${btnSecondary} inline-flex min-h-11 items-center gap-2`}
+            >
+              <QrCode className="h-4 w-4" />
+              이 반 Hub QR
+            </Link>
+          </div>
+          <div className="mt-4 max-w-xs">
+            <StudentHubQrCard student={student} hubUrl={hubUrl} onToast={data.showToast} />
+          </div>
+        </section>
+      ) : null}
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <h3 className="text-lg font-semibold text-navy-900">기본 정보</h3>

@@ -11,6 +11,7 @@ import {
   Newspaper,
   Compass,
   GraduationCap,
+  QrCode,
   Users,
   X,
 } from 'lucide-react'
@@ -49,6 +50,12 @@ const navItems: NavItem[] = [
     label: '학생 학습자료',
     multilineLabel: ['학생', '학습자료'],
     icon: BookOpen,
+  },
+  {
+    path: '/teacher/student-hub-share',
+    label: '학생 Hub 배포',
+    multilineLabel: ['학생 Hub', '배포'],
+    icon: QrCode,
   },
   {
     path: '/monthly-learning-reports',

@@ -8,6 +8,7 @@ import {
   Newspaper,
   Compass,
   GraduationCap,
+  QrCode,
   Users,
 } from 'lucide-react'
 import { CategoryCard } from '../components/dashboard/CategoryCard'
@@ -30,6 +31,12 @@ const categories = [
     title: '학생 학습자료',
     description: '학생 앱의 문제 자료·영상 자료를 등록하고 관리합니다',
     icon: BookOpen,
+  },
+  {
+    to: '/teacher/student-hub-share',
+    title: '학생 Hub 배포',
+    description: '학생별 Hub 링크 복사 · QR · 반 단위 배포',
+    icon: QrCode,
   },
   {
     to: '/monthly-learning-reports',

@@ -7,6 +7,7 @@ import {
   GraduationCap,
   HelpCircle,
   Megaphone,
+  QrCode,
   Users,
 } from 'lucide-react'
 import { HyperFeaturedCardWave } from '../../components/ui/HyperFeaturedCardWave'
@@ -33,6 +34,12 @@ const gridCards: Array<MenuCard> = [
     title: '학생 학습자료',
     description: '문제 자료 · 영상 자료',
     icon: BookOpen,
+  },
+  {
+    to: '/teacher/mobile/student-hub-share',
+    title: '학생 Hub 배포',
+    description: '링크 복사 · QR',
+    icon: QrCode,
   },
   {
     to: '/teacher/mobile/students',
