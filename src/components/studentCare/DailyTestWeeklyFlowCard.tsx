@@ -59,21 +59,19 @@ export function DailyTestWeeklyFlowCard({
   )
 
   const width = 360
-  const height = 196
+  const height = 208
   const padL = 18
   const padR = 18
-  const padT = 28
-  const padB = 28
+  const padT = 30
+  const padB = 36
   const plotW = width - padL - padR
   const plotH = height - padT - padB
   const step = plotW / 11
+  const unattemptedY = height - 22
 
   const xy = (point: DailyTestFlowPoint, index: number) => ({
     x: padL + index * step,
-    y:
-      point.score == null
-        ? padT + plotH + 2
-        : padT + plotH - (Math.min(100, Math.max(0, point.score)) / 100) * plotH,
+    y: padT + plotH - (Math.min(100, Math.max(0, point.score ?? 0)) / 100) * plotH,
   })
 
   const scoredCoords = flow.points
@@ -100,19 +98,18 @@ export function DailyTestWeeklyFlowCard({
               <stop offset="100%" stopColor={DAY_COLORS.fri} />
             </linearGradient>
           </defs>
-          {[0, 50, 100].map((tick) => {
+          {[50, 100].map((tick) => {
             const y = padT + plotH - (tick / 100) * plotH
             return (
-              <g key={tick}>
-                <line
-                  x1={padL}
-                  x2={width - padR}
-                  y1={y}
-                  y2={y}
-                  stroke="#e2e8f0"
-                  strokeWidth="1"
-                />
-              </g>
+              <line
+                key={tick}
+                x1={padL}
+                x2={width - padR}
+                y1={y}
+                y2={y}
+                stroke="#e2e8f0"
+                strokeWidth="1"
+              />
             )
           })}
           <path
@@ -130,7 +127,7 @@ export function DailyTestWeeklyFlowCard({
                 <circle
                   key={`${point.weekday}-${point.session}`}
                   cx={pos.x}
-                  cy={padT + plotH}
+                  cy={unattemptedY}
                   r="3.2"
                   fill="#cbd5e1"
                 />
