@@ -21,7 +21,14 @@ export function ParentCategoryGrid() {
   const basePath = `/care/${student.studentAccessKey}`
   const todayPath = `${basePath}/${parentTodayReportItem.segment}`
   const TodayIcon = parentTodayReportItem.icon
-  const highlightLine = parentTodayReportHighlights.map((item) => item.label).join(' · ')
+  const highlightTop = parentTodayReportHighlights
+    .slice(0, 3)
+    .map((item) => item.label)
+    .join(' · ')
+  const highlightBottom = parentTodayReportHighlights
+    .slice(3)
+    .map((item) => item.label)
+    .join(' · ')
 
   useEffect(() => {
     void ensureWeeklyLearningSummaries()
@@ -54,7 +61,8 @@ export function ParentCategoryGrid() {
         <span className="hub-feature-copy">
           <span className="hub-feature-title">{parentTodayReportItem.label}</span>
           <span className="hub-feature-sub">
-            <span className="block break-keep">{highlightLine}</span>
+            <span className="block break-keep">{highlightTop}</span>
+            <span className="block break-keep">{highlightBottom}</span>
           </span>
         </span>
         <span className="hub-feature-arrow" aria-hidden>
