@@ -12,7 +12,8 @@ import {
   weeklyAreaFactLines,
 } from '../../utils/studentCare/weeklySummaryDisplay'
 import { weeklySummaryPeriodLabel } from '../../utils/studentCare'
-import type { WeeklyLearningSummaryRecord, WeeklySummaryAreaKey } from '../../types/records'
+import type { DailyTestRecord, WeeklyLearningSummaryRecord, WeeklySummaryAreaKey } from '../../types/records'
+import { DailyTestWeeklyFlowCard } from '../../components/studentCare/DailyTestWeeklyFlowCard'
 
 const AREA_ORDER: WeeklySummaryAreaKey[] = [
   'attendance',
@@ -26,6 +27,7 @@ export function ParentStudentWeeklySummaryPage() {
   const student = useParentStudent()
   const {
     weeklyLearningSummaries,
+    dailyTests,
     ensureWeeklyLearningSummaries,
     markWeeklySummaryRead,
   } = useData()
@@ -95,12 +97,24 @@ export function ParentStudentWeeklySummaryPage() {
         </label>
       ) : null}
 
-      <WeeklySummaryDetail summary={active} />
+      <WeeklySummaryDetail
+        summary={active}
+        dailyTests={dailyTests}
+        studentId={student.id}
+      />
     </div>
   )
 }
 
-export function WeeklySummaryDetail({ summary }: { summary: WeeklyLearningSummaryRecord }) {
+export function WeeklySummaryDetail({
+  summary,
+  dailyTests,
+  studentId,
+}: {
+  summary: WeeklyLearningSummaryRecord
+  dailyTests: DailyTestRecord[]
+  studentId: string
+}) {
   return (
     <div className="space-y-3">
       <section className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
@@ -150,6 +164,12 @@ export function WeeklySummaryDetail({ summary }: { summary: WeeklyLearningSummar
           </section>
         )
       })}
+
+      <DailyTestWeeklyFlowCard
+        studentId={studentId}
+        weekStart={summary.weekStart}
+        dailyTests={dailyTests}
+      />
 
       <section className="rounded-2xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm">
         <h3 className="text-sm font-bold text-navy-900">이번 주 GOOD</h3>

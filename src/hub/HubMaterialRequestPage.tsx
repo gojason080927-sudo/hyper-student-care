@@ -6,13 +6,10 @@ import {
   rpcPrepareInboxAttachment,
   rpcSubmitHubInbox,
 } from './hubRpc'
-import {
-  downloadHubObjectUrl,
-  questionAttachmentBucket,
-  uploadHubObject,
-} from './hubStorageClient'
+import { questionAttachmentBucket, uploadHubObject } from './hubStorageClient'
 import { HubEmpty, HubPageHeader } from './HubChrome'
 import { useHub } from './HubContext'
+import { HubInboxItemCard } from './HubInboxItemCard'
 
 export function HubMaterialRequestPage() {
   const { accessKey, inbox, reload } = useHub()
@@ -126,27 +123,7 @@ export function HubMaterialRequestPage() {
       ) : (
         <ul className="space-y-3">
           {items.map((item) => (
-            <li key={item.id} className="rounded-2xl bg-white p-4 shadow-sm">
-              <p className="text-xs text-slate-400">{item.status}</p>
-              <p className="mt-1 whitespace-pre-wrap text-sm text-slate-800">{item.content}</p>
-              {item.attachments.map((attachment) => (
-                <button
-                  key={attachment.id}
-                  type="button"
-                  className="mt-2 block text-xs font-semibold text-[#163A70] underline"
-                  onClick={async () => {
-                    const url = await downloadHubObjectUrl({
-                      accessKey,
-                      bucket: questionAttachmentBucket(),
-                      path: attachment.storagePath,
-                    })
-                    window.open(url, '_blank', 'noopener')
-                  }}
-                >
-                  {attachment.originalName || '이미지'}
-                </button>
-              ))}
-            </li>
+            <HubInboxItemCard key={item.id} item={item} accessKey={accessKey} onChanged={reload} />
           ))}
         </ul>
       )}

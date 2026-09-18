@@ -117,6 +117,8 @@ export type HubInboxItem = {
   title: string
   content: string
   status: string
+  teacherReply: string
+  teacherRepliedAt: string | null
   createdAt: string
   studentId?: string
   studentName?: string

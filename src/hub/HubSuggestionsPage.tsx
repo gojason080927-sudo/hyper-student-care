@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { rpcSubmitHubInbox } from './hubRpc'
 import { HubEmpty, HubPageHeader } from './HubChrome'
 import { useHub } from './HubContext'
+import { HubInboxItemCard } from './HubInboxItemCard'
 
 export function HubSuggestionsPage() {
   const { accessKey, inbox, student, reload } = useHub()
@@ -62,10 +63,7 @@ export function HubSuggestionsPage() {
       ) : (
         <ul className="space-y-3">
           {items.map((item) => (
-            <li key={item.id} className="rounded-2xl bg-white p-4 shadow-sm">
-              <p className="text-xs text-slate-400">{item.status}</p>
-              <p className="mt-1 whitespace-pre-wrap text-sm text-slate-800">{item.content}</p>
-            </li>
+            <HubInboxItemCard key={item.id} item={item} accessKey={accessKey} onChanged={reload} />
           ))}
         </ul>
       )}

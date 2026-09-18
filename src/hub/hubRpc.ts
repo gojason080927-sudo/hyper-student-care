@@ -1,13 +1,20 @@
 import { getSupabase } from '../lib/supabase'
 import {
   classScheduleGridFromRow,
+  dailyTestFromRow,
   noticeFromRow,
   weeklyLearningSummaryFromRow,
   type ClassScheduleGridRow,
+  type DailyTestRow,
   type NoticeRow,
   type WeeklyLearningSummaryRow,
 } from '../lib/db/mappers'
-import type { ClassScheduleGrid, ContentPost, WeeklyLearningSummaryRecord } from '../types/records'
+import type {
+  ClassScheduleGrid,
+  ContentPost,
+  DailyTestRecord,
+  WeeklyLearningSummaryRecord,
+} from '../types/records'
 import type {
   HubAssignment,
   HubIdentity,
@@ -167,6 +174,8 @@ function inboxFromRpc(row: Record<string, unknown>): HubInboxItem {
     title: String(row.title ?? ''),
     content: String(row.content ?? ''),
     status: String(row.status ?? '접수'),
+    teacherReply: String(row.teacher_reply ?? ''),
+    teacherRepliedAt: typeof row.teacher_replied_at === 'string' ? row.teacher_replied_at : null,
     createdAt: String(row.created_at ?? ''),
     studentId: typeof row.student_id === 'string' ? row.student_id : undefined,
     studentName: typeof row.student_name === 'string' ? row.student_name : undefined,
@@ -185,6 +194,7 @@ export type StudentHubBundle = {
   student: HubIdentity
   inactive: boolean
   weeklyLearningSummaries: WeeklyLearningSummaryRecord[]
+  dailyTests: DailyTestRecord[]
   assignments: HubAssignment[]
   materials: HubMaterial[]
   videos: HubVideo[]
@@ -265,6 +275,9 @@ export async function rpcGetStudentHubBundle(accessKey: string): Promise<Student
     inactive: row.inactive === true,
     weeklyLearningSummaries: parseHubRpcArray(row.weekly_learning_summaries).map((item) =>
       weeklyLearningSummaryFromRow(item as unknown as WeeklyLearningSummaryRow),
+    ),
+    dailyTests: parseHubRpcArray(row.daily_tests).map((item) =>
+      dailyTestFromRow(item as unknown as DailyTestRow),
     ),
     assignments: parseHubRpcArray(row.assignments).map(assignmentFromRpc),
     materials: parseHubRpcArray(row.materials).map(materialFromRpc),
@@ -382,6 +395,30 @@ export async function rpcFinalizeInboxAttachment(accessKey: string, attachmentId
   const { error } = await getSupabase().rpc('finalize_hub_inbox_attachment', {
     p_access_key: accessKey.trim(),
     p_attachment_id: attachmentId,
+  })
+  if (error) throw error
+}
+
+export async function rpcUpdateHubInbox(input: {
+  accessKey: string
+  id: string
+  content: string
+}): Promise<HubInboxItem> {
+  const { data, error } = await getSupabase().rpc('update_student_hub_inbox', {
+    p_access_key: input.accessKey.trim(),
+    p_id: input.id,
+    p_content: input.content,
+  })
+  if (error) throw error
+  const row = parseRpcJson(data)
+  if (!row) throw new Error('수정에 실패했습니다.')
+  return inboxFromRpc(row)
+}
+
+export async function rpcDeleteHubInbox(accessKey: string, id: string): Promise<void> {
+  const { error } = await getSupabase().rpc('delete_student_hub_inbox', {
+    p_access_key: accessKey.trim(),
+    p_id: id,
   })
   if (error) throw error
 }

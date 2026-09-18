@@ -7,7 +7,7 @@ import { HubEmpty, HubPageHeader } from './HubChrome'
 import { useHub } from './HubContext'
 
 export function HubWeeklyPage() {
-  const { student, weeklyLearningSummaries } = useHub()
+  const { student, weeklyLearningSummaries, dailyTests } = useHub()
   const [selectedId, setSelectedId] = useState('')
 
   const summaries = useMemo(
@@ -48,7 +48,7 @@ export function HubWeeklyPage() {
               ))}
             </select>
           ) : null}
-          <WeeklySummaryDetail summary={active} />
+          <WeeklySummaryDetail summary={active} dailyTests={dailyTests} studentId={student.id} />
         </div>
       )}
     </div>

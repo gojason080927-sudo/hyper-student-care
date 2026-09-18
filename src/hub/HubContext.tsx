@@ -1,5 +1,10 @@
 import { createContext, useContext, type ReactNode } from 'react'
-import type { ClassScheduleGrid, ContentPost, WeeklyLearningSummaryRecord } from '../types/records'
+import type {
+  ClassScheduleGrid,
+  ContentPost,
+  DailyTestRecord,
+  WeeklyLearningSummaryRecord,
+} from '../types/records'
 import type {
   HubAssignment,
   HubIdentity,
@@ -14,6 +19,7 @@ export type HubData = {
   accessKey: string
   student: HubIdentity
   weeklyLearningSummaries: WeeklyLearningSummaryRecord[]
+  dailyTests: DailyTestRecord[]
   assignments: HubAssignment[]
   materials: HubMaterial[]
   videos: HubVideo[]
@@ -43,6 +49,7 @@ export function HubProvider({
         accessKey,
         student: bundle.student,
         weeklyLearningSummaries: bundle.weeklyLearningSummaries,
+        dailyTests: bundle.dailyTests,
         assignments: bundle.assignments,
         materials: bundle.materials,
         videos: bundle.videos,
