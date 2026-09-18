@@ -63,13 +63,17 @@ function labelShift(session: WeeklyFlowSessionPoint, indexInDay: number, score: 
   }
 }
 
+function scoreToPlotY(score: number, padT: number, plotH: number): number {
+  return padT + plotH * (1 - (score - 50) / 50)
+}
+
 function FlowChart({ days, clipId }: { days: WeeklyFlowDay[]; clipId: string }) {
   const width = 360
-  const height = 210
+  const height = 128
   const padL = 18
   const padR = 10
   const padT = 28
-  const padB = 28
+  const padB = 23
   const plotW = width - padL - padR
   const plotH = height - padT - padB
   const slots = days.flatMap((day) => day.sessions.map((session) => ({ day, session })))
@@ -77,7 +81,7 @@ function FlowChart({ days, clipId }: { days: WeeklyFlowDay[]; clipId: string }) 
     const x = padL + (plotW * index) / Math.max(slots.length - 1, 1)
     const scoreY =
       slot.session.kind === 'score' && slot.session.score != null
-        ? padT + plotH * (1 - slot.session.score / 100)
+        ? scoreToPlotY(slot.session.score, padT, plotH)
         : null
     return {
       key: `${slot.day.weekday}-${slot.session.session}`,
@@ -108,20 +112,18 @@ function FlowChart({ days, clipId }: { days: WeeklyFlowDay[]; clipId: string }) 
             </clipPath>
           ))}
         </defs>
-        {[0, 50, 100].map((tick) => {
-          const y = padT + plotH * (1 - tick / 100)
+        {[50, 100].map((tick) => {
+          const y = scoreToPlotY(tick, padT, plotH)
           return (
             <g key={tick}>
-              {tick > 0 ? (
-                <line
-                  x1={padL}
-                  x2={width - padR}
-                  y1={y}
-                  y2={y}
-                  stroke="rgba(22, 58, 112, 0.08)"
-                  strokeWidth="1"
-                />
-              ) : null}
+              <line
+                x1={padL}
+                x2={width - padR}
+                y1={y}
+                y2={y}
+                stroke="rgba(22, 58, 112, 0.08)"
+                strokeWidth="1"
+              />
               <text x={padL - 3} y={y + 3} textAnchor="end" fontSize="8" fill="#94a3b8">
                 {tick}
               </text>
