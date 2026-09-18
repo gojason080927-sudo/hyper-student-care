@@ -73,17 +73,26 @@ assert.equal(isFirstNoticePublish(null, { id: 'n1', published: false }), false)
 
 assert.equal(studentPushCopy('assignment_published').body, '오늘의 과제가 등록되었습니다.')
 assert.equal(studentPushCopy('assignment_changed').body, '오늘의 과제가 변경되었습니다.')
+assert.equal(studentPushCopy('notice_published').body, '새 공지사항이 등록되었습니다.')
+assert.equal(studentPushCopy('material_published').body, '새 문제 자료가 등록되었습니다.')
+assert.equal(studentPushCopy('material_published').path, 'materials')
+assert.equal(studentPushCopy('video_published').body, '새 영상이 등록되었습니다.')
+assert.equal(studentPushCopy('video_published').path, 'videos')
 assert.equal(studentInboxReplyCopy('suggestion').body, '건의사항에 답변이 등록되었습니다.')
 assert.equal(studentInboxReplyCopy('material_request').path, 'requests')
 assert.equal(teacherPushCopy('student_question').url, '/teacher/mobile/questions')
 assert.equal(teacherPushCopy('material_request').url, '/teacher/mobile/student-hub')
 assert.equal(teacherPushCopy('suggestion').url, '/teacher/mobile/student-hub')
 assert.equal(studentNotificationUrl('abc', 'weekly'), '/hub/abc/weekly')
+assert.equal(studentNotificationUrl('abc', 'materials'), '/hub/abc/materials')
+assert.equal(studentNotificationUrl('abc', 'videos'), '/hub/abc/videos')
 assert.equal(teacherQuestionEventKey('q1'), 'teacher:question:q1:created')
 assert.equal(teacherInboxEventKey('i1'), 'teacher:inbox:i1:created')
 
 for (const copy of [
   studentPushCopy('question_answered'),
+  studentPushCopy('material_published'),
+  studentPushCopy('video_published'),
   studentInboxReplyCopy('suggestion'),
   teacherPushCopy('student_question'),
 ]) {
@@ -97,6 +106,7 @@ const todayReport = readFileSync('src/lib/todayReportCompletion.ts', 'utf8')
 const careSw = readFileSync('public/care/sw.js', 'utf8')
 const hubSw = readFileSync('public/hub/sw.js', 'utf8')
 const sql = readFileSync('supabase/hub-web-push-v1-migration.sql', 'utf8')
+const materialSql = readFileSync('supabase/hub-material-video-push-v1-migration.sql', 'utf8')
 
 assert.match(parentClient, /const PARENT_SW_SCOPE = '\/care\/'/)
 assert.match(parentRpc, /upsert_parent_push_subscription/)
@@ -120,6 +130,12 @@ assert.match(sql, /auth\.uid\(\) IS NULL/)
 assert.match(sql, /list_hub_push_assignment_recipients/)
 assert.match(sql, /list_hub_push_notice_recipients/)
 assert.match(sql, /_notice_visible_to_student/)
+assert.match(materialSql, /list_hub_push_material_recipients/)
+assert.match(materialSql, /list_hub_push_video_recipients/)
+assert.match(materialSql, /_hub_audience_visible/)
+assert.doesNotMatch(materialSql, /CREATE OR REPLACE FUNCTION public\.get_parent_care_bundle/)
+assert.doesNotMatch(materialSql, /^\s*DROP TABLE/im)
+assert.doesNotMatch(materialSql, /^\s*TRUNCATE/im)
 assert.doesNotMatch(sql, /CREATE OR REPLACE FUNCTION public\.upsert_parent_push_subscription/)
 assert.doesNotMatch(sql, /CREATE OR REPLACE FUNCTION public\.get_parent_care_bundle/)
 assert.match(sql, /NOTIFY pgrst, 'reload schema'/)

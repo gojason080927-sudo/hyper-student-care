@@ -263,7 +263,7 @@ function MaterialPanel({
     setBusy(true)
     setError('')
     try {
-      await teacherUploadMaterial({
+      const saved = await teacherUploadMaterial({
         title,
         description,
         file,
@@ -273,6 +273,7 @@ function MaterialPanel({
         targetStudentId: audience.audienceType === 'student' ? audience.targetStudentId || null : null,
         publish: true,
       })
+      notifyHubPush({ event: 'material_saved', entityId: saved.id })
       setTitle('')
       setDescription('')
       setFile(null)
@@ -317,6 +318,11 @@ function MaterialPanel({
         targetStudentId: metaAudience.audienceType === 'student' ? metaAudience.targetStudentId || null : null,
         status: metaStatus,
         publishedAt: metaEdit.publishedAt,
+      })
+      notifyHubPush({
+        event: 'material_saved',
+        entityId: metaEdit.id,
+        previous: { published: metaEdit.status === 'PUBLISHED' },
       })
       setMetaEdit(null)
       await onSaved()
@@ -388,7 +394,13 @@ function MaterialPanel({
                 type="button"
                 className={btnSecondary}
                 onClick={async () => {
-                  await teacherSetMaterialStatus(item.id, item.status === 'PUBLISHED' ? 'HIDDEN' : 'PUBLISHED')
+                  const previousPublished = item.status === 'PUBLISHED'
+                  await teacherSetMaterialStatus(item.id, previousPublished ? 'HIDDEN' : 'PUBLISHED')
+                  notifyHubPush({
+                    event: 'material_saved',
+                    entityId: item.id,
+                    previous: { published: previousPublished },
+                  })
                   await onSaved()
                 }}
               >
@@ -433,8 +445,9 @@ function VideoPanel({
     const videoId = parseYoutubeVideoId(form.url)
     if (!videoId) throw new Error('YouTube URL을 확인해 주세요.')
     const existing = videos.find((item) => item.id === form.id)
+    const savedId = form.id || createId()
     await teacherSaveVideo({
-      id: form.id || createId(),
+      id: savedId,
       title: form.title,
       description: form.description,
       videoUrl: form.url.trim(),
@@ -447,6 +460,11 @@ function VideoPanel({
       publishedAt: form.published ? existing?.publishedAt || new Date().toISOString() : null,
       timestamps: parseTimestampLines(form.timestampText),
       createdAt: existing?.createdAt || new Date().toISOString(),
+    })
+    notifyHubPush({
+      event: 'video_saved',
+      entityId: savedId,
+      previous: existing ? { published: existing.published } : undefined,
     })
     setForm(emptyForm)
     await onSaved()

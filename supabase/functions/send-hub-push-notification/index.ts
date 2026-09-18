@@ -13,6 +13,8 @@ type PushEvent =
   | 'inbox_replied'
   | 'question_answered'
   | 'notice_saved'
+  | 'material_saved'
+  | 'video_saved'
   | 'weekly_summary_scan'
 
 type RequestBody = {
@@ -417,6 +419,84 @@ async function handleNoticeSaved(
   return { status: sent > 0 ? 'sent' : subscriptionsOrNone(visible.length, sent), sent, failed }
 }
 
+async function handlePublishedAudienceSaved(
+  supabase: SupabaseClient,
+  previous: Record<string, unknown> | undefined,
+  options: {
+    published: boolean
+    claimKey: string
+    rpcName: 'list_hub_push_material_recipients' | 'list_hub_push_video_recipients'
+    rpcArg: Record<string, string>
+    body: string
+    path: string
+  },
+): Promise<Record<string, unknown>> {
+  if (!options.published) return { status: 'ignored' }
+  if (asBool(previous?.published)) return { status: 'skipped' }
+  if (!(await claimDelivery(supabase, options.claimKey))) {
+    return { status: 'duplicate' }
+  }
+
+  const { data: students } = await supabase.rpc(options.rpcName, options.rpcArg)
+  const visible = ((students ?? []) as { student_id?: string; access_key?: string }[])
+    .map((row) => ({ id: asString(row.student_id), key: asString(row.access_key) }))
+    .filter((row) => row.id && row.key)
+
+  let sent = 0
+  let failed = 0
+  for (const student of visible) {
+    const scoped = await loadStudentSubscriptions(supabase, [student.id])
+    const result = await sendToSubscriptions(supabase, 'student', scoped, {
+      title: 'HYPER Student Hub',
+      body: options.body,
+      url: `/hub/${encodeURIComponent(student.key)}/${options.path}`,
+    })
+    sent += result.sent
+    failed += result.failed
+  }
+  return { status: sent > 0 ? 'sent' : subscriptionsOrNone(visible.length, sent), sent, failed }
+}
+
+async function handleMaterialSaved(
+  supabase: SupabaseClient,
+  entityId: string,
+  previous: Record<string, unknown> | undefined,
+): Promise<Record<string, unknown>> {
+  const { data } = await supabase
+    .from('hub_learning_materials')
+    .select('id, status')
+    .eq('id', entityId)
+    .maybeSingle()
+  return handlePublishedAudienceSaved(supabase, previous, {
+    published: asString(data?.status) === 'PUBLISHED',
+    claimKey: `student:material:${entityId}:published`,
+    rpcName: 'list_hub_push_material_recipients',
+    rpcArg: { p_material_id: entityId },
+    body: '새 문제 자료가 등록되었습니다.',
+    path: 'materials',
+  })
+}
+
+async function handleVideoSaved(
+  supabase: SupabaseClient,
+  entityId: string,
+  previous: Record<string, unknown> | undefined,
+): Promise<Record<string, unknown>> {
+  const { data } = await supabase
+    .from('hub_videos')
+    .select('id, published')
+    .eq('id', entityId)
+    .maybeSingle()
+  return handlePublishedAudienceSaved(supabase, previous, {
+    published: data?.published === true,
+    claimKey: `student:video:${entityId}:published`,
+    rpcName: 'list_hub_push_video_recipients',
+    rpcArg: { p_video_id: entityId },
+    body: '새 영상이 등록되었습니다.',
+    path: 'videos',
+  })
+}
+
 function subscriptionsOrNone(visibleCount: number, sent: number): string {
   if (visibleCount === 0) return 'no_recipients'
   return sent > 0 ? 'sent' : 'no_subscribers'
@@ -515,6 +595,12 @@ Deno.serve(async (request) => {
     }
     if (event === 'notice_saved' && entityId) {
       return jsonResponse(await handleNoticeSaved(supabase, entityId, body.previous))
+    }
+    if (event === 'material_saved' && entityId) {
+      return jsonResponse(await handleMaterialSaved(supabase, entityId, body.previous))
+    }
+    if (event === 'video_saved' && entityId) {
+      return jsonResponse(await handleVideoSaved(supabase, entityId, body.previous))
     }
     return jsonResponse({ status: 'ignored' })
   } catch (error) {

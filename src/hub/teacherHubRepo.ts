@@ -266,7 +266,7 @@ export async function teacherUploadMaterial(params: {
   targetClassName: string | null
   targetStudentId: string | null
   publish: boolean
-}): Promise<void> {
+}): Promise<{ id: string }> {
   const decision = classifyHubMaterialFile(params.file)
   if (!decision.ok) throw new Error(decision.error)
   const id = createId()
@@ -326,6 +326,7 @@ export async function teacherUploadMaterial(params: {
       .insert(pages.map((page) => ({ ...page, material_id: id })))
     throwIfError(pageError, '미리보기 정보 저장에 실패했습니다.')
   }
+  return { id }
 }
 
 export async function teacherSetMaterialStatus(id: string, status: 'DRAFT' | 'PUBLISHED' | 'HIDDEN'): Promise<void> {

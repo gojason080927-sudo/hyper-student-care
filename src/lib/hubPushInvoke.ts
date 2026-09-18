@@ -8,6 +8,8 @@ export type HubPushInvokeBody = {
     | 'inbox_replied'
     | 'question_answered'
     | 'notice_saved'
+    | 'material_saved'
+    | 'video_saved'
     | 'weekly_summary_scan'
   accessKey?: string
   entityId?: string
