@@ -1,0 +1,20 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"/><title>HYPER icon v16 WebAPK spec</title>
+<style>body{margin:24px;background:#0c0e14;color:#d7dde8;font-family:sans-serif;max-width:1200px}
+img{max-width:100%;background:#12141a}code{color:#f3d19e}h1,h2{font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+figure{margin:0}figcaption{margin-top:8px;font-size:13px;color:#9aa3b2}</style>
+</head><body>
+<h1>v16 — Chrome WebAPK adaptive viewport</h1>
+<p>Chromium <code>MASKABLE_ICON_PADDING_RATIO = ((4/5)/(66/108)-1)/2</code>.
+For a 512 source: padding=79, padded=670, AdaptiveIconDrawable viewport=<code>(670*2/3)|0 = 446</code>, origin=33.
+Galaxy One UI masks that 446px crop. This is not a guessed 56.6 / 70 / 80 / 90% scale.</p>
+<p><img src="v15-vs-v16-webapk.png" alt="v15 vs v16 WebAPK pipeline"/></p>
+<h2>v16 stages</h2>
+<div class="grid">
+<figure><img src="v16-raw.png"/><figcaption>1. Raw 512 — black field to the edge</figcaption></figure>
+<figure><img src="v16-chrome-padded.png"/><figcaption>2. Chrome maskable pad 79px (transparent)</figcaption></figure>
+<figure><img src="v16-chrome-viewport.png"/><figcaption>3. Adaptive viewport 446px — what Android shows</figcaption></figure>
+<figure><img src="v16-galaxy-squircle.png"/><figcaption>4. Galaxy One UI squircle of #3</figcaption></figure>
+<figure><img src="v16-galaxy-48dp.png"/><figcaption>5. ~48dp home tile</figcaption></figure>
+</div>
+</body></html>
