@@ -152,6 +152,12 @@ const teacherMobileToday = readFileSync('src/pages/teacherMobile/TeacherMobileTo
 assert.match(teacherMobileToday, /id: 'classTodayHomework'[\s\S]*id: 'materialPrep'[\s\S]*id: 'progress'/)
 assert.match(teacherMobileToday, /ClassAttitudeBulkPanel/)
 assert.match(teacherMobileToday, /수업태도/)
+assert.match(
+  teacherMobileToday,
+  /id: 'dailyTest'[\s\S]*label="수업태도"[\s\S]*입력 완료/,
+)
+assert.match(teacherMobileToday, /label="수업태도"[\s\S]*입력 완료/)
+assert.doesNotMatch(teacherMobileToday, /입력 완료[\s\S]*label="수업태도"/)
 assert.doesNotMatch(teacherMobileToday, /강사 피드백/)
 assert.doesNotMatch(teacherMobileToday, /classNote/)
 
