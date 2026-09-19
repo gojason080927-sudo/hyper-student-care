@@ -24,11 +24,11 @@ export function HubPwaRegistrar({ accessKey = '' }: { accessKey?: string }) {
       appleIcon.rel = 'apple-touch-icon'
       document.head.appendChild(appleIcon)
     }
-    appleIcon.href = '/hub/hyper-hub-icon-v1-192.png'
+    appleIcon.href = '/hub/hyper-hub-icon-v11-192.png?v=11'
 
     const favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null
     if (favicon) {
-      favicon.href = '/hub/hyper-hub-icon-v1-192.png'
+      favicon.href = '/hub/hyper-hub-icon-v11-192.png?v=11'
       favicon.type = 'image/png'
     }
 

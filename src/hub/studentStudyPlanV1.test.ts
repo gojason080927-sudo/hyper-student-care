@@ -112,9 +112,10 @@ assert.match(page, /계획 추가/)
 assert.match(page, /emptyDateMessage/)
 
 assert.equal(existsSync('public/hub/hyper-academy-logo-source-v1.png'), true)
-assert.equal(existsSync('public/hub/hyper-academy-logo-v1.webp'), true)
-assert.equal(existsSync('public/hub/hyper-academy-logo-v1.png'), true)
-assert.match(readFileSync('src/hub/types.ts', 'utf8'), /hyper-academy-logo-v1\.webp/)
+assert.equal(existsSync('public/hyper-academy-logo-source-v11.jpg'), true)
+assert.equal(existsSync('public/hub/hyper-academy-logo-v11.webp'), true)
+assert.equal(existsSync('public/hub/hyper-academy-logo-v11.png'), true)
+assert.match(readFileSync('src/hub/types.ts', 'utf8'), /hyper-academy-logo-v11\.webp/)
 assert.match(readFileSync('src/hub/studyPlan.ts', 'utf8'), /오늘 등록된 학습 계획이 없습니다/)
 
 assert.match(readFileSync('src/hub/hub.css', 'utf8'), /\.hub-check\.is-on svg/)

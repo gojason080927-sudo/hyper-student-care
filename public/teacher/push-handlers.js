@@ -12,8 +12,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(payload.title || 'HYPER Teacher', {
       body: payload.body || '새로운 학생 업무가 등록되었습니다.',
-      icon: '/teacher/hyper-teacher-icon-v10-192.png',
-      badge: '/teacher/hyper-teacher-icon-v10-192.png',
+      icon: '/teacher/hyper-teacher-icon-v11-192.png',
+      badge: '/teacher/hyper-teacher-icon-v11-192.png',
       data: { url: payload.url || '/teacher/mobile' },
     }),
   )
