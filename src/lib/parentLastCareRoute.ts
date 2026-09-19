@@ -1,5 +1,5 @@
 const LAST_ACCESS_KEY_STORAGE = 'hyper-parent-last-access-key'
-const PARENT_MANIFEST_HREF = '/care/manifest.webmanifest?v=19-installable'
+const PARENT_MANIFEST_HREF = '/care/manifest.webmanifest?v=20-installable'
 const PARENT_KEY_RE = /^[A-Za-z0-9_-]{12,128}$/
 
 export function isParentPwaAccessKey(value: string): boolean {
