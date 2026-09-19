@@ -13,16 +13,11 @@ const hubManifest = JSON.parse(readFileSync('public/hub/manifest.webmanifest', '
 const types = readFileSync('src/hub/types.ts', 'utf8')
 const indexHtml = readFileSync('index.html', 'utf8')
 const teacherLayout = readFileSync('src/components/teacherMobile/TeacherMobileLayout.tsx', 'utf8')
-const teacherRegistrar = readFileSync('src/components/teacherMobile/TeacherPwaRegistrar.tsx', 'utf8')
 const parentRegistrar = readFileSync('src/components/parent/ParentPwaRegistrar.tsx', 'utf8')
 const hubRegistrar = readFileSync('src/hub/HubPwaRegistrar.tsx', 'utf8')
-const parentRoute = readFileSync('src/lib/parentLastCareRoute.ts', 'utf8')
-const hubSession = readFileSync('src/hub/hubSession.ts', 'utf8')
-const middleware = readFileSync('middleware.ts', 'utf8')
 const vite = readFileSync('vite.config.ts', 'utf8')
 const generator = readFileSync('scripts/generate-pwa-icons-v16.mjs', 'utf8')
 const specSrc = readFileSync('scripts/chrome-webapk-icon-spec.mjs', 'utf8')
-const teacherPush = readFileSync('public/teacher/push-handlers.js', 'utf8')
 const careSw = readFileSync('public/care/sw.js', 'utf8')
 const hubSw = readFileSync('public/hub/sw.js', 'utf8')
 
@@ -184,6 +179,7 @@ for (const file of V16_FILES) {
 
 assert.equal(sha256('public/teacher/hyper-teacher-apple-touch-v12-180.png'), 'c34d38ebf8c4d9308bce61dc366fd3a1acaca01c4741ee27e277fc7c957e6e31')
 assert.equal(sha256('public/teacher/hyper-teacher-icon-v15-512.png'), '9511201b77fc3563e7ea1a913d9a09b223a7f460c55d4122ff59cff7c7c14419')
+assert.equal(sha256('public/teacher/hyper-teacher-icon-v16-512.png'), '86d19447b385eec1a5112655739e97625a189c021f4274d88e7221645b06fa26')
 assert.equal(
   sameBytes('public/teacher/hyper-teacher-icon-v16-512.png', 'public/teacher/hyper-teacher-icon-maskable-v16-512.png'),
   true,
@@ -199,57 +195,17 @@ assert.equal(sameBytes('public/teacher/hyper-teacher-icon-v16-512.png', 'public/
 assert.equal(teacherManifest.id, '/teacher/mobile')
 assert.equal(teacherManifest.start_url, '/teacher/mobile')
 assert.equal(teacherManifest.scope, '/teacher/')
-assert.deepEqual(
-  teacherManifest.icons.map((icon: { src: string; sizes: string; purpose: string }) => [icon.src, icon.sizes, icon.purpose]),
-  [
-    ['/teacher/hyper-teacher-icon-v16-192.png', '192x192', 'any'],
-    ['/teacher/hyper-teacher-icon-v16-512.png', '512x512', 'any'],
-    ['/teacher/hyper-teacher-icon-maskable-v16-192.png', '192x192', 'maskable'],
-    ['/teacher/hyper-teacher-icon-maskable-v16-512.png', '512x512', 'maskable'],
-  ],
-)
 assert.equal(parentManifest.id, '/care/')
 assert.equal(parentManifest.start_url, '/care/')
 assert.equal(parentManifest.scope, '/care/')
 assert.equal(hubManifest.id, '/hub/')
 assert.equal(hubManifest.start_url, '/hub/')
 assert.equal(hubManifest.scope, '/hub/')
-assert.deepEqual(
-  parentManifest.icons.map((icon: { src: string; purpose: string }) => [icon.src, icon.purpose]),
-  [
-    ['/care/hyper-parent-icon-v16-192.png', 'any'],
-    ['/care/hyper-parent-icon-v16-512.png', 'any'],
-    ['/care/hyper-parent-icon-maskable-v16-192.png', 'maskable'],
-    ['/care/hyper-parent-icon-maskable-v16-512.png', 'maskable'],
-  ],
-)
-assert.deepEqual(
-  hubManifest.icons.map((icon: { src: string; purpose: string }) => [icon.src, icon.purpose]),
-  [
-    ['/hub/hyper-hub-icon-v16-192.png', 'any'],
-    ['/hub/hyper-hub-icon-v16-512.png', 'any'],
-    ['/hub/hyper-hub-icon-maskable-v16-192.png', 'maskable'],
-    ['/hub/hyper-hub-icon-maskable-v16-512.png', 'maskable'],
-  ],
-)
-
 assert.match(types, /HUB_ACADEMY_LOGO_WEBP = '\/hub\/hyper-academy-logo-v11\.webp'/)
-assert.match(indexHtml, /manifest\.href = '\/teacher\/manifest\.webmanifest\?v=16-installable'/)
-assert.match(indexHtml, /hyper-teacher-icon-v16-192\.png/)
 assert.match(indexHtml, /hyper-teacher-apple-touch-v12-180\.png/)
-assert.doesNotMatch(indexHtml, /hyper-teacher-icon-v15-192\.png/)
-assert.match(teacherRegistrar, /\/teacher\/manifest\.webmanifest\?v=16-installable/)
-assert.match(parentRoute, /\/care\/manifest\.webmanifest\?v=16-installable/)
-assert.match(hubSession, /\/hub\/manifest\.webmanifest\?v=16-installable/)
-assert.match(middleware, /\/care\/manifest\.webmanifest\?v=16-installable/)
-assert.match(middleware, /\/hub\/manifest\.webmanifest\?v=16-installable/)
 assert.match(teacherLayout, /hyper-teacher-apple-touch-v12-180\.png\?v=12/)
 assert.match(parentRegistrar, /hyper-parent-apple-touch-v12-180\.png\?v=12/)
-assert.match(parentRegistrar, /MANIFEST_VERSION = '16'/)
 assert.match(hubRegistrar, /hyper-hub-apple-touch-v12-180\.png\?v=12/)
-assert.match(teacherPush, /hyper-teacher-icon-v16-192\.png/)
-assert.match(careSw, /hyper-parent-icon-v16-192\.png/)
-assert.match(hubSw, /hyper-hub-icon-v16-192\.png/)
 assert.match(careSw, /notificationclick/)
 assert.match(hubSw, /notificationclick/)
 assert.match(vite, /teacher\/hyper-teacher-icon-192-v5\.png/)

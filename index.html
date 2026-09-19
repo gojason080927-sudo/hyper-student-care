@@ -47,10 +47,10 @@
         if (theme) theme.setAttribute('content', '#0B1F4A')
 
         if (isTeacher) {
-          if (manifest) manifest.href = '/teacher/manifest.webmanifest?v=16-installable'
+          if (manifest) manifest.href = '/teacher/manifest.webmanifest?v=18-installable'
           var icon = document.querySelector('link[rel="icon"]')
           if (icon) {
-            icon.setAttribute('href', '/teacher/hyper-teacher-icon-v16-192.png')
+            icon.setAttribute('href', '/teacher/hyper-teacher-icon-v18-192.png')
             icon.setAttribute('type', 'image/png')
           }
           var appleIcon = document.querySelector('link[rel="apple-touch-icon"]')
@@ -69,7 +69,7 @@
         }
 
         if (isHub) {
-          var hubHref = '/hub/manifest.webmanifest?v=16-installable'
+          var hubHref = '/hub/manifest.webmanifest?v=18-installable'
           var hubKeyMatch = path.match(/^\/hub\/([^/]+)/)
           if (hubKeyMatch) {
             try {
@@ -82,7 +82,7 @@
           if (manifest) manifest.href = hubHref
           var hubIcon = document.querySelector('link[rel="icon"]')
           if (hubIcon) {
-            hubIcon.setAttribute('href', '/hub/hyper-hub-icon-v16-192.png')
+            hubIcon.setAttribute('href', '/hub/hyper-hub-icon-v18-192.png')
             hubIcon.setAttribute('type', 'image/png')
           }
           var hubApple = document.querySelector('link[rel="apple-touch-icon"]')
@@ -100,7 +100,7 @@
           return
         }
 
-        var careHref = '/care/manifest.webmanifest?v=16-installable'
+        var careHref = '/care/manifest.webmanifest?v=18-installable'
         var careKeyMatch = path.match(/^\/care\/([^/]+)/)
         if (careKeyMatch) {
           try {
@@ -113,7 +113,7 @@
         if (manifest) manifest.href = careHref
         var careIcon = document.querySelector('link[rel="icon"]')
         if (careIcon) {
-          careIcon.setAttribute('href', '/care/hyper-parent-icon-v16-192.png')
+          careIcon.setAttribute('href', '/care/hyper-parent-icon-v18-192.png')
           careIcon.setAttribute('type', 'image/png')
         }
         var careApple = document.querySelector('link[rel="apple-touch-icon"]')
