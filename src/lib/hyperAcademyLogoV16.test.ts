@@ -5,6 +5,7 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'
 import sharp from 'sharp'
+import { chromeAdaptiveViewport, MASKABLE_ICON_PADDING_RATIO, VIEW_PORT_SCALE } from '../../scripts/chrome-webapk-icon-spec.mjs'
 
 const teacherManifest = JSON.parse(readFileSync('public/teacher/manifest.webmanifest', 'utf8'))
 const parentManifest = JSON.parse(readFileSync('public/care/manifest.webmanifest', 'utf8'))
@@ -20,6 +21,7 @@ const hubSession = readFileSync('src/hub/hubSession.ts', 'utf8')
 const middleware = readFileSync('middleware.ts', 'utf8')
 const vite = readFileSync('vite.config.ts', 'utf8')
 const generator = readFileSync('scripts/generate-pwa-icons-v16.mjs', 'utf8')
+const specSrc = readFileSync('scripts/chrome-webapk-icon-spec.mjs', 'utf8')
 const teacherPush = readFileSync('public/teacher/push-handlers.js', 'utf8')
 const careSw = readFileSync('public/care/sw.js', 'utf8')
 const hubSw = readFileSync('public/hub/sw.js', 'utf8')
@@ -69,7 +71,23 @@ function sameBytes(a: string, b: string) {
   return readFileSync(a).equals(readFileSync(b))
 }
 
-async function fillStats(path: string) {
+const padding = Math.round(MASKABLE_ICON_PADDING_RATIO * 512)
+const padded = 512 + 2 * padding
+const viewport = (padded * VIEW_PORT_SCALE) | 0
+const spec = chromeAdaptiveViewport(512)
+assert.equal(padding, 79)
+assert.equal(padded, 670)
+assert.equal(viewport, 446)
+assert.deepEqual(spec, { padding: 79, padded: 670, paddedOrigin: 112, viewport: 446, origin: 33 })
+assert.match(specSrc, /MASKABLE_SAFE_ZONE_RATIO = 4 \/ 5/)
+assert.match(specSrc, /ADAPTIVE_SAFE_ZONE_RATIO = 66 \/ 108/)
+assert.match(specSrc, /DEFAULT_VIEW_PORT_SCALE/)
+assert.match(generator, /chromeAdaptiveViewport/)
+assert.match(generator, /extractLayers/)
+assert.match(generator, /composeSpec/)
+assert.doesNotMatch(generator, /fills the black canvas/)
+
+async function fieldStats(path: string) {
   const { data, info } = await sharp(readFileSync(path)).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
   const w = info.width
   const ch = info.channels
@@ -84,6 +102,7 @@ async function fillStats(path: string) {
   let maxX = -1
   let maxY = -1
   let extWhite = 0
+  let gold = 0
   const seen = new Uint8Array(w * w)
   const stack: number[] = []
   const push = (x: number, y: number) => {
@@ -116,6 +135,7 @@ async function fillStats(path: string) {
   for (let y = 0; y < w; y++) {
     for (let x = 0; x < w; x++) {
       const [r, g, b] = at(x, y)
+      if (r > 150 && g > 90 && b < 160 && r > b + 40) gold++
       if (luma(r, g, b) <= 8 && r <= 8 && g <= 8 && b <= 8) continue
       if (x < minX) minX = x
       if (y < minY) minY = y
@@ -126,6 +146,7 @@ async function fillStats(path: string) {
   return {
     corners,
     extWhite,
+    gold,
     pctW: (maxX - minX + 1) / w,
     pctH: (maxY - minY + 1) / w,
     minX,
@@ -133,6 +154,23 @@ async function fillStats(path: string) {
     maxX,
     maxY,
   }
+}
+
+async function pixelDiff(a: string, b: string) {
+  const left = await sharp(readFileSync(a)).resize(512, 512).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+  const right = await sharp(readFileSync(b)).resize(512, 512).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+  let diff = 0
+  for (let i = 0; i < left.data.length; i += left.info.channels) {
+    if (
+      Math.abs(left.data[i] - right.data[i]) +
+        Math.abs(left.data[i + 1] - right.data[i + 1]) +
+        Math.abs(left.data[i + 2] - right.data[i + 2]) >
+      30
+    ) {
+      diff++
+    }
+  }
+  return diff / (512 * 512)
 }
 
 for (const file of V16_FILES) {
@@ -216,10 +254,9 @@ assert.match(careSw, /notificationclick/)
 assert.match(hubSw, /notificationclick/)
 assert.match(vite, /teacher\/hyper-teacher-icon-192-v5\.png/)
 assert.doesNotMatch(vite, /hyper-teacher-icon-v16/)
-assert.match(generator, /fills the black canvas|fill the black/)
 
-const v16 = await fillStats('public/teacher/hyper-teacher-icon-v16-512.png')
-const v15 = await fillStats('public/teacher/hyper-teacher-icon-v15-512.png')
+const v16 = await fieldStats('public/teacher/hyper-teacher-icon-v16-512.png')
+const v15 = await fieldStats('public/teacher/hyper-teacher-icon-v15-512.png')
 assert.deepEqual(v16.corners, [
   [0, 0, 0],
   [0, 0, 0],
@@ -227,9 +264,13 @@ assert.deepEqual(v16.corners, [
   [0, 0, 0],
 ])
 assert.equal(v16.extWhite, 0)
-assert.ok(v16.pctW >= 0.96 && v16.pctH >= 0.96, `v16 must fill the canvas, got ${v16.pctW} x ${v16.pctH}`)
-assert.ok(v16.minX <= 8 && v16.minY <= 8, 'v16 logo must reach the top/left of the black canvas')
-assert.ok(v16.maxX >= 503 && v16.maxY >= 503, 'v16 logo must reach the bottom/right of the black canvas')
-assert.ok(v15.pctW < 0.7, 'v15 must remain the small-badge version we replaced')
+assert.ok(v16.gold > 8000, `gold frame missing, got ${v16.gold}`)
+assert.ok(v16.minX >= spec.origin - 2 && v16.minX <= spec.origin + 16, `frame left ${v16.minX} vs origin ${spec.origin}`)
+assert.ok(v16.maxX >= spec.origin + spec.viewport - 16 && v16.maxX <= spec.origin + spec.viewport + 2, `frame right ${v16.maxX}`)
+assert.ok(v16.pctW > 0.8 && v16.pctW < 0.92, `artwork must track the 446 viewport, not 100% canvas, got ${v16.pctW}`)
+assert.ok(v16.pctH > 0.8 && v16.pctH < 0.92, `artwork must track the 446 viewport, not 100% canvas, got ${v16.pctH}`)
+assert.ok(v15.pctW < 0.7, 'v15 must remain the small-badge Production version')
+assert.ok((await pixelDiff('public/teacher/hyper-teacher-icon-v16-512.png', 'public/teacher/hyper-teacher-icon-v12-512.png')) > 0.4)
+assert.ok((await pixelDiff('public/teacher/hyper-teacher-icon-v16-512.png', 'public/teacher/hyper-teacher-icon-v15-512.png')) > 0.2)
 
-console.log('hyperAcademyLogoV16.test.ts passed')
+console.log('hyperAcademyLogoV16.test.ts passed', { spec, bbox: [v16.minX, v16.minY, v16.maxX, v16.maxY], pct: [v16.pctW, v16.pctH] })
