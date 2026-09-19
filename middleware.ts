@@ -28,9 +28,9 @@ const STATIC_ASSET =
 
 const TEACHER_MANIFEST_HREF = '/teacher/manifest.webmanifest'
 const HUB_MANIFEST_PATH = '/hub/manifest.webmanifest'
-const HUB_MANIFEST_HREF = '/hub/manifest.webmanifest?v=15-installable'
+const HUB_MANIFEST_HREF = '/hub/manifest.webmanifest?v=16-installable'
 const CARE_MANIFEST_PATH = '/care/manifest.webmanifest'
-const CARE_MANIFEST_HREF = '/care/manifest.webmanifest?v=15-installable'
+const CARE_MANIFEST_HREF = '/care/manifest.webmanifest?v=16-installable'
 const TEACHER_MANIFEST_LINK = `<link rel="manifest" id="app-manifest" href="${TEACHER_MANIFEST_HREF}" />`
 const HUB_KEY_RE = /^[A-Za-z0-9_-]{12,128}$/
 
