@@ -25,7 +25,7 @@ export function TeacherMobileLayout() {
 
     let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null
     if (favicon) {
-      favicon.href = '/teacher/hyper-teacher-icon-v14-192.png?v=14'
+      favicon.href = '/teacher/hyper-teacher-icon-v15-192.png?v=15'
       favicon.type = 'image/png'
     }
 

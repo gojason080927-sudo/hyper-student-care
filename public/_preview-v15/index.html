@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"/>
+  <title>HYPER WebAPK icon pipeline v15</title>
+  <style>
+    body { margin: 24px; background: #0c0e14; color: #d7dde8; font-family: sans-serif; }
+    img { max-width: 100%; height: auto; background: #12141a; }
+    h1,h2 { font-weight: 600; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+    figure { margin: 0; }
+    figcaption { margin-top: 8px; font-size: 13px; color: #9aa3b2; }
+  </style>
+</head>
+<body>
+  <h1>WebAPK pipeline — not a raw squircle</h1>
+  <p>Source: Chromium <code>WebappsIconUtils</code>. Maskable icons are padded then drawn as <code>AdaptiveIconDrawable</code>. Galaxy home and Samsung Settings both use that adaptive resource, so they match.</p>
+  <p><img src="pipeline-v14-vs-v15.png" alt="v14 vs v15 pipeline"/></p>
+  <h2>v15 stages</h2>
+  <div class="grid">
+    <figure><img src="v15-1-raw.png"/><figcaption>1. Raw source (what the PNG contains)</figcaption></figure>
+    <figure><img src="v15-2-any-legacy-white.png"/><figcaption>2. purpose:any legacy — 2/44 pad + white flatten</figcaption></figure>
+    <figure><img src="v15-3-maskable-padded.png"/><figcaption>3. maskable adaptive layer — 15.45% pad</figcaption></figure>
+    <figure><img src="v15-4-adaptive-viewport.png"/><figcaption>4. AdaptiveIconDrawable viewport (~87% of source)</figcaption></figure>
+    <figure><img src="v15-5-galaxy-squircle.png"/><figcaption>5. Galaxy One UI / Settings mask of #4</figcaption></figure>
+    <figure><img src="v15-6-galaxy-48dp.png"/><figcaption>6. ~48dp home tile of #5, not a raw-PNG squircle</figcaption></figure>
+  </div>
+</body>
+</html>
