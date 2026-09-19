@@ -4,6 +4,7 @@ import { useIsStandalone } from '../../hooks/useIsStandalone'
 import { usePwaInstall } from '../../hooks/usePwaInstall'
 import {
   kakaoOpenExternalHref,
+  parentAndroidChromeIntentHref,
   parentCareHomeAbsoluteUrl,
   resolveParentInstallGuide,
   type ParentInstallGuideKind,
@@ -17,7 +18,7 @@ const COPY: Record<
 > = {
   'kakao-android': {
     title: 'HYPER 학부모 앱 설치',
-    body: '카카오 안에서는 설치할 수 없습니다. 아래 버튼을 누르면 같은 자녀 화면이 Chrome에서 열립니다. 전환이 안 되면 화면 아래쪽 ⋮에서 「다른 브라우저로 열기」를 선택하세요.',
+    body: '카카오 안에서는 설치할 수 없습니다. 아래 버튼을 누르면 같은 자녀 화면이 Chrome에서 열립니다. Chrome이 없거나 전환이 안 되면 화면 아래쪽 ⋮에서 「다른 브라우저로 열기」를 선택하세요.',
     action: 'Chrome에서 HYPER 학부모 앱 설치',
   },
   'kakao-ios': {
@@ -60,7 +61,10 @@ export function ParentInstallGuide({ studentAccessKey = '' }: { studentAccessKey
   })
   const kakaoHref = useMemo(() => {
     if (typeof window === 'undefined') return null
-    if (kind !== 'kakao-android' && kind !== 'kakao-ios') return null
+    if (kind === 'kakao-android') {
+      return parentAndroidChromeIntentHref(window.location.origin, studentAccessKey)
+    }
+    if (kind !== 'kakao-ios') return null
     const careUrl = parentCareHomeAbsoluteUrl(window.location.origin, studentAccessKey)
     if (!careUrl) return null
     return kakaoOpenExternalHref(careUrl, window.location.origin)

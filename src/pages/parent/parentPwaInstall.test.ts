@@ -17,6 +17,7 @@ import {
 import { resolveHubInstallGuide } from '../../hub/hubInstallEnv.ts'
 import {
   kakaoOpenExternalHref,
+  parentAndroidChromeIntentHref,
   parentCareHomeAbsoluteUrl,
   resolveParentInstallGuide,
 } from '../../lib/parentInstallGuide.ts'
@@ -133,14 +134,50 @@ assert.equal(kakaoOpenExternalHref('javascript:alert(1)', ORIGIN), null)
 assert.match(kakaoOpenExternalHref(CARE_A, ORIGIN) ?? '', new RegExp(encodeURIComponent(START_A)))
 assert.doesNotMatch(kakaoOpenExternalHref(CARE_A, ORIGIN) ?? '', new RegExp(encodeURIComponent(START_B)))
 
+const CHROME_INTENT_A = `intent://hyper-student-care.vercel.app${START_A}#Intent;scheme=https;package=com.android.chrome;end`
+assert.equal(parentAndroidChromeIntentHref(ORIGIN, KEY_A), CHROME_INTENT_A)
+assert.equal(parentAndroidChromeIntentHref(ORIGIN, KEY_B)?.includes(KEY_B), true)
+assert.equal(parentAndroidChromeIntentHref(ORIGIN, KEY_A)?.includes(KEY_A), true)
+assert.doesNotMatch(parentAndroidChromeIntentHref(ORIGIN, KEY_A) ?? '', new RegExp(KEY_B))
+assert.match(parentAndroidChromeIntentHref(ORIGIN, KEY_A) ?? '', new RegExp(START_A.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+assert.doesNotMatch(parentAndroidChromeIntentHref(ORIGIN, KEY_A) ?? '', /browser_fallback_url/)
+assert.doesNotMatch(parentAndroidChromeIntentHref(ORIGIN, KEY_A) ?? '', /market:/)
+assert.doesNotMatch(parentAndroidChromeIntentHref(ORIGIN, KEY_A) ?? '', /com\.android\.vending/)
+assert.doesNotMatch(parentAndroidChromeIntentHref(ORIGIN, KEY_A) ?? '', /component=/)
+assert.doesNotMatch(parentAndroidChromeIntentHref(ORIGIN, KEY_A) ?? '', /googlechrome/)
+assert.doesNotMatch(parentAndroidChromeIntentHref(ORIGIN, KEY_A) ?? '', /kakaotalk:/)
+assert.equal(parentAndroidChromeIntentHref(ORIGIN, 'short'), null)
+assert.equal(parentAndroidChromeIntentHref('https://evil.example', KEY_A), null)
+assert.equal(parentAndroidChromeIntentHref('https://hyper-student-care.vercel.app.evil.example', KEY_A), null)
+assert.equal(parentAndroidChromeIntentHref('http://hyper-student-care.vercel.app', KEY_A), null)
+assert.equal(parentAndroidChromeIntentHref('https://hyper-student-care-git-preview.vercel.app', KEY_A), null)
+assert.equal(parentAndroidChromeIntentHref(`https://user:pass@hyper-student-care.vercel.app`, KEY_A), null)
+assert.equal(parentAndroidChromeIntentHref('javascript:alert(1)', KEY_A), null)
+assert.equal(parentAndroidChromeIntentHref(ORIGIN, `${KEY_A}/today-report`), null)
+assert.equal(parentAndroidChromeIntentHref(ORIGIN, `../hub/${KEY_A}`), null)
+
+const parsedIntent = /^intent:\/\/([^#]+)#Intent;scheme=https;package=com\.android\.chrome;end$/.exec(
+  parentAndroidChromeIntentHref(ORIGIN, KEY_A) ?? '',
+)
+assert.ok(parsedIntent)
+assert.equal(`https://${parsedIntent[1]}`, CARE_A)
+
 assert.match(guide, /Chrome에서 HYPER 학부모 앱 설치/)
 assert.match(guide, /HYPER 학부모 앱 설치/)
 assert.match(guide, /다른 브라우저로 열기/)
 assert.match(guide, /화면 아래쪽/)
+assert.match(guide, /Chrome이 없거나/)
+assert.match(guide, /parentAndroidChromeIntentHref/)
 assert.match(guide, /kakaoOpenExternalHref/)
 assert.match(guide, /parentCareHomeAbsoluteUrl/)
+assert.match(guide, /kind === 'kakao-android'/)
+assert.match(guide, /kind !== 'kakao-ios'/)
 assert.match(installLib, /kakaotalk:\/\/web\/openExternal/)
-assert.doesNotMatch(installLib, /package=com\.android\.chrome/)
+assert.match(installLib, /package=com\.android\.chrome/)
+assert.match(installLib, /PARENT_PWA_PRODUCTION_ORIGIN/)
+assert.doesNotMatch(installLib, /S\.browser_fallback_url/)
+assert.doesNotMatch(installLib, /market:\/\//)
+assert.doesNotMatch(installLib, /googlechrome:/)
 assert.match(guide, /홈 화면에 추가/)
 assert.match(guide, /usePwaInstall/)
 assert.match(guide, /Safari로 열기/)
@@ -148,10 +185,15 @@ assert.doesNotMatch(guide, /오른쪽 위 메뉴에서 Chrome/)
 assert.doesNotMatch(guide, /intent:\/\//)
 assert.doesNotMatch(guide, /package=com\.android\.chrome/)
 assert.doesNotMatch(guide, /googlechrome:/)
+assert.doesNotMatch(guide, /location\.href/)
+assert.doesNotMatch(guide, /location\.replace/)
 
 assert.match(hubGuide, /오른쪽 위 메뉴에서 Chrome 또는 Safari로 연 다음/)
 assert.doesNotMatch(hubGuide, /kakaoOpenExternalHref/)
+assert.doesNotMatch(hubGuide, /parentAndroidChromeIntentHref/)
 assert.doesNotMatch(hubGuide, /Chrome에서 HYPER 학부모 앱 설치/)
+assert.doesNotMatch(hubGuide, /intent:\/\//)
+assert.doesNotMatch(hubGuide, /package=com\.android\.chrome/)
 
 assert.match(home, /ParentInstallGuide studentAccessKey=\{student\.studentAccessKey\}/)
 assert.match(home, /ParentPushOptIn/)
@@ -186,6 +228,8 @@ assert.match(indexHtml, /\/care\/manifest\.webmanifest\?v=10-installable/)
 assert.match(middleware, /patchIndexHtmlForCare/)
 assert.match(middleware, /parseCareManifestStartParam/)
 assert.match(middleware, /CARE_MANIFEST_PATH/)
+assert.match(middleware, /const APP_ORIGIN = 'https:\/\/hyper-student-care\.vercel\.app'/)
+assert.match(installLib, /export const PARENT_PWA_PRODUCTION_ORIGIN = 'https:\/\/hyper-student-care\.vercel\.app'/)
 assert.doesNotMatch(middleware, /intent:\/\//)
 
 const patched = patchIndexHtmlForCare(indexHtml, START_A)
