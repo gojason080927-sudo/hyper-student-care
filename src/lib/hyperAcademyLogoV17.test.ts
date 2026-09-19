@@ -1,5 +1,5 @@
 /**
- * 실행: npx tsx src/lib/hyperAcademyLogoV16.test.ts
+ * 실행: npx tsx src/lib/hyperAcademyLogoV17.test.ts
  */
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
@@ -20,38 +20,39 @@ const parentRoute = readFileSync('src/lib/parentLastCareRoute.ts', 'utf8')
 const hubSession = readFileSync('src/hub/hubSession.ts', 'utf8')
 const middleware = readFileSync('middleware.ts', 'utf8')
 const vite = readFileSync('vite.config.ts', 'utf8')
-const generator = readFileSync('scripts/generate-pwa-icons-v16.mjs', 'utf8')
+const generator = readFileSync('scripts/generate-pwa-icons-v17.mjs', 'utf8')
 const specSrc = readFileSync('scripts/chrome-webapk-icon-spec.mjs', 'utf8')
 const teacherPush = readFileSync('public/teacher/push-handlers.js', 'utf8')
 const careSw = readFileSync('public/care/sw.js', 'utf8')
 const hubSw = readFileSync('public/hub/sw.js', 'utf8')
 
-const V16_FILES = [
-  'public/teacher/hyper-teacher-icon-v16-192.png',
-  'public/teacher/hyper-teacher-icon-v16-512.png',
-  'public/teacher/hyper-teacher-icon-maskable-v16-192.png',
-  'public/teacher/hyper-teacher-icon-maskable-v16-512.png',
-  'public/care/hyper-parent-icon-v16-192.png',
-  'public/care/hyper-parent-icon-v16-512.png',
-  'public/care/hyper-parent-icon-maskable-v16-192.png',
-  'public/care/hyper-parent-icon-maskable-v16-512.png',
-  'public/hub/hyper-hub-icon-v16-192.png',
-  'public/hub/hyper-hub-icon-v16-512.png',
-  'public/hub/hyper-hub-icon-maskable-v16-192.png',
-  'public/hub/hyper-hub-icon-maskable-v16-512.png',
+const V17_FILES = [
+  'public/teacher/hyper-teacher-icon-v17-192.png',
+  'public/teacher/hyper-teacher-icon-v17-512.png',
+  'public/teacher/hyper-teacher-icon-maskable-v17-192.png',
+  'public/teacher/hyper-teacher-icon-maskable-v17-512.png',
+  'public/care/hyper-parent-icon-v17-192.png',
+  'public/care/hyper-parent-icon-v17-512.png',
+  'public/care/hyper-parent-icon-maskable-v17-192.png',
+  'public/care/hyper-parent-icon-maskable-v17-512.png',
+  'public/hub/hyper-hub-icon-v17-192.png',
+  'public/hub/hyper-hub-icon-v17-512.png',
+  'public/hub/hyper-hub-icon-maskable-v17-192.png',
+  'public/hub/hyper-hub-icon-maskable-v17-512.png',
 ]
 
 const KEPT = [
   'public/teacher/hyper-teacher-apple-touch-v12-180.png',
   'public/care/hyper-parent-apple-touch-v12-180.png',
   'public/hub/hyper-hub-apple-touch-v12-180.png',
+  'public/teacher/hyper-teacher-icon-v16-512.png',
   'public/teacher/hyper-teacher-icon-v15-512.png',
   'public/teacher/hyper-teacher-icon-v14-512.png',
   'public/hub/hyper-academy-logo-v11.webp',
   'public/hub/hyper-academy-logo-v11.png',
 ]
 
-for (const file of [...V16_FILES, ...KEPT]) {
+for (const file of [...V17_FILES, ...KEPT]) {
   assert.equal(existsSync(file), true, `missing ${file}`)
 }
 
@@ -173,7 +174,7 @@ async function pixelDiff(a: string, b: string) {
   return diff / (512 * 512)
 }
 
-for (const file of V16_FILES) {
+for (const file of V17_FILES) {
   const meta = identify(file)
   const size = file.includes('512') ? 512 : 192
   assert.equal(meta.format, 'PNG', file)
@@ -186,52 +187,92 @@ assert.equal(sha256('public/teacher/hyper-teacher-apple-touch-v12-180.png'), 'c3
 assert.equal(sha256('public/teacher/hyper-teacher-icon-v15-512.png'), '9511201b77fc3563e7ea1a913d9a09b223a7f460c55d4122ff59cff7c7c14419')
 assert.equal(sha256('public/teacher/hyper-teacher-icon-v16-512.png'), '86d19447b385eec1a5112655739e97625a189c021f4274d88e7221645b06fa26')
 assert.equal(
-  sameBytes('public/teacher/hyper-teacher-icon-v16-512.png', 'public/teacher/hyper-teacher-icon-maskable-v16-512.png'),
+  sameBytes('public/teacher/hyper-teacher-icon-v17-512.png', 'public/teacher/hyper-teacher-icon-maskable-v17-512.png'),
   true,
 )
 assert.equal(
-  sameBytes('public/teacher/hyper-teacher-icon-v16-192.png', 'public/teacher/hyper-teacher-icon-maskable-v16-192.png'),
+  sameBytes('public/teacher/hyper-teacher-icon-v17-192.png', 'public/teacher/hyper-teacher-icon-maskable-v17-192.png'),
   true,
 )
-assert.equal(sameBytes('public/teacher/hyper-teacher-icon-v16-512.png', 'public/care/hyper-parent-icon-v16-512.png'), true)
-assert.equal(sameBytes('public/teacher/hyper-teacher-icon-v16-512.png', 'public/hub/hyper-hub-icon-v16-512.png'), true)
-assert.equal(sameBytes('public/teacher/hyper-teacher-icon-v16-512.png', 'public/teacher/hyper-teacher-icon-v15-512.png'), false)
+assert.equal(sameBytes('public/teacher/hyper-teacher-icon-v17-512.png', 'public/care/hyper-parent-icon-v17-512.png'), true)
+assert.equal(sameBytes('public/teacher/hyper-teacher-icon-v17-512.png', 'public/hub/hyper-hub-icon-v17-512.png'), true)
+assert.equal(sameBytes('public/teacher/hyper-teacher-icon-v17-512.png', 'public/teacher/hyper-teacher-icon-v15-512.png'), false)
 
 assert.equal(teacherManifest.id, '/teacher/mobile')
 assert.equal(teacherManifest.start_url, '/teacher/mobile')
 assert.equal(teacherManifest.scope, '/teacher/')
+assert.deepEqual(
+  teacherManifest.icons.map((icon: { src: string; sizes: string; purpose: string }) => [icon.src, icon.sizes, icon.purpose]),
+  [
+    ['/teacher/hyper-teacher-icon-v17-192.png', '192x192', 'any'],
+    ['/teacher/hyper-teacher-icon-v17-512.png', '512x512', 'any'],
+    ['/teacher/hyper-teacher-icon-maskable-v17-192.png', '192x192', 'maskable'],
+    ['/teacher/hyper-teacher-icon-maskable-v17-512.png', '512x512', 'maskable'],
+  ],
+)
 assert.equal(parentManifest.id, '/care/')
 assert.equal(parentManifest.start_url, '/care/')
 assert.equal(parentManifest.scope, '/care/')
 assert.equal(hubManifest.id, '/hub/')
 assert.equal(hubManifest.start_url, '/hub/')
 assert.equal(hubManifest.scope, '/hub/')
+assert.deepEqual(
+  parentManifest.icons.map((icon: { src: string; purpose: string }) => [icon.src, icon.purpose]),
+  [
+    ['/care/hyper-parent-icon-v17-192.png', 'any'],
+    ['/care/hyper-parent-icon-v17-512.png', 'any'],
+    ['/care/hyper-parent-icon-maskable-v17-192.png', 'maskable'],
+    ['/care/hyper-parent-icon-maskable-v17-512.png', 'maskable'],
+  ],
+)
+assert.deepEqual(
+  hubManifest.icons.map((icon: { src: string; purpose: string }) => [icon.src, icon.purpose]),
+  [
+    ['/hub/hyper-hub-icon-v17-192.png', 'any'],
+    ['/hub/hyper-hub-icon-v17-512.png', 'any'],
+    ['/hub/hyper-hub-icon-maskable-v17-192.png', 'maskable'],
+    ['/hub/hyper-hub-icon-maskable-v17-512.png', 'maskable'],
+  ],
+)
+
 assert.match(types, /HUB_ACADEMY_LOGO_WEBP = '\/hub\/hyper-academy-logo-v11\.webp'/)
+assert.match(indexHtml, /manifest\.href = '\/teacher\/manifest\.webmanifest\?v=17-installable'/)
+assert.match(indexHtml, /hyper-teacher-icon-v17-192\.png/)
 assert.match(indexHtml, /hyper-teacher-apple-touch-v12-180\.png/)
+assert.doesNotMatch(indexHtml, /hyper-teacher-icon-v15-192\.png/)
+assert.match(teacherRegistrar, /\/teacher\/manifest\.webmanifest\?v=17-installable/)
+assert.match(parentRoute, /\/care\/manifest\.webmanifest\?v=17-installable/)
+assert.match(hubSession, /\/hub\/manifest\.webmanifest\?v=17-installable/)
+assert.match(middleware, /\/care\/manifest\.webmanifest\?v=17-installable/)
+assert.match(middleware, /\/hub\/manifest\.webmanifest\?v=17-installable/)
 assert.match(teacherLayout, /hyper-teacher-apple-touch-v12-180\.png\?v=12/)
 assert.match(parentRegistrar, /hyper-parent-apple-touch-v12-180\.png\?v=12/)
+assert.match(parentRegistrar, /MANIFEST_VERSION = '17'/)
 assert.match(hubRegistrar, /hyper-hub-apple-touch-v12-180\.png\?v=12/)
+assert.match(teacherPush, /hyper-teacher-icon-v17-192\.png/)
+assert.match(careSw, /hyper-parent-icon-v17-192\.png/)
+assert.match(hubSw, /hyper-hub-icon-v17-192\.png/)
 assert.match(careSw, /notificationclick/)
 assert.match(hubSw, /notificationclick/)
 assert.match(vite, /teacher\/hyper-teacher-icon-192-v5\.png/)
-assert.doesNotMatch(vite, /hyper-teacher-icon-v16/)
+assert.doesNotMatch(vite, /hyper-teacher-icon-v17/)
 
-const v16 = await fieldStats('public/teacher/hyper-teacher-icon-v16-512.png')
-const v15 = await fieldStats('public/teacher/hyper-teacher-icon-v15-512.png')
-assert.deepEqual(v16.corners, [
+const v17 = await fieldStats('public/teacher/hyper-teacher-icon-v17-512.png')
+assert.deepEqual(v17.corners, [
   [0, 0, 0],
   [0, 0, 0],
   [0, 0, 0],
   [0, 0, 0],
 ])
-assert.equal(v16.extWhite, 0)
-assert.ok(v16.gold > 8000, `gold frame missing, got ${v16.gold}`)
-assert.ok(v16.minX >= spec.origin - 2 && v16.minX <= spec.origin + 16, `frame left ${v16.minX} vs origin ${spec.origin}`)
-assert.ok(v16.maxX >= spec.origin + spec.viewport - 16 && v16.maxX <= spec.origin + spec.viewport + 2, `frame right ${v16.maxX}`)
-assert.ok(v16.pctW > 0.8 && v16.pctW < 0.92, `artwork must track the 446 viewport, not 100% canvas, got ${v16.pctW}`)
-assert.ok(v16.pctH > 0.8 && v16.pctH < 0.92, `artwork must track the 446 viewport, not 100% canvas, got ${v16.pctH}`)
-assert.ok(v15.pctW < 0.7, 'v15 must remain the small-badge Production version')
-assert.ok((await pixelDiff('public/teacher/hyper-teacher-icon-v16-512.png', 'public/teacher/hyper-teacher-icon-v12-512.png')) > 0.4)
-assert.ok((await pixelDiff('public/teacher/hyper-teacher-icon-v16-512.png', 'public/teacher/hyper-teacher-icon-v15-512.png')) > 0.2)
+assert.equal(v17.extWhite, 0)
+assert.ok(v17.gold > 8000, `gold frame missing, got ${v17.gold}`)
+assert.ok(v17.minX >= spec.origin - 2 && v17.minX <= spec.origin + 16, `frame left ${v17.minX} vs origin ${spec.origin}`)
+assert.ok(v17.maxX >= spec.origin + spec.viewport - 16 && v17.maxX <= spec.origin + spec.viewport + 2, `frame right ${v17.maxX}`)
+assert.ok(v17.pctW > 0.8 && v17.pctW < 0.92, `artwork must track the 446 viewport, not 100% canvas, got ${v17.pctW}`)
+assert.ok(v17.pctH > 0.8 && v17.pctH < 0.92, `artwork must track the 446 viewport, not 100% canvas, got ${v17.pctH}`)
+assert.ok(v17.minX >= 33 && v17.maxX <= 478, 'v17 must stay inside the 446 black viewport')
+assert.ok(v17.pctW > 0.84, `v17 must be larger than v16 in the black field, got ${v17.pctW}`)
+assert.ok((await pixelDiff('public/teacher/hyper-teacher-icon-v17-512.png', 'public/teacher/hyper-teacher-icon-v16-512.png')) > 0.05)
+assert.ok((await pixelDiff('public/teacher/hyper-teacher-icon-v17-512.png', 'public/teacher/hyper-teacher-icon-v12-512.png')) > 0.4)
 
-console.log('hyperAcademyLogoV16.test.ts passed', { spec, bbox: [v16.minX, v16.minY, v16.maxX, v16.maxY], pct: [v16.pctW, v16.pctH] })
+console.log('hyperAcademyLogoV17.test.ts passed', { spec, bbox: [v17.minX, v17.minY, v17.maxX, v17.maxY], pct: [v17.pctW, v17.pctH] })

@@ -15,25 +15,25 @@
   "lang": "ko",
   "icons": [
     {
-      "src": "/care/hyper-parent-icon-v16-192.png",
+      "src": "/care/hyper-parent-icon-v17-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/care/hyper-parent-icon-v16-512.png",
+      "src": "/care/hyper-parent-icon-v17-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/care/hyper-parent-icon-maskable-v16-192.png",
+      "src": "/care/hyper-parent-icon-maskable-v17-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/care/hyper-parent-icon-maskable-v16-512.png",
+      "src": "/care/hyper-parent-icon-maskable-v17-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
