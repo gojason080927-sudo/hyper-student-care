@@ -26,12 +26,15 @@ const EXTERIOR = 150
 const FRAME_PAD = 4
 
 // Chosen after candidate boards (see /tmp/hyper-logo-v12-preview).
-// Picked from candidate boards: 86% fills Galaxy squircle without
-// seriously clipping circle-mask content. 97% iOS keeps black/gold
-// inside the ~22.4% continuous corner while staying large.
-const MASKABLE_FIT = Number(process.env.V12_MASKABLE_FIT || '0.86')
+// Maskable places the same tight-crop master used by `any` onto a
+// white canvas. 86% left a ~7% white ring on Galaxy One UI. 100%
+// matches `any` but clips the black frame corners on the squircle.
+// 98% is the largest fit with 0 Galaxy dark/gold clip.
+// 97% iOS is locked — do not change unless explicitly requested.
+const MASKABLE_FIT = Number(process.env.V12_MASKABLE_FIT || '0.98')
 const IOS_FIT = Number(process.env.V12_IOS_FIT || '0.97')
 const WRITE_FINALS = process.env.V12_FINALS !== '0'
+const MASKABLE_ONLY = process.env.V12_MASKABLE_ONLY === '1'
 
 function luma(r, g, b) {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b
@@ -171,7 +174,7 @@ async function main() {
   mkdirSync(join(root, 'public', 'hub'), { recursive: true })
   mkdirSync(PREVIEW, { recursive: true })
 
-  copyFileSync(ATTACHED_SOURCE, REPO_SOURCE)
+  if (!MASKABLE_ONLY) copyFileSync(ATTACHED_SOURCE, REPO_SOURCE)
   const sourceMeta = await sharp(REPO_SOURCE).metadata()
   if (sourceMeta.format !== 'png' || sourceMeta.width !== 1254 || sourceMeta.height !== 1254) {
     throw new Error(`unexpected source ${sourceMeta.format} ${sourceMeta.width}x${sourceMeta.height}`)
@@ -221,7 +224,7 @@ async function main() {
   const any512 = await sharp(anyMaster).resize(512, 512, { fit: 'fill' }).png({ compressionLevel: 9 }).toBuffer()
   const any192 = await sharp(anyMaster).resize(192, 192, { fit: 'fill' }).png({ compressionLevel: 9 }).toBuffer()
 
-  const maskFits = [0.82, 0.84, 0.85, 0.86, 0.87]
+  const maskFits = [0.86, 0.94, 0.96, 0.98, 1]
   const iosFits = [0.94, 0.95, 0.96, 0.97, 0.98]
   const mask512 = {}
   const ios180 = {}
@@ -258,33 +261,44 @@ async function main() {
     console.log('candidates only')
     return
   }
-  if (!mask512[MASKABLE_FIT] || !ios180[IOS_FIT]) {
-    throw new Error(`chosen fits missing mask=${MASKABLE_FIT} ios=${IOS_FIT}`)
+  if (!mask512[MASKABLE_FIT]) {
+    throw new Error(`chosen maskable fit missing mask=${MASKABLE_FIT}`)
+  }
+  if (!MASKABLE_ONLY && !ios180[IOS_FIT]) {
+    throw new Error(`chosen iOS fit missing ios=${IOS_FIT}`)
   }
 
   const mask192 = await fitOnWhite(anyMaster, MASKABLE_FIT, 192)
-  const apple180 = ios180[IOS_FIT]
+  const apple180 = MASKABLE_ONLY ? null : ios180[IOS_FIT]
 
   const teacher = {
-    'hyper-teacher-icon-v12-192.png': any192,
-    'hyper-teacher-icon-v12-512.png': any512,
     'hyper-teacher-icon-maskable-v12-192.png': mask192,
     'hyper-teacher-icon-maskable-v12-512.png': mask512[MASKABLE_FIT],
-    'hyper-teacher-apple-touch-v12-180.png': apple180,
   }
   const parent = {
-    'hyper-parent-icon-v12-192.png': any192,
-    'hyper-parent-icon-v12-512.png': any512,
     'hyper-parent-icon-maskable-v12-192.png': mask192,
     'hyper-parent-icon-maskable-v12-512.png': mask512[MASKABLE_FIT],
-    'hyper-parent-apple-touch-v12-180.png': apple180,
   }
   const hub = {
-    'hyper-hub-icon-v12-192.png': any192,
-    'hyper-hub-icon-v12-512.png': any512,
     'hyper-hub-icon-maskable-v12-192.png': mask192,
     'hyper-hub-icon-maskable-v12-512.png': mask512[MASKABLE_FIT],
-    'hyper-hub-apple-touch-v12-180.png': apple180,
+  }
+  if (!MASKABLE_ONLY) {
+    Object.assign(teacher, {
+      'hyper-teacher-icon-v12-192.png': any192,
+      'hyper-teacher-icon-v12-512.png': any512,
+      'hyper-teacher-apple-touch-v12-180.png': apple180,
+    })
+    Object.assign(parent, {
+      'hyper-parent-icon-v12-192.png': any192,
+      'hyper-parent-icon-v12-512.png': any512,
+      'hyper-parent-apple-touch-v12-180.png': apple180,
+    })
+    Object.assign(hub, {
+      'hyper-hub-icon-v12-192.png': any192,
+      'hyper-hub-icon-v12-512.png': any512,
+      'hyper-hub-apple-touch-v12-180.png': apple180,
+    })
   }
   for (const [name, buf] of Object.entries(teacher)) await writePng(join(root, 'public', 'teacher', name), buf)
   for (const [name, buf] of Object.entries(parent)) await writePng(join(root, 'public', 'care', name), buf)

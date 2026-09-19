@@ -183,7 +183,7 @@ assert.match(hubSw, /addEventListener\('push'/)
 assert.match(hubSw, /notificationclick/)
 assert.match(vite, /teacher\/hyper-teacher-icon-192-v5\.png/)
 assert.doesNotMatch(vite, /hyper-teacher-icon-v12/)
-assert.match(generator, /MASKABLE_FIT = Number\(process\.env\.V12_MASKABLE_FIT \|\| '0\.86'\)/)
+assert.match(generator, /MASKABLE_FIT = Number\(process\.env\.V12_MASKABLE_FIT \|\| '0\.98'\)/)
 assert.match(generator, /IOS_FIT = Number\(process\.env\.V12_IOS_FIT \|\| '0\.97'\)/)
 
 console.log('hyperAcademyLogoV12.test.ts passed')
