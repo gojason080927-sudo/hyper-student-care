@@ -78,9 +78,10 @@ async function iconStats(path: string) {
   const cy = (w - 1) / 2
   const radius = 0.4 * w
   let extWhite = 0
-  let inner = 0
-  let innerWhite = 0
   let inkOutside = 0
+  let ring = 0
+  let ringBlack = 0
+  let ringWhite = 0
   const seen = new Uint8Array(w * w)
   const stack: number[] = []
   const luma = (r: number, g: number, b: number) => 0.2126 * r + 0.7152 * g + 0.0722 * b
@@ -115,16 +116,24 @@ async function iconStats(path: string) {
     for (let x = 0; x < w; x++) {
       const [r, g, b] = at(x, y)
       const L = luma(r, g, b)
-      const inside = Math.hypot(x - cx, y - cy) <= radius
-      if (inside) {
-        inner++
-        if (L > 245) innerWhite++
-      } else if (L > 8 && !(r === 0 && g === 0 && b === 0)) {
-        inkOutside++
+      const dist = Math.hypot(x - cx, y - cy)
+      const inside = dist <= radius
+      if (!inside && L > 8 && !(r === 0 && g === 0 && b === 0)) inkOutside++
+      const nd = dist / w
+      if (nd >= 0.3 && nd <= 0.4) {
+        ring++
+        if (r <= 8 && g <= 8 && b <= 8) ringBlack++
+        if (L > 200) ringWhite++
       }
     }
   }
-  return { corners, extWhite, innerWhiteFrac: innerWhite / inner, inkOutside }
+  return {
+    corners,
+    extWhite,
+    inkOutside,
+    ringBlackFrac: ringBlack / ring,
+    ringWhiteFrac: ringWhite / ring,
+  }
 }
 
 for (const file of V15_FILES) {
@@ -280,7 +289,9 @@ assert.deepEqual(v15px.corners, [
 ])
 assert.equal(v15px.extWhite, 0)
 assert.equal(v15px.inkOutside, 0, 'v15 badge must stay inside the 80% circle')
-assert.ok(v15px.innerWhiteFrac < 0.28, `v15 inner 80% white plate ${v15px.innerWhiteFrac}`)
-assert.ok(v14px.innerWhiteFrac > 0.4, 'v14 inner 80% must still be the white-page failure case')
+assert.ok(v15px.ringBlackFrac > 0.75, `v15 safe-zone ring should be the black field, got ${v15px.ringBlackFrac}`)
+assert.ok(v15px.ringWhiteFrac < 0.15, `v15 safe-zone ring must not be a white plate, got ${v15px.ringWhiteFrac}`)
+assert.ok(v14px.ringWhiteFrac > 0.3, 'v14 safe-zone ring must still be the white-page failure case')
+assert.ok(v14px.ringBlackFrac < 0.35, 'v14 safe-zone ring is not a full-bleed field')
 
 console.log('hyperAcademyLogoV15.test.ts passed')
