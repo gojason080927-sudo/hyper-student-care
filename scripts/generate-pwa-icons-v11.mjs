@@ -24,7 +24,9 @@ const PREVIEW_DIR = '/tmp/hyper-logo-v11-preview'
 const DARK = 40
 const EXTERIOR = 150
 const FRAME_PAD = 6
-const MASKABLE_FIT = 0.64
+// 80%: rounded-square extent 0.616*0.80=0.493 stays inside a full-canvas
+// circle (0.50). 64% left a large white ring on Galaxy squircle.
+const MASKABLE_FIT = 0.80
 
 function luma(r, g, b) {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b
