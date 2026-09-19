@@ -49,8 +49,8 @@ const START_A = `/care/${KEY_A}`
 const START_B = `/care/${KEY_B}`
 const ORIGIN = 'https://hyper-student-care.vercel.app'
 const CARE_A = `${ORIGIN}${START_A}`
-const HREF_A = `/care/manifest.webmanifest?v=18-installable&start=${encodeURIComponent(START_A)}`
-const HREF_B = `/care/manifest.webmanifest?v=18-installable&start=${encodeURIComponent(START_B)}`
+const HREF_A = `/care/manifest.webmanifest?v=19-installable&start=${encodeURIComponent(START_A)}`
+const HREF_B = `/care/manifest.webmanifest?v=19-installable&start=${encodeURIComponent(START_B)}`
 const ANDROID_KAKAO =
   'Mozilla/5.0 (Linux; Android 14; SM-S911N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36 KAKAOTALK'
 const ANDROID_CHROME =
@@ -207,8 +207,8 @@ assert.match(pushClient, /PARENT_SW_SCOPE = '\/care\/'/)
 assert.match(pushOptIn, /알림 받기/)
 
 assert.equal(parentPwaManifestHref(KEY_A), HREF_A)
-assert.equal(parentPwaManifestHref(''), '/care/manifest.webmanifest?v=18-installable')
-assert.equal(parentPwaManifestHref('short'), '/care/manifest.webmanifest?v=18-installable')
+assert.equal(parentPwaManifestHref(''), '/care/manifest.webmanifest?v=19-installable')
+assert.equal(parentPwaManifestHref('short'), '/care/manifest.webmanifest?v=19-installable')
 assert.equal(parentCareHomePath(KEY_A), START_A)
 assert.equal(careLaunchPathFromPathname(START_A), START_A)
 assert.equal(careLaunchPathFromPathname(`${START_A}/today-report`), START_A)
@@ -221,10 +221,10 @@ assert.equal(parseCareManifestStartParam('javascript:alert(1)'), null)
 assert.equal(parseCareManifestStartParam(START_A), START_A)
 assert.equal(parseHubManifestStartParam(START_A), null)
 assert.equal(careManifestHrefForPath(START_A), HREF_A)
-assert.equal(careManifestHrefForPath('/care/'), '/care/manifest.webmanifest?v=18-installable')
+assert.equal(careManifestHrefForPath('/care/'), '/care/manifest.webmanifest?v=19-installable')
 
 assert.match(indexHtml, /encodeURIComponent\('\/care\/' \+ careKey\)/)
-assert.match(indexHtml, /\/care\/manifest\.webmanifest\?v=18-installable/)
+assert.match(indexHtml, /\/care\/manifest\.webmanifest\?v=19-installable/)
 assert.match(middleware, /patchIndexHtmlForCare/)
 assert.match(middleware, /parseCareManifestStartParam/)
 assert.match(middleware, /CARE_MANIFEST_PATH/)
@@ -239,7 +239,7 @@ assert.doesNotMatch(patched, new RegExp(encodeURIComponent(START_B)))
 assert.equal(patchIndexHtmlForCare(patched, START_A), patched)
 
 const hubPatched = patchIndexHtmlForHub(indexHtml, `/hub/${KEY_A}`)
-assert.match(hubPatched, /\/hub\/manifest\.webmanifest\?v=18-installable&start=/)
+assert.match(hubPatched, /\/hub\/manifest\.webmanifest\?v=19-installable&start=/)
 assert.doesNotMatch(
   hubPatched,
   /<link rel="manifest" id="app-manifest" href="\/care\/manifest\.webmanifest/,
@@ -330,7 +330,7 @@ try {
   assert.equal((JSON.parse(await manifestB.text()) as { start_url: string }).start_url, START_B)
 
   const staticCare = await runMiddleware(
-    new Request('https://hyper-student-care.vercel.app/care/manifest.webmanifest?v=18-installable', {
+    new Request('https://hyper-student-care.vercel.app/care/manifest.webmanifest?v=19-installable', {
       headers: { 'user-agent': IOS_SAFARI },
     }),
   )
@@ -366,7 +366,7 @@ try {
   const careRootHtml = await careRoot.text()
   assert.match(
     careRootHtml,
-    /<link rel="manifest" id="app-manifest" href="\/care\/manifest.webmanifest\?v=18-installable" \/>/,
+    /<link rel="manifest" id="app-manifest" href="\/care\/manifest.webmanifest\?v=19-installable" \/>/,
   )
   assert.doesNotMatch(
     careRootHtml,
@@ -380,7 +380,7 @@ try {
   )
   assert.ok(hubStillWorks)
   const hubHtml = await hubStillWorks.text()
-  assert.match(hubHtml, /\/hub\/manifest\.webmanifest\?v=18-installable&start=/)
+  assert.match(hubHtml, /\/hub\/manifest\.webmanifest\?v=19-installable&start=/)
   assert.doesNotMatch(
     hubHtml,
     /<link rel="manifest" id="app-manifest" href="\/care\/manifest\.webmanifest/,
