@@ -297,6 +297,20 @@ export function TeacherMobileTodayReportPage() {
               </MobileSectionAccordion>
             ))}
 
+            <MobileSectionAccordion
+              label="수업태도"
+              open={openSections.has('attitude')}
+              onToggle={() => toggleSection('attitude')}
+            >
+              <ClassAttitudeBulkPanel
+                key={`class-attitude-${date}-${className}`}
+                date={date}
+                className={className}
+                students={classStudents}
+                compact
+              />
+            </MobileSectionAccordion>
+
             <section className="tm-card px-3 py-3">
               <p className="mb-2 text-sm font-bold text-[#163A70]">입력 완료</p>
               <p className="mb-2 text-[11px] text-[#6B7280]">
@@ -320,20 +334,6 @@ export function TeacherMobileTodayReportPage() {
                 ))}
               </ul>
             </section>
-
-            <MobileSectionAccordion
-              label="수업태도"
-              open={openSections.has('attitude')}
-              onToggle={() => toggleSection('attitude')}
-            >
-              <ClassAttitudeBulkPanel
-                key={`class-attitude-${date}-${className}`}
-                date={date}
-                className={className}
-                students={classStudents}
-                compact
-              />
-            </MobileSectionAccordion>
           </>
         )}
       </div>
