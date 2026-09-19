@@ -34,8 +34,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(payload.title || 'HYPER Student Hub', {
       body: payload.body || '학생 학습 알림이 도착했습니다.',
-      icon: '/hub/hyper-hub-icon-v16-192.png',
-      badge: '/hub/hyper-hub-icon-v16-192.png',
+      icon: '/hub/hyper-hub-icon-v18-192.png',
+      badge: '/hub/hyper-hub-icon-v18-192.png',
       data: { url: payload.url || '/hub/' },
     }),
   )
