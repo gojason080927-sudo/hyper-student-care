@@ -32,21 +32,21 @@ const KEY_A = 'hubkeyAAAA1234567890abcd'
 const KEY_B = 'hubkeyBBBB1234567890abcd'
 const START_A = `/hub/${KEY_A}`
 const START_B = `/hub/${KEY_B}`
-const HREF_A = `/hub/manifest.webmanifest?v=18-installable&start=${encodeURIComponent(START_A)}`
-const HREF_B = `/hub/manifest.webmanifest?v=18-installable&start=${encodeURIComponent(START_B)}`
+const HREF_A = `/hub/manifest.webmanifest?v=20-installable&start=${encodeURIComponent(START_A)}`
+const HREF_B = `/hub/manifest.webmanifest?v=20-installable&start=${encodeURIComponent(START_B)}`
 
 assert.match(
   indexHtml,
   /<link rel="manifest" id="app-manifest" href="\/teacher\/manifest.webmanifest" \/>/,
 )
 assert.match(indexHtml, /isHub/)
-assert.match(indexHtml, /\/hub\/manifest.webmanifest\?v=18-installable/)
+assert.match(indexHtml, /\/hub\/manifest.webmanifest\?v=20-installable/)
 assert.match(indexHtml, /encodeURIComponent\('\/hub\/' \+ hubKey\)/)
 
 const patched = patchIndexHtmlForHub(indexHtml)
 assert.match(
   patched,
-  /<link rel="manifest" id="app-manifest" href="\/hub\/manifest.webmanifest\?v=18-installable" \/>/,
+  /<link rel="manifest" id="app-manifest" href="\/hub\/manifest.webmanifest\?v=20-installable" \/>/,
 )
 assert.doesNotMatch(
   patched,
@@ -56,7 +56,7 @@ assert.doesNotMatch(
   patched,
   /<link rel="manifest" id="app-manifest" href="\/teacher\/manifest.webmanifest" \/>/,
 )
-assert.match(patched, /manifest\.href = '\/teacher\/manifest.webmanifest\?v=18-installable'/)
+assert.match(patched, /manifest\.href = '\/teacher\/manifest.webmanifest\?v=20-installable'/)
 assert.match(patched, /isTeacher/)
 assert.notEqual(patched, indexHtml)
 assert.equal(patchIndexHtmlForHub(patched), patched)
@@ -64,13 +64,13 @@ assert.equal(patchIndexHtmlForHub(patched), patched)
 const patchedA = patchIndexHtmlForHub(indexHtml, START_A)
 assert.match(patchedA, new RegExp(`id="app-manifest" href="${HREF_A.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`))
 assert.doesNotMatch(patchedA, new RegExp(encodeURIComponent(START_B)))
-assert.match(patchedA, /manifest\.href = '\/teacher\/manifest.webmanifest\?v=18-installable'/)
+assert.match(patchedA, /manifest\.href = '\/teacher\/manifest.webmanifest\?v=20-installable'/)
 
 const patchedB = patchIndexHtmlForHub(indexHtml, `/hub/${KEY_B}/materials`)
 assert.match(patchedB, new RegExp(encodeURIComponent(START_B)))
 assert.doesNotMatch(patchedB, new RegExp(encodeURIComponent(START_A)))
 assert.notEqual(hubManifestHrefForPath(START_A), hubManifestHrefForPath(START_B))
-assert.equal(hubManifestHrefForPath('/hub/'), '/hub/manifest.webmanifest?v=18-installable')
+assert.equal(hubManifestHrefForPath('/hub/'), '/hub/manifest.webmanifest?v=20-installable')
 assert.equal(hubLaunchPathFromPathname('/hub/sw.js'), null)
 assert.equal(hubLaunchPathFromPathname('/hub/manifest.webmanifest'), null)
 assert.equal(parseHubManifestStartParam('https://evil.example/hub/x'), null)
@@ -78,7 +78,7 @@ assert.equal(parseHubManifestStartParam('/teacher/mobile'), null)
 assert.equal(parseHubManifestStartParam('/care/parentAccessKeyAAA'), null)
 assert.equal(parseHubManifestStartParam(START_A), START_A)
 assert.equal(hubPwaManifestHref(KEY_A), HREF_A)
-assert.equal(hubPwaManifestHref(''), '/hub/manifest.webmanifest?v=18-installable')
+assert.equal(hubPwaManifestHref(''), '/hub/manifest.webmanifest?v=20-installable')
 
 assert.match(middleware, /patchIndexHtmlForHub/)
 assert.match(middleware, /hubManifestHrefForPath/)
@@ -187,7 +187,7 @@ try {
   const hubRootHtml = await hubRoot.text()
   assert.match(
     hubRootHtml,
-    /<link rel="manifest" id="app-manifest" href="\/hub\/manifest.webmanifest\?v=18-installable" \/>/,
+    /<link rel="manifest" id="app-manifest" href="\/hub\/manifest.webmanifest\?v=20-installable" \/>/,
   )
   assert.doesNotMatch(
     hubRootHtml,
@@ -219,7 +219,7 @@ try {
   assert.notEqual(manifestBodyA.start_url, manifestBodyB.start_url)
 
   const staticManifest = await runHubMiddleware(
-    new Request('https://hyper-student-care.vercel.app/hub/manifest.webmanifest?v=18-installable', {
+    new Request('https://hyper-student-care.vercel.app/hub/manifest.webmanifest?v=20-installable', {
       headers: { 'user-agent': iphone },
     }),
   )
@@ -246,7 +246,7 @@ try {
   )
   assert.ok(careSafari)
   const careHtml = await careSafari.text()
-  assert.match(careHtml, /\/care\/manifest\.webmanifest\?v=18-installable&start=/)
+  assert.match(careHtml, /\/care\/manifest\.webmanifest\?v=20-installable&start=/)
   assert.match(careHtml, /start=%2Fcare%2FparentAccessKeyAAA/)
   assert.match(careHtml, /<div id="root"><\/div>/)
   assert.doesNotMatch(

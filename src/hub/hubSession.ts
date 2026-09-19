@@ -1,5 +1,5 @@
 const LAST_HUB_KEY = 'hyper-hub-last-access-key'
-const HUB_MANIFEST_HREF = '/hub/manifest.webmanifest?v=18-installable'
+const HUB_MANIFEST_HREF = '/hub/manifest.webmanifest?v=20-installable'
 const HUB_KEY_RE = /^[A-Za-z0-9_-]{12,128}$/
 
 export function rememberHubAccessKey(accessKey: string): void {
