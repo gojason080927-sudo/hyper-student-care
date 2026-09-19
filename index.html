@@ -50,7 +50,7 @@
           if (manifest) manifest.href = '/teacher/manifest.webmanifest?v=10-installable'
           var icon = document.querySelector('link[rel="icon"]')
           if (icon) {
-            icon.setAttribute('href', '/teacher/hyper-teacher-icon-v11-192.png')
+            icon.setAttribute('href', '/teacher/hyper-teacher-icon-v12-192.png')
             icon.setAttribute('type', 'image/png')
           }
           var appleIcon = document.querySelector('link[rel="apple-touch-icon"]')
@@ -59,7 +59,7 @@
             appleIcon.rel = 'apple-touch-icon'
             document.head.appendChild(appleIcon)
           }
-          appleIcon.href = '/teacher/hyper-teacher-icon-v11-192.png'
+          appleIcon.href = '/teacher/hyper-teacher-apple-touch-v12-180.png'
           if ('serviceWorker' in navigator) {
             navigator.serviceWorker
               .register('/teacher/sw.js', { scope: '/teacher/' })
@@ -82,7 +82,7 @@
           if (manifest) manifest.href = hubHref
           var hubIcon = document.querySelector('link[rel="icon"]')
           if (hubIcon) {
-            hubIcon.setAttribute('href', '/hub/hyper-hub-icon-v11-192.png')
+            hubIcon.setAttribute('href', '/hub/hyper-hub-icon-v12-192.png')
             hubIcon.setAttribute('type', 'image/png')
           }
           var hubApple = document.querySelector('link[rel="apple-touch-icon"]')
@@ -91,7 +91,7 @@
             hubApple.rel = 'apple-touch-icon'
             document.head.appendChild(hubApple)
           }
-          hubApple.href = '/hub/hyper-hub-icon-v11-192.png'
+          hubApple.href = '/hub/hyper-hub-apple-touch-v12-180.png'
           if ('serviceWorker' in navigator) {
             navigator.serviceWorker
               .register('/hub/sw.js', { scope: '/hub/', updateViaCache: 'none' })
@@ -113,7 +113,7 @@
         if (manifest) manifest.href = careHref
         var careIcon = document.querySelector('link[rel="icon"]')
         if (careIcon) {
-          careIcon.setAttribute('href', '/care/hyper-parent-icon-v11-192.png')
+          careIcon.setAttribute('href', '/care/hyper-parent-icon-v12-192.png')
           careIcon.setAttribute('type', 'image/png')
         }
         var careApple = document.querySelector('link[rel="apple-touch-icon"]')
@@ -122,7 +122,7 @@
           careApple.rel = 'apple-touch-icon'
           document.head.appendChild(careApple)
         }
-        careApple.href = '/care/hyper-parent-icon-v11-192.png'
+        careApple.href = '/care/hyper-parent-apple-touch-v12-180.png'
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker
             .register('/care/sw.js', { scope: '/care/' })
