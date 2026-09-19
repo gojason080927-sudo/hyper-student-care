@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { parentPwaManifestHref, rememberParentAccessKey } from '../../lib/parentLastCareRoute'
 import { registerParentServiceWorker } from '../../lib/parentPushClient'
 
-const MANIFEST_VERSION = '12'
+const MANIFEST_VERSION = '13'
 
 type ParentPwaRegistrarProps = {
   studentAccessKey?: string
@@ -43,7 +43,7 @@ export function ParentPwaRegistrar({ studentAccessKey = '' }: ParentPwaRegistrar
 
     let favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null
     if (favicon) {
-      favicon.href = `/care/hyper-parent-icon-v12-192.png?v=${MANIFEST_VERSION}`
+      favicon.href = `/care/hyper-parent-icon-v13-192.png?v=${MANIFEST_VERSION}`
       favicon.type = 'image/png'
     }
 
