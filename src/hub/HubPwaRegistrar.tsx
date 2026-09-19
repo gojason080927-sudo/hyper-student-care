@@ -28,7 +28,7 @@ export function HubPwaRegistrar({ accessKey = '' }: { accessKey?: string }) {
 
     const favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null
     if (favicon) {
-      favicon.href = '/hub/hyper-hub-icon-v16-192.png?v=16'
+      favicon.href = '/hub/hyper-hub-icon-v17-192.png?v=16'
       favicon.type = 'image/png'
     }
 
