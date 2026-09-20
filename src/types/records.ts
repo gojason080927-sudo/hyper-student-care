@@ -132,8 +132,16 @@ export type DailyLearningDiagnosisData = {
   englishVocabTotalWords: number | null
   /** 틀린 단어 절대 개수. Weekly SUMMARY 감점에만 사용 */
   englishVocabWrongWords: number | null
-  /** 수학 일일테스트 형식. 'fixed-wrong-v1'이면 오답 개수 입력 + 80점 합격 */
-  mathDailyTestFormat: 'fixed-wrong-v1' | null
+  /** 수학 일일테스트 형식. 중등 오답입력 / 고등 최소입력 */
+  mathDailyTestFormat: 'fixed-wrong-v1' | 'high-recovery-v1' | null
+  /** 고등 최소입력 raw. 1차 오답 수 */
+  mathHighFirstWrongCount: number | null
+  /** 고등 최소입력 raw. 종료 차시 1~4 */
+  mathHighEndSession: 1 | 2 | 3 | 4 | null
+  /** 고등 최소입력 raw. 종료 3차 이상일 때만 3차 실제 문제 수 */
+  mathHighSession3Questions: number | null
+  /** 고등 최소입력 raw. 종료 4차일 때만 4차 실제 문제 수 */
+  mathHighSession4Questions: number | null
 }
 
 export type MathWrongCause = '개념 부족' | '계산 실수' | '문제 이해 부족'

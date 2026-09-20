@@ -3,6 +3,11 @@ import {
   EMPTY_DAILY_LEARNING_DIAGNOSIS,
   normalizeDailyLearningDiagnosis,
 } from './learningDiagnosis'
+import {
+  highRecoveryWeeklyFacts,
+  isMiddleSchoolGrade,
+  usesHighRecoveryMathDailyTest,
+} from './mathHighRecovery'
 
 export const MATH_DAILY_TEST_FORMAT_FIXED_WRONG = 'fixed-wrong-v1' as const
 
@@ -91,7 +96,10 @@ export function validateMathFixedWrongDrafts(drafts: MathFixedWrongDrafts): stri
 export function isLegacyMathDailyTestRecord(record: DailyTestRecord): boolean {
   if (!isMathSubject(record.subject)) return false
   const diagnosis = normalizeDailyLearningDiagnosis(record.learningDiagnosis)
-  if (diagnosis.mathDailyTestFormat === MATH_DAILY_TEST_FORMAT_FIXED_WRONG) {
+  if (
+    diagnosis.mathDailyTestFormat === MATH_DAILY_TEST_FORMAT_FIXED_WRONG ||
+    diagnosis.mathDailyTestFormat === 'high-recovery-v1'
+  ) {
     return false
   }
   const sessions = Array.isArray(record.sessionResults) ? record.sessionResults : []
@@ -110,10 +118,16 @@ export function usesFixedWrongMathDailyTest(record: DailyTestRecord): boolean {
 export function shouldUseFixedWrongMathInput(
   subject: string,
   record?: DailyTestRecord | null,
+  grade?: string | null,
 ): boolean {
   if (!isMathSubject(subject)) return false
-  if (!record) return true
-  return !isLegacyMathDailyTestRecord(record)
+  if (record) {
+    if (usesHighRecoveryMathDailyTest(record)) return false
+    const diagnosis = normalizeDailyLearningDiagnosis(record.learningDiagnosis)
+    if (diagnosis.mathDailyTestFormat === MATH_DAILY_TEST_FORMAT_FIXED_WRONG) return true
+    return !isLegacyMathDailyTestRecord(record) && isMiddleSchoolGrade(grade)
+  }
+  return isMiddleSchoolGrade(grade)
 }
 
 export function applyFixedWrongFormatToDiagnosis(
@@ -122,6 +136,10 @@ export function applyFixedWrongFormatToDiagnosis(
   return {
     ...normalizeDailyLearningDiagnosis(diagnosis ?? EMPTY_DAILY_LEARNING_DIAGNOSIS),
     mathDailyTestFormat: MATH_DAILY_TEST_FORMAT_FIXED_WRONG,
+    mathHighFirstWrongCount: null,
+    mathHighEndSession: null,
+    mathHighSession3Questions: null,
+    mathHighSession4Questions: null,
   }
 }
 
@@ -196,11 +214,16 @@ export type MathWeeklyRecoveryFacts = {
   recoveredWrong: number
   unrecoveredWrong: number
   retakeQuestionCount: number
+  /** 발견 오답이 0이면 해당 없음 */
+  recoveryRate: number | null
 }
 
 export function mathWeeklyRecoveryFacts(
   record: DailyTestRecord,
 ): MathWeeklyRecoveryFacts | null {
+  if (usesHighRecoveryMathDailyTest(record)) {
+    return highRecoveryWeeklyFacts(record)
+  }
   if (!usesFixedWrongMathDailyTest(record)) return null
   const sessions = Array.isArray(record.sessionResults) ? record.sessionResults : []
   const first = sessions.find((item) => item.session === 1)
@@ -218,5 +241,6 @@ export function mathWeeklyRecoveryFacts(
     recoveredWrong,
     unrecoveredWrong: discoveredWrong - recoveredWrong,
     retakeQuestionCount,
+    recoveryRate: discoveredWrong === 0 ? null : (recoveredWrong / discoveredWrong) * 100,
   }
 }

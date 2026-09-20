@@ -29,7 +29,15 @@ import type { StudentDayRecords } from './todayReportLookup'
 
 function hasActiveDailyTest(draft: ClassBulkStudentDraft): boolean {
   if (draft.sessionResults.some((session) => session.status !== '미응시')) return true
-  return Object.values(draft.mathWrongCounts ?? {}).some((value) => String(value).trim() !== '')
+  if (Object.values(draft.mathWrongCounts ?? {}).some((value) => String(value).trim() !== '')) {
+    return true
+  }
+  return (
+    (draft.highFirstWrong ?? '').trim() !== '' ||
+    draft.highEndSession !== '' ||
+    (draft.highSession3Questions ?? '').trim() !== '' ||
+    (draft.highSession4Questions ?? '').trim() !== ''
+  )
 }
 
 function buildProgressRecord(
@@ -197,7 +205,12 @@ export async function saveClassBulkStudentDraft(
         learningDiagnosis:
           draft.learningDiagnosis ??
           existing.dailyTest?.learningDiagnosis ?? { ...EMPTY_DAILY_LEARNING_DIAGNOSIS },
+        studentGrade: draft.studentGrade,
         mathWrongCounts: draft.mathWrongCounts,
+        highFirstWrong: draft.highFirstWrong,
+        highEndSession: draft.highEndSession,
+        highSession3Questions: draft.highSession3Questions,
+        highSession4Questions: draft.highSession4Questions,
       }
       const payload = dailyTestFormToSavePayload(form)
       const ts = createTimestamps()

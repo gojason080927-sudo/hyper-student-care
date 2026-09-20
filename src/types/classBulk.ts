@@ -7,6 +7,7 @@ import type {
 
 export type ClassBulkStudentDraft = {
   studentId: string
+  studentGrade?: string
   attendanceStatus: AttendanceStatus | ''
   attendanceReason: string
   mathProgress: string
@@ -22,6 +23,10 @@ export type ClassBulkStudentDraft = {
   sessionResults: TestSessionResult[]
   learningDiagnosis: DailyLearningDiagnosisData
   mathWrongCounts: Record<1 | 2 | 3 | 4, string>
+  highFirstWrong: string
+  highEndSession: '' | 1 | 2 | 3 | 4
+  highSession3Questions: string
+  highSession4Questions: string
   recordIds: {
     attendance?: string
     homework?: string

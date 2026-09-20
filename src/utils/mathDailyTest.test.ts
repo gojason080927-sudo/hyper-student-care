@@ -145,7 +145,10 @@ const legacyMath = mathRecord({
 })
 assert.equal(isLegacyMathDailyTestRecord(legacyMath), true)
 assert.equal(shouldUseFixedWrongMathInput('수학', legacyMath), false)
-assert.equal(shouldUseFixedWrongMathInput('수학'), true)
+assert.equal(shouldUseFixedWrongMathInput('수학'), false)
+assert.equal(shouldUseFixedWrongMathInput('수학', undefined, '중2'), true)
+assert.equal(shouldUseFixedWrongMathInput('수학', undefined, '고1'), false)
+assert.equal(shouldUseFixedWrongMathInput('수학', undefined, '초5'), false)
 assert.equal(shouldUseFixedWrongMathInput('영어'), false)
 
 const v1Math = mathRecord({
@@ -158,6 +161,7 @@ const v1Math = mathRecord({
 assert.equal(usesFixedWrongMathDailyTest(v1Math), true)
 assert.equal(isLegacyMathDailyTestRecord(v1Math), false)
 assert.equal(shouldUseFixedWrongMathInput('수학', v1Math), true)
+assert.equal(shouldUseFixedWrongMathInput('수학', v1Math, '고1'), true)
 
 const firstPassFacts = mathWeeklyRecoveryFacts(v1Math)
 assert.deepEqual(firstPassFacts, {
@@ -165,6 +169,7 @@ assert.deepEqual(firstPassFacts, {
   recoveredWrong: 1,
   unrecoveredWrong: 0,
   retakeQuestionCount: 0,
+  recoveryRate: 100,
 })
 
 const failedOpen = mathRecord({
@@ -176,6 +181,7 @@ assert.deepEqual(mathWeeklyRecoveryFacts(failedOpen), {
   recoveredWrong: 0,
   unrecoveredWrong: 3,
   retakeQuestionCount: 0,
+  recoveryRate: 0,
 })
 
 const recovered = mathRecord({
@@ -187,6 +193,7 @@ assert.deepEqual(mathWeeklyRecoveryFacts(recovered), {
   recoveredWrong: 3,
   unrecoveredWrong: 0,
   retakeQuestionCount: 5,
+  recoveryRate: 100,
 })
 
 assert.equal(mathWeeklyRecoveryFacts(legacyMath), null)
@@ -199,6 +206,7 @@ const form: DailyTestFormData = {
   memo: '',
   sessionResults: firstPass,
   learningDiagnosis: { ...EMPTY_DAILY_LEARNING_DIAGNOSIS },
+  studentGrade: '중2',
   mathWrongCounts: { 1: '2', 2: '1', 3: '', 4: '' },
 }
 const saved = dailyTestFormToSavePayload(form)
@@ -323,6 +331,8 @@ assert.doesNotMatch(
 )
 assert.match(readFileSync('src/components/todayReport/ClassDailyTestBulkPanel.tsx', 'utf8'), /MathFixedWrongSessionFields/)
 assert.match(readFileSync('src/components/todayReport/TodayReportView.tsx', 'utf8'), /MathFixedWrongSessionFields/)
+assert.match(readFileSync('src/components/todayReport/TodayReportView.tsx', 'utf8'), /HighRecoveryFields/)
+assert.match(readFileSync('src/components/todayReport/ClassDailyTestBulkPanel.tsx', 'utf8'), /HighRecoveryFields/)
 assert.doesNotMatch(readFileSync('src/utils/studentCare/weeklySummary.ts', 'utf8'), /conceptLackCount \+ .*incorrectCount/)
 
 console.log('mathDailyTest OK')

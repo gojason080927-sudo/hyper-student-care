@@ -133,7 +133,16 @@ export function buildDailyTestDraft(
   _date: string,
 ): Pick<
   DailyTestFormData,
-  'testName' | 'subject' | 'memo' | 'sessionResults' | 'learningDiagnosis' | 'mathWrongCounts'
+  | 'testName'
+  | 'subject'
+  | 'memo'
+  | 'sessionResults'
+  | 'learningDiagnosis'
+  | 'mathWrongCounts'
+  | 'highFirstWrong'
+  | 'highEndSession'
+  | 'highSession3Questions'
+  | 'highSession4Questions'
 > {
   if (record) {
     const form = dailyTestRecordToForm(record)
@@ -144,6 +153,10 @@ export function buildDailyTestDraft(
       sessionResults: form.sessionResults,
       learningDiagnosis: form.learningDiagnosis,
       mathWrongCounts: form.mathWrongCounts ?? emptyMathFixedWrongDrafts(),
+      highFirstWrong: form.highFirstWrong ?? '',
+      highEndSession: form.highEndSession ?? '',
+      highSession3Questions: form.highSession3Questions ?? '',
+      highSession4Questions: form.highSession4Questions ?? '',
     }
   }
   return {
@@ -153,18 +166,24 @@ export function buildDailyTestDraft(
     sessionResults: createDefaultSessionResults(),
     learningDiagnosis: { ...EMPTY_DAILY_LEARNING_DIAGNOSIS },
     mathWrongCounts: emptyMathFixedWrongDrafts(),
+    highFirstWrong: '',
+    highEndSession: '',
+    highSession3Questions: '',
+    highSession4Questions: '',
   }
 }
 
 export function buildClassBulkStudentDraft(
   studentId: string,
   records: StudentDayRecords,
+  studentGrade?: string,
 ): ClassBulkStudentDraft {
   const homeworkFields = resolveHomeworkFields(records.homework, records.todayAssignment)
   const dailyTest = buildDailyTestDraft(records.dailyTest, studentId, '')
 
   return {
     studentId,
+    studentGrade,
     attendanceStatus: records.attendance?.status ?? '',
     attendanceReason: records.attendance?.reason ?? '',
     mathProgress: formatTodayProgressContent(records.progressMath),
@@ -183,6 +202,10 @@ export function buildClassBulkStudentDraft(
     sessionResults: dailyTest.sessionResults,
     learningDiagnosis: dailyTest.learningDiagnosis,
     mathWrongCounts: dailyTest.mathWrongCounts ?? emptyMathFixedWrongDrafts(),
+    highFirstWrong: dailyTest.highFirstWrong ?? '',
+    highEndSession: dailyTest.highEndSession ?? '',
+    highSession3Questions: dailyTest.highSession3Questions ?? '',
+    highSession4Questions: dailyTest.highSession4Questions ?? '',
     recordIds: {
       attendance: records.attendance?.id,
       homework: records.homework?.id,

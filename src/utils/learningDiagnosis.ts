@@ -42,8 +42,12 @@ export type DailyLearningDiagnosis = {
   englishVocabTotalWords: number | null
   /** 틀린 단어 절대 개수. Weekly SUMMARY 감점에만 사용 */
   englishVocabWrongWords: number | null
-  /** 수학 일일테스트 형식. 'fixed-wrong-v1'이면 오답 개수 입력 + 80점 합격 */
-  mathDailyTestFormat: 'fixed-wrong-v1' | null
+  /** 수학 일일테스트 형식. 중등 오답입력 / 고등 최소입력 */
+  mathDailyTestFormat: 'fixed-wrong-v1' | 'high-recovery-v1' | null
+  mathHighFirstWrongCount: number | null
+  mathHighEndSession: 1 | 2 | 3 | 4 | null
+  mathHighSession3Questions: number | null
+  mathHighSession4Questions: number | null
 }
 
 export const EMPTY_DAILY_LEARNING_DIAGNOSIS: DailyLearningDiagnosis = {
@@ -65,6 +69,10 @@ export const EMPTY_DAILY_LEARNING_DIAGNOSIS: DailyLearningDiagnosis = {
   englishVocabTotalWords: null,
   englishVocabWrongWords: null,
   mathDailyTestFormat: null,
+  mathHighFirstWrongCount: null,
+  mathHighEndSession: null,
+  mathHighSession3Questions: null,
+  mathHighSession4Questions: null,
 }
 
 export function isMathWrongCause(value: unknown): value is MathWrongCause {
@@ -120,8 +128,15 @@ function toVocabTestFormat(value: unknown): 'cumulative' | null {
   return value === 'cumulative' ? 'cumulative' : null
 }
 
-function toMathDailyTestFormat(value: unknown): 'fixed-wrong-v1' | null {
-  return value === 'fixed-wrong-v1' ? 'fixed-wrong-v1' : null
+function toMathDailyTestFormat(value: unknown): 'fixed-wrong-v1' | 'high-recovery-v1' | null {
+  if (value === 'fixed-wrong-v1' || value === 'high-recovery-v1') return value
+  return null
+}
+
+function toHighEndSession(value: unknown): 1 | 2 | 3 | 4 | null {
+  const session = Number(value)
+  if (session === 1 || session === 2 || session === 3 || session === 4) return session
+  return null
 }
 
 function toNonNegInt(value: unknown): number {
@@ -255,6 +270,10 @@ export function normalizeDailyLearningDiagnosis(raw: unknown): DailyLearningDiag
     englishVocabTotalWords: toNullableNonNegInt(row.englishVocabTotalWords),
     englishVocabWrongWords: toNullableNonNegInt(row.englishVocabWrongWords),
     mathDailyTestFormat: toMathDailyTestFormat(row.mathDailyTestFormat),
+    mathHighFirstWrongCount: toNullableNonNegInt(row.mathHighFirstWrongCount),
+    mathHighEndSession: toHighEndSession(row.mathHighEndSession),
+    mathHighSession3Questions: toNullableNonNegInt(row.mathHighSession3Questions),
+    mathHighSession4Questions: toNullableNonNegInt(row.mathHighSession4Questions),
   }
 }
 
@@ -283,6 +302,11 @@ export function hasDailyLearningDiagnosisContent(
   if (d.englishVocabTotalWords !== null) return true
   if (d.englishVocabWrongWords !== null) return true
   if (d.mathDailyTestFormat === 'fixed-wrong-v1') return true
+  if (d.mathDailyTestFormat === 'high-recovery-v1') return true
+  if (d.mathHighFirstWrongCount !== null) return true
+  if (d.mathHighEndSession !== null) return true
+  if (d.mathHighSession3Questions !== null) return true
+  if (d.mathHighSession4Questions !== null) return true
   return false
 }
 

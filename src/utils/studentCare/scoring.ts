@@ -11,6 +11,7 @@ import type {
   TestSessionResult,
 } from '../../types/records.ts'
 import { usesCumulativeEnglishVocabTest } from '../englishVocabTest.ts'
+import { usesHighRecoveryMathDailyTest } from '../mathHighRecovery.ts'
 import { classifyHomeworkStatus } from '../homework.ts'
 import {
   ATTENDANCE_INDEX,
@@ -146,7 +147,7 @@ function sessionAttemptScore(session: TestSessionResult): number | null {
 }
 
 export function dailyTestRecordScore(record: DailyTestRecord): number | null {
-  if (usesCumulativeEnglishVocabTest(record)) return null
+  if (usesCumulativeEnglishVocabTest(record) || usesHighRecoveryMathDailyTest(record)) return null
   const sessions: TestSessionResult[] = Array.isArray(record.sessionResults)
     ? record.sessionResults
     : []

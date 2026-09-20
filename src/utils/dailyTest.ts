@@ -16,6 +16,14 @@ import {
   shouldUseFixedWrongMathInput,
   type MathFixedWrongDrafts,
 } from './mathDailyTest'
+import {
+  applyHighRecoveryToDiagnosis,
+  highDraftsFromDiagnosis,
+  parseHighRecoveryDrafts,
+  shouldUseHighRecoveryMathInput,
+  type HighRecoveryDrafts,
+  type HighRecoveryEndSession,
+} from './mathHighRecovery'
 
 export const DAILY_TEST_PASS_RATE = 85
 export const DAILY_TEST_FULL_SCORE = 100
@@ -273,6 +281,11 @@ export type DailyTestFormData = {
   vocabTotalWords?: string
   vocabWrongWords?: string
   mathWrongCounts?: MathFixedWrongDrafts
+  studentGrade?: string
+  highFirstWrong?: string
+  highEndSession?: '' | HighRecoveryEndSession
+  highSession3Questions?: string
+  highSession4Questions?: string
 }
 
 export function dailyTestRecordToForm(record: DailyTestRecord): DailyTestFormData {
@@ -298,6 +311,31 @@ export function dailyTestRecordToForm(record: DailyTestRecord): DailyTestFormDat
     mathWrongCounts: shouldUseFixedWrongMathInput(record.subject, record)
       ? mathWrongDraftsFromSessions(sessionResults)
       : emptyMathFixedWrongDrafts(),
+    ...highFormFieldsFromDiagnosis(learningDiagnosis),
+  }
+}
+
+function highFormFieldsFromDiagnosis(
+  diagnosis: DailyTestRecord['learningDiagnosis'],
+): Pick<
+  DailyTestFormData,
+  'highFirstWrong' | 'highEndSession' | 'highSession3Questions' | 'highSession4Questions'
+> {
+  const drafts = highDraftsFromDiagnosis(diagnosis)
+  return {
+    highFirstWrong: drafts.firstWrong,
+    highEndSession: drafts.endSession,
+    highSession3Questions: drafts.session3Questions,
+    highSession4Questions: drafts.session4Questions,
+  }
+}
+
+export function highDraftsFromForm(form: DailyTestFormData): HighRecoveryDrafts {
+  return {
+    firstWrong: form.highFirstWrong ?? '',
+    endSession: form.highEndSession ?? '',
+    session3Questions: form.highSession3Questions ?? '',
+    session4Questions: form.highSession4Questions ?? '',
   }
 }
 
@@ -306,7 +344,11 @@ export function shouldUseCumulativeEnglishVocabForm(form: DailyTestFormData): bo
 }
 
 export function shouldUseFixedWrongMathForm(form: DailyTestFormData): boolean {
-  return shouldUseFixedWrongMathInput(form.subject, formRecordHint(form))
+  return shouldUseFixedWrongMathInput(form.subject, formRecordHint(form), form.studentGrade)
+}
+
+export function shouldUseHighRecoveryMathForm(form: DailyTestFormData): boolean {
+  return shouldUseHighRecoveryMathInput(form.subject, formRecordHint(form), form.studentGrade)
 }
 
 function formRecordHint(form: DailyTestFormData): DailyTestRecord | null {
@@ -334,6 +376,7 @@ export function dailyTestFormToSavePayload(
 ): Omit<DailyTestRecord, 'id' | 'createdAt' | 'updatedAt' | 'percentage'> & { id?: string } {
   const useVocab = shouldUseCumulativeEnglishVocabForm(form)
   const useFixedWrong = shouldUseFixedWrongMathForm(form)
+  const useHighRecovery = shouldUseHighRecoveryMathForm(form)
   const totalWords = Number(form.vocabTotalWords)
   const wrongWords = Number(form.vocabWrongWords)
   const savingVocab =
@@ -342,6 +385,24 @@ export function dailyTestFormToSavePayload(
     Number.isInteger(wrongWords) &&
     totalWords > 0 &&
     wrongWords >= 0
+  if (useHighRecovery && !savingVocab) {
+    const parsed = parseHighRecoveryDrafts(highDraftsFromForm(form))
+    const sessionResults = createDefaultSessionResults()
+    const legacy = syncLegacyFieldsFromSessions(sessionResults)
+    return {
+      id: form.id,
+      studentId: form.studentId,
+      date: form.date,
+      testName: form.testName,
+      subject: form.subject,
+      memo: form.memo,
+      sessionResults,
+      learningDiagnosis: parsed
+        ? applyHighRecoveryToDiagnosis(form.learningDiagnosis, parsed)
+        : normalizeDailyLearningDiagnosis(form.learningDiagnosis),
+      ...legacy,
+    }
+  }
   if (useFixedWrong && !savingVocab) {
     const drafts = form.mathWrongCounts ?? mathWrongDraftsFromSessions(form.sessionResults)
     const sessionResults = buildFixedWrongSessionResults(drafts)
@@ -391,6 +452,7 @@ export function emptyDailyTestForm(): DailyTestFormData {
     sessionResults: createDefaultSessionResults(),
     learningDiagnosis: { ...EMPTY_DAILY_LEARNING_DIAGNOSIS },
     mathWrongCounts: emptyMathFixedWrongDrafts(),
+    ...highFormFieldsFromDiagnosis(EMPTY_DAILY_LEARNING_DIAGNOSIS),
   }
 }
 
@@ -512,7 +574,10 @@ export function hasDailyTestDisplayData(record?: DailyTestRecord): boolean {
     diagnosis.englishVocabTestFormat === 'cumulative' ||
     diagnosis.englishVocabTotalWords !== null ||
     diagnosis.englishVocabWrongWords !== null ||
-    diagnosis.mathDailyTestFormat === 'fixed-wrong-v1'
+    diagnosis.mathDailyTestFormat === 'fixed-wrong-v1' ||
+    diagnosis.mathDailyTestFormat === 'high-recovery-v1' ||
+    diagnosis.mathHighFirstWrongCount !== null ||
+    diagnosis.mathHighEndSession !== null
   ) {
     return true
   }

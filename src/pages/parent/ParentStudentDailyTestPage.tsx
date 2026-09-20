@@ -1,4 +1,5 @@
 import { CumulativeVocabTestResult } from '../../components/dailytest/CumulativeVocabTestResult'
+import { HighRecoveryTestResult } from '../../components/dailytest/HighRecoveryTestResult'
 import { DailyTestSessionGrid } from '../../components/dailytest/DailyTestSessionGrid'
 import { ParentDailyTestDiagnosisBlock } from '../../components/dailytest/ParentDailyTestDiagnosisBlock'
 import {
@@ -9,6 +10,7 @@ import {
 import { useParentStudentRecords } from '../../hooks/useParentStudentRecords'
 import { formatKoreanDate } from '../../utils/date'
 import { usesCumulativeEnglishVocabTest } from '../../utils/englishVocabTest'
+import { highParsedFromDiagnosis } from '../../utils/mathHighRecovery'
 import { normalizeDailyLearningDiagnosis } from '../../utils/learningDiagnosis'
 
 export function ParentStudentDailyTestPage() {
@@ -37,6 +39,10 @@ export function ParentStudentDailyTestPage() {
                     wrongWords={
                       normalizeDailyLearningDiagnosis(record.learningDiagnosis).englishVocabWrongWords ?? 0
                     }
+                  />
+                ) : highParsedFromDiagnosis(record.learningDiagnosis) ? (
+                  <HighRecoveryTestResult
+                    parsed={highParsedFromDiagnosis(record.learningDiagnosis)!}
                   />
                 ) : (
                   <DailyTestSessionGrid
