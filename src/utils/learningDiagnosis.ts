@@ -42,6 +42,8 @@ export type DailyLearningDiagnosis = {
   englishVocabTotalWords: number | null
   /** 틀린 단어 절대 개수. Weekly SUMMARY 감점에만 사용 */
   englishVocabWrongWords: number | null
+  /** 수학 일일테스트 형식. 'fixed-wrong-v1'이면 오답 개수 입력 + 80점 합격 */
+  mathDailyTestFormat: 'fixed-wrong-v1' | null
 }
 
 export const EMPTY_DAILY_LEARNING_DIAGNOSIS: DailyLearningDiagnosis = {
@@ -62,6 +64,7 @@ export const EMPTY_DAILY_LEARNING_DIAGNOSIS: DailyLearningDiagnosis = {
   englishVocabTestFormat: null,
   englishVocabTotalWords: null,
   englishVocabWrongWords: null,
+  mathDailyTestFormat: null,
 }
 
 export function isMathWrongCause(value: unknown): value is MathWrongCause {
@@ -115,6 +118,10 @@ function toPassFailResult(value: unknown): EnglishVocabResult | null {
 
 function toVocabTestFormat(value: unknown): 'cumulative' | null {
   return value === 'cumulative' ? 'cumulative' : null
+}
+
+function toMathDailyTestFormat(value: unknown): 'fixed-wrong-v1' | null {
+  return value === 'fixed-wrong-v1' ? 'fixed-wrong-v1' : null
 }
 
 function toNonNegInt(value: unknown): number {
@@ -247,6 +254,7 @@ export function normalizeDailyLearningDiagnosis(raw: unknown): DailyLearningDiag
     englishVocabTestFormat: toVocabTestFormat(row.englishVocabTestFormat),
     englishVocabTotalWords: toNullableNonNegInt(row.englishVocabTotalWords),
     englishVocabWrongWords: toNullableNonNegInt(row.englishVocabWrongWords),
+    mathDailyTestFormat: toMathDailyTestFormat(row.mathDailyTestFormat),
   }
 }
 
@@ -274,6 +282,7 @@ export function hasDailyLearningDiagnosisContent(
   if (d.englishVocabTestFormat === 'cumulative') return true
   if (d.englishVocabTotalWords !== null) return true
   if (d.englishVocabWrongWords !== null) return true
+  if (d.mathDailyTestFormat === 'fixed-wrong-v1') return true
   return false
 }
 

@@ -27,8 +27,9 @@ import { createId } from './id'
 import { createTimestamps, touchRecord } from './recordStorage'
 import type { StudentDayRecords } from './todayReportLookup'
 
-function hasActiveDailyTest(sessions: ClassBulkStudentDraft['sessionResults']): boolean {
-  return sessions.some((session) => session.status !== '미응시')
+function hasActiveDailyTest(draft: ClassBulkStudentDraft): boolean {
+  if (draft.sessionResults.some((session) => session.status !== '미응시')) return true
+  return Object.values(draft.mathWrongCounts ?? {}).some((value) => String(value).trim() !== '')
 }
 
 function buildProgressRecord(
@@ -183,7 +184,7 @@ export async function saveClassBulkStudentDraft(
     }
   }
 
-  if (hasActiveDailyTest(draft.sessionResults)) {
+  if (hasActiveDailyTest(draft)) {
     try {
       const form: DailyTestFormData = {
         id: draft.recordIds.dailyTest ?? existing.dailyTest?.id,
@@ -194,7 +195,9 @@ export async function saveClassBulkStudentDraft(
         memo: draft.dailyTestMemo,
         sessionResults: draft.sessionResults,
         learningDiagnosis:
+          draft.learningDiagnosis ??
           existing.dailyTest?.learningDiagnosis ?? { ...EMPTY_DAILY_LEARNING_DIAGNOSIS },
+        mathWrongCounts: draft.mathWrongCounts,
       }
       const payload = dailyTestFormToSavePayload(form)
       const ts = createTimestamps()
@@ -234,6 +237,6 @@ export function draftHasSaveableData(draft: ClassBulkStudentDraft): boolean {
       draft.homeworkStatus ||
       draft.todayAssignment.trim() ||
       draft.classNote.trim() ||
-      hasActiveDailyTest(draft.sessionResults),
+      hasActiveDailyTest(draft),
   )
 }

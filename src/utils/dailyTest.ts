@@ -8,6 +8,14 @@ import {
   EMPTY_DAILY_LEARNING_DIAGNOSIS,
   normalizeDailyLearningDiagnosis,
 } from './learningDiagnosis'
+import {
+  applyFixedWrongFormatToDiagnosis,
+  buildFixedWrongSessionResults,
+  emptyMathFixedWrongDrafts,
+  mathWrongDraftsFromSessions,
+  shouldUseFixedWrongMathInput,
+  type MathFixedWrongDrafts,
+} from './mathDailyTest'
 
 export const DAILY_TEST_PASS_RATE = 85
 export const DAILY_TEST_FULL_SCORE = 100
@@ -264,6 +272,7 @@ export type DailyTestFormData = {
   learningDiagnosis: DailyTestRecord['learningDiagnosis']
   vocabTotalWords?: string
   vocabWrongWords?: string
+  mathWrongCounts?: MathFixedWrongDrafts
 }
 
 export function dailyTestRecordToForm(record: DailyTestRecord): DailyTestFormData {
@@ -286,11 +295,18 @@ export function dailyTestRecordToForm(record: DailyTestRecord): DailyTestFormDat
       learningDiagnosis.englishVocabWrongWords == null
         ? ''
         : String(learningDiagnosis.englishVocabWrongWords),
+    mathWrongCounts: shouldUseFixedWrongMathInput(record.subject, record)
+      ? mathWrongDraftsFromSessions(sessionResults)
+      : emptyMathFixedWrongDrafts(),
   }
 }
 
 export function shouldUseCumulativeEnglishVocabForm(form: DailyTestFormData): boolean {
   return shouldUseCumulativeEnglishVocabInput(form.subject, formRecordHint(form))
+}
+
+export function shouldUseFixedWrongMathForm(form: DailyTestFormData): boolean {
+  return shouldUseFixedWrongMathInput(form.subject, formRecordHint(form))
 }
 
 function formRecordHint(form: DailyTestFormData): DailyTestRecord | null {
@@ -317,6 +333,7 @@ export function dailyTestFormToSavePayload(
   form: DailyTestFormData,
 ): Omit<DailyTestRecord, 'id' | 'createdAt' | 'updatedAt' | 'percentage'> & { id?: string } {
   const useVocab = shouldUseCumulativeEnglishVocabForm(form)
+  const useFixedWrong = shouldUseFixedWrongMathForm(form)
   const totalWords = Number(form.vocabTotalWords)
   const wrongWords = Number(form.vocabWrongWords)
   const savingVocab =
@@ -325,6 +342,22 @@ export function dailyTestFormToSavePayload(
     Number.isInteger(wrongWords) &&
     totalWords > 0 &&
     wrongWords >= 0
+  if (useFixedWrong && !savingVocab) {
+    const drafts = form.mathWrongCounts ?? mathWrongDraftsFromSessions(form.sessionResults)
+    const sessionResults = buildFixedWrongSessionResults(drafts)
+    const legacy = syncLegacyFieldsFromSessions(sessionResults)
+    return {
+      id: form.id,
+      studentId: form.studentId,
+      date: form.date,
+      testName: form.testName,
+      subject: form.subject,
+      memo: form.memo,
+      sessionResults,
+      learningDiagnosis: applyFixedWrongFormatToDiagnosis(form.learningDiagnosis),
+      ...legacy,
+    }
+  }
   const normalized = (savingVocab ? createDefaultSessionResults() : form.sessionResults).map(
     normalizeSessionResult,
   )
@@ -357,6 +390,7 @@ export function emptyDailyTestForm(): DailyTestFormData {
     memo: '',
     sessionResults: createDefaultSessionResults(),
     learningDiagnosis: { ...EMPTY_DAILY_LEARNING_DIAGNOSIS },
+    mathWrongCounts: emptyMathFixedWrongDrafts(),
   }
 }
 
@@ -477,7 +511,8 @@ export function hasDailyTestDisplayData(record?: DailyTestRecord): boolean {
     diagnosis.englishListeningResult !== null ||
     diagnosis.englishVocabTestFormat === 'cumulative' ||
     diagnosis.englishVocabTotalWords !== null ||
-    diagnosis.englishVocabWrongWords !== null
+    diagnosis.englishVocabWrongWords !== null ||
+    diagnosis.mathDailyTestFormat === 'fixed-wrong-v1'
   ) {
     return true
   }

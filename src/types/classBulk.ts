@@ -1,5 +1,6 @@
 import type {
   AttendanceStatus,
+  DailyLearningDiagnosisData,
   HomeworkStatus,
   TestSessionResult,
 } from '../types/records'
@@ -19,6 +20,8 @@ export type ClassBulkStudentDraft = {
   dailyTestSubject: string
   dailyTestMemo: string
   sessionResults: TestSessionResult[]
+  learningDiagnosis: DailyLearningDiagnosisData
+  mathWrongCounts: Record<1 | 2 | 3 | 4, string>
   recordIds: {
     attendance?: string
     homework?: string

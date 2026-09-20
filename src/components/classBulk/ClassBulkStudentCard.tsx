@@ -1,8 +1,14 @@
 import type { ReactNode } from 'react'
 import { DailyTestPassRuleBadge } from '../dailytest/DailyTestSessionFormSection'
+import { MathFixedWrongSessionFields } from '../dailytest/MathFixedWrongSessionFields'
 import { StudentParentLinkToolbar } from '../students/StudentParentLinkToolbar'
 import { ClassBulkDailyTestCompact } from './ClassBulkDailyTestCompact'
 import { normalizeSessionResultsForForm } from '../../utils/dailyTest'
+import {
+  buildFixedWrongSessionResults,
+  emptyMathFixedWrongDrafts,
+  shouldUseFixedWrongMathInput,
+} from '../../utils/mathDailyTest'
 import type { ClassBulkStudentDraft } from '../../types/classBulk'
 import type { Student } from '../../types/student'
 import type { AttendanceStatus, HomeworkStatus } from '../../types/records'
@@ -131,6 +137,27 @@ export function ClassBulkStudentCard({
   saveError,
 }: ClassBulkStudentCardProps) {
   const patch = (partial: Partial<ClassBulkStudentDraft>) => onChange({ ...draft, ...partial })
+  const useFixedWrongMath = shouldUseFixedWrongMathInput(
+    draft.dailyTestSubject || '수학',
+    draft.recordIds.dailyTest
+      ? {
+          id: draft.recordIds.dailyTest,
+          studentId: draft.studentId,
+          date: '',
+          testName: draft.dailyTestName,
+          subject: draft.dailyTestSubject,
+          score: 0,
+          totalScore: 100,
+          percentage: 0,
+          incorrectCount: 0,
+          memo: draft.dailyTestMemo,
+          sessionResults: draft.sessionResults,
+          learningDiagnosis: draft.learningDiagnosis,
+          createdAt: '',
+          updatedAt: '',
+        }
+      : null,
+  )
 
   return (
     <article className="flex h-full flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-md shadow-slate-200/50">
@@ -250,15 +277,28 @@ export function ClassBulkStudentCard({
         <section>
           <div className="mb-1.5 flex items-center justify-between gap-1">
             <SectionLabel>일일테스트</SectionLabel>
-            <DailyTestPassRuleBadge />
+            {useFixedWrongMath ? null : <DailyTestPassRuleBadge />}
           </div>
-          <ClassBulkDailyTestCompact
-            key={`${draft.studentId}-${draft.recordIds.dailyTest ?? 'new'}`}
-            sessions={draft.sessionResults}
-            onChange={(sessionResults) =>
-              patch({ sessionResults: normalizeSessionResultsForForm(sessionResults) })
-            }
-          />
+          {useFixedWrongMath ? (
+            <MathFixedWrongSessionFields
+              drafts={draft.mathWrongCounts ?? emptyMathFixedWrongDrafts()}
+              onChange={(mathWrongCounts) =>
+                patch({
+                  mathWrongCounts,
+                  sessionResults: buildFixedWrongSessionResults(mathWrongCounts),
+                })
+              }
+              compact
+            />
+          ) : (
+            <ClassBulkDailyTestCompact
+              key={`${draft.studentId}-${draft.recordIds.dailyTest ?? 'new'}`}
+              sessions={draft.sessionResults}
+              onChange={(sessionResults) =>
+                patch({ sessionResults: normalizeSessionResultsForForm(sessionResults) })
+              }
+            />
+          )}
         </section>
       </div>
 
@@ -288,6 +328,7 @@ export function draftToSnapshot(draft: ClassBulkStudentDraft): string {
     todayAssignment: draft.todayAssignment,
     classNote: draft.classNote,
     sessionResults: draft.sessionResults,
+    mathWrongCounts: draft.mathWrongCounts,
     dailyTestName: draft.dailyTestName,
     dailyTestSubject: draft.dailyTestSubject,
     dailyTestMemo: draft.dailyTestMemo,

@@ -132,6 +132,8 @@ export type DailyLearningDiagnosisData = {
   englishVocabTotalWords: number | null
   /** 틀린 단어 절대 개수. Weekly SUMMARY 감점에만 사용 */
   englishVocabWrongWords: number | null
+  /** 수학 일일테스트 형식. 'fixed-wrong-v1'이면 오답 개수 입력 + 80점 합격 */
+  mathDailyTestFormat: 'fixed-wrong-v1' | null
 }
 
 export type MathWrongCause = '개념 부족' | '계산 실수' | '문제 이해 부족'

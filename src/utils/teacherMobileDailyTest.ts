@@ -11,18 +11,27 @@ import {
   type DailyTestFormData,
 } from './dailyTest'
 import { calcPercentage } from './calc'
-import { EMPTY_DAILY_LEARNING_DIAGNOSIS } from './learningDiagnosis'
+import { EMPTY_DAILY_LEARNING_DIAGNOSIS, normalizeDailyLearningDiagnosis } from './learningDiagnosis'
+import {
+  applyFixedWrongFormatToDiagnosis,
+  buildFixedWrongSessionResults,
+  emptyMathFixedWrongDrafts,
+  isMathSubject,
+  MATH_DAILY_TEST_FORMAT_FIXED_WRONG,
+  type MathFixedWrongDrafts,
+} from './mathDailyTest'
 
 export type MobileDailyTestRound = {
   round: 1 | 2 | 3 | 4
   score: string
   passed: boolean
+  wrongCount?: string
 }
 
 const MOBILE_ROUNDS = [1, 2, 3, 4] as const
 
 export function createEmptyMobileDailyTestRounds(): MobileDailyTestRound[] {
-  return MOBILE_ROUNDS.map((round) => ({ round, score: '', passed: false }))
+  return MOBILE_ROUNDS.map((round) => ({ round, score: '', passed: false, wrongCount: '' }))
 }
 
 /** 저장된 session_results → 모바일 입력 상태 (합격 차수만 점수 유지) */
@@ -134,12 +143,46 @@ export function sessionsToBulkDailyTestRounds(
   return MOBILE_ROUNDS.map((round) => {
     const session = normalized.find((item) => item.session === round)
     const scoreValue = session ? getSessionScoreOnFullScale(session) : ''
+    const wrongCount =
+      session && session.status !== '미응시' && session.incorrectCount != null
+        ? String(session.incorrectCount)
+        : ''
     return {
       round,
       score: scoreValue === '' ? '' : String(scoreValue),
       passed: passRound === round,
+      wrongCount,
     }
   })
+}
+
+export function mathWrongDraftsFromBulkRounds(
+  rounds: MobileDailyTestRound[],
+): MathFixedWrongDrafts {
+  const drafts = emptyMathFixedWrongDrafts()
+  for (const round of rounds) {
+    drafts[round.round] = round.wrongCount ?? ''
+  }
+  return drafts
+}
+
+export function updateBulkWrongCountDraft(
+  rounds: MobileDailyTestRound[],
+  round: 1 | 2 | 3 | 4,
+  wrongCount: string,
+): MobileDailyTestRound[] {
+  return rounds.map((item) => (item.round === round ? { ...item, wrongCount } : item))
+}
+
+export function shouldSaveFixedWrongMathBulk(input: {
+  subject: string
+  rounds: MobileDailyTestRound[]
+  learningDiagnosis?: import('../types/records').DailyTestRecord['learningDiagnosis']
+}): boolean {
+  if (!isMathSubject(input.subject)) return false
+  const diagnosis = normalizeDailyLearningDiagnosis(input.learningDiagnosis)
+  if (diagnosis.mathDailyTestFormat === MATH_DAILY_TEST_FORMAT_FIXED_WRONG) return true
+  return input.rounds.some((round) => (round.wrongCount ?? '').trim() !== '')
 }
 
 /** 합격 차시만 변경 — 다른 차시 점수는 유지 */
@@ -233,6 +276,23 @@ export function bulkDailyTestToSavePayload(input: {
   import('../types/records').DailyTestRecord,
   'id' | 'createdAt' | 'updatedAt' | 'percentage'
 > & { id?: string } {
+  if (shouldSaveFixedWrongMathBulk(input)) {
+    const sessionResults = buildFixedWrongSessionResults(
+      mathWrongDraftsFromBulkRounds(input.rounds),
+    )
+    const legacy = syncLegacyFieldsFromSessions(sessionResults)
+    return {
+      id: input.id,
+      studentId: input.studentId,
+      date: input.date,
+      testName: input.testName.trim() || '일일테스트',
+      subject: input.subject.trim() || '수학',
+      memo: input.memo?.trim() ?? '',
+      sessionResults,
+      learningDiagnosis: applyFixedWrongFormatToDiagnosis(input.learningDiagnosis),
+      ...legacy,
+    }
+  }
   const sessionResults = bulkRoundsToSessionResults(input.rounds)
   const legacy = syncLegacyFieldsFromSessions(sessionResults)
   return {
@@ -254,7 +314,10 @@ export function hasBulkDailyTestContent(
   hasDiagnosis = false,
 ): boolean {
   return (
-    rounds.some((round) => round.score.trim() !== '' || round.passed) ||
+    rounds.some(
+      (round) =>
+        round.score.trim() !== '' || round.passed || (round.wrongCount ?? '').trim() !== '',
+    ) ||
     wrongAnswerBank.trim() !== '' ||
     hasDiagnosis
   )

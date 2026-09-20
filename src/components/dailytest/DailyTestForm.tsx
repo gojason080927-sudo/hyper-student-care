@@ -1,6 +1,7 @@
 import { StudentSelect } from '../ui/StudentSelect'
 import { DailyLearningDiagnosisFields } from '../diagnosis/DailyLearningDiagnosisFields'
 import { CumulativeVocabTestFields } from './CumulativeVocabTestFields'
+import { MathFixedWrongSessionFields } from './MathFixedWrongSessionFields'
 import {
   DailyTestSessionFormSection,
   validateDailyTestSessions,
@@ -9,9 +10,11 @@ import type { Student } from '../../types/student'
 import {
   normalizeSessionResultsForForm,
   shouldUseCumulativeEnglishVocabForm,
+  shouldUseFixedWrongMathForm,
   type DailyTestFormData,
 } from '../../utils/dailyTest'
 import { validateCumulativeVocabInput } from '../../utils/englishVocabTest'
+import { emptyMathFixedWrongDrafts, validateMathFixedWrongDrafts } from '../../utils/mathDailyTest'
 import { SUBJECTS, btnPrimary, btnSecondary, inputClass } from '../../utils/labels'
 import { requireDate, requireNonEmpty } from '../../utils/validation'
 
@@ -89,6 +92,12 @@ export function DailyTestForm({
           onWrongWordsChange={(value) => onChange({ ...form, vocabWrongWords: value })}
           error={errors.vocab}
         />
+      ) : shouldUseFixedWrongMathForm(form) ? (
+        <MathFixedWrongSessionFields
+          drafts={form.mathWrongCounts ?? emptyMathFixedWrongDrafts()}
+          onChange={(mathWrongCounts) => onChange({ ...form, mathWrongCounts })}
+          error={errors.mathWrong}
+        />
       ) : (
         <DailyTestSessionFormSection
           sessions={form.sessionResults}
@@ -140,6 +149,11 @@ export function validateDailyTestForm(form: DailyTestFormData): Record<string, s
       form.vocabWrongWords ?? '',
     )
     if (vocabError) next.vocab = vocabError
+  } else if (shouldUseFixedWrongMathForm(form)) {
+    const mathError = validateMathFixedWrongDrafts(
+      form.mathWrongCounts ?? emptyMathFixedWrongDrafts(),
+    )
+    if (mathError) next.mathWrong = mathError
   } else {
     Object.assign(next, validateDailyTestSessions(form.sessionResults))
   }

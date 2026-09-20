@@ -19,6 +19,7 @@ import {
   type DailyTestFormData,
 } from './dailyTest'
 import { EMPTY_DAILY_LEARNING_DIAGNOSIS } from './learningDiagnosis'
+import { emptyMathFixedWrongDrafts } from './mathDailyTest'
 
 export type StudentDayRecords = {
   attendance?: AttendanceRecord
@@ -130,7 +131,10 @@ export function buildDailyTestDraft(
   record: DailyTestRecord | undefined,
   _studentId: string,
   _date: string,
-): Pick<DailyTestFormData, 'testName' | 'subject' | 'memo' | 'sessionResults' | 'learningDiagnosis'> {
+): Pick<
+  DailyTestFormData,
+  'testName' | 'subject' | 'memo' | 'sessionResults' | 'learningDiagnosis' | 'mathWrongCounts'
+> {
   if (record) {
     const form = dailyTestRecordToForm(record)
     return {
@@ -139,6 +143,7 @@ export function buildDailyTestDraft(
       memo: form.memo,
       sessionResults: form.sessionResults,
       learningDiagnosis: form.learningDiagnosis,
+      mathWrongCounts: form.mathWrongCounts ?? emptyMathFixedWrongDrafts(),
     }
   }
   return {
@@ -147,6 +152,7 @@ export function buildDailyTestDraft(
     memo: '',
     sessionResults: createDefaultSessionResults(),
     learningDiagnosis: { ...EMPTY_DAILY_LEARNING_DIAGNOSIS },
+    mathWrongCounts: emptyMathFixedWrongDrafts(),
   }
 }
 
@@ -175,6 +181,8 @@ export function buildClassBulkStudentDraft(
     dailyTestSubject: dailyTest.subject,
     dailyTestMemo: dailyTest.memo,
     sessionResults: dailyTest.sessionResults,
+    learningDiagnosis: dailyTest.learningDiagnosis,
+    mathWrongCounts: dailyTest.mathWrongCounts ?? emptyMathFixedWrongDrafts(),
     recordIds: {
       attendance: records.attendance?.id,
       homework: records.homework?.id,
