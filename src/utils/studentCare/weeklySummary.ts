@@ -28,14 +28,12 @@ import {
   attendanceMeaning,
   attitudeLessonIndex,
   averageIndex,
-  dailyTestDayScore,
-  dailyTestPassed,
   homeworkDayCategory,
   homeworkDayIndex,
   materialPrepIndex,
   scaleIndex,
-  weeklyTestIndex,
 } from './scoring.ts'
+import { weeklyDailyTestDayFact, weeklyTestIndexFromFacts } from './weeklyDailyTest.ts'
 import { sumEnglishVocabWeeklyDeduction } from '../englishVocabTest.ts'
 import { formatPeriodLabel, getFridayOfWeek, getMondayOfWeek, listDatesInclusive } from './week.ts'
 
@@ -141,7 +139,7 @@ export function buildWeeklyLearningSummary(
     if (category === 'incomplete') homeworkFacts.incomplete += 1
   }
 
-  const testScores: number[] = []
+  const testFacts: Array<{ score: number; passed: boolean }> = []
   let testPassCount = 0
   const weekDailyTests = input.dailyTests.filter(
     (item) => item.studentId === input.studentId && lessonDates.includes(item.date),
@@ -149,16 +147,17 @@ export function buildWeeklyLearningSummary(
   const vocabWeeklyDeduction = sumEnglishVocabWeeklyDeduction(weekDailyTests)
   for (const date of lessonDates) {
     const tests = weekDailyTests.filter((item) => item.date === date)
-    const score = dailyTestDayScore(tests)
-    if (score == null) continue
-    testScores.push(score)
-    if (dailyTestPassed(score)) testPassCount += 1
+    const fact = weeklyDailyTestDayFact(tests)
+    if (fact == null) continue
+    testFacts.push(fact)
+    if (fact.passed) testPassCount += 1
   }
+  const testScores = testFacts.map((fact) => fact.score)
   const testAverage =
     testScores.length === 0
       ? null
       : roundScore(testScores.reduce((sum, score) => sum + score, 0) / testScores.length)
-  const testIndex = weeklyTestIndex(testScores)
+  const testIndex = weeklyTestIndexFromFacts(testFacts)
 
   const attitudeIssueCounts: Record<ClassAttitudeIssue, number> = {
     '집중 저하': 0,

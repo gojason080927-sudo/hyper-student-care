@@ -251,6 +251,16 @@ export function DailyTestWeeklyFlowCard({
           ))}
         </div>
       ) : null}
+      {model.highRecoveryResults.length > 0 ? (
+        <div className="mt-3 space-y-1.5 rounded-xl bg-slate-50 px-3 py-2.5">
+          <p className="text-[11px] font-semibold text-[#163A70]">고등 오답 회수</p>
+          {model.highRecoveryResults.map((item) => (
+            <p key={item.date} className="text-sm font-semibold text-slate-800">
+              {item.label}
+            </p>
+          ))}
+        </div>
+      ) : null}
       {model.days.some((day) => day.sessions.some((session) => session.kind === 'score')) ? (
         <div className="mt-3 overflow-visible pt-5">
           <FlowChart days={model.days} clipId={clipId} />

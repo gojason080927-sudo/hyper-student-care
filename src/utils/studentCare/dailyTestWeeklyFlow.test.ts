@@ -5,6 +5,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import type { DailyTestRecord, TestSessionResult } from '../../types/records.ts'
 import { EMPTY_DAILY_LEARNING_DIAGNOSIS } from '../learningDiagnosis.ts'
+import { applyHighRecoveryToDiagnosis } from '../mathHighRecovery.ts'
 import {
   buildDailyTestWeeklyFlow,
   buildWeeklyFlowDaySessions,
@@ -167,9 +168,37 @@ const cumulativeFlow = buildDailyTestWeeklyFlow({
   subject: '영어',
 })
 assert.equal(cumulativeFlow.cumulativeResults[0]?.label, '300단어 중 6개 틀림')
+assert.deepEqual(cumulativeFlow.highRecoveryResults, [])
 assert.equal(cumulativeFlow.max, null)
 assert.equal(
   cumulativeFlow.days.every((day) => day.sessions.every((item) => item.kind === 'absent')),
+  true,
+)
+
+const highRecovery = testRecord('2026-09-07', '수학', [
+  session(1, '미응시'),
+  session(2, '미응시'),
+  session(3, '미응시'),
+  session(4, '미응시'),
+], '2026-09-12T00:00:00.000Z', applyHighRecoveryToDiagnosis(EMPTY_DAILY_LEARNING_DIAGNOSIS, {
+  firstWrong: 4,
+  endSession: 4,
+  session3Questions: 6,
+  session4Questions: 5,
+}))
+const highFlow = buildDailyTestWeeklyFlow({
+  studentId: 'stu-1',
+  weekStart: '2026-09-07',
+  dailyTests: [highRecovery],
+  subject: '수학',
+})
+assert.equal(
+  highFlow.highRecoveryResults[0]?.label,
+  '발견 오답 4개 · 추적 15문제 · 회수 완료 4개 · 회수율 100%',
+)
+assert.equal(highFlow.max, null)
+assert.equal(
+  highFlow.days.every((day) => day.sessions.every((item) => item.kind === 'absent')),
   true,
 )
 
@@ -292,6 +321,8 @@ assert.doesNotMatch(sql, /^\s*DROP TABLE/im)
 
 const card = readFileSync('src/components/studentCare/DailyTestWeeklyFlowCard.tsx', 'utf8')
 const parentWeekly = readFileSync('src/pages/parent/ParentStudentWeeklySummaryPage.tsx', 'utf8')
+assert.match(card, /highRecoveryResults/)
+assert.match(card, /고등 오답 회수/)
 assert.match(card, /주간 오답 현황/)
 assert.match(card, /주간 최고/)
 assert.match(card, /주간 최저/)

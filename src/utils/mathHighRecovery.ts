@@ -211,6 +211,15 @@ export function shouldUseHighRecoveryMathInput(
   return isHighSchoolGrade(grade)
 }
 
+/** Weekly SUMMARY 전용. 1차 10문제 정답률. risk/일반 점수 경로에서는 사용하지 않는다. */
+export function highRecoveryFirstScore(record: DailyTestRecord): number | null {
+  if (!usesHighRecoveryMathDailyTest(record)) return null
+  const diagnosis = normalizeDailyLearningDiagnosis(record.learningDiagnosis)
+  const firstWrong = diagnosis.mathHighFirstWrongCount
+  if (firstWrong == null || firstWrong < 0 || firstWrong > 10) return null
+  return (10 - firstWrong) * 10
+}
+
 export function highRecoveryWeeklyFacts(record: DailyTestRecord): {
   discoveredWrong: number
   recoveredWrong: number
@@ -253,4 +262,11 @@ export function formatHighRecoveryResult(parsed: HighRecoveryParsed): string {
     parts.push(`4차 ${parsed.session4Questions}문제`)
   }
   return parts.join(' · ')
+}
+
+export function formatHighRecoveryWeeklyFactLine(record: DailyTestRecord): string | null {
+  const facts = highRecoveryWeeklyFacts(record)
+  if (!facts) return null
+  const rateLabel = facts.recoveryRate == null ? '해당 없음' : `${facts.recoveryRate}%`
+  return `발견 오답 ${facts.discoveredWrong}개 · 추적 ${facts.retakeQuestionCount}문제 · 회수 완료 ${facts.recoveredWrong}개 · 회수율 ${rateLabel}`
 }
