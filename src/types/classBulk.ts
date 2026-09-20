@@ -1,11 +1,13 @@
 import type {
   AttendanceStatus,
+  DailyLearningDiagnosisData,
   HomeworkStatus,
   TestSessionResult,
 } from '../types/records'
 
 export type ClassBulkStudentDraft = {
   studentId: string
+  studentGrade?: string
   attendanceStatus: AttendanceStatus | ''
   attendanceReason: string
   mathProgress: string
@@ -19,6 +21,12 @@ export type ClassBulkStudentDraft = {
   dailyTestSubject: string
   dailyTestMemo: string
   sessionResults: TestSessionResult[]
+  learningDiagnosis: DailyLearningDiagnosisData
+  mathWrongCounts: Record<1 | 2 | 3 | 4, string>
+  highFirstWrong: string
+  highEndSession: '' | 1 | 2 | 3 | 4
+  highSession3Questions: string
+  highSession4Questions: string
   recordIds: {
     attendance?: string
     homework?: string

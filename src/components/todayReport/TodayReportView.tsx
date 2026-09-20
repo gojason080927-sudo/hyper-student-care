@@ -10,6 +10,9 @@ import {
   type TeacherMobileDailyTestSessionFormRef,
 } from '../teacherMobile/TeacherMobileDailyTestSessionForm'
 import { CumulativeVocabTestFields } from '../dailytest/CumulativeVocabTestFields'
+import { HighRecoveryFields } from '../dailytest/HighRecoveryFields'
+import { HighRecoveryTestResult } from '../dailytest/HighRecoveryTestResult'
+import { MathFixedWrongSessionFields } from '../dailytest/MathFixedWrongSessionFields'
 import { CumulativeVocabTestResult } from '../dailytest/CumulativeVocabTestResult'
 import { DailyTestSessionGrid } from '../dailytest/DailyTestSessionGrid'
 import { DailyLearningDiagnosisFields } from '../diagnosis/DailyLearningDiagnosisFields'
@@ -74,9 +77,22 @@ import {
   dailyTestRecordToForm,
   emptyDailyTestForm,
   hasDailyTestDisplayData,
+  highDraftsFromForm,
   normalizeSessionResultsForForm,
   type DailyTestFormData,
 } from '../../utils/dailyTest'
+import {
+  emptyMathFixedWrongDrafts,
+  mathWrongDraftsFromSessions,
+  shouldUseFixedWrongMathInput,
+  validateMathFixedWrongDrafts,
+} from '../../utils/mathDailyTest'
+import {
+  highDraftsFromDiagnosis,
+  highParsedFromDiagnosis,
+  shouldUseHighRecoveryMathInput,
+  validateHighRecoveryDrafts,
+} from '../../utils/mathHighRecovery'
 import {
   shouldUseCumulativeEnglishVocabInput,
   usesCumulativeEnglishVocabTest,
@@ -944,6 +960,7 @@ export function TodayReportView({
             className={student.className}
             subjects={student.subjects}
             emptyMessage={parentEmptyMessages.dailyTest}
+            studentGrade={student.grade}
           />
           </div>
           )}
@@ -1880,6 +1897,8 @@ function DailyTestParentSection({
           totalWords={diagnosis.englishVocabTotalWords ?? 0}
           wrongWords={diagnosis.englishVocabWrongWords ?? 0}
         />
+      ) : highParsedFromDiagnosis(diagnosis) ? (
+        <HighRecoveryTestResult parsed={highParsedFromDiagnosis(diagnosis)!} />
       ) : (
         <DailyTestSessionGrid
           record={record}
@@ -1909,6 +1928,7 @@ function DailyTestSection({
   className: studentClassName = '',
   subjects = [],
   emptyMessage,
+  studentGrade,
 }: {
   readOnly: boolean
   record?: DailyTestRecord
@@ -1924,6 +1944,7 @@ function DailyTestSection({
   className?: string
   subjects?: readonly string[]
   emptyMessage?: string
+  studentGrade?: string
 }) {
   const parentRecords = records && records.length > 0 ? records : record ? [record] : []
   const visibleDailyTestSubjects = useMemo(
@@ -1933,9 +1954,13 @@ function DailyTestSection({
   const [form, setForm] = useState<DailyTestFormData>(() => {
     if (record) {
       const loaded = dailyTestRecordToForm(record)
-      return { ...loaded, sessionResults: normalizeSessionResultsForForm(loaded.sessionResults) }
+      return {
+        ...loaded,
+        studentGrade,
+        sessionResults: normalizeSessionResultsForForm(loaded.sessionResults),
+      }
     }
-    return { ...emptyDailyTestForm(), studentId, date }
+    return { ...emptyDailyTestForm(), studentId, date, studentGrade }
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const mobileDailyTestRef = useRef<TeacherMobileDailyTestSessionFormRef>(null)
@@ -1947,13 +1972,14 @@ function DailyTestSection({
         ...loaded,
         studentId,
         date,
+        studentGrade,
         sessionResults: normalizeSessionResultsForForm(loaded.sessionResults),
       })
     } else {
-      setForm({ ...emptyDailyTestForm(), studentId, date })
+      setForm({ ...emptyDailyTestForm(), studentId, date, studentGrade })
     }
     setErrors({})
-  }, [date, record, studentId])
+  }, [date, record, studentGrade, studentId])
 
   useEffect(() => {
     if (readOnly) return
@@ -1966,6 +1992,8 @@ function DailyTestSection({
   }, [readOnly, visibleDailyTestSubjects])
 
   const useCumulativeVocab = shouldUseCumulativeEnglishVocabInput(form.subject, record)
+  const useHighRecovery = shouldUseHighRecoveryMathInput(form.subject, record, studentGrade)
+  const useFixedWrongMath = shouldUseFixedWrongMathInput(form.subject, record, studentGrade)
 
   const handleSave = () => {
     const nextErrors: Record<string, string> = {}
@@ -1978,6 +2006,14 @@ function DailyTestSection({
         form.vocabWrongWords ?? '',
       )
       if (vocabError) nextErrors.vocab = vocabError
+    } else if (useHighRecovery) {
+      const highError = validateHighRecoveryDrafts(highDraftsFromForm(form))
+      if (highError) nextErrors.highRecovery = highError
+    } else if (useFixedWrongMath) {
+      const mathError = validateMathFixedWrongDrafts(
+        form.mathWrongCounts ?? emptyMathFixedWrongDrafts(),
+      )
+      if (mathError) nextErrors.mathWrong = mathError
     } else {
       Object.assign(nextErrors, validateDailyTestSessions(committedSessions))
     }
@@ -1985,31 +2021,33 @@ function DailyTestSection({
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
 
-    const payload = useCumulativeVocab
-      ? dailyTestFormToSavePayload({
-          ...form,
-          id: record?.id,
-          studentId,
-          date,
-        })
-      : useMobileDailyTestInput
-        ? mobileDailyTestFormToSavePayload(
-            {
-              ...form,
-              id: record?.id,
-              studentId,
-              date,
-            },
-            mobileDailyTestRef.current?.getRounds() ??
-              sessionsToMobileDailyTestRounds(form.sessionResults),
-          )
-        : dailyTestFormToSavePayload({
+    const payload =
+      useCumulativeVocab || useHighRecovery || useFixedWrongMath
+        ? dailyTestFormToSavePayload({
             ...form,
             id: record?.id,
             studentId,
             date,
-            sessionResults: committedSessions,
+            studentGrade,
           })
+        : useMobileDailyTestInput
+          ? mobileDailyTestFormToSavePayload(
+              {
+                ...form,
+                id: record?.id,
+                studentId,
+                date,
+              },
+              mobileDailyTestRef.current?.getRounds() ??
+                sessionsToMobileDailyTestRounds(form.sessionResults),
+            )
+          : dailyTestFormToSavePayload({
+              ...form,
+              id: record?.id,
+              studentId,
+              date,
+              sessionResults: committedSessions,
+            })
 
     onSave(payload)
     setForm((prev) => ({
@@ -2017,6 +2055,21 @@ function DailyTestSection({
       sessionResults: useMobileDailyTestInput
         ? payload.sessionResults
         : normalizeSessionResultsForForm(payload.sessionResults),
+      mathWrongCounts: useFixedWrongMath
+        ? mathWrongDraftsFromSessions(payload.sessionResults)
+        : prev.mathWrongCounts,
+      learningDiagnosis: payload.learningDiagnosis,
+      ...(useHighRecovery
+        ? (() => {
+            const drafts = highDraftsFromDiagnosis(payload.learningDiagnosis)
+            return {
+              highFirstWrong: drafts.firstWrong,
+              highEndSession: drafts.endSession,
+              highSession3Questions: drafts.session3Questions,
+              highSession4Questions: drafts.session4Questions,
+            }
+          })()
+        : {}),
     }))
   }
 
@@ -2024,7 +2077,9 @@ function DailyTestSection({
     <SectionCard
       title="일일 테스트"
       titleExtra={
-        readOnly || useCumulativeVocab ? undefined : <DailyTestPassRuleBadge />
+        readOnly || useCumulativeVocab || useHighRecovery || useFixedWrongMath ? undefined : (
+          <DailyTestPassRuleBadge />
+        )
       }
       compact={readOnly}
       teacherCompact={teacherCompact}
@@ -2082,6 +2137,29 @@ function DailyTestSection({
               onWrongWordsChange={(value) => setForm((prev) => ({ ...prev, vocabWrongWords: value }))}
               error={errors.vocab}
               compact={teacherCompact}
+            />
+          ) : useHighRecovery ? (
+            <HighRecoveryFields
+              drafts={highDraftsFromForm(form)}
+              onChange={(drafts) =>
+                setForm((prev) => ({
+                  ...prev,
+                  highFirstWrong: drafts.firstWrong,
+                  highEndSession: drafts.endSession,
+                  highSession3Questions: drafts.session3Questions,
+                  highSession4Questions: drafts.session4Questions,
+                }))
+              }
+              error={errors.highRecovery}
+              compact={teacherCompact}
+            />
+          ) : useFixedWrongMath ? (
+            <MathFixedWrongSessionFields
+              drafts={form.mathWrongCounts ?? emptyMathFixedWrongDrafts()}
+              onChange={(mathWrongCounts) => setForm((prev) => ({ ...prev, mathWrongCounts }))}
+              error={errors.mathWrong}
+              compact={teacherCompact}
+              showHeader={!teacherCompact}
             />
           ) : useMobileDailyTestInput ? (
             <TeacherMobileDailyTestSessionForm

@@ -19,6 +19,7 @@ import {
   type DailyTestFormData,
 } from './dailyTest'
 import { EMPTY_DAILY_LEARNING_DIAGNOSIS } from './learningDiagnosis'
+import { emptyMathFixedWrongDrafts } from './mathDailyTest'
 
 export type StudentDayRecords = {
   attendance?: AttendanceRecord
@@ -130,7 +131,19 @@ export function buildDailyTestDraft(
   record: DailyTestRecord | undefined,
   _studentId: string,
   _date: string,
-): Pick<DailyTestFormData, 'testName' | 'subject' | 'memo' | 'sessionResults' | 'learningDiagnosis'> {
+): Pick<
+  DailyTestFormData,
+  | 'testName'
+  | 'subject'
+  | 'memo'
+  | 'sessionResults'
+  | 'learningDiagnosis'
+  | 'mathWrongCounts'
+  | 'highFirstWrong'
+  | 'highEndSession'
+  | 'highSession3Questions'
+  | 'highSession4Questions'
+> {
   if (record) {
     const form = dailyTestRecordToForm(record)
     return {
@@ -139,6 +152,11 @@ export function buildDailyTestDraft(
       memo: form.memo,
       sessionResults: form.sessionResults,
       learningDiagnosis: form.learningDiagnosis,
+      mathWrongCounts: form.mathWrongCounts ?? emptyMathFixedWrongDrafts(),
+      highFirstWrong: form.highFirstWrong ?? '',
+      highEndSession: form.highEndSession ?? '',
+      highSession3Questions: form.highSession3Questions ?? '',
+      highSession4Questions: form.highSession4Questions ?? '',
     }
   }
   return {
@@ -147,18 +165,25 @@ export function buildDailyTestDraft(
     memo: '',
     sessionResults: createDefaultSessionResults(),
     learningDiagnosis: { ...EMPTY_DAILY_LEARNING_DIAGNOSIS },
+    mathWrongCounts: emptyMathFixedWrongDrafts(),
+    highFirstWrong: '',
+    highEndSession: '',
+    highSession3Questions: '',
+    highSession4Questions: '',
   }
 }
 
 export function buildClassBulkStudentDraft(
   studentId: string,
   records: StudentDayRecords,
+  studentGrade?: string,
 ): ClassBulkStudentDraft {
   const homeworkFields = resolveHomeworkFields(records.homework, records.todayAssignment)
   const dailyTest = buildDailyTestDraft(records.dailyTest, studentId, '')
 
   return {
     studentId,
+    studentGrade,
     attendanceStatus: records.attendance?.status ?? '',
     attendanceReason: records.attendance?.reason ?? '',
     mathProgress: formatTodayProgressContent(records.progressMath),
@@ -175,6 +200,12 @@ export function buildClassBulkStudentDraft(
     dailyTestSubject: dailyTest.subject,
     dailyTestMemo: dailyTest.memo,
     sessionResults: dailyTest.sessionResults,
+    learningDiagnosis: dailyTest.learningDiagnosis,
+    mathWrongCounts: dailyTest.mathWrongCounts ?? emptyMathFixedWrongDrafts(),
+    highFirstWrong: dailyTest.highFirstWrong ?? '',
+    highEndSession: dailyTest.highEndSession ?? '',
+    highSession3Questions: dailyTest.highSession3Questions ?? '',
+    highSession4Questions: dailyTest.highSession4Questions ?? '',
     recordIds: {
       attendance: records.attendance?.id,
       homework: records.homework?.id,

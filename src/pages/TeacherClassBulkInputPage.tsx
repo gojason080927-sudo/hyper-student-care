@@ -116,7 +116,7 @@ export function TeacherClassBulkInputPage() {
       const next: Record<string, ClassBulkStudentDraft> = {}
       for (const student of list) {
         const records = findStudentDayRecords(student.id, date, lookupContext)
-        next[student.id] = buildClassBulkStudentDraft(student.id, records)
+        next[student.id] = buildClassBulkStudentDraft(student.id, records, student.grade)
       }
       setDrafts(next)
       if (resetSnapshots) {
@@ -145,7 +145,12 @@ export function TeacherClassBulkInputPage() {
   useEffect(() => {
     if (!pendingDraftRefreshId) return
     const records = findStudentDayRecords(pendingDraftRefreshId, date, lookupContext)
-    const refreshed = buildClassBulkStudentDraft(pendingDraftRefreshId, records)
+    const refreshedStudent = classStudents.find((student) => student.id === pendingDraftRefreshId)
+    const refreshed = buildClassBulkStudentDraft(
+      pendingDraftRefreshId,
+      records,
+      refreshedStudent?.grade,
+    )
     setDrafts((prev) => ({ ...prev, [pendingDraftRefreshId]: refreshed }))
     setSavedSnapshots((prev) => ({
       ...prev,

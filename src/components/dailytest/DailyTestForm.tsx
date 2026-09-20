@@ -1,6 +1,8 @@
 import { StudentSelect } from '../ui/StudentSelect'
 import { DailyLearningDiagnosisFields } from '../diagnosis/DailyLearningDiagnosisFields'
 import { CumulativeVocabTestFields } from './CumulativeVocabTestFields'
+import { HighRecoveryFields } from './HighRecoveryFields'
+import { MathFixedWrongSessionFields } from './MathFixedWrongSessionFields'
 import {
   DailyTestSessionFormSection,
   validateDailyTestSessions,
@@ -8,10 +10,15 @@ import {
 import type { Student } from '../../types/student'
 import {
   normalizeSessionResultsForForm,
+  highDraftsFromForm,
   shouldUseCumulativeEnglishVocabForm,
+  shouldUseFixedWrongMathForm,
+  shouldUseHighRecoveryMathForm,
   type DailyTestFormData,
 } from '../../utils/dailyTest'
 import { validateCumulativeVocabInput } from '../../utils/englishVocabTest'
+import { emptyMathFixedWrongDrafts, validateMathFixedWrongDrafts } from '../../utils/mathDailyTest'
+import { validateHighRecoveryDrafts } from '../../utils/mathHighRecovery'
 import { SUBJECTS, btnPrimary, btnSecondary, inputClass } from '../../utils/labels'
 import { requireDate, requireNonEmpty } from '../../utils/validation'
 
@@ -40,7 +47,13 @@ export function DailyTestForm({
         <StudentSelect
           students={students.filter((s) => s.status === '재원')}
           value={form.studentId}
-          onChange={(v) => onChange({ ...form, studentId: v })}
+          onChange={(v) =>
+            onChange({
+              ...form,
+              studentId: v,
+              studentGrade: students.find((student) => student.id === v)?.grade,
+            })
+          }
           error={errors.studentId}
           required
         />
@@ -88,6 +101,26 @@ export function DailyTestForm({
           onTotalWordsChange={(value) => onChange({ ...form, vocabTotalWords: value })}
           onWrongWordsChange={(value) => onChange({ ...form, vocabWrongWords: value })}
           error={errors.vocab}
+        />
+      ) : shouldUseHighRecoveryMathForm(form) ? (
+        <HighRecoveryFields
+          drafts={highDraftsFromForm(form)}
+          onChange={(drafts) =>
+            onChange({
+              ...form,
+              highFirstWrong: drafts.firstWrong,
+              highEndSession: drafts.endSession,
+              highSession3Questions: drafts.session3Questions,
+              highSession4Questions: drafts.session4Questions,
+            })
+          }
+          error={errors.highRecovery}
+        />
+      ) : shouldUseFixedWrongMathForm(form) ? (
+        <MathFixedWrongSessionFields
+          drafts={form.mathWrongCounts ?? emptyMathFixedWrongDrafts()}
+          onChange={(mathWrongCounts) => onChange({ ...form, mathWrongCounts })}
+          error={errors.mathWrong}
         />
       ) : (
         <DailyTestSessionFormSection
@@ -140,6 +173,14 @@ export function validateDailyTestForm(form: DailyTestFormData): Record<string, s
       form.vocabWrongWords ?? '',
     )
     if (vocabError) next.vocab = vocabError
+  } else if (shouldUseHighRecoveryMathForm(form)) {
+    const highError = validateHighRecoveryDrafts(highDraftsFromForm(form))
+    if (highError) next.highRecovery = highError
+  } else if (shouldUseFixedWrongMathForm(form)) {
+    const mathError = validateMathFixedWrongDrafts(
+      form.mathWrongCounts ?? emptyMathFixedWrongDrafts(),
+    )
+    if (mathError) next.mathWrong = mathError
   } else {
     Object.assign(next, validateDailyTestSessions(form.sessionResults))
   }

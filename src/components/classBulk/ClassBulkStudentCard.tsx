@@ -1,8 +1,16 @@
 import type { ReactNode } from 'react'
 import { DailyTestPassRuleBadge } from '../dailytest/DailyTestSessionFormSection'
+import { HighRecoveryFields } from '../dailytest/HighRecoveryFields'
+import { MathFixedWrongSessionFields } from '../dailytest/MathFixedWrongSessionFields'
 import { StudentParentLinkToolbar } from '../students/StudentParentLinkToolbar'
 import { ClassBulkDailyTestCompact } from './ClassBulkDailyTestCompact'
 import { normalizeSessionResultsForForm } from '../../utils/dailyTest'
+import {
+  buildFixedWrongSessionResults,
+  emptyMathFixedWrongDrafts,
+  shouldUseFixedWrongMathInput,
+} from '../../utils/mathDailyTest'
+import { shouldUseHighRecoveryMathInput } from '../../utils/mathHighRecovery'
 import type { ClassBulkStudentDraft } from '../../types/classBulk'
 import type { Student } from '../../types/student'
 import type { AttendanceStatus, HomeworkStatus } from '../../types/records'
@@ -131,6 +139,34 @@ export function ClassBulkStudentCard({
   saveError,
 }: ClassBulkStudentCardProps) {
   const patch = (partial: Partial<ClassBulkStudentDraft>) => onChange({ ...draft, ...partial })
+  const recordHint = draft.recordIds.dailyTest
+    ? {
+        id: draft.recordIds.dailyTest,
+        studentId: draft.studentId,
+        date: '',
+        testName: draft.dailyTestName,
+        subject: draft.dailyTestSubject,
+        score: 0,
+        totalScore: 100,
+        percentage: 0,
+        incorrectCount: 0,
+        memo: draft.dailyTestMemo,
+        sessionResults: draft.sessionResults,
+        learningDiagnosis: draft.learningDiagnosis,
+        createdAt: '',
+        updatedAt: '',
+      }
+    : null
+  const useHighRecovery = shouldUseHighRecoveryMathInput(
+    draft.dailyTestSubject || '수학',
+    recordHint,
+    student.grade,
+  )
+  const useFixedWrongMath = shouldUseFixedWrongMathInput(
+    draft.dailyTestSubject || '수학',
+    recordHint,
+    student.grade,
+  )
 
   return (
     <article className="flex h-full flex-col rounded-xl border border-slate-200 bg-white p-3 shadow-md shadow-slate-200/50">
@@ -250,15 +286,46 @@ export function ClassBulkStudentCard({
         <section>
           <div className="mb-1.5 flex items-center justify-between gap-1">
             <SectionLabel>일일테스트</SectionLabel>
-            <DailyTestPassRuleBadge />
+            {useFixedWrongMath || useHighRecovery ? null : <DailyTestPassRuleBadge />}
           </div>
-          <ClassBulkDailyTestCompact
-            key={`${draft.studentId}-${draft.recordIds.dailyTest ?? 'new'}`}
-            sessions={draft.sessionResults}
-            onChange={(sessionResults) =>
-              patch({ sessionResults: normalizeSessionResultsForForm(sessionResults) })
-            }
-          />
+          {useHighRecovery ? (
+            <HighRecoveryFields
+              drafts={{
+                firstWrong: draft.highFirstWrong ?? '',
+                endSession: draft.highEndSession ?? '',
+                session3Questions: draft.highSession3Questions ?? '',
+                session4Questions: draft.highSession4Questions ?? '',
+              }}
+              onChange={(highDraft) =>
+                patch({
+                  highFirstWrong: highDraft.firstWrong,
+                  highEndSession: highDraft.endSession,
+                  highSession3Questions: highDraft.session3Questions,
+                  highSession4Questions: highDraft.session4Questions,
+                })
+              }
+              compact
+            />
+          ) : useFixedWrongMath ? (
+            <MathFixedWrongSessionFields
+              drafts={draft.mathWrongCounts ?? emptyMathFixedWrongDrafts()}
+              onChange={(mathWrongCounts) =>
+                patch({
+                  mathWrongCounts,
+                  sessionResults: buildFixedWrongSessionResults(mathWrongCounts),
+                })
+              }
+              compact
+            />
+          ) : (
+            <ClassBulkDailyTestCompact
+              key={`${draft.studentId}-${draft.recordIds.dailyTest ?? 'new'}`}
+              sessions={draft.sessionResults}
+              onChange={(sessionResults) =>
+                patch({ sessionResults: normalizeSessionResultsForForm(sessionResults) })
+              }
+            />
+          )}
         </section>
       </div>
 
@@ -288,6 +355,11 @@ export function draftToSnapshot(draft: ClassBulkStudentDraft): string {
     todayAssignment: draft.todayAssignment,
     classNote: draft.classNote,
     sessionResults: draft.sessionResults,
+    mathWrongCounts: draft.mathWrongCounts,
+    highFirstWrong: draft.highFirstWrong,
+    highEndSession: draft.highEndSession,
+    highSession3Questions: draft.highSession3Questions,
+    highSession4Questions: draft.highSession4Questions,
     dailyTestName: draft.dailyTestName,
     dailyTestSubject: draft.dailyTestSubject,
     dailyTestMemo: draft.dailyTestMemo,

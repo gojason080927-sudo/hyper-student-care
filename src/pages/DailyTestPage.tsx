@@ -69,7 +69,10 @@ export function DailyTestPage() {
   }
 
   const openEdit = (record: DailyTestRecord) => {
-    setForm(dailyTestRecordToForm(record))
+    setForm({
+      ...dailyTestRecordToForm(record),
+      studentGrade: students.find((student) => student.id === record.studentId)?.grade,
+    })
     setErrors({})
     setModalOpen(true)
   }
