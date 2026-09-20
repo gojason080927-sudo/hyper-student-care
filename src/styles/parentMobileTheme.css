@@ -614,10 +614,15 @@
   font-size: 1.3rem;
 }
 
+/* Absorb leftover below 알림 설정. Keep safe-area; do not flex-grow the card. */
+.parent-mobile-app .parent-hub-home .parent-home {
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
+}
+
 .parent-mobile-app .parent-hub-home .hub-feature-card {
-  min-height: 5.15rem;
+  min-height: 5.9rem;
   margin-top: 0.95rem;
-  padding: 0.95rem 0.95rem 0.95rem 1.05rem;
+  padding: 1.1rem 0.95rem 1.1rem 1.05rem;
 }
 
 .parent-mobile-app .parent-hub-home .hub-feature-icon {
