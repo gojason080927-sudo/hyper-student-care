@@ -207,10 +207,10 @@ assert.equal(teacherManifest.scope, '/teacher/')
 assert.deepEqual(
   teacherManifest.icons.map((icon: { src: string; sizes: string; purpose: string }) => [icon.src, icon.sizes, icon.purpose]),
   [
-    ['/teacher/hyper-teacher-icon-v20-192.png', '192x192', 'any'],
-    ['/teacher/hyper-teacher-icon-v20-512.png', '512x512', 'any'],
-    ['/teacher/hyper-teacher-icon-maskable-v20-192.png', '192x192', 'maskable'],
-    ['/teacher/hyper-teacher-icon-maskable-v20-512.png', '512x512', 'maskable'],
+    ['/teacher/hyper-teacher-icon-v21-192.png', '192x192', 'any'],
+    ['/teacher/hyper-teacher-icon-v21-512.png', '512x512', 'any'],
+    ['/teacher/hyper-teacher-icon-maskable-v21-192.png', '192x192', 'maskable'],
+    ['/teacher/hyper-teacher-icon-maskable-v21-512.png', '512x512', 'maskable'],
   ],
 )
 assert.equal(parentManifest.id, '/care/')
@@ -222,42 +222,43 @@ assert.equal(hubManifest.scope, '/hub/')
 assert.deepEqual(
   parentManifest.icons.map((icon: { src: string; purpose: string }) => [icon.src, icon.purpose]),
   [
-    ['/care/hyper-parent-icon-v20-192.png', 'any'],
-    ['/care/hyper-parent-icon-v20-512.png', 'any'],
-    ['/care/hyper-parent-icon-maskable-v20-192.png', 'maskable'],
-    ['/care/hyper-parent-icon-maskable-v20-512.png', 'maskable'],
+    ['/care/hyper-parent-icon-v21-192.png', 'any'],
+    ['/care/hyper-parent-icon-v21-512.png', 'any'],
+    ['/care/hyper-parent-icon-maskable-v21-192.png', 'maskable'],
+    ['/care/hyper-parent-icon-maskable-v21-512.png', 'maskable'],
   ],
 )
 assert.deepEqual(
   hubManifest.icons.map((icon: { src: string; purpose: string }) => [icon.src, icon.purpose]),
   [
-    ['/hub/hyper-hub-icon-v20-192.png', 'any'],
-    ['/hub/hyper-hub-icon-v20-512.png', 'any'],
-    ['/hub/hyper-hub-icon-maskable-v20-192.png', 'maskable'],
-    ['/hub/hyper-hub-icon-maskable-v20-512.png', 'maskable'],
+    ['/hub/hyper-hub-icon-v21-192.png', 'any'],
+    ['/hub/hyper-hub-icon-v21-512.png', 'any'],
+    ['/hub/hyper-hub-icon-maskable-v21-192.png', 'maskable'],
+    ['/hub/hyper-hub-icon-maskable-v21-512.png', 'maskable'],
   ],
 )
 
 assert.match(types, /HUB_ACADEMY_LOGO_WEBP = '\/hub\/hyper-academy-logo-v11\.webp'/)
-assert.match(indexHtml, /manifest\.href = '\/teacher\/manifest\.webmanifest\?v=20-installable'/)
-assert.match(indexHtml, /hyper-teacher-icon-v20-192\.png/)
+assert.match(indexHtml, /manifest\.href = '\/teacher\/manifest\.webmanifest\?v=21-installable'/)
+assert.match(indexHtml, /hyper-teacher-icon-v21-192\.png/)
 assert.match(indexHtml, /hyper-teacher-apple-touch-v12-180\.png/)
+assert.doesNotMatch(indexHtml, /hyper-teacher-icon-v20-192\.png/)
 assert.doesNotMatch(indexHtml, /hyper-teacher-icon-v19-192\.png/)
 assert.doesNotMatch(indexHtml, /hyper-teacher-icon-v18-192\.png/)
-assert.match(teacherRegistrar, /\/teacher\/manifest\.webmanifest\?v=20-installable/)
-assert.match(parentRoute, /\/care\/manifest\.webmanifest\?v=20-installable/)
-assert.match(hubSession, /\/hub\/manifest\.webmanifest\?v=20-installable/)
-assert.match(middleware, /\/care\/manifest\.webmanifest\?v=20-installable/)
-assert.match(middleware, /\/hub\/manifest\.webmanifest\?v=20-installable/)
+assert.match(teacherRegistrar, /\/teacher\/manifest\.webmanifest\?v=21-installable/)
+assert.match(parentRoute, /\/care\/manifest\.webmanifest\?v=21-installable/)
+assert.match(hubSession, /\/hub\/manifest\.webmanifest\?v=21-installable/)
+assert.match(middleware, /\/care\/manifest\.webmanifest\?v=21-installable/)
+assert.match(middleware, /\/hub\/manifest\.webmanifest\?v=21-installable/)
 assert.match(teacherLayout, /hyper-teacher-apple-touch-v12-180\.png\?v=12/)
-assert.match(teacherLayout, /hyper-teacher-icon-v20-192\.png\?v=20/)
+assert.match(teacherLayout, /hyper-teacher-icon-v21-192\.png\?v=21/)
 assert.match(parentRegistrar, /hyper-parent-apple-touch-v12-180\.png\?v=12/)
-assert.match(parentRegistrar, /MANIFEST_VERSION = '20'/)
+assert.match(parentRegistrar, /MANIFEST_VERSION = '21'/)
 assert.match(hubRegistrar, /hyper-hub-apple-touch-v12-180\.png\?v=12/)
-assert.match(hubRegistrar, /hyper-hub-icon-v20-192\.png\?v=20/)
-assert.match(teacherPush, /hyper-teacher-icon-v20-192\.png/)
-assert.match(careSw, /hyper-parent-icon-v20-192\.png/)
-assert.match(hubSw, /hyper-hub-icon-v20-192\.png/)
+assert.match(hubRegistrar, /hyper-hub-icon-v21-192\.png\?v=21/)
+assert.match(teacherPush, /hyper-teacher-icon-v21-192\.png/)
+assert.match(careSw, /hyper-parent-icon-v21-192\.png/)
+assert.match(hubSw, /hyper-hub-icon-v21-192\.png/)
 assert.match(careSw, /notificationclick/)
 assert.match(hubSw, /notificationclick/)
 assert.match(vite, /teacher\/hyper-teacher-icon-192-v5\.png/)
