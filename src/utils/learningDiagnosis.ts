@@ -36,6 +36,12 @@ export type DailyLearningDiagnosis = {
   englishListeningScore: number | null
   /** 영어 듣기 평가 합격/불합격 */
   englishListeningResult: EnglishVocabResult | null
+  /** 영어 누적 단어 TEST 형식. 'cumulative'이면 1~4차시 점수 경로와 분리 */
+  englishVocabTestFormat: 'cumulative' | null
+  /** 표시/기록용 전체 누적 시험 단어 수. SUMMARY 감점에 사용하지 않음 */
+  englishVocabTotalWords: number | null
+  /** 틀린 단어 절대 개수. Weekly SUMMARY 감점에만 사용 */
+  englishVocabWrongWords: number | null
 }
 
 export const EMPTY_DAILY_LEARNING_DIAGNOSIS: DailyLearningDiagnosis = {
@@ -53,6 +59,9 @@ export const EMPTY_DAILY_LEARNING_DIAGNOSIS: DailyLearningDiagnosis = {
   englishReadingWrongCount: null,
   englishListeningScore: null,
   englishListeningResult: null,
+  englishVocabTestFormat: null,
+  englishVocabTotalWords: null,
+  englishVocabWrongWords: null,
 }
 
 export function isMathWrongCause(value: unknown): value is MathWrongCause {
@@ -102,6 +111,10 @@ function toNullableScore100(value: unknown): number | null {
 
 function toPassFailResult(value: unknown): EnglishVocabResult | null {
   return value === '합격' || value === '불합격' ? value : null
+}
+
+function toVocabTestFormat(value: unknown): 'cumulative' | null {
+  return value === 'cumulative' ? 'cumulative' : null
 }
 
 function toNonNegInt(value: unknown): number {
@@ -231,6 +244,9 @@ export function normalizeDailyLearningDiagnosis(raw: unknown): DailyLearningDiag
     englishReadingWrongCount: toNullableNonNegInt(row.englishReadingWrongCount),
     englishListeningScore: toNullableScore100(row.englishListeningScore),
     englishListeningResult: toPassFailResult(row.englishListeningResult),
+    englishVocabTestFormat: toVocabTestFormat(row.englishVocabTestFormat),
+    englishVocabTotalWords: toNullableNonNegInt(row.englishVocabTotalWords),
+    englishVocabWrongWords: toNullableNonNegInt(row.englishVocabWrongWords),
   }
 }
 
@@ -255,6 +271,9 @@ export function hasDailyLearningDiagnosisContent(
   if (d.englishReadingWrongCount !== null) return true
   if (d.englishListeningScore !== null) return true
   if (d.englishListeningResult !== null) return true
+  if (d.englishVocabTestFormat === 'cumulative') return true
+  if (d.englishVocabTotalWords !== null) return true
+  if (d.englishVocabWrongWords !== null) return true
   return false
 }
 

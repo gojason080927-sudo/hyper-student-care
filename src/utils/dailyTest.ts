@@ -1,6 +1,10 @@
 import type { DailyTestRecord, TestSessionResult, TestSessionStatus } from '../types/records'
 import { calcPercentage } from './calc'
 import {
+  applyCumulativeVocabToDiagnosis,
+  shouldUseCumulativeEnglishVocabInput,
+} from './englishVocabTest'
+import {
   EMPTY_DAILY_LEARNING_DIAGNOSIS,
   normalizeDailyLearningDiagnosis,
 } from './learningDiagnosis'
@@ -258,10 +262,13 @@ export type DailyTestFormData = {
   memo: string
   sessionResults: DailyTestFormSessionState[]
   learningDiagnosis: DailyTestRecord['learningDiagnosis']
+  vocabTotalWords?: string
+  vocabWrongWords?: string
 }
 
 export function dailyTestRecordToForm(record: DailyTestRecord): DailyTestFormData {
   const sessionResults = normalizeSessionResultsForForm(migrateSessionResults(record))
+  const learningDiagnosis = normalizeDailyLearningDiagnosis(record.learningDiagnosis)
   return {
     id: record.id,
     studentId: record.studentId,
@@ -270,14 +277,57 @@ export function dailyTestRecordToForm(record: DailyTestRecord): DailyTestFormDat
     subject: record.subject,
     memo: record.memo,
     sessionResults,
-    learningDiagnosis: normalizeDailyLearningDiagnosis(record.learningDiagnosis),
+    learningDiagnosis,
+    vocabTotalWords:
+      learningDiagnosis.englishVocabTotalWords == null
+        ? ''
+        : String(learningDiagnosis.englishVocabTotalWords),
+    vocabWrongWords:
+      learningDiagnosis.englishVocabWrongWords == null
+        ? ''
+        : String(learningDiagnosis.englishVocabWrongWords),
+  }
+}
+
+export function shouldUseCumulativeEnglishVocabForm(form: DailyTestFormData): boolean {
+  return shouldUseCumulativeEnglishVocabInput(form.subject, formRecordHint(form))
+}
+
+function formRecordHint(form: DailyTestFormData): DailyTestRecord | null {
+  if (!form.id) return null
+  return {
+    id: form.id,
+    studentId: form.studentId,
+    date: form.date,
+    testName: form.testName,
+    subject: form.subject,
+    score: 0,
+    totalScore: 100,
+    percentage: 0,
+    incorrectCount: 0,
+    memo: form.memo,
+    sessionResults: form.sessionResults,
+    learningDiagnosis: form.learningDiagnosis,
+    createdAt: '',
+    updatedAt: '',
   }
 }
 
 export function dailyTestFormToSavePayload(
   form: DailyTestFormData,
 ): Omit<DailyTestRecord, 'id' | 'createdAt' | 'updatedAt' | 'percentage'> & { id?: string } {
-  const normalized = form.sessionResults.map(normalizeSessionResult)
+  const useVocab = shouldUseCumulativeEnglishVocabForm(form)
+  const totalWords = Number(form.vocabTotalWords)
+  const wrongWords = Number(form.vocabWrongWords)
+  const savingVocab =
+    useVocab &&
+    Number.isInteger(totalWords) &&
+    Number.isInteger(wrongWords) &&
+    totalWords > 0 &&
+    wrongWords >= 0
+  const normalized = (savingVocab ? createDefaultSessionResults() : form.sessionResults).map(
+    normalizeSessionResult,
+  )
   const passRound = getFinalPassSession(normalized)
   const sessionResults = passRound
     ? selectFinalPassSession(normalized, passRound)
@@ -291,7 +341,9 @@ export function dailyTestFormToSavePayload(
     subject: form.subject,
     memo: form.memo,
     sessionResults,
-    learningDiagnosis: normalizeDailyLearningDiagnosis(form.learningDiagnosis),
+    learningDiagnosis: savingVocab
+      ? applyCumulativeVocabToDiagnosis(form.learningDiagnosis, totalWords, wrongWords)
+      : normalizeDailyLearningDiagnosis(form.learningDiagnosis),
     ...legacy,
   }
 }
@@ -422,7 +474,10 @@ export function hasDailyTestDisplayData(record?: DailyTestRecord): boolean {
     diagnosis.englishGrammarWrongCount !== null ||
     diagnosis.englishReadingWrongCount !== null ||
     diagnosis.englishListeningScore !== null ||
-    diagnosis.englishListeningResult !== null
+    diagnosis.englishListeningResult !== null ||
+    diagnosis.englishVocabTestFormat === 'cumulative' ||
+    diagnosis.englishVocabTotalWords !== null ||
+    diagnosis.englishVocabWrongWords !== null
   ) {
     return true
   }

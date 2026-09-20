@@ -126,6 +126,12 @@ export type DailyLearningDiagnosisData = {
   englishListeningScore: number | null
   /** 영어 듣기 평가 결과 */
   englishListeningResult: '합격' | '불합격' | null
+  /** 영어 누적 단어 TEST. 'cumulative'이면 1~4차시 점수 대신 단어 수/오답 수 사용 */
+  englishVocabTestFormat: 'cumulative' | null
+  /** 표시/기록용 전체 누적 시험 단어 수. SUMMARY 감점에 사용하지 않음 */
+  englishVocabTotalWords: number | null
+  /** 틀린 단어 절대 개수. Weekly SUMMARY 감점에만 사용 */
+  englishVocabWrongWords: number | null
 }
 
 export type MathWrongCause = '개념 부족' | '계산 실수' | '문제 이해 부족'

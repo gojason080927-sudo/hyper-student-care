@@ -241,9 +241,21 @@ export function DailyTestWeeklyFlowCard({
           })}
         </div>
       ) : null}
-      <div className="mt-3 overflow-visible pt-5">
-        <FlowChart days={model.days} clipId={clipId} />
-      </div>
+      {model.cumulativeResults.length > 0 ? (
+        <div className="mt-3 space-y-1.5 rounded-xl bg-slate-50 px-3 py-2.5">
+          <p className="text-[11px] font-semibold text-[#163A70]">누적 단어 TEST</p>
+          {model.cumulativeResults.map((item) => (
+            <p key={item.date} className="text-sm font-semibold text-slate-800">
+              {item.label}
+            </p>
+          ))}
+        </div>
+      ) : null}
+      {model.days.some((day) => day.sessions.some((session) => session.kind === 'score')) ? (
+        <div className="mt-3 overflow-visible pt-5">
+          <FlowChart days={model.days} clipId={clipId} />
+        </div>
+      ) : null}
       <div className="mt-3">
         <h4 className="text-sm font-bold text-navy-900">주간 오답 현황</h4>
         <div className="mt-2 grid grid-cols-2 gap-1.5">
@@ -265,20 +277,22 @@ export function DailyTestWeeklyFlowCard({
           })}
         </div>
       </div>
-      <div className="mt-3 grid grid-cols-3 gap-2">
-        {[
-          { label: '주간 최고', value: model.max },
-          { label: '주간 최저', value: model.min },
-          { label: '주간 평균', value: model.avg },
-        ].map((item) => (
-          <div key={item.label} className="rounded-xl bg-slate-50 px-2 py-2 text-center">
-            <p className="text-[11px] font-semibold text-slate-500">{item.label}</p>
-            <p className="mt-0.5 text-sm font-bold text-[#163A70]">
-              {item.value == null ? '—' : `${formatStat(item.value)}점`}
-            </p>
-          </div>
-        ))}
-      </div>
+      {model.max != null ? (
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          {[
+            { label: '주간 최고', value: model.max },
+            { label: '주간 최저', value: model.min },
+            { label: '주간 평균', value: model.avg },
+          ].map((item) => (
+            <div key={item.label} className="rounded-xl bg-slate-50 px-2 py-2 text-center">
+              <p className="text-[11px] font-semibold text-slate-500">{item.label}</p>
+              <p className="mt-0.5 text-sm font-bold text-[#163A70]">
+                {item.value == null ? '—' : `${formatStat(item.value)}점`}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </section>
   )
 }
