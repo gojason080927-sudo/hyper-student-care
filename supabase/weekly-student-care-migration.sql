@@ -597,6 +597,21 @@ AS $$
   END;
 $$;
 
+CREATE OR REPLACE FUNCTION public._english_vocab_weekly_deduction(p_wrong_words integer)
+RETURNS integer
+LANGUAGE sql
+IMMUTABLE
+AS $$
+  SELECT CASE
+    WHEN p_wrong_words IS NULL OR p_wrong_words < 0 THEN 0
+    WHEN p_wrong_words <= 5 THEN 0
+    WHEN p_wrong_words <= 10 THEN 1
+    WHEN p_wrong_words <= 15 THEN 2
+    WHEN p_wrong_words <= 20 THEN 3
+    ELSE 4
+  END;
+$$;
+
 CREATE OR REPLACE FUNCTION public._daily_test_attempt_score(p_row public.daily_tests)
 RETURNS numeric
 LANGUAGE plpgsql
@@ -609,6 +624,10 @@ DECLARE
   v_total numeric;
   v_status text;
 BEGIN
+  IF coalesce(p_row.subject, '') LIKE '%영어%'
+     AND coalesce(p_row.learning_diagnosis->>'englishVocabTestFormat', '') = 'cumulative' THEN
+    RETURN NULL;
+  END IF;
   IF p_row.session_results IS NOT NULL AND jsonb_typeof(p_row.session_results) = 'array' THEN
     FOR v_elem IN SELECT value FROM jsonb_array_elements(p_row.session_results)
     LOOP
@@ -703,6 +722,7 @@ DECLARE
   v_period_start date;
   v_period_end_out date;
   v_issue text;
+  v_vocab_deduction integer := 0;
 BEGIN
   FOR v_date IN
     SELECT d::date
@@ -930,6 +950,23 @@ BEGIN
   ELSE
     v_total := round(v_total, 2);
     v_grade_score := CASE WHEN v_available = 100 THEN v_total ELSE round(v_total / v_available * 100, 2) END;
+    SELECT coalesce(sum(public._english_vocab_weekly_deduction(
+      CASE
+        WHEN (t.learning_diagnosis->>'englishVocabWrongWords') ~ '^[0-9]+$'
+          THEN (t.learning_diagnosis->>'englishVocabWrongWords')::integer
+        ELSE NULL
+      END
+    )), 0)
+    INTO v_vocab_deduction
+    FROM public.daily_tests t
+    WHERE t.student_id = p_student_id
+      AND t.date = ANY (v_dates)
+      AND coalesce(t.subject, '') LIKE '%영어%'
+      AND coalesce(t.learning_diagnosis->>'englishVocabTestFormat', '') = 'cumulative';
+    v_grade_score := greatest(0, v_grade_score - v_vocab_deduction);
+    IF v_available = 100 THEN
+      v_total := v_grade_score;
+    END IF;
     v_grade := CASE
       WHEN v_grade_score >= 90 THEN '우수'
       WHEN v_grade_score >= 80 THEN '양호'

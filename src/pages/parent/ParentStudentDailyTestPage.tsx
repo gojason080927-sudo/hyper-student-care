@@ -1,3 +1,4 @@
+import { CumulativeVocabTestResult } from '../../components/dailytest/CumulativeVocabTestResult'
 import { DailyTestSessionGrid } from '../../components/dailytest/DailyTestSessionGrid'
 import { ParentDailyTestDiagnosisBlock } from '../../components/dailytest/ParentDailyTestDiagnosisBlock'
 import {
@@ -7,6 +8,8 @@ import {
 } from '../../components/parent/ParentStudentComponents'
 import { useParentStudentRecords } from '../../hooks/useParentStudentRecords'
 import { formatKoreanDate } from '../../utils/date'
+import { usesCumulativeEnglishVocabTest } from '../../utils/englishVocabTest'
+import { normalizeDailyLearningDiagnosis } from '../../utils/learningDiagnosis'
 
 export function ParentStudentDailyTestPage() {
   const { dailyTests } = useParentStudentRecords()
@@ -26,12 +29,23 @@ export function ParentStudentDailyTestPage() {
               title={record.subject}
             >
               <div className="space-y-3">
-                <DailyTestSessionGrid
-                  record={record}
-                  variant="parentReport"
-                  readOnly
-                  sectionTitle={record.subject.includes('영어') ? '어휘 시험' : undefined}
-                />
+                {usesCumulativeEnglishVocabTest(record) ? (
+                  <CumulativeVocabTestResult
+                    totalWords={
+                      normalizeDailyLearningDiagnosis(record.learningDiagnosis).englishVocabTotalWords ?? 0
+                    }
+                    wrongWords={
+                      normalizeDailyLearningDiagnosis(record.learningDiagnosis).englishVocabWrongWords ?? 0
+                    }
+                  />
+                ) : (
+                  <DailyTestSessionGrid
+                    record={record}
+                    variant="parentReport"
+                    readOnly
+                    sectionTitle={record.subject.includes('영어') ? '어휘 시험' : undefined}
+                  />
+                )}
                 <ParentDailyTestDiagnosisBlock record={record} />
               </div>
             </ParentRecordCard>

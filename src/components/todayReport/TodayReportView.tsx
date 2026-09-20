@@ -9,6 +9,8 @@ import {
   TeacherMobileDailyTestSessionForm,
   type TeacherMobileDailyTestSessionFormRef,
 } from '../teacherMobile/TeacherMobileDailyTestSessionForm'
+import { CumulativeVocabTestFields } from '../dailytest/CumulativeVocabTestFields'
+import { CumulativeVocabTestResult } from '../dailytest/CumulativeVocabTestResult'
 import { DailyTestSessionGrid } from '../dailytest/DailyTestSessionGrid'
 import { DailyLearningDiagnosisFields } from '../diagnosis/DailyLearningDiagnosisFields'
 import { ParentDailyTestDiagnosisBlock } from '../dailytest/ParentDailyTestDiagnosisBlock'
@@ -75,6 +77,12 @@ import {
   normalizeSessionResultsForForm,
   type DailyTestFormData,
 } from '../../utils/dailyTest'
+import {
+  shouldUseCumulativeEnglishVocabInput,
+  usesCumulativeEnglishVocabTest,
+  validateCumulativeVocabInput,
+} from '../../utils/englishVocabTest'
+import { normalizeDailyLearningDiagnosis } from '../../utils/learningDiagnosis'
 import {
   mobileDailyTestFormToSavePayload,
   sessionsToMobileDailyTestRounds,
@@ -1860,19 +1868,26 @@ function DailyTestParentSection({
   classNote?: ClassNoteRecord
 }) {
   const isEnglish = record.subject.includes('영어')
+  const diagnosis = normalizeDailyLearningDiagnosis(record.learningDiagnosis)
   return (
     <div className="space-y-2.5">
       <p className="text-sm text-slate-600">
         <span className="font-medium text-slate-800">{record.subject}</span>
         {record.testName ? <> · {record.testName}</> : null}
       </p>
-      {/* 영어: 어휘 시험 1~4차시 / 수학: 기존 차시 그리드 */}
-      <DailyTestSessionGrid
-        record={record}
-        variant="parentReport"
-        readOnly
-        sectionTitle={isEnglish ? '어휘 시험' : undefined}
-      />
+      {usesCumulativeEnglishVocabTest(record) ? (
+        <CumulativeVocabTestResult
+          totalWords={diagnosis.englishVocabTotalWords ?? 0}
+          wrongWords={diagnosis.englishVocabWrongWords ?? 0}
+        />
+      ) : (
+        <DailyTestSessionGrid
+          record={record}
+          variant="parentReport"
+          readOnly
+          sectionTitle={isEnglish ? '어휘 시험' : undefined}
+        />
+      )}
       {/* 영어: 듣기 평가 → 강사 피드백 / 수학: 오답 분석 → 피드백 */}
       <ParentDailyTestDiagnosisBlock record={record} classNote={classNote} />
       {/* 오답 BANK 데이터·기능은 유지. Today Report 학부모 화면 표시만 수업태도로 교체 */}
@@ -1950,34 +1965,51 @@ function DailyTestSection({
     })
   }, [readOnly, visibleDailyTestSubjects])
 
+  const useCumulativeVocab = shouldUseCumulativeEnglishVocabInput(form.subject, record)
+
   const handleSave = () => {
+    const nextErrors: Record<string, string> = {}
     const committedSessions = useMobileDailyTestInput
       ? (mobileDailyTestRef.current?.commitToSessionResults() ?? form.sessionResults)
       : form.sessionResults
-    const sessionErrors = validateDailyTestSessions(committedSessions)
-    const nextErrors: Record<string, string> = { ...sessionErrors }
+    if (useCumulativeVocab) {
+      const vocabError = validateCumulativeVocabInput(
+        form.vocabTotalWords ?? '',
+        form.vocabWrongWords ?? '',
+      )
+      if (vocabError) nextErrors.vocab = vocabError
+    } else {
+      Object.assign(nextErrors, validateDailyTestSessions(committedSessions))
+    }
     if (!form.testName.trim()) nextErrors.testName = '시험명을 입력해 주세요.'
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) return
 
-    const payload = useMobileDailyTestInput
-      ? mobileDailyTestFormToSavePayload(
-          {
-            ...form,
-            id: record?.id,
-            studentId,
-            date,
-          },
-          mobileDailyTestRef.current?.getRounds() ??
-            sessionsToMobileDailyTestRounds(form.sessionResults),
-        )
-      : dailyTestFormToSavePayload({
+    const payload = useCumulativeVocab
+      ? dailyTestFormToSavePayload({
           ...form,
           id: record?.id,
           studentId,
           date,
-          sessionResults: committedSessions,
         })
+      : useMobileDailyTestInput
+        ? mobileDailyTestFormToSavePayload(
+            {
+              ...form,
+              id: record?.id,
+              studentId,
+              date,
+            },
+            mobileDailyTestRef.current?.getRounds() ??
+              sessionsToMobileDailyTestRounds(form.sessionResults),
+          )
+        : dailyTestFormToSavePayload({
+            ...form,
+            id: record?.id,
+            studentId,
+            date,
+            sessionResults: committedSessions,
+          })
 
     onSave(payload)
     setForm((prev) => ({
@@ -1991,7 +2023,9 @@ function DailyTestSection({
   return (
     <SectionCard
       title="일일 테스트"
-      titleExtra={readOnly ? undefined : <DailyTestPassRuleBadge />}
+      titleExtra={
+        readOnly || useCumulativeVocab ? undefined : <DailyTestPassRuleBadge />
+      }
       compact={readOnly}
       teacherCompact={teacherCompact}
       hideTitle={hideTitle}
@@ -2040,7 +2074,16 @@ function DailyTestSection({
               {errors.testName && <p className="mt-0.5 text-xs text-rose-500">{errors.testName}</p>}
             </div>
           </div>
-          {useMobileDailyTestInput ? (
+          {useCumulativeVocab ? (
+            <CumulativeVocabTestFields
+              totalWords={form.vocabTotalWords ?? ''}
+              wrongWords={form.vocabWrongWords ?? ''}
+              onTotalWordsChange={(value) => setForm((prev) => ({ ...prev, vocabTotalWords: value }))}
+              onWrongWordsChange={(value) => setForm((prev) => ({ ...prev, vocabWrongWords: value }))}
+              error={errors.vocab}
+              compact={teacherCompact}
+            />
+          ) : useMobileDailyTestInput ? (
             <TeacherMobileDailyTestSessionForm
               ref={mobileDailyTestRef}
               sessions={form.sessionResults}

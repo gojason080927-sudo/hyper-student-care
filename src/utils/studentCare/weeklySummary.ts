@@ -36,6 +36,7 @@ import {
   scaleIndex,
   weeklyTestIndex,
 } from './scoring.ts'
+import { sumEnglishVocabWeeklyDeduction } from '../englishVocabTest.ts'
 import { formatPeriodLabel, getFridayOfWeek, getMondayOfWeek, listDatesInclusive } from './week.ts'
 
 export type WeeklySummaryBuildInput = StudentCareLessonInput & {
@@ -142,10 +143,12 @@ export function buildWeeklyLearningSummary(
 
   const testScores: number[] = []
   let testPassCount = 0
+  const weekDailyTests = input.dailyTests.filter(
+    (item) => item.studentId === input.studentId && lessonDates.includes(item.date),
+  )
+  const vocabWeeklyDeduction = sumEnglishVocabWeeklyDeduction(weekDailyTests)
   for (const date of lessonDates) {
-    const tests = input.dailyTests.filter(
-      (item) => item.studentId === input.studentId && item.date === date,
-    )
+    const tests = weekDailyTests.filter((item) => item.date === date)
     const score = dailyTestDayScore(tests)
     if (score == null) continue
     testScores.push(score)
@@ -214,6 +217,7 @@ export function buildWeeklyLearningSummary(
     averageScore: testAverage,
     passCount: testPassCount,
     attemptCount: testScores.length,
+    vocabWeeklyDeduction,
   })
   const issueTotal = Object.values(attitudeIssueCounts).reduce((sum, count) => sum + count, 0)
   const attitude = areaFromIndex(averageIndex(attitudeIndexes), ATTITUDE_WEEKLY_MAX, {
@@ -238,13 +242,23 @@ export function buildWeeklyLearningSummary(
       ? null
       : roundScore(scored.reduce((sum, area) => sum + (area.score ?? 0), 0))
   const availableMax = scored.reduce((sum, area) => sum + area.max, 0)
-  const gradeScore =
+  const rawGradeScore =
     computedTotal == null || availableMax <= 0
       ? null
       : availableMax === WEEKLY_SUMMARY_TOTAL_MAX
         ? computedTotal
         : rescalePartialTotal(computedTotal, availableMax)
+  const gradeScore =
+    rawGradeScore == null
+      ? null
+      : roundScore(Math.max(0, rawGradeScore - vocabWeeklyDeduction))
   const grade = weeklyGradeFromScore(gradeScore)
+  const reportedTotal =
+    computedTotal == null
+      ? null
+      : availableMax === WEEKLY_SUMMARY_TOTAL_MAX && gradeScore != null
+        ? gradeScore
+        : computedTotal
 
   const periodStart = lessonDates[0] ?? weekStart
   const periodEnd = lessonDates[lessonDates.length - 1] ?? friday
@@ -257,7 +271,7 @@ export function buildWeeklyLearningSummary(
     periodStart,
     periodEnd,
     asOf: nowIso,
-    totalScore: computedTotal,
+    totalScore: reportedTotal,
     grade,
     scores,
     goodText: buildGoodText({

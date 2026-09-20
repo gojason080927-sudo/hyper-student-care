@@ -1,12 +1,17 @@
 import { StudentSelect } from '../ui/StudentSelect'
 import { DailyLearningDiagnosisFields } from '../diagnosis/DailyLearningDiagnosisFields'
+import { CumulativeVocabTestFields } from './CumulativeVocabTestFields'
 import {
   DailyTestSessionFormSection,
   validateDailyTestSessions,
 } from './DailyTestSessionFormSection'
 import type { Student } from '../../types/student'
-import type { DailyTestFormData } from '../../utils/dailyTest'
-import { normalizeSessionResultsForForm } from '../../utils/dailyTest'
+import {
+  normalizeSessionResultsForForm,
+  shouldUseCumulativeEnglishVocabForm,
+  type DailyTestFormData,
+} from '../../utils/dailyTest'
+import { validateCumulativeVocabInput } from '../../utils/englishVocabTest'
 import { SUBJECTS, btnPrimary, btnSecondary, inputClass } from '../../utils/labels'
 import { requireDate, requireNonEmpty } from '../../utils/validation'
 
@@ -76,14 +81,24 @@ export function DailyTestForm({
         />
         {errors.testName && <p className="mt-1 text-sm text-rose-500">{errors.testName}</p>}
       </div>
-      <DailyTestSessionFormSection
-        sessions={form.sessionResults}
-        onChange={(sessionResults) =>
-          onChange({ ...form, sessionResults: normalizeSessionResultsForForm(sessionResults) })
-        }
-        errors={errors}
-        sectionTitle={form.subject.includes('영어') ? '어휘 시험' : undefined}
-      />
+      {shouldUseCumulativeEnglishVocabForm(form) ? (
+        <CumulativeVocabTestFields
+          totalWords={form.vocabTotalWords ?? ''}
+          wrongWords={form.vocabWrongWords ?? ''}
+          onTotalWordsChange={(value) => onChange({ ...form, vocabTotalWords: value })}
+          onWrongWordsChange={(value) => onChange({ ...form, vocabWrongWords: value })}
+          error={errors.vocab}
+        />
+      ) : (
+        <DailyTestSessionFormSection
+          sessions={form.sessionResults}
+          onChange={(sessionResults) =>
+            onChange({ ...form, sessionResults: normalizeSessionResultsForForm(sessionResults) })
+          }
+          errors={errors}
+          sectionTitle={form.subject.includes('영어') ? '어휘 시험' : undefined}
+        />
+      )}
       <div>
         <label className="mb-1.5 block text-sm font-medium text-slate-700">메모</label>
         <textarea
@@ -119,6 +134,14 @@ export function validateDailyTestForm(form: DailyTestFormData): Record<string, s
   if (nameErr) next.testName = nameErr
   const subjectErr = requireNonEmpty(form.subject, '과목')
   if (subjectErr) next.subject = subjectErr
-  Object.assign(next, validateDailyTestSessions(form.sessionResults))
+  if (shouldUseCumulativeEnglishVocabForm(form)) {
+    const vocabError = validateCumulativeVocabInput(
+      form.vocabTotalWords ?? '',
+      form.vocabWrongWords ?? '',
+    )
+    if (vocabError) next.vocab = vocabError
+  } else {
+    Object.assign(next, validateDailyTestSessions(form.sessionResults))
+  }
   return next
 }

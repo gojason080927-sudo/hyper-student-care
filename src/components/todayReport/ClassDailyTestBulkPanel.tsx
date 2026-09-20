@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { DailyLearningDiagnosisFields } from '../diagnosis/DailyLearningDiagnosisFields'
+import { CumulativeVocabTestFields } from '../dailytest/CumulativeVocabTestFields'
 import { DailyTestPassRuleBadge } from '../dailytest/DailyTestSessionFormSection'
 import { useData } from '../../hooks/useData'
 import type { DailyLearningDiagnosisData } from '../../types/records'
@@ -11,6 +12,13 @@ import {
   normalizeDailyLearningDiagnosis,
 } from '../../utils/learningDiagnosis'
 import { getDailyTestSessionColor, btnPrimary, inputClass } from '../../utils/labels'
+import {
+  applyCumulativeVocabToDiagnosis,
+  hasCumulativeVocabDraftContent,
+  shouldUseCumulativeEnglishVocabInput,
+  validateCumulativeVocabInput,
+} from '../../utils/englishVocabTest'
+import { createDefaultSessionResults } from '../../utils/dailyTest'
 import { getVisibleDailyTestSubjects } from '../../utils/todayReportVisibleSubjects'
 import {
   bulkDailyTestToSavePayload,
@@ -44,6 +52,8 @@ type StudentDraft = {
   /** daily_tests.memo — 학생별 오답 BANK */
   wrongAnswerBank: string
   learningDiagnosis: DailyLearningDiagnosisData
+  vocabTotalWords: string
+  vocabWrongWords: string
 }
 
 type ClassDailyTestBulkPanelProps = {
@@ -59,6 +69,20 @@ function emptyStudentDraft(): StudentDraft {
     rounds: createEmptyMobileDailyTestRounds(),
     wrongAnswerBank: '',
     learningDiagnosis: { ...EMPTY_DAILY_LEARNING_DIAGNOSIS },
+    vocabTotalWords: '',
+    vocabWrongWords: '',
+  }
+}
+
+function vocabDraftsFromDiagnosis(diagnosis: DailyLearningDiagnosisData): {
+  vocabTotalWords: string
+  vocabWrongWords: string
+} {
+  return {
+    vocabTotalWords:
+      diagnosis.englishVocabTotalWords == null ? '' : String(diagnosis.englishVocabTotalWords),
+    vocabWrongWords:
+      diagnosis.englishVocabWrongWords == null ? '' : String(diagnosis.englishVocabWrongWords),
   }
 }
 
@@ -120,11 +144,13 @@ export function ClassDailyTestBulkPanel({
         if (!sharedTestName && record.testName.trim()) {
           sharedTestName = record.testName.trim()
         }
+        const learningDiagnosis = normalizeDailyLearningDiagnosis(record.learningDiagnosis)
         loaded[student.id] = {
           recordId: record.id,
           rounds: sessionsToBulkDailyTestRounds(record.sessionResults),
           wrongAnswerBank: record.memo ?? '',
-          learningDiagnosis: normalizeDailyLearningDiagnosis(record.learningDiagnosis),
+          learningDiagnosis,
+          ...vocabDraftsFromDiagnosis(learningDiagnosis),
         }
       } else {
         loaded[student.id] = emptyStudentDraft()
@@ -193,19 +219,48 @@ export function ClassDailyTestBulkPanel({
     updateRounds(studentId, (rounds) => updateBulkScoreDraft(rounds, round, raw))
   }
 
+  const updateVocabDraft = (
+    studentId: string,
+    patch: Partial<Pick<StudentDraft, 'vocabTotalWords' | 'vocabWrongWords'>>,
+  ) => {
+    dirtyDailyTestKeysRef.current.add(studentId)
+    setDrafts((prev) => {
+      const current = prev[studentId] ?? emptyStudentDraft()
+      return {
+        ...prev,
+        [studentId]: {
+          ...current,
+          ...patch,
+        },
+      }
+    })
+  }
+
   const handleSaveAll = async () => {
     if (saving || students.length === 0) return
 
     const targets = students.filter((student) => {
       if (!isFollowOnInputRequired(attendance, student.id, date)) return false
       const draft = drafts[student.id]
+      const existing = dailyTests.find(
+        (item) =>
+          item.studentId === student.id && item.date === date && item.subject === subject,
+      )
+      const useVocab = shouldUseCumulativeEnglishVocabInput(subject, existing)
       return (
         draft &&
-        hasBulkDailyTestContent(
-          draft.rounds,
-          draft.wrongAnswerBank,
-          hasDailyLearningDiagnosisContent(draft.learningDiagnosis),
-        )
+        (useVocab
+          ? hasCumulativeVocabDraftContent(draft.vocabTotalWords, draft.vocabWrongWords) ||
+            hasBulkDailyTestContent(
+              draft.rounds,
+              draft.wrongAnswerBank,
+              hasDailyLearningDiagnosisContent(draft.learningDiagnosis),
+            )
+          : hasBulkDailyTestContent(
+              draft.rounds,
+              draft.wrongAnswerBank,
+              hasDailyLearningDiagnosisContent(draft.learningDiagnosis),
+            ))
       )
     })
 
@@ -237,6 +292,27 @@ export function ClassDailyTestBulkPanel({
             return { student, success: false as const }
           }
           try {
+            const existing = dailyTests.find(
+              (item) =>
+                item.studentId === student.id &&
+                item.date === date &&
+                item.subject === subject,
+            )
+            const useVocab = shouldUseCumulativeEnglishVocabInput(subject, existing)
+            const savingVocab = useVocab && hasCumulativeVocabDraftContent(
+              draft.vocabTotalWords,
+              draft.vocabWrongWords,
+            )
+            if (savingVocab) {
+              const vocabError = validateCumulativeVocabInput(
+                draft.vocabTotalWords,
+                draft.vocabWrongWords,
+              )
+              if (vocabError) {
+                showToast(vocabError)
+                return { student, success: false as const }
+              }
+            }
             const payload = bulkDailyTestToSavePayload({
               id: draft.recordId,
               studentId: student.id,
@@ -244,9 +320,18 @@ export function ClassDailyTestBulkPanel({
               testName,
               subject,
               memo: draft.wrongAnswerBank,
-              rounds: draft.rounds,
-              learningDiagnosis: draft.learningDiagnosis,
+              rounds: savingVocab ? createEmptyMobileDailyTestRounds() : draft.rounds,
+              learningDiagnosis: savingVocab
+                ? applyCumulativeVocabToDiagnosis(
+                    draft.learningDiagnosis,
+                    Number(draft.vocabTotalWords),
+                    Number(draft.vocabWrongWords),
+                  )
+                : draft.learningDiagnosis,
             })
+            if (savingVocab) {
+              payload.sessionResults = createDefaultSessionResults()
+            }
             const result = await saveDailyTestRecordAsync(payload, { silent: true })
             if (!result.success) {
               console.error('[class-daily-test] save failed', {
@@ -322,9 +407,11 @@ export function ClassDailyTestBulkPanel({
         <p className="min-w-0 text-xs font-medium text-slate-500">
           {formatKoreanDate(date)} / {className || grade} · {students.length}명
         </p>
-        <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
-          <DailyTestPassRuleBadge />
-        </div>
+        {shouldUseCumulativeEnglishVocabInput(subject) ? null : (
+          <div className="flex min-w-0 flex-wrap items-center justify-end gap-1.5">
+            <DailyTestPassRuleBadge />
+          </div>
+        )}
       </div>
 
       <div
@@ -379,6 +466,12 @@ export function ClassDailyTestBulkPanel({
           const draft = drafts[student.id] ?? emptyStudentDraft()
           const passRound =
             draft.rounds.find((round) => round.passed)?.round ?? null
+          const existingRecord = dailyTests.find(
+            (item) =>
+              item.studentId === student.id &&
+              item.date === date &&
+              item.subject === subject,
+          )
           const excluded = isStudentAbsentOnDate(attendance, student.id, date)
 
           return (
@@ -467,6 +560,21 @@ export function ClassDailyTestBulkPanel({
                 <AbsentFollowOnHint compact={compact} />
               ) : (
               <>
+              {shouldUseCumulativeEnglishVocabInput(subject, existingRecord) ? (
+                <CumulativeVocabTestFields
+                  totalWords={draft.vocabTotalWords}
+                  wrongWords={draft.vocabWrongWords}
+                  onTotalWordsChange={(value) =>
+                    updateVocabDraft(student.id, { vocabTotalWords: value })
+                  }
+                  onWrongWordsChange={(value) =>
+                    updateVocabDraft(student.id, { vocabWrongWords: value })
+                  }
+                  compact
+                  disabled={saving}
+                />
+              ) : (
+                <>
               {subject.includes('영어') ? (
                 <p
                   className={
@@ -525,6 +633,8 @@ export function ClassDailyTestBulkPanel({
                   최종 합격: {passRound}차시
                 </p>
               ) : null}
+                </>
+              )}
               <div className="mt-2">
                 <DailyLearningDiagnosisFields
                   subject={subject}

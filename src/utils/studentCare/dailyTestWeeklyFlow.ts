@@ -1,5 +1,9 @@
 import type { DailyTestRecord, TestSessionResult } from '../../types/records.ts'
 import {
+  formatCumulativeVocabResult,
+  usesCumulativeEnglishVocabTest,
+} from '../englishVocabTest.ts'
+import {
   getFinalPassSession,
   getSessionScoreOnFullScale,
   migrateSessionResults,
@@ -8,6 +12,7 @@ import {
 import {
   dailyWrongTypeCounts,
   emptyDailyWrongTypeCounts,
+  normalizeDailyLearningDiagnosis,
   sumDailyWrongTypeCounts,
   type DailyWrongTypeCounts,
 } from '../learningDiagnosis.ts'
@@ -55,6 +60,12 @@ export type DailyTestWeeklyFlowModel = {
   avg: number | null
   wrongTypes: DailyWrongTypeCounts
   wrongTypeTotal: number
+  cumulativeResults: Array<{
+    date: string
+    totalWords: number
+    wrongWords: number
+    label: string
+  }>
 }
 
 const FALLBACK_SUBJECT = '일일테스트'
@@ -116,7 +127,7 @@ function sessionDisplayScore(session: TestSessionResult): number | null {
 export function buildWeeklyFlowDaySessions(
   record: DailyTestRecord | null,
 ): WeeklyFlowSessionPoint[] {
-  if (!record) {
+  if (!record || usesCumulativeEnglishVocabTest(record)) {
     return TEST_SESSION_NUMBERS.map((session) => ({
       session,
       kind: 'absent',
@@ -242,6 +253,25 @@ export function buildDailyTestWeeklyFlow(input: {
     weekStart,
     dailyTests: input.dailyTests,
   })
+  const weekRecords = pickLatestWeeklyTestRecords(input.dailyTests, input.studentId, weekStart)
+  const cumulativeResults = weekRecords
+    .filter(
+      (record) =>
+        usesCumulativeEnglishVocabTest(record) &&
+        (selectedSubject == null || weeklyFlowSubjectLabel(record.subject) === selectedSubject),
+    )
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((record) => {
+      const diagnosis = normalizeDailyLearningDiagnosis(record.learningDiagnosis)
+      const totalWords = diagnosis.englishVocabTotalWords ?? 0
+      const wrongWords = diagnosis.englishVocabWrongWords ?? 0
+      return {
+        date: record.date,
+        totalWords,
+        wrongWords,
+        label: formatCumulativeVocabResult(totalWords, wrongWords),
+      }
+    })
 
   return {
     weekStart,
@@ -252,5 +282,6 @@ export function buildDailyTestWeeklyFlow(input: {
     ...summarizeAttemptedScores(attemptedScores),
     wrongTypes,
     wrongTypeTotal: sumDailyWrongTypeCounts(wrongTypes),
+    cumulativeResults,
   }
 }

@@ -7,6 +7,7 @@ import type {
   ProgressRecord,
   StudentDailyCareRecord,
 } from '../../types/records.ts'
+import { usesCumulativeEnglishVocabTest } from '../englishVocabTest.ts'
 import { classifyHomeworkStatus } from '../homework.ts'
 import { dailyTestRecordScore } from './scoring.ts'
 
@@ -45,7 +46,10 @@ export function isEvaluableLessonDate(
   if (hasHomeworkStatus(input, date)) return true
   if (
     input.dailyTests.some(
-      (record) => record.studentId === studentId && record.date === date && dailyTestRecordScore(record) != null,
+      (record) =>
+        record.studentId === studentId &&
+        record.date === date &&
+        (dailyTestRecordScore(record) != null || usesCumulativeEnglishVocabTest(record)),
     )
   ) {
     return true

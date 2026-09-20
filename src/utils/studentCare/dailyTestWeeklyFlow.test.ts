@@ -147,6 +147,31 @@ assert.equal(englishOnly.max, 95)
 assert.equal(englishOnly.min, 95)
 assert.equal(englishOnly.days[2]?.sessions[0]?.score, 95)
 assert.equal(englishOnly.days[2]?.sessions[1]?.kind, 'absent')
+assert.deepEqual(englishOnly.cumulativeResults, [])
+
+const cumulativeEnglish = testRecord(
+  '2026-09-09',
+  '영어',
+  [session(1, '미응시'), session(2, '미응시'), session(3, '미응시'), session(4, '미응시')],
+  '2026-09-12T00:00:00.000Z',
+  {
+    englishVocabTestFormat: 'cumulative',
+    englishVocabTotalWords: 300,
+    englishVocabWrongWords: 6,
+  },
+)
+const cumulativeFlow = buildDailyTestWeeklyFlow({
+  studentId: 'stu-1',
+  weekStart: '2026-09-07',
+  dailyTests: [cumulativeEnglish],
+  subject: '영어',
+})
+assert.equal(cumulativeFlow.cumulativeResults[0]?.label, '300단어 중 6개 틀림')
+assert.equal(cumulativeFlow.max, null)
+assert.equal(
+  cumulativeFlow.days.every((day) => day.sessions.every((item) => item.kind === 'absent')),
+  true,
+)
 
 const newer = testRecord(
   '2026-09-11',
