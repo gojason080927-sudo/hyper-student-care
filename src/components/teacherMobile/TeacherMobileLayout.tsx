@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import '../../styles/teacherMobileTheme.css'
 import { OfflineBanner } from './OfflineBanner'
 import { PwaInstallPrompt } from './PwaInstallPrompt'
@@ -6,7 +6,14 @@ import { TeacherPwaRegistrar } from './TeacherPwaRegistrar'
 import { TeacherMobileBottomNav } from './TeacherMobileBottomNav'
 import { useEffect } from 'react'
 
+export function isTeacherMobileHomePath(pathname: string) {
+  return pathname === '/teacher/mobile' || pathname === '/teacher/mobile/'
+}
+
 export function TeacherMobileLayout() {
+  const { pathname } = useLocation()
+  const isHome = isTeacherMobileHomePath(pathname)
+
   useEffect(() => {
     document.title = 'HYPER TEACHER'
 
@@ -49,12 +56,16 @@ export function TeacherMobileLayout() {
       <TeacherPwaRegistrar />
       <OfflineBanner />
       <main
-        className="flex flex-1 flex-col pb-[calc(4.5rem+env(safe-area-inset-bottom))]"
+        className={
+          isHome
+            ? 'flex min-h-0 flex-1 flex-col'
+            : 'flex flex-1 flex-col pb-[calc(4.5rem+env(safe-area-inset-bottom))]'
+        }
         id="teacher-mobile-main"
       >
         <Outlet />
       </main>
-      <TeacherMobileBottomNav />
+      {isHome ? null : <TeacherMobileBottomNav />}
       <PwaInstallPrompt />
     </div>
   )

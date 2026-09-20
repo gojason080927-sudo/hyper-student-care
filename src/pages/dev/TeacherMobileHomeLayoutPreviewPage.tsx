@@ -1,4 +1,3 @@
-import { TeacherMobileBottomNav } from '../../components/teacherMobile/TeacherMobileBottomNav'
 import { TeacherMobileDashboardPage } from '../teacherMobile/TeacherMobileDashboardPage'
 import '../../styles/teacherMobileTheme.css'
 
@@ -6,10 +5,9 @@ import '../../styles/teacherMobileTheme.css'
 export function TeacherMobileHomeLayoutPreviewPage() {
   return (
     <div className="teacher-mobile-app flex min-h-svh flex-col overflow-x-hidden">
-      <main className="flex flex-1 flex-col pb-[calc(4.5rem+env(safe-area-inset-bottom))]">
+      <main className="flex min-h-0 flex-1 flex-col">
         <TeacherMobileDashboardPage />
       </main>
-      <TeacherMobileBottomNav />
     </div>
   )
 }
