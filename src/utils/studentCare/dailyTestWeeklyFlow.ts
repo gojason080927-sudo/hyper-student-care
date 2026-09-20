@@ -4,6 +4,10 @@ import {
   usesCumulativeEnglishVocabTest,
 } from '../englishVocabTest.ts'
 import {
+  formatHighRecoveryWeeklyFactLine,
+  usesHighRecoveryMathDailyTest,
+} from '../mathHighRecovery.ts'
+import {
   getFinalPassSession,
   getSessionScoreOnFullScale,
   migrateSessionResults,
@@ -64,6 +68,10 @@ export type DailyTestWeeklyFlowModel = {
     date: string
     totalWords: number
     wrongWords: number
+    label: string
+  }>
+  highRecoveryResults: Array<{
+    date: string
     label: string
   }>
 }
@@ -272,6 +280,17 @@ export function buildDailyTestWeeklyFlow(input: {
         label: formatCumulativeVocabResult(totalWords, wrongWords),
       }
     })
+  const highRecoveryResults = weekRecords
+    .filter(
+      (record) =>
+        usesHighRecoveryMathDailyTest(record) &&
+        (selectedSubject == null || weeklyFlowSubjectLabel(record.subject) === selectedSubject),
+    )
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .flatMap((record) => {
+      const label = formatHighRecoveryWeeklyFactLine(record)
+      return label ? [{ date: record.date, label }] : []
+    })
 
   return {
     weekStart,
@@ -283,5 +302,6 @@ export function buildDailyTestWeeklyFlow(input: {
     wrongTypes,
     wrongTypeTotal: sumDailyWrongTypeCounts(wrongTypes),
     cumulativeResults,
+    highRecoveryResults,
   }
 }
