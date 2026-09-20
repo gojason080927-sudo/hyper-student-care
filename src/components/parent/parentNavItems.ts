@@ -52,8 +52,8 @@ export const parentHomeCategoryItems: ParentCategoryItem[] = [
   { ...weeklyLearningSummaryItem, label: '주간 SUMMARY' },
   { ...parentCategoryItems[0], label: '월간 학습진단' },
   { ...parentCategoryItems[1], label: '월말평가' },
-  { ...parentCategoryItems[2], label: '공지·보강' },
-  { ...parentCategoryItems[3], label: '입시전략' },
+  { ...parentCategoryItems[2], label: '공지사항·보강계획' },
+  { ...parentCategoryItems[3], label: '고입·대입 입시전략' },
   { ...parentCategoryItems[4], label: '질문하기' },
 ]
 

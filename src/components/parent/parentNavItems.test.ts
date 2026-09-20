@@ -24,8 +24,8 @@ assert.deepEqual(homeLabels, [
   '주간 SUMMARY',
   '월간 학습진단',
   '월말평가',
-  '공지·보강',
-  '입시전략',
+  '공지사항·보강계획',
+  '고입·대입 입시전략',
   '질문하기',
 ])
 assert.equal(
