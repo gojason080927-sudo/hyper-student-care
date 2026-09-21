@@ -75,7 +75,7 @@ export const parentHomeCategoryItems: ParentCategoryItem[] = [
   parentWeeklyWrongVocabItem,
   parentScheduleItem,
   { ...parentCategoryItems[3], label: '입시전략' },
-  { ...parentCategoryItems[2], label: '공지사항 · 보강계획' },
+  { ...parentCategoryItems[2], label: '공지사항 보강계획' },
   parentSuggestionsItem,
 ]
 

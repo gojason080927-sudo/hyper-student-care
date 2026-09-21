@@ -25,7 +25,7 @@ assert.deepEqual(homeLabels, [
   '주간 수학 오답 영어 단어 누적',
   '시간표',
   '입시전략',
-  '공지사항 · 보강계획',
+  '공지사항 보강계획',
   '건의사항',
 ])
 assert.equal(
