@@ -1,8 +1,20 @@
-import type { DailyTestRecord, WeeklyLearningSummaryRecord } from '../types/records'
+import type {
+  ClassTodayReportCommon,
+  DailyTestRecord,
+  StudentTextbookSlot,
+  WeeklyLearningSummaryRecord,
+} from '../types/records'
 import type { MathWeeklyRecoveryFacts } from './mathDailyTest'
 import { weekDatesMondayToFriday } from './studentCare/dailyTestWeeklyFlow'
 import { getMondayOfWeek, getFridayOfWeek, formatPeriodLabel } from './studentCare/week'
 import { getSeoulDateString } from './seoulDate'
+import {
+  resolveDisplayTextbookName,
+  type TextbookDisplayClassContext,
+} from './textbookSlots'
+
+export const ENGLISH_VOCAB_TEXTBOOK_SUBJECT = '영어' as const
+export const ENGLISH_VOCAB_TEXTBOOK_SLOT = 3 as const
 
 export function listParentWeeklyWrongVocabWeeks(params: {
   studentId: string
@@ -68,4 +80,59 @@ export function pickLatestParentWeeklyVocab(
 ): { date: string; totalWords: number; wrongWords: number; label: string } | null {
   if (results.length === 0) return null
   return [...results].sort((a, b) => b.date.localeCompare(a.date))[0]
+}
+
+export function parentWeeklyVocabMemorizedWords(
+  totalWords: number,
+  wrongWords: number,
+): number {
+  if (!Number.isFinite(totalWords) || !Number.isFinite(wrongWords)) return 0
+  return Math.max(0, Math.floor(totalWords) - Math.floor(wrongWords))
+}
+
+export function parentWeeklyVocabSuccessRate(
+  totalWords: number,
+  memorizedWords: number,
+): number | null {
+  if (!Number.isFinite(totalWords) || totalWords <= 0) return null
+  if (!Number.isFinite(memorizedWords)) return null
+  return (memorizedWords / totalWords) * 100
+}
+
+export function formatParentWeeklyVocabSuccessRate(rate: number | null): string {
+  if (rate == null || !Number.isFinite(rate)) return '해당 없음'
+  return `${Math.round(rate)}%`
+}
+
+export function buildParentWeeklyVocabClassContext(params: {
+  grade: string
+  className: string
+  commonRecords: ClassTodayReportCommon[]
+  classSlots?: StudentTextbookSlot[]
+}): TextbookDisplayClassContext | undefined {
+  const grade = params.grade.trim()
+  const className = params.className.trim()
+  if (!grade || !className) return undefined
+  return {
+    grade,
+    className,
+    commonRecords: params.commonRecords,
+    classSlots: params.classSlots,
+  }
+}
+
+export function resolveParentWeeklyVocabBookName(params: {
+  studentId: string
+  date: string
+  studentTextbookSlots: StudentTextbookSlot[]
+  classContext?: TextbookDisplayClassContext
+}): string {
+  return resolveDisplayTextbookName(
+    params.classContext,
+    params.studentId,
+    params.date,
+    ENGLISH_VOCAB_TEXTBOOK_SUBJECT,
+    ENGLISH_VOCAB_TEXTBOOK_SLOT,
+    params.studentTextbookSlots,
+  )
 }

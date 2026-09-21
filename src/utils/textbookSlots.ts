@@ -260,7 +260,8 @@ export function findClassPeerTextbookName(
   return ''
 }
 
-function resolveDisplayTextbookName(
+/** Parent Today Report와 동일한 교재명 우선순위: 해당 날짜 반공통 → 이월 → 슬롯 현재값 */
+export function resolveDisplayTextbookName(
   classContext: TextbookDisplayClassContext | undefined,
   studentId: string,
   date: string,

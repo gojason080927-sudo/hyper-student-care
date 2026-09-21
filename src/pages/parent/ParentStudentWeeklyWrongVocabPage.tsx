@@ -14,7 +14,12 @@ import {
 
 export function ParentStudentWeeklyWrongVocabPage() {
   const student = useParentStudent()
-  const { dailyTests, weeklyLearningSummaries } = useData()
+  const {
+    dailyTests,
+    weeklyLearningSummaries,
+    studentTextbookSlots,
+    classTodayReportCommon,
+  } = useData()
   const weeks = useMemo(
     () =>
       listParentWeeklyWrongVocabWeeks({
@@ -82,6 +87,10 @@ export function ParentStudentWeeklyWrongVocabPage() {
           studentId={student.id}
           weekStart={activeWeek}
           dailyTests={dailyTests}
+          studentTextbookSlots={studentTextbookSlots}
+          classTodayReportCommon={classTodayReportCommon}
+          grade={student.grade}
+          className={student.className}
         />
       ) : (
         <ParentEmptyState message="확인할 주간 일일테스트 기록이 없습니다." />

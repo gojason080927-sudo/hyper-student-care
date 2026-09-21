@@ -1,11 +1,21 @@
 import { useMemo, type ReactNode } from 'react'
-import type { DailyTestRecord } from '../../types/records'
+import type {
+  ClassTodayReportCommon,
+  DailyTestRecord,
+  StudentTextbookSlot,
+} from '../../types/records'
 import { DAILY_WRONG_TYPES } from '../../utils/learningDiagnosis'
 import {
+  buildParentWeeklyVocabClassContext,
+  formatParentWeeklyVocabSuccessRate,
+  parentWeeklyVocabMemorizedWords,
+  parentWeeklyVocabSuccessRate,
   pickLatestParentWeeklyVocab,
+  resolveParentWeeklyVocabBookName,
   summarizeParentWeeklyMathRecovery,
 } from '../../utils/parentWeeklyWrongVocab'
 import { buildDailyTestWeeklyFlow } from '../../utils/studentCare/dailyTestWeeklyFlow'
+import { PARENT_FIELD_EMPTY } from '../todayReport/parentTextbookDisplay'
 
 function ReportCard({
   title,
@@ -22,11 +32,31 @@ function ReportCard({
   )
 }
 
-function StatTile({ label, value }: { label: string; value: string }) {
+function StatTile({
+  label,
+  value,
+  wrap = false,
+  muted = false,
+}: {
+  label: string
+  value: string
+  wrap?: boolean
+  muted?: boolean
+}) {
   return (
     <div className="rounded-2xl bg-slate-50 px-3 py-3">
       <p className="text-xs font-medium text-slate-500">{label}</p>
-      <p className="mt-1 text-2xl font-bold tabular-nums leading-none text-[#163A70]">{value}</p>
+      <p
+        className={
+          wrap
+            ? `mt-1 break-words text-base font-bold leading-snug ${
+                muted ? 'text-slate-500' : 'text-[#163A70]'
+              }`
+            : 'mt-1 text-2xl font-bold tabular-nums leading-none text-[#163A70]'
+        }
+      >
+        {value}
+      </p>
     </div>
   )
 }
@@ -44,10 +74,18 @@ export function ParentWeeklyWrongVocabReport({
   studentId,
   weekStart,
   dailyTests,
+  studentTextbookSlots = [],
+  classTodayReportCommon = [],
+  grade = '',
+  className = '',
 }: {
   studentId: string
   weekStart: string
   dailyTests: DailyTestRecord[]
+  studentTextbookSlots?: StudentTextbookSlot[]
+  classTodayReportCommon?: ClassTodayReportCommon[]
+  grade?: string
+  className?: string
 }) {
   const model = useMemo(
     () =>
@@ -62,8 +100,30 @@ export function ParentWeeklyWrongVocabReport({
     model.weekRecoveryResults.map((item) => item.facts),
   )
   const vocab = pickLatestParentWeeklyVocab(model.weekCumulativeResults)
-  const correctWords =
-    vocab == null ? null : Math.max(0, vocab.totalWords - vocab.wrongWords)
+  const classContext = useMemo(
+    () =>
+      buildParentWeeklyVocabClassContext({
+        grade,
+        className,
+        commonRecords: classTodayReportCommon,
+        classSlots: studentTextbookSlots,
+      }),
+    [className, classTodayReportCommon, grade, studentTextbookSlots],
+  )
+  const bookName = vocab
+    ? resolveParentWeeklyVocabBookName({
+        studentId,
+        date: vocab.date,
+        studentTextbookSlots,
+        classContext,
+      })
+    : ''
+  const memorizedWords =
+    vocab == null ? null : parentWeeklyVocabMemorizedWords(vocab.totalWords, vocab.wrongWords)
+  const successRate =
+    vocab == null || memorizedWords == null
+      ? null
+      : parentWeeklyVocabSuccessRate(vocab.totalWords, memorizedWords)
 
   return (
     <div className="space-y-3">
@@ -97,13 +157,20 @@ export function ParentWeeklyWrongVocabReport({
       </ReportCard>
 
       <ReportCard title="영어 단어 누적">
-        {vocab ? (
+        {vocab && memorizedWords != null ? (
           <div className="mt-4 grid grid-cols-2 gap-2.5">
-            <StatTile label="누적 단어" value={`${vocab.totalWords}`} />
-            <StatTile label="틀린 단어" value={`${vocab.wrongWords}`} />
-            {correctWords != null ? (
-              <StatTile label="맞힌 단어" value={`${correctWords}`} />
-            ) : null}
+            <StatTile
+              label="단어장명"
+              value={bookName || PARENT_FIELD_EMPTY}
+              wrap
+              muted={!bookName}
+            />
+            <StatTile label="총 누적 단어" value={`${vocab.totalWords}개`} />
+            <StatTile label="최종 암기 단어" value={`${memorizedWords}개`} />
+            <StatTile
+              label="총 암기 성공률"
+              value={formatParentWeeklyVocabSuccessRate(successRate)}
+            />
           </div>
         ) : (
           <EmptyNote message="이번 주 영어 누적 단어 TEST 기록이 없습니다." />
