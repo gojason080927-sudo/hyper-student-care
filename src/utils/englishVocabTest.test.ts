@@ -326,7 +326,7 @@ assert.match(parentHistory, /usesCumulativeEnglishVocabTest/)
 assert.match(parentHistory, /CumulativeVocabTestResult/)
 
 const hubCard = readFileSync('src/components/studentCare/DailyTestWeeklyFlowCard.tsx', 'utf8')
-assert.match(hubCard, /cumulativeResults/)
+assert.match(hubCard, /weekCumulativeResults/)
 assert.match(hubCard, /누적 단어 TEST/)
 
 const risk = readFileSync('src/utils/studentCare/risk.ts', 'utf8')

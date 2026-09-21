@@ -430,6 +430,64 @@ const flowWithWrong = buildDailyTestWeeklyFlow({
 assert.equal(flowWithWrong.wrongTypeTotal, 7)
 assert.equal(flowWithWrong.max, 90)
 assert.equal(flowWithWrong.min, 80)
+assert.equal(flowWithWrong.hasMathWeekRecords, true)
+assert.equal(flowWithWrong.weekCumulativeResults.length, 0)
+assert.ok(flowWithWrong.weekRecoveryResults.length >= 0)
+
+const emptyThisWeek = buildDailyTestWeeklyFlow({
+  studentId: 'stu-1',
+  weekStart: '2026-09-21',
+  dailyTests: [mondayWrong],
+})
+assert.equal(emptyThisWeek.hasMathWeekRecords, false)
+assert.deepEqual(emptyThisWeek.weekCumulativeResults, [])
+assert.deepEqual(emptyThisWeek.weekRecoveryResults, [])
+assert.equal(emptyThisWeek.wrongTypeTotal, 0)
+
+const mathZeroTypes = testRecord(
+  '2026-09-21',
+  '수학',
+  [
+    { session: 1, status: '합격', score: 100, totalScore: 100, incorrectCount: 0 },
+    session(2, '미응시'),
+    session(3, '미응시'),
+    session(4, '미응시'),
+  ],
+  '2026-09-21T00:00:00.000Z',
+  applyFixedWrongFormatToDiagnosis(EMPTY_DAILY_LEARNING_DIAGNOSIS),
+)
+const zeroTypesFlow = buildDailyTestWeeklyFlow({
+  studentId: 'stu-1',
+  weekStart: '2026-09-21',
+  dailyTests: [mathZeroTypes],
+})
+assert.equal(zeroTypesFlow.hasMathWeekRecords, true)
+assert.equal(zeroTypesFlow.wrongTypeTotal, 0)
+assert.equal(zeroTypesFlow.wrongTypes.calculationError, 0)
+assert.equal(zeroTypesFlow.weekRecoveryResults.length, 1)
+
+assert.equal(cumulativeFlow.weekCumulativeResults[0]?.label, '300단어 중 6개 틀림')
+assert.equal(highFlow.weekRecoveryResults.length, 3)
+assert.equal(middleFlow.weekRecoveryResults.length, 2)
+assert.equal(middleFlow.hasMathWeekRecords, true)
+
+const englishOnlyWeek = buildDailyTestWeeklyFlow({
+  studentId: 'stu-1',
+  weekStart: '2026-09-07',
+  dailyTests: [cumulativeEnglish],
+})
+assert.equal(englishOnlyWeek.hasMathWeekRecords, false)
+assert.equal(englishOnlyWeek.weekCumulativeResults.length, 1)
+assert.deepEqual(englishOnlyWeek.weekRecoveryResults, [])
+
+const noTestsAtAll = buildDailyTestWeeklyFlow({
+  studentId: 'stu-1',
+  weekStart: '2026-09-21',
+  dailyTests: [],
+})
+assert.equal(noTestsAtAll.hasMathWeekRecords, false)
+assert.deepEqual(noTestsAtAll.weekCumulativeResults, [])
+assert.deepEqual(noTestsAtAll.weekRecoveryResults, [])
 
 const scoring = readFileSync('src/utils/studentCare/constants.ts', 'utf8')
 assert.match(scoring, /ATTENDANCE_WEEKLY_MAX = 20/)
@@ -450,17 +508,33 @@ const card = readFileSync('src/components/studentCare/DailyTestWeeklyFlowCard.ts
 const parentWeekly = readFileSync('src/pages/parent/ParentStudentWeeklySummaryPage.tsx', 'utf8')
 assert.match(card, /showRecoveryFacts/)
 assert.match(card, /오답 회수/)
-assert.match(card, /showRecoveryFacts && model\.recoveryResults/)
-assert.match(card, /showRecoveryFacts && model\.cumulativeResults/)
-assert.match(card, /showRecoveryFacts \? \(/)
+assert.match(card, /showRecoveryFacts/)
+assert.match(card, /weekRecoveryResults/)
+assert.match(card, /weekCumulativeResults/)
+assert.match(card, /hasMathWeekRecords/)
+assert.match(card, /이번 주 기록 없음/)
+assert.match(card, /FactEmpty/)
 assert.doesNotMatch(parentWeekly, /showRecoveryFacts/)
 assert.match(
   readFileSync('src/pages/parent/ParentStudentWeeklyWrongVocabPage.tsx', 'utf8'),
-  /showRecoveryFacts/,
+  /pickDefaultParentWeeklyWrongVocabWeek/,
+)
+assert.match(
+  readFileSync('src/pages/parent/ParentStudentWeeklyWrongVocabPage.tsx', 'utf8'),
+  /weekTouched/,
+)
+assert.match(
+  readFileSync('src/pages/parent/ParentStudentWeeklyWrongVocabPage.tsx', 'utf8'),
+  /ParentWeeklyWrongVocabReport/,
+)
+assert.doesNotMatch(
+  readFileSync('src/pages/parent/ParentStudentWeeklyWrongVocabPage.tsx', 'utf8'),
+  /DailyTestWeeklyFlowCard/,
 )
 const preview = readFileSync('src/pages/dev/ParentMobileLayoutPreviewPage.tsx', 'utf8')
 assert.match(preview, /data-preview-section="weekly-wrong-vocab"/)
-assert.match(preview, /showRecoveryFacts/)
+assert.match(preview, /ParentWeeklyWrongVocabReport/)
+assert.doesNotMatch(preview, /showRecoveryFacts/)
 assert.match(preview, /WeeklySummaryDetail/)
 assert.match(card, /주간 오답 현황/)
 assert.match(card, /주간 최고/)

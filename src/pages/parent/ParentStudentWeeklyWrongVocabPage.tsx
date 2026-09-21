@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { DailyTestWeeklyFlowCard } from '../../components/studentCare/DailyTestWeeklyFlowCard'
+import { ParentWeeklyWrongVocabReport } from '../../components/parent/ParentWeeklyWrongVocabReport'
 import {
   ParentEmptyState,
   ParentPageHeader,
@@ -8,12 +8,18 @@ import { useParentStudent } from '../../contexts/ParentStudentContext'
 import { useData } from '../../hooks/useData'
 import {
   listParentWeeklyWrongVocabWeeks,
+  pickDefaultParentWeeklyWrongVocabWeek,
   weeklyWrongVocabPeriodLabel,
 } from '../../utils/parentWeeklyWrongVocab'
 
 export function ParentStudentWeeklyWrongVocabPage() {
   const student = useParentStudent()
-  const { dailyTests, weeklyLearningSummaries } = useData()
+  const {
+    dailyTests,
+    weeklyLearningSummaries,
+    studentTextbookSlots,
+    classTodayReportCommon,
+  } = useData()
   const weeks = useMemo(
     () =>
       listParentWeeklyWrongVocabWeeks({
@@ -23,26 +29,35 @@ export function ParentStudentWeeklyWrongVocabPage() {
       }),
     [dailyTests, student.id, weeklyLearningSummaries],
   )
-  const [weekStart, setWeekStart] = useState(weeks[0] ?? '')
+  const defaultWeek = useMemo(
+    () =>
+      pickDefaultParentWeeklyWrongVocabWeek({
+        studentId: student.id,
+        dailyTests,
+      }),
+    [dailyTests, student.id],
+  )
+  const [weekStart, setWeekStart] = useState('')
+  const [weekTouched, setWeekTouched] = useState(false)
 
   useEffect(() => {
-    if (!weekStart && weeks[0]) setWeekStart(weeks[0])
-    if (weekStart && weeks.length > 0 && !weeks.includes(weekStart)) {
-      setWeekStart(weeks[0])
+    if (weekTouched) {
+      if (weekStart && weeks.length > 0 && !weeks.includes(weekStart)) {
+        setWeekStart(defaultWeek)
+        setWeekTouched(false)
+      }
+      return
     }
-  }, [weekStart, weeks])
+    setWeekStart(defaultWeek)
+  }, [defaultWeek, weekStart, weekTouched, weeks])
 
-  const activeWeek = weekStart || weeks[0]
-  const grade =
-    weeklyLearningSummaries.find(
-      (summary) => summary.studentId === student.id && summary.weekStart === activeWeek,
-    )?.scores.dailyTest.grade ?? null
+  const activeWeek = weekStart || defaultWeek
 
   return (
     <div className="parent-page space-y-4 pb-6">
       <ParentPageHeader
         title="주간 수학 오답 · 영어 단어 누적 현황"
-        description="이미 집계된 일일테스트 오답·단어·고등 오답 회수를 한 화면에서 확인합니다."
+        description="이번 주 수학 오답 회수와 영어 누적 단어 학습을 확인합니다."
       />
 
       {weeks.length > 1 ? (
@@ -50,7 +65,10 @@ export function ParentStudentWeeklyWrongVocabPage() {
           <span className="mb-1 block text-xs font-semibold text-slate-600">조회 주간</span>
           <select
             value={activeWeek}
-            onChange={(event) => setWeekStart(event.target.value)}
+            onChange={(event) => {
+              setWeekTouched(true)
+              setWeekStart(event.target.value)
+            }}
             className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800"
           >
             {weeks.map((week) => (
@@ -65,12 +83,14 @@ export function ParentStudentWeeklyWrongVocabPage() {
       ) : null}
 
       {activeWeek ? (
-        <DailyTestWeeklyFlowCard
+        <ParentWeeklyWrongVocabReport
           studentId={student.id}
           weekStart={activeWeek}
           dailyTests={dailyTests}
-          grade={grade}
-          showRecoveryFacts
+          studentTextbookSlots={studentTextbookSlots}
+          classTodayReportCommon={classTodayReportCommon}
+          grade={student.grade}
+          className={student.className}
         />
       ) : (
         <ParentEmptyState message="확인할 주간 일일테스트 기록이 없습니다." />

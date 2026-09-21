@@ -9,11 +9,16 @@ import { StudentSummaryCard } from '../../components/todayReport/TodayReportView
 import { classAttitudeDisplay } from '../../components/studentCare/ClassAttitudePicker'
 import { ParentAttitudeTeacherComment } from '../../components/todayReport/ParentAttitudeTeacherComment'
 import { materialPrepDisplay } from '../../components/studentCare/MaterialPrepPicker'
-import { DailyTestWeeklyFlowCard } from '../../components/studentCare/DailyTestWeeklyFlowCard'
+import { ParentWeeklyWrongVocabReport } from '../../components/parent/ParentWeeklyWrongVocabReport'
 import { WeeklySummaryDetail } from '../parent/ParentStudentWeeklySummaryPage'
 import { parentHomeCategoryItems, parentTodayReportHighlights, parentTodayReportItem } from '../../components/parent/parentNavItems'
 import type { Student } from '../../types/student'
-import type { DailyTestRecord, WeeklyLearningSummaryRecord } from '../../types/records'
+import type {
+  ClassTodayReportCommon,
+  DailyTestRecord,
+  StudentTextbookSlot,
+  WeeklyLearningSummaryRecord,
+} from '../../types/records'
 import { EMPTY_DAILY_LEARNING_DIAGNOSIS } from '../../utils/learningDiagnosis'
 import { applyFixedWrongFormatToDiagnosis } from '../../utils/mathDailyTest'
 import { applyHighRecoveryToDiagnosis } from '../../utils/mathHighRecovery'
@@ -156,6 +161,22 @@ const previewDailyTests: DailyTestRecord[] = [
     ),
   ),
   previewDailyTest(
+    '2026-09-08',
+    [
+      { session: 1, status: '미응시' },
+      { session: 2, status: '미응시' },
+      { session: 3, status: '미응시' },
+      { session: 4, status: '미응시' },
+    ],
+    {
+      ...EMPTY_DAILY_LEARNING_DIAGNOSIS,
+      englishVocabTestFormat: 'cumulative',
+      englishVocabTotalWords: 200,
+      englishVocabWrongWords: 20,
+    },
+    '영어',
+  ),
+  previewDailyTest(
     '2026-09-09',
     [
       { session: 1, status: '미응시' },
@@ -167,10 +188,41 @@ const previewDailyTests: DailyTestRecord[] = [
       ...EMPTY_DAILY_LEARNING_DIAGNOSIS,
       englishVocabTestFormat: 'cumulative',
       englishVocabTotalWords: 300,
-      englishVocabWrongWords: 6,
+      englishVocabWrongWords: 30,
     },
     '영어',
   ),
+]
+
+const previewEnglishTextbookSlots: StudentTextbookSlot[] = [
+  {
+    id: 'preview-en-slot-3',
+    studentId: previewStudent.id,
+    subject: '영어',
+    slotNumber: 3,
+    textbookName: '고등 영단어 BASIC',
+    createdAt: '',
+    updatedAt: '',
+  },
+]
+
+const previewEnglishClassCommon: ClassTodayReportCommon[] = [
+  {
+    id: 'preview-en-common-0909',
+    grade: previewStudent.grade,
+    className: previewStudent.className,
+    reportDate: '2026-09-09',
+    subject: '영어',
+    slotNumber: 3,
+    textbookName: '고등 영단어 BASIC',
+    currentProgress: '',
+    currentPage: 0,
+    totalPage: 0,
+    previousAssignment: '',
+    todayAssignment: '',
+    createdAt: '',
+    updatedAt: '',
+  },
 ]
 
 const previewSummary: WeeklyLearningSummaryRecord = {
@@ -306,16 +358,26 @@ export function ParentMobileLayoutPreviewPage() {
           </section>
 
           <section data-preview-section="weekly-wrong-vocab" className="parent-page space-y-4 pb-6">
-            <p className="text-sm font-bold text-navy-900">주간 수학 오답 · 영어 단어 누적 현황</p>
-            <p className="text-xs text-slate-500">
-              개발 미리보기. 별도 현황 화면이 이 카드에 회수 상세를 켤 때와 같다.
-            </p>
-            <DailyTestWeeklyFlowCard
+            <p className="text-base font-bold text-navy-900">주간 수학 오답 · 영어 단어 누적 현황</p>
+            <p className="text-sm text-slate-600">이번 주 수학 오답 회수와 영어 누적 단어 학습을 확인합니다.</p>
+            <ParentWeeklyWrongVocabReport
               studentId={previewStudent.id}
               weekStart={previewSummary.weekStart}
               dailyTests={previewDailyTests}
-              grade={previewSummary.scores.dailyTest.grade}
-              showRecoveryFacts
+              studentTextbookSlots={previewEnglishTextbookSlots}
+              classTodayReportCommon={previewEnglishClassCommon}
+              grade={previewStudent.grade}
+              className={previewStudent.className}
+            />
+            <p className="text-sm text-slate-500">기록 없는 주</p>
+            <ParentWeeklyWrongVocabReport
+              studentId={previewStudent.id}
+              weekStart="2026-09-21"
+              dailyTests={previewDailyTests}
+              studentTextbookSlots={previewEnglishTextbookSlots}
+              classTodayReportCommon={previewEnglishClassCommon}
+              grade={previewStudent.grade}
+              className={previewStudent.className}
             />
           </section>
 
