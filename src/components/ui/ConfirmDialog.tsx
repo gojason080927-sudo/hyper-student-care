@@ -5,6 +5,8 @@ type ConfirmDialogProps = {
   confirmLabel?: string
   cancelLabel?: string
   confirmTone?: 'danger' | 'primary'
+  busy?: boolean
+  busyLabel?: string
   onConfirm: () => void
   onCancel: () => void
 }
@@ -16,6 +18,8 @@ export function ConfirmDialog({
   confirmLabel = '삭제',
   cancelLabel = '취소',
   confirmTone = 'danger',
+  busy = false,
+  busyLabel = '삭제 중...',
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -31,7 +35,8 @@ export function ConfirmDialog({
       <button
         type="button"
         aria-label="취소"
-        className="absolute inset-0 bg-navy-950/50"
+        disabled={busy}
+        className="absolute inset-0 bg-navy-950/50 disabled:cursor-not-allowed"
         onClick={onCancel}
       />
       <div className="relative w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
@@ -41,12 +46,18 @@ export function ConfirmDialog({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            disabled={busy}
+            className="min-h-11 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {cancelLabel}
           </button>
-          <button type="button" onClick={onConfirm} className={confirmClass}>
-            {confirmLabel}
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={busy}
+            className={`${confirmClass} min-h-11 disabled:cursor-not-allowed disabled:opacity-60`}
+          >
+            {busy ? busyLabel : confirmLabel}
           </button>
         </div>
       </div>
