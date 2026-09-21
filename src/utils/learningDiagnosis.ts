@@ -258,7 +258,8 @@ export function normalizeDailyLearningDiagnosis(raw: unknown): DailyLearningDiag
     calculationErrorCount,
     applicationLackCount,
     comprehensionLackCount,
-    teacherFeedback: String(row.teacherFeedback ?? '').trim(),
+    // 키 입력마다 patch()가 호출되므로 trim하면 방금 친 Space가 지워진다.
+    teacherFeedback: String(row.teacherFeedback ?? ''),
     fridayRetestTotal: toNullableNonNegInt(row.fridayRetestTotal),
     fridayRetestWrong: toNullableNonNegInt(row.fridayRetestWrong),
     englishVocabResult: toPassFailResult(row.englishVocabResult),
