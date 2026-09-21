@@ -85,6 +85,9 @@ import { MonthlyLearningReportSelectPage } from './pages/MonthlyLearningReportSe
 import { MonthlyLearningReportDetailPage } from './pages/MonthlyLearningReportDetailPage'
 
 import { ParentStudentQuestionsPage } from './pages/parent/ParentStudentQuestionsPage'
+import { ParentStudentSuggestionsPage } from './pages/parent/ParentStudentSuggestionsPage'
+import { ParentStudentSchedulePage } from './pages/parent/ParentStudentSchedulePage'
+import { ParentStudentWeeklyWrongVocabPage } from './pages/parent/ParentStudentWeeklyWrongVocabPage'
 
 import { ParentStudentTodayReportPage } from './pages/parent/ParentStudentTodayReportPage'
 import { ParentStudentWeeklySummaryPage } from './pages/parent/ParentStudentWeeklySummaryPage'
@@ -204,6 +207,12 @@ function App() {
           <Route path="learning-notices/:postId" element={<LearningNoticeDetailPage />} />
 
           <Route path="questions" element={<ParentStudentQuestionsPage />} />
+
+          <Route path="suggestions" element={<ParentStudentSuggestionsPage />} />
+
+          <Route path="schedule" element={<ParentStudentSchedulePage />} />
+
+          <Route path="weekly-wrong-vocab" element={<ParentStudentWeeklyWrongVocabPage />} />
 
           <Route path="career-result/:resultId" element={<ParentCareerResultPage />} />
 

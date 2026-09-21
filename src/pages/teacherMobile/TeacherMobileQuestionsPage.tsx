@@ -20,6 +20,12 @@ import { requireDate, requireNonEmpty } from '../../utils/validation'
 import type { HubQuestionAttachment } from '../../hub/types'
 import { HUB_QUESTION_ATTACHMENTS_BUCKET } from '../../hub/types'
 import {
+  filterQuestionsByKind,
+  isParentSuggestionRecord,
+  questionKindBadge,
+  type TeacherQuestionKindFilter,
+} from '../../utils/parentSuggestions'
+import {
   groupAttachmentsByQuestion,
   teacherFetchQuestionAttachments,
   teacherSignedUrl,
@@ -94,10 +100,14 @@ function MobileQuestionListCard({
             </span>
             <span
               className={`inline-flex rounded-md px-2 py-0.5 text-[11px] font-semibold ${
-                record.source === 'student' ? 'bg-teal-50 text-teal-800' : 'bg-navy-50 text-navy-700'
+                record.source === 'student'
+                  ? 'bg-teal-50 text-teal-800'
+                  : isParentSuggestionRecord(record)
+                    ? 'bg-amber-50 text-amber-800'
+                    : 'bg-navy-50 text-navy-700'
               }`}
             >
-              {record.source === 'student' ? '학생 Hub' : '학부모'}
+              {questionKindBadge(record)}
             </span>
             {record.title && (
               <p className="text-sm font-medium text-navy-800">{record.title}</p>
@@ -180,6 +190,7 @@ export function TeacherMobileQuestionsPage() {
   const [editErrors, setEditErrors] = useState<Record<string, string>>({})
   const [deleteTarget, setDeleteTarget] = useState<QuestionRecord | null>(null)
   const [sourceFilter, setSourceFilter] = useState<'all' | 'parent' | 'student'>('all')
+  const [kindFilter, setKindFilter] = useState<TeacherQuestionKindFilter>('all')
   const [attachmentsByQuestion, setAttachmentsByQuestion] = useState<Record<string, HubQuestionAttachment[]>>({})
 
   useEffect(() => {
@@ -203,9 +214,12 @@ export function TeacherMobileQuestionsPage() {
 
   const sortedQuestions = useMemo(() => {
     const list = sortQuestionsForMobile(questions)
-    if (sourceFilter === 'all') return list
-    return list.filter((record) => (record.source ?? 'parent') === sourceFilter)
-  }, [questions, sourceFilter])
+    const bySource =
+      sourceFilter === 'all'
+        ? list
+        : list.filter((record) => (record.source ?? 'parent') === sourceFilter)
+    return filterQuestionsByKind(bySource, kindFilter)
+  }, [kindFilter, questions, sourceFilter])
   const selectedQuestion = useMemo(
     () => sortedQuestions.find((q) => q.id === selectedQuestionId) ?? null,
     [selectedQuestionId, sortedQuestions],
@@ -247,6 +261,7 @@ export function TeacherMobileQuestionsPage() {
       status: hasAnswer ? '답변완료' : editForm.status,
       questionImages: editForm.questionImages,
       answerImages: editForm.answerImages,
+      source: questions.find((item) => item.id === editForm.id)?.source,
     })
     setEditModalOpen(false)
     if (selectedQuestionId === editForm.id) {
@@ -276,6 +291,7 @@ export function TeacherMobileQuestionsPage() {
         questionImages: selectedQuestion.questionImages ?? [],
         answerImages: answerDraft.answerImages,
         status: '답변완료',
+        source: selectedQuestion.source,
       })
       if (ok) {
         setActiveTab('list')
@@ -322,25 +338,45 @@ export function TeacherMobileQuestionsPage() {
       </div>
 
       {activeTab === 'list' ? (
-        <div className="flex flex-wrap gap-2">
-          {(
-            [
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-2">
+            {[
               { id: 'all' as const, label: '전체' },
-              { id: 'parent' as const, label: '학부모' },
-              { id: 'student' as const, label: '학생 Hub' },
-            ] as const
-          ).map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setSourceFilter(item.id)}
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                sourceFilter === item.id ? 'bg-[#163A70] text-white' : 'bg-white text-slate-600'
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
+              { id: 'question' as const, label: '일반 질문' },
+              { id: 'suggestion' as const, label: '학부모 건의' },
+            ].map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setKindFilter(item.id)}
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  kindFilter === item.id ? 'bg-[#163A70] text-white' : 'bg-white text-slate-600'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                { id: 'all' as const, label: '전체 출처' },
+                { id: 'parent' as const, label: '학부모' },
+                { id: 'student' as const, label: '학생 Hub' },
+              ] as const
+            ).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setSourceFilter(item.id)}
+                className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  sourceFilter === item.id ? 'bg-[#163A70] text-white' : 'bg-white text-slate-600'
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
         </div>
       ) : null}
 
@@ -388,10 +424,12 @@ export function TeacherMobileQuestionsPage() {
                 className={`inline-flex rounded-md px-2 py-0.5 text-xs font-semibold ${
                   selectedQuestion.source === 'student'
                     ? 'bg-teal-50 text-teal-800'
-                    : 'bg-navy-50 text-navy-700'
+                    : isParentSuggestionRecord(selectedQuestion)
+                      ? 'bg-amber-50 text-amber-800'
+                      : 'bg-navy-50 text-navy-700'
                 }`}
               >
-                {selectedQuestion.source === 'student' ? '학생 Hub' : '학부모'}
+                {questionKindBadge(selectedQuestion)}
               </span>
               {selectedQuestion.title && (
                 <p className="font-medium text-navy-800">{selectedQuestion.title}</p>

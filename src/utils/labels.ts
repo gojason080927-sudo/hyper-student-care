@@ -28,6 +28,7 @@ export const MAKEUP_PLAN_STATUSES: MakeupPlanStatus[] = ['예정', '완료', '�
 
 export const ASSIGNMENT_STATUSES: AssignmentStatus[] = ['완료', '보충필요']
 
+/** 학부모/강사 질문하기 작성 폼용. 건의사항은 포함하지 않는다. */
 export const QUESTION_CATEGORIES = [
   '수업질문',
   '숙제질문',
