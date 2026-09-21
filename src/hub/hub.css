@@ -9,6 +9,7 @@
   --hub-border: rgba(91, 52, 138, 0.18);
   --hub-text: #161b3a;
   --hub-muted: #6b6574;
+  --hub-purple-rgb: 91, 52, 138;
   background:
     radial-gradient(120% 40% at 50% -8%, rgba(232, 220, 244, 0.55), transparent 58%),
     var(--hub-surface);
@@ -598,4 +599,13 @@
   font-size: 0.72rem;
   font-weight: 600;
   color: var(--hub-muted);
+}
+
+/* Internal page chrome only. HOME hero / tiles / feature are unchanged. */
+.hub-page-header-back {
+  color: var(--hub-purple);
+}
+
+.hub-page-header-title {
+  color: var(--hub-navy);
 }

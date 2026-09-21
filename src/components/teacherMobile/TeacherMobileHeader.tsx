@@ -24,7 +24,7 @@ export function TeacherMobileHeader({
 
   return (
     <header
-      className="sticky top-0 z-30 border-b border-[rgba(22,58,112,0.06)] bg-white/92 backdrop-blur-md"
+      className="tm-app-header sticky top-0 z-30"
       style={{ paddingTop: 'max(0.5rem, env(safe-area-inset-top))' }}
     >
       <div className="flex items-start justify-between gap-2 px-4 pb-3 pt-2">

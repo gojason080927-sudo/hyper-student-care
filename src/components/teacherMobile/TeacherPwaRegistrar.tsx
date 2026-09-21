@@ -53,7 +53,7 @@ export function TeacherPwaRegistrar() {
     manifestLink.href = TEACHER_MANIFEST_HREF
 
     const theme = document.querySelector('meta[name="theme-color"]')
-    if (theme) theme.setAttribute('content', '#0B1F4A')
+    if (theme) theme.setAttribute('content', '#5b348a')
 
     if (!('serviceWorker' in navigator)) {
       return

@@ -31,7 +31,7 @@ export function ParentStudentSidebar({ isOpen, onClose }: ParentStudentSidebarPr
         <button
           type="button"
           aria-label="메뉴 닫기"
-          className="fixed inset-0 z-40 bg-[rgba(22,58,112,0.2)] backdrop-blur-sm lg:hidden"
+          className="pm-sidebar-overlay fixed inset-0 z-40 backdrop-blur-sm lg:hidden"
           onClick={onClose}
         />
       )}
@@ -41,7 +41,7 @@ export function ParentStudentSidebar({ isOpen, onClose }: ParentStudentSidebarPr
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
-        <div className="border-b border-[rgba(22,58,112,0.06)] px-4 py-5 sm:px-5">
+        <div className="border-b border-[color:var(--hub-border)] px-4 py-5 sm:px-5">
           <div className="flex items-start justify-between gap-2">
             <BrandMark />
             <button

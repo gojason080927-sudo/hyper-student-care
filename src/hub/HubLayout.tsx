@@ -12,7 +12,7 @@ function HubMessage({ title, body }: { title: string; body: string }) {
   return (
     <div className="student-hub-app flex min-h-svh items-center justify-center px-4">
       <div className="max-w-sm rounded-2xl bg-white p-8 text-center shadow-sm">
-        <h1 className="break-keep text-xl font-bold text-[#163A70]">{title}</h1>
+        <h1 className="hub-page-header-title break-keep text-xl font-bold">{title}</h1>
         <p className="mt-3 break-keep text-sm leading-relaxed text-[#6B7280]">{body}</p>
       </div>
     </div>
