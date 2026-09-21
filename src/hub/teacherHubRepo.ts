@@ -13,6 +13,13 @@ import type {
 import { HUB_LEARNING_MATERIALS_BUCKET } from './types'
 import { classifyHubMaterialFile, materialKindFromDecision } from './hubFilePolicy'
 import {
+  HUB_INBOX_REPLY_SAVE_FAILURE,
+  HUB_INBOX_STATUS_SAVE_FAILURE,
+  hubInboxReplyUpdatePayload,
+  hubInboxStatusUpdatePayload,
+  requireHubInboxUpdatedRow,
+} from './hubInboxWrite'
+import {
   collectHubMaterialStoragePaths,
   mergeOwnedHubMaterialStoragePaths,
 } from './hubMaterialStorage'
@@ -150,21 +157,42 @@ export async function teacherFetchInbox(): Promise<HubInboxItem[]> {
   })
 }
 
-export async function teacherUpdateInboxStatus(id: string, status: string): Promise<void> {
-  const { error } = await getSupabase().from('student_hub_inbox').update({ status }).eq('id', id)
-  throwIfError(error, '상태 변경에 실패했습니다.')
+export async function teacherUpdateInboxStatus(
+  id: string,
+  status: string,
+): Promise<{ status: string; teacherReply: string }> {
+  const { data, error } = await getSupabase()
+    .from('student_hub_inbox')
+    .update(hubInboxStatusUpdatePayload(status))
+    .eq('id', id)
+    .select('id, status, teacher_reply')
+    .maybeSingle()
+  throwIfError(error, HUB_INBOX_STATUS_SAVE_FAILURE)
+  const row = requireHubInboxUpdatedRow(data, id, HUB_INBOX_STATUS_SAVE_FAILURE)
+  return {
+    status: String(row.status ?? status),
+    teacherReply: String(row.teacher_reply ?? ''),
+  }
 }
 
-export async function teacherSaveInboxReply(id: string, reply: string): Promise<void> {
-  const teacherReply = reply.trim()
-  const { error } = await getSupabase()
+export async function teacherSaveInboxReply(
+  id: string,
+  reply: string,
+): Promise<{ teacherReply: string; teacherRepliedAt: string | null }> {
+  const payload = hubInboxReplyUpdatePayload(reply)
+  const { data, error } = await getSupabase()
     .from('student_hub_inbox')
-    .update({
-      teacher_reply: teacherReply,
-      teacher_replied_at: teacherReply ? new Date().toISOString() : null,
-    })
+    .update(payload)
     .eq('id', id)
-  throwIfError(error, '답변 저장에 실패했습니다.')
+    .select('id, teacher_reply, teacher_replied_at, status')
+    .maybeSingle()
+  throwIfError(error, HUB_INBOX_REPLY_SAVE_FAILURE)
+  const row = requireHubInboxUpdatedRow(data, id, HUB_INBOX_REPLY_SAVE_FAILURE)
+  return {
+    teacherReply: String(row.teacher_reply ?? payload.teacher_reply),
+    teacherRepliedAt:
+      typeof row.teacher_replied_at === 'string' ? row.teacher_replied_at : payload.teacher_replied_at,
+  }
 }
 
 export async function teacherSignedUrl(bucket: string, path: string): Promise<string> {

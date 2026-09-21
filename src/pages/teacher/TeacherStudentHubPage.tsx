@@ -27,6 +27,12 @@ import { parseTimestampLines, parseYoutubeVideoId } from '../../hub/youtube'
 import { HUB_MATERIAL_ACCEPT } from '../../hub/hubFilePolicy'
 import { hubAudienceSelectionError } from '../../hub/hubAudience'
 import { notifyHubPush } from '../../lib/hubPushInvoke'
+import {
+  HUB_INBOX_REPLY_SAVE_FAILURE,
+  HUB_INBOX_REPLY_SAVE_SUCCESS,
+  HUB_INBOX_STATUS_SAVE_FAILURE,
+  mergePatchedHubInboxItem,
+} from '../../hub/hubInboxWrite'
 
 type Tab = 'materials' | 'videos' | 'requests' | 'suggestions'
 
@@ -217,6 +223,10 @@ export function TeacherStudentHubPage() {
         <InboxPanel
           kind={tab === 'requests' ? 'material_request' : 'suggestion'}
           items={inbox.filter((item) => item.kind === (tab === 'requests' ? 'material_request' : 'suggestion'))}
+          showToast={showToast}
+          onItemPatched={(id, patch) =>
+            setInbox((prev) => mergePatchedHubInboxItem(prev, id, patch))
+          }
           onChanged={reload}
         />
       ) : null}
@@ -694,10 +704,14 @@ function VideoPanel({
 function InboxPanel({
   kind,
   items,
+  showToast,
+  onItemPatched,
   onChanged,
 }: {
   kind: 'material_request' | 'suggestion'
   items: HubInboxItem[]
+  showToast: (text: string) => void
+  onItemPatched: (id: string, patch: Partial<HubInboxItem>) => void
   onChanged: () => Promise<void>
 }) {
   const [drafts, setDrafts] = useState<Record<string, string>>({})
@@ -741,6 +755,7 @@ function InboxPanel({
               rows={3}
               value={drafts[item.id] ?? item.teacherReply}
               placeholder="예: 금요일까지 올려주겠습니다."
+              disabled={busyId === item.id}
               onChange={(event) =>
                 setDrafts((prev) => ({ ...prev, [item.id]: event.target.value }))
               }
@@ -752,35 +767,59 @@ function InboxPanel({
               className={btnPrimary}
               disabled={busyId === item.id}
               onClick={async () => {
+                if (busyId) return
                 setBusyId(item.id)
                 try {
-                  await teacherSaveInboxReply(item.id, drafts[item.id] ?? item.teacherReply)
-                  notifyHubPush({
-                    event: 'inbox_replied',
-                    entityId: item.id,
-                    previous: { teacherReply: item.teacherReply },
+                  const saved = await teacherSaveInboxReply(
+                    item.id,
+                    drafts[item.id] ?? item.teacherReply,
+                  )
+                  onItemPatched(item.id, {
+                    teacherReply: saved.teacherReply,
+                    teacherRepliedAt: saved.teacherRepliedAt,
                   })
                   setDrafts((prev) => {
                     const next = { ...prev }
                     delete next[item.id]
                     return next
                   })
-                  await onChanged()
+                  notifyHubPush({
+                    event: 'inbox_replied',
+                    entityId: item.id,
+                    previous: { teacherReply: item.teacherReply },
+                  })
+                  showToast(HUB_INBOX_REPLY_SAVE_SUCCESS)
+                  await onChanged().catch(() => undefined)
+                } catch (err) {
+                  showToast(err instanceof Error ? err.message : HUB_INBOX_REPLY_SAVE_FAILURE)
                 } finally {
                   setBusyId('')
                 }
               }}
             >
-              답변 저장
+              {busyId === item.id ? '저장 중…' : '답변 저장'}
             </button>
             {['접수', '처리중', '완료'].map((status) => (
               <button
                 key={status}
                 type="button"
                 className={btnSecondary}
+                disabled={busyId === item.id}
                 onClick={async () => {
-                  await teacherUpdateInboxStatus(item.id, status)
-                  await onChanged()
+                  if (busyId) return
+                  setBusyId(item.id)
+                  try {
+                    const saved = await teacherUpdateInboxStatus(item.id, status)
+                    onItemPatched(item.id, {
+                      status: saved.status,
+                      teacherReply: saved.teacherReply,
+                    })
+                    await onChanged().catch(() => undefined)
+                  } catch (err) {
+                    showToast(err instanceof Error ? err.message : HUB_INBOX_STATUS_SAVE_FAILURE)
+                  } finally {
+                    setBusyId('')
+                  }
                 }}
               >
                 {status}
