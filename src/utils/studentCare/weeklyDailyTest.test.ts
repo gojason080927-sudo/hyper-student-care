@@ -307,6 +307,8 @@ assert.doesNotMatch(riskSrc, /weeklyDailyTestDayFact/)
 assert.match(readFileSync('src/utils/studentCare/scoring.ts', 'utf8'), /usesHighRecoveryMathDailyTest/)
 assert.match(readFileSync('src/utils/studentCare/weeklySummary.ts', 'utf8'), /weeklyDailyTestDayFact/)
 assert.doesNotMatch(readFileSync('src/utils/studentCare/weeklySummary.ts', 'utf8'), /weeklyTestIndex\(/)
+assert.doesNotMatch(readFileSync('src/utils/studentCare/weeklySummary.ts', 'utf8'), /highRecoveryWeeklyFlowSessions/)
+assert.doesNotMatch(readFileSync('src/utils/studentCare/risk.ts', 'utf8'), /highRecoveryWeeklyFlowSessions/)
 
 const mig = readFileSync('supabase/high-recovery-weekly-c-migration.sql', 'utf8')
 assert.doesNotMatch(mig, /TRUNCATE TABLE/i)
@@ -325,8 +327,12 @@ assert.match(
 )
 
 const card = readFileSync('src/components/studentCare/DailyTestWeeklyFlowCard.tsx', 'utf8')
-assert.match(card, /highRecoveryResults/)
-assert.match(card, /고등 오답 회수/)
+assert.match(card, /showRecoveryFacts/)
+assert.match(card, /오답 회수/)
+assert.doesNotMatch(
+  readFileSync('src/pages/parent/ParentStudentWeeklySummaryPage.tsx', 'utf8'),
+  /showRecoveryFacts/,
+)
 assert.doesNotMatch(readFileSync('src/utils/voiceInput/parseStudentDailyTestVoice.ts', 'utf8'), /weeklyDailyTestDayFact/)
 
 console.log('weeklyDailyTest OK')

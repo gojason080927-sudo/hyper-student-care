@@ -18,6 +18,10 @@ import type { QuestionImageAttachment, QuestionRecord, QuestionStatus } from '..
 import { sortByDateDesc } from '../utils/filters'
 import { QUESTION_CATEGORIES, QUESTION_STATUSES, btnPrimary, btnSecondary, inputClass } from '../utils/labels'
 import { requireDate, requireNonEmpty } from '../utils/validation'
+import {
+  filterQuestionsByKind,
+  type TeacherQuestionKindFilter,
+} from '../utils/parentSuggestions'
 import { HUB_QUESTION_ATTACHMENTS_BUCKET } from '../hub/types'
 import type { HubQuestionAttachment } from '../hub/types'
 import {
@@ -39,6 +43,7 @@ export function QuestionsPage() {
   const [categoryFilter, setCategoryFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [sourceFilter, setSourceFilter] = useState('')
+  const [kindFilter, setKindFilter] = useState<TeacherQuestionKindFilter>('all')
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState<QuestionFormState>(emptyQuestionForm())
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -70,8 +75,9 @@ export function QuestionsPage() {
     if (categoryFilter) list = list.filter((q) => q.category === categoryFilter)
     if (statusFilter) list = list.filter((q) => q.status === statusFilter)
     if (sourceFilter) list = list.filter((q) => (q.source ?? 'parent') === sourceFilter)
+    list = filterQuestionsByKind(list, kindFilter)
     return list
-  }, [categoryFilter, questions, sourceFilter, statusFilter, studentFilter])
+  }, [categoryFilter, kindFilter, questions, sourceFilter, statusFilter, studentFilter])
 
   const openAdd = () => {
     setForm(emptyQuestionForm())
@@ -104,11 +110,15 @@ export function QuestionsPage() {
     const status: QuestionStatus = hasAnswerContent(form.answer, form.answerImages)
       ? '답변완료'
       : form.status
+    const existingSource = form.id
+      ? questions.find((item) => item.id === form.id)?.source
+      : 'parent'
     saveQuestionRecord({
       ...form,
       status,
       questionImages: form.questionImages,
       answerImages: form.answerImages,
+      source: existingSource,
     })
     setModalOpen(false)
   }
@@ -133,7 +143,7 @@ export function QuestionsPage() {
       </p>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <StudentSelect students={students} value={studentFilter} onChange={setStudentFilter} label="학생" />
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-600">분류</label>
@@ -155,6 +165,18 @@ export function QuestionsPage() {
                   {s}
                 </option>
               ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-600">유형</label>
+            <select
+              value={kindFilter}
+              onChange={(e) => setKindFilter(e.target.value as TeacherQuestionKindFilter)}
+              className={inputClass()}
+            >
+              <option value="all">전체</option>
+              <option value="question">일반 질문</option>
+              <option value="suggestion">학부모 건의</option>
             </select>
           </div>
           <div>

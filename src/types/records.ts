@@ -254,6 +254,7 @@ export type QuestionCategory =
   | '시험질문'
   | '상담요청'
   | '기타'
+  | '건의사항'
 
 export type QuestionStatus = '답변대기' | '답변완료'
 

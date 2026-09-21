@@ -9,11 +9,14 @@ import { StudentSummaryCard } from '../../components/todayReport/TodayReportView
 import { classAttitudeDisplay } from '../../components/studentCare/ClassAttitudePicker'
 import { ParentAttitudeTeacherComment } from '../../components/todayReport/ParentAttitudeTeacherComment'
 import { materialPrepDisplay } from '../../components/studentCare/MaterialPrepPicker'
+import { DailyTestWeeklyFlowCard } from '../../components/studentCare/DailyTestWeeklyFlowCard'
 import { WeeklySummaryDetail } from '../parent/ParentStudentWeeklySummaryPage'
 import { parentHomeCategoryItems, parentTodayReportHighlights, parentTodayReportItem } from '../../components/parent/parentNavItems'
 import type { Student } from '../../types/student'
 import type { DailyTestRecord, WeeklyLearningSummaryRecord } from '../../types/records'
 import { EMPTY_DAILY_LEARNING_DIAGNOSIS } from '../../utils/learningDiagnosis'
+import { applyFixedWrongFormatToDiagnosis } from '../../utils/mathDailyTest'
+import { applyHighRecoveryToDiagnosis } from '../../utils/mathHighRecovery'
 import { computePriorDayLearningEvaluation } from '../../utils/studentCare'
 import '../../styles/parentMobileTheme.css'
 
@@ -89,26 +92,28 @@ const previewEvaluation = computePriorDayLearningEvaluation(
 function previewDailyTest(
   date: string,
   sessions: DailyTestRecord['sessionResults'],
+  diagnosis: DailyTestRecord['learningDiagnosis'] = applyFixedWrongFormatToDiagnosis({
+    ...EMPTY_DAILY_LEARNING_DIAGNOSIS,
+    calculationErrorCount: date === '2026-09-07' ? 2 : date === '2026-09-09' ? 1 : 0,
+    conceptLackCount: date === '2026-09-09' ? 2 : 0,
+    applicationLackCount: 0,
+    comprehensionLackCount: date === '2026-09-09' ? 1 : 0,
+  }),
+  subject = '수학',
 ): DailyTestRecord {
   return {
-    id: `preview-${date}`,
+    id: `preview-${date}-${subject}`,
     studentId: previewStudent.id,
     date,
     testName: '일일테스트',
-    subject: '수학',
+    subject,
     score: sessions.find((item) => item.score != null)?.score ?? 0,
     totalScore: 100,
     percentage: sessions.find((item) => item.score != null)?.score ?? 0,
-    incorrectCount: 0,
+    incorrectCount: sessions.find((item) => item.incorrectCount != null)?.incorrectCount ?? 0,
     memo: '',
     sessionResults: sessions,
-    learningDiagnosis: {
-      ...EMPTY_DAILY_LEARNING_DIAGNOSIS,
-      calculationErrorCount: date === '2026-09-07' ? 2 : date === '2026-09-09' ? 1 : 0,
-      conceptLackCount: date === '2026-09-09' ? 2 : date === '2026-09-11' ? 1 : 0,
-      applicationLackCount: date === '2026-09-11' ? 1 : 0,
-      comprehensionLackCount: date === '2026-09-09' ? 1 : 0,
-    },
+    learningDiagnosis: diagnosis,
     createdAt: '2026-09-12T00:00:00.000Z',
     updatedAt: '2026-09-12T00:00:00.000Z',
   }
@@ -116,23 +121,56 @@ function previewDailyTest(
 
 const previewDailyTests: DailyTestRecord[] = [
   previewDailyTest('2026-09-07', [
-    { session: 1, status: '합격', score: 92, totalScore: 100 },
+    { session: 1, status: '합격', score: 90, totalScore: 100, incorrectCount: 1 },
     { session: 2, status: '미응시' },
     { session: 3, status: '미응시' },
     { session: 4, status: '미응시' },
   ]),
   previewDailyTest('2026-09-09', [
-    { session: 1, status: '불합격', score: 70, totalScore: 100 },
-    { session: 2, status: '불합격', score: 80, totalScore: 100 },
-    { session: 3, status: '합격', score: 88, totalScore: 100 },
+    { session: 1, status: '불합격', score: 70, totalScore: 100, incorrectCount: 3 },
+    { session: 2, status: '불합격', score: 80, totalScore: 100, incorrectCount: 1 },
+    { session: 3, status: '합격', score: 100, totalScore: 100, incorrectCount: 0 },
     { session: 4, status: '미응시' },
   ]),
-  previewDailyTest('2026-09-11', [
-    { session: 1, status: '불합격', score: 78, totalScore: 100 },
-    { session: 2, status: '합격', score: 85, totalScore: 100 },
-    { session: 3, status: '미응시' },
-    { session: 4, status: '미응시' },
-  ]),
+  previewDailyTest(
+    '2026-09-11',
+    [
+      { session: 1, status: '미응시' },
+      { session: 2, status: '미응시' },
+      { session: 3, status: '미응시' },
+      { session: 4, status: '미응시' },
+    ],
+    applyHighRecoveryToDiagnosis(
+      {
+        ...EMPTY_DAILY_LEARNING_DIAGNOSIS,
+        calculationErrorCount: 1,
+        conceptLackCount: 1,
+        applicationLackCount: 1,
+      },
+      {
+        firstWrong: 4,
+        endSession: 4,
+        session3Questions: 6,
+        session4Questions: 5,
+      },
+    ),
+  ),
+  previewDailyTest(
+    '2026-09-09',
+    [
+      { session: 1, status: '미응시' },
+      { session: 2, status: '미응시' },
+      { session: 3, status: '미응시' },
+      { session: 4, status: '미응시' },
+    ],
+    {
+      ...EMPTY_DAILY_LEARNING_DIAGNOSIS,
+      englishVocabTestFormat: 'cumulative',
+      englishVocabTotalWords: 300,
+      englishVocabWrongWords: 6,
+    },
+    '영어',
+  ),
 ]
 
 const previewSummary: WeeklyLearningSummaryRecord = {
@@ -264,6 +302,20 @@ export function ParentMobileLayoutPreviewPage() {
               summary={previewSummary}
               dailyTests={previewDailyTests}
               studentId={previewStudent.id}
+            />
+          </section>
+
+          <section data-preview-section="weekly-wrong-vocab" className="parent-page space-y-4 pb-6">
+            <p className="text-sm font-bold text-navy-900">주간 수학 오답 · 영어 단어 누적 현황</p>
+            <p className="text-xs text-slate-500">
+              개발 미리보기. 별도 현황 화면이 이 카드에 회수 상세를 켤 때와 같다.
+            </p>
+            <DailyTestWeeklyFlowCard
+              studentId={previewStudent.id}
+              weekStart={previewSummary.weekStart}
+              dailyTests={previewDailyTests}
+              grade={previewSummary.scores.dailyTest.grade}
+              showRecoveryFacts
             />
           </section>
 

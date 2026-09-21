@@ -243,7 +243,7 @@ CREATE TABLE public.questions (
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
   CONSTRAINT questions_category_check CHECK (
-    category IN ('수업질문', '숙제질문', '시험질문', '상담요청', '기타')
+    category IN ('수업질문', '숙제질문', '시험질문', '상담요청', '기타', '건의사항')
   ),
   CONSTRAINT questions_status_check CHECK (
     status IN ('답변대기', '답변완료')

@@ -1,5 +1,5 @@
 import { Plus } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   emptyQuestionForm,
   QuestionFormFields,
@@ -14,27 +14,37 @@ import { Modal } from '../../components/ui/Modal'
 import { useParentStudent } from '../../contexts/ParentStudentContext'
 import { useParentStudentRecords } from '../../hooks/useParentStudentRecords'
 import { useData } from '../../hooks/useData'
-import { filterParentQuestions } from '../../utils/parentSuggestions'
 import { btnPrimary, btnSecondary } from '../../utils/labels'
+import {
+  filterParentSuggestions,
+  PARENT_SUGGESTION_CATEGORY,
+} from '../../utils/parentSuggestions'
+import { writeParentSuggestionLastRead } from '../../utils/parentUnread'
 import { requireDate, requireNonEmpty } from '../../utils/validation'
 
-export function ParentStudentQuestionsPage() {
+export function ParentStudentSuggestionsPage() {
   const student = useParentStudent()
-  const { questions: allQuestions } = useParentStudentRecords()
-  const questions = useMemo(
-    () => filterParentQuestions(allQuestions),
-    [allQuestions],
-  )
+  const { questions } = useParentStudentRecords()
   const { saveQuestionRecord, showToast } = useData()
+  const suggestions = useMemo(() => filterParentSuggestions(questions), [questions])
   const [modalOpen, setModalOpen] = useState(false)
   const [form, setForm] = useState<QuestionFormState>(() => ({
     ...emptyQuestionForm(),
     studentId: student.id,
+    category: PARENT_SUGGESTION_CATEGORY,
   }))
   const [errors, setErrors] = useState<Record<string, string>>({})
 
+  useEffect(() => {
+    writeParentSuggestionLastRead(student.studentAccessKey)
+  }, [student.studentAccessKey])
+
   const openAdd = () => {
-    setForm({ ...emptyQuestionForm(), studentId: student.id })
+    setForm({
+      ...emptyQuestionForm(),
+      studentId: student.id,
+      category: PARENT_SUGGESTION_CATEGORY,
+    })
     setErrors({})
     setModalOpen(true)
   }
@@ -45,7 +55,7 @@ export function ParentStudentQuestionsPage() {
     if (dateErr) next.date = dateErr
     const titleErr = requireNonEmpty(form.title, '제목')
     if (titleErr) next.title = titleErr
-    const contentErr = requireNonEmpty(form.content, '질문 내용')
+    const contentErr = requireNonEmpty(form.content, '건의 내용')
     if (contentErr) next.content = contentErr
     setErrors(next)
     return Object.keys(next).length === 0
@@ -57,7 +67,7 @@ export function ParentStudentQuestionsPage() {
     saveQuestionRecord({
       studentId: student.id,
       date: form.date,
-      category: form.category,
+      category: PARENT_SUGGESTION_CATEGORY,
       title: form.title.trim(),
       content: form.content.trim(),
       answer: '',
@@ -71,8 +81,8 @@ export function ParentStudentQuestionsPage() {
   return (
     <div className="parent-page space-y-5 pb-6">
       <ParentPageHeader
-        title="질문하기"
-        description="학습 관련 질문을 등록하고 답변을 확인합니다."
+        title="건의사항"
+        description="학원에 전하고 싶은 점을 남기고 답변을 확인합니다. 연결된 학생 기준으로 전달됩니다."
         action={
           <button
             type="button"
@@ -80,16 +90,16 @@ export function ParentStudentQuestionsPage() {
             className={`${btnPrimary} inline-flex min-h-11 items-center gap-2`}
           >
             <Plus className="h-4 w-4" />
-            질문 등록
+            건의 등록
           </button>
         }
       />
 
-      {questions.length === 0 ? (
-        <ParentEmptyState message="등록된 질문이 없습니다." />
+      {suggestions.length === 0 ? (
+        <ParentEmptyState message="등록된 건의가 없습니다." />
       ) : (
         <div className="parent-record-list space-y-3">
-          {questions.map((record) => (
+          {suggestions.map((record) => (
             <QuestionRecordCard
               key={record.id}
               record={record}
@@ -101,10 +111,10 @@ export function ParentStudentQuestionsPage() {
         </div>
       )}
 
-      <Modal open={modalOpen} title="질문 등록" onClose={() => setModalOpen(false)} wide>
+      <Modal open={modalOpen} title="건의 등록" onClose={() => setModalOpen(false)} wide>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="rounded-xl bg-navy-50 px-4 py-3">
-            <p className="text-sm font-medium text-slate-500">질문 학생</p>
+            <p className="text-sm font-medium text-slate-500">작성 학생</p>
             <p className="mt-1 text-base font-semibold text-navy-900">{student.name}</p>
           </div>
           <QuestionFormFields
@@ -115,6 +125,8 @@ export function ParentStudentQuestionsPage() {
             allowQuestionImages
             allowAnswerEdit={false}
             allowAnswerImages={false}
+            lockCategory
+            contentLabel="건의 내용"
           />
           <div className="flex justify-end gap-3 pb-[env(safe-area-inset-bottom)]">
             <button type="button" onClick={() => setModalOpen(false)} className={`${btnSecondary} min-h-11`}>

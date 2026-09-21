@@ -17,6 +17,7 @@ import type { Student } from '../types/student'
 import { filterNoticesForStudent } from './noticeAudience'
 import { filterScheduleGridsForStudent } from './classScheduleAccess'
 import { getMathSharedLinkedClassNames } from './mathSharedGroup'
+import { isParentSuggestionRecord } from './parentSuggestions'
 
 export type ParentUnreadCategory =
   | 'today-report'
@@ -131,9 +132,59 @@ function computeLearningNoticesUpdatedAt(input: ParentUnreadInput): string | nul
 function computeQuestionsUpdatedAt(input: ParentUnreadInput): string | null {
   const studentId = input.student.id
   const answered = input.questions.filter(
-    (q) => q.studentId === studentId && q.status === '답변완료' && q.answer.trim().length > 0,
+    (q) =>
+      q.studentId === studentId &&
+      !isParentSuggestionRecord(q) &&
+      q.status === '답변완료' &&
+      q.answer.trim().length > 0,
   )
   return maxUpdatedAt(answered)
+}
+
+export function computeParentSuggestionUpdatedAt(
+  questions: QuestionRecord[],
+  studentId: string,
+): string | null {
+  const answered = questions.filter(
+    (q) =>
+      q.studentId === studentId &&
+      isParentSuggestionRecord(q) &&
+      q.status === '답변완료' &&
+      q.answer.trim().length > 0,
+  )
+  return maxUpdatedAt(answered)
+}
+
+export function hasUnreadParentSuggestions(
+  questions: QuestionRecord[],
+  studentId: string,
+  lastReadAt: string | undefined,
+): boolean {
+  return isCategoryUnread(computeParentSuggestionUpdatedAt(questions, studentId), lastReadAt)
+}
+
+export function parentSuggestionReadStorageKey(accessKey: string): string {
+  return `hyper-parent-suggestion-read:${accessKey.trim()}`
+}
+
+export function readParentSuggestionLastRead(accessKey: string): string | undefined {
+  if (typeof localStorage === 'undefined') return undefined
+  try {
+    return localStorage.getItem(parentSuggestionReadStorageKey(accessKey)) || undefined
+  } catch {
+    return undefined
+  }
+}
+
+export function writeParentSuggestionLastRead(accessKey: string): string {
+  const stamp = new Date().toISOString()
+  if (typeof localStorage === 'undefined') return stamp
+  try {
+    localStorage.setItem(parentSuggestionReadStorageKey(accessKey), stamp)
+  } catch {
+    /* ignore quota / private mode */
+  }
+  return stamp
 }
 
 export function computeParentUnreadState(input: ParentUnreadInput): ParentUnreadState {

@@ -122,6 +122,10 @@ for (const route of [
   'questions',
   'today-report',
   'weekly-learning-summary',
+  'daily-tests',
+  'suggestions',
+  'schedule',
+  'weekly-wrong-vocab',
 ]) {
   assert.match(app, new RegExp(`path="${route}"`))
 }
