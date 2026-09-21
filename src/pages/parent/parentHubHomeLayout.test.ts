@@ -62,7 +62,7 @@ assert.match(navItems, /segment: 'suggestions'/)
 assert.match(navItems, /segment: 'weekly-wrong-vocab'/)
 assert.match(navItems, /segment: 'schedule'/)
 assert.match(navItems, /label: '공지사항 · 보강계획'/)
-assert.match(navItems, /label: '공지사항 보강계획'/)
+assert.match(navItems, /label: '공지사항\\n보강계획'/)
 assert.doesNotMatch(navItems, /label: '공지·보강'/)
 
 assert.match(layout, /openParentMenu/)

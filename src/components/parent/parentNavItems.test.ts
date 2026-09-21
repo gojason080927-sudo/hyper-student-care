@@ -29,6 +29,10 @@ assert.deepEqual(homeLabels, [
   '건의사항',
 ])
 assert.equal(
+  parentHomeCategoryItems.find((item) => item.segment === 'notices-makeup')?.label,
+  '공지사항\n보강계획',
+)
+assert.equal(
   parentHomeCategoryItems.some((item) => item.segment === 'monthly-learning-report'),
   false,
 )
