@@ -5,7 +5,7 @@ import { StatusBadge } from '../ui/StatusBadge'
 import { getQuestionStatusColor } from '../../utils/labels'
 import { QuestionImageGallery } from './QuestionImageGallery'
 import { QuestionStorageAttachments } from './QuestionStorageAttachments'
-import { isParentSuggestionRecord, questionKindBadge } from '../../utils/parentSuggestions'
+import { isParentSuggestionRecord, formatParentSuggestionAuthor, questionKindBadge } from '../../utils/parentSuggestions'
 
 type QuestionRecordCardProps = {
   record: QuestionRecord
@@ -61,7 +61,11 @@ export function QuestionRecordCard({
               <span className="rounded-lg bg-[rgba(22,58,112,0.06)] px-2 py-0.5 text-xs font-medium text-[#6B7280]">
                 {record.category}
               </span>
-              {record.source === 'student' ? (
+              {isParentSuggestionRecord(record) ? (
+                <span className="rounded-lg bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-800">
+                  작성자 {formatParentSuggestionAuthor(studentName)}
+                </span>
+              ) : record.source === 'student' ? (
                 <span className="rounded-lg bg-[#28c7b7]/15 px-2 py-0.5 text-xs font-semibold text-[#0f766e]">
                   학생 Hub
                 </span>
@@ -143,7 +147,9 @@ export function QuestionRecordCard({
                     : 'bg-navy-50 text-navy-700'
               }`}
             >
-              {questionKindBadge(record)}
+              {isParentSuggestionRecord(record)
+                ? `작성자 ${formatParentSuggestionAuthor(studentName)}`
+                : questionKindBadge(record)}
             </span>
           </div>
 

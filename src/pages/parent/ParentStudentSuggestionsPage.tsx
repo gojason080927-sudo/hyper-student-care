@@ -17,6 +17,7 @@ import { useData } from '../../hooks/useData'
 import { btnPrimary, btnSecondary } from '../../utils/labels'
 import {
   filterParentSuggestions,
+  formatParentSuggestionAuthor,
   PARENT_SUGGESTION_CATEGORY,
 } from '../../utils/parentSuggestions'
 import { writeParentSuggestionLastRead } from '../../utils/parentUnread'
@@ -25,9 +26,10 @@ import { requireDate, requireNonEmpty } from '../../utils/validation'
 export function ParentStudentSuggestionsPage() {
   const student = useParentStudent()
   const { questions } = useParentStudentRecords()
-  const { saveQuestionRecord, showToast } = useData()
+  const { isSaving, saveQuestionRecord, showToast } = useData()
   const suggestions = useMemo(() => filterParentSuggestions(questions), [questions])
   const [modalOpen, setModalOpen] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState<QuestionFormState>(() => ({
     ...emptyQuestionForm(),
     studentId: student.id,
@@ -61,22 +63,30 @@ export function ParentStudentSuggestionsPage() {
     return Object.keys(next).length === 0
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!validate()) return
-    saveQuestionRecord({
-      studentId: student.id,
-      date: form.date,
-      category: PARENT_SUGGESTION_CATEGORY,
-      title: form.title.trim(),
-      content: form.content.trim(),
-      answer: '',
-      questionImages: form.questionImages,
-      answerImages: [],
-      status: '답변대기',
-    })
-    setModalOpen(false)
+    if (!validate() || submitting || isSaving) return
+    setSubmitting(true)
+    try {
+      const ok = await saveQuestionRecord({
+        studentId: student.id,
+        date: form.date,
+        category: PARENT_SUGGESTION_CATEGORY,
+        title: form.title.trim(),
+        content: form.content.trim(),
+        answer: '',
+        questionImages: form.questionImages,
+        answerImages: [],
+        status: '답변대기',
+      })
+      if (ok) setModalOpen(false)
+    } finally {
+      setSubmitting(false)
+    }
   }
+
+  const busy = submitting || isSaving
+  const authorLabel = formatParentSuggestionAuthor(student.name)
 
   return (
     <div className="parent-page space-y-5 pb-6">
@@ -103,6 +113,7 @@ export function ParentStudentSuggestionsPage() {
             <QuestionRecordCard
               key={record.id}
               record={record}
+              studentName={student.name}
               parentView
               compactImages={false}
               fullWidthImages
@@ -111,11 +122,11 @@ export function ParentStudentSuggestionsPage() {
         </div>
       )}
 
-      <Modal open={modalOpen} title="건의 등록" onClose={() => setModalOpen(false)} wide>
+      <Modal open={modalOpen} title="건의 등록" onClose={() => { if (!busy) setModalOpen(false) }} wide>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="rounded-xl bg-navy-50 px-4 py-3">
-            <p className="text-sm font-medium text-slate-500">작성 학생</p>
-            <p className="mt-1 text-base font-semibold text-navy-900">{student.name}</p>
+            <p className="text-sm font-medium text-slate-500">작성자</p>
+            <p className="mt-1 text-base font-semibold text-navy-900">{authorLabel}</p>
           </div>
           <QuestionFormFields
             form={form}
@@ -129,11 +140,16 @@ export function ParentStudentSuggestionsPage() {
             contentLabel="건의 내용"
           />
           <div className="flex justify-end gap-3 pb-[env(safe-area-inset-bottom)]">
-            <button type="button" onClick={() => setModalOpen(false)} className={`${btnSecondary} min-h-11`}>
+            <button
+              type="button"
+              onClick={() => setModalOpen(false)}
+              disabled={busy}
+              className={`${btnSecondary} min-h-11`}
+            >
               취소
             </button>
-            <button type="submit" className={`${btnPrimary} min-h-11`}>
-              등록
+            <button type="submit" disabled={busy} className={`${btnPrimary} min-h-11`}>
+              {busy ? '등록 중...' : '등록'}
             </button>
           </div>
         </form>
