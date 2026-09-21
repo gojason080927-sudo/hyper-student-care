@@ -4,6 +4,7 @@ import {
   normalizeDailyLearningDiagnosis,
 } from './learningDiagnosis'
 import {
+  highParsedFromDiagnosis,
   highRecoveryWeeklyFacts,
   isMiddleSchoolGrade,
   usesHighRecoveryMathDailyTest,
@@ -209,6 +210,8 @@ export function hasFixedWrongDraftContent(drafts: MathFixedWrongDrafts): boolean
 }
 
 /** daily_tests에서 파생하는 중·고등 오답 회수. 원본 입력은 추가하지 않는다. */
+export type MathWrongTrackingStatus = 'COMPLETE' | 'IN_PROGRESS'
+
 export type MathWeeklyRecoveryFacts = {
   discoveredWrong: number
   recoveredWrong: number
@@ -216,6 +219,28 @@ export type MathWeeklyRecoveryFacts = {
   retakeQuestionCount: number
   /** 발견 오답이 0이면 해당 없음 */
   recoveryRate: number | null
+  /** 이번 1차 오답 추적 사이클 종료 여부. recoveryRate와 별개다. */
+  trackingStatus: MathWrongTrackingStatus
+}
+
+/**
+ * 기존 session / endSession 저장값으로만 이번 추적 사이클 종료를 판정한다.
+ * recoveryRate === 100 을 완료 근거로 쓰지 않는다.
+ */
+export function mathWrongTrackingStatus(
+  record: DailyTestRecord,
+): MathWrongTrackingStatus | null {
+  if (usesHighRecoveryMathDailyTest(record)) {
+    return highParsedFromDiagnosis(record.learningDiagnosis) ? 'COMPLETE' : 'IN_PROGRESS'
+  }
+  if (!usesFixedWrongMathDailyTest(record)) return null
+  const sessions = Array.isArray(record.sessionResults) ? record.sessionResults : []
+  const first = sessions.find((item) => item.session === 1)
+  if (!first || first.status === '미응시' || first.incorrectCount == null) return null
+  if (first.status === '합격') return 'COMPLETE'
+  if (sessions.some((item) => item.session > 1 && item.status === '합격')) return 'COMPLETE'
+  if (sessions.some((item) => item.session === 4 && item.status !== '미응시')) return 'COMPLETE'
+  return 'IN_PROGRESS'
 }
 
 export function formatMathWeeklyRecoveryFactLine(facts: MathWeeklyRecoveryFacts): string {
@@ -235,10 +260,13 @@ export function formatMathWeeklyRecoveryFactLine(facts: MathWeeklyRecoveryFacts)
 export function mathWeeklyRecoveryFacts(
   record: DailyTestRecord,
 ): MathWeeklyRecoveryFacts | null {
+  const trackingStatus = mathWrongTrackingStatus(record)
   if (usesHighRecoveryMathDailyTest(record)) {
-    return highRecoveryWeeklyFacts(record)
+    const facts = highRecoveryWeeklyFacts(record)
+    if (!facts || !trackingStatus) return null
+    return { ...facts, trackingStatus }
   }
-  if (!usesFixedWrongMathDailyTest(record)) return null
+  if (!usesFixedWrongMathDailyTest(record) || !trackingStatus) return null
   const sessions = Array.isArray(record.sessionResults) ? record.sessionResults : []
   const first = sessions.find((item) => item.session === 1)
   if (!first || first.status === '미응시' || first.incorrectCount == null) return null
@@ -256,5 +284,6 @@ export function mathWeeklyRecoveryFacts(
     unrecoveredWrong: discoveredWrong - recoveredWrong,
     retakeQuestionCount,
     recoveryRate: discoveredWrong === 0 ? null : (recoveredWrong / discoveredWrong) * 100,
+    trackingStatus,
   }
 }

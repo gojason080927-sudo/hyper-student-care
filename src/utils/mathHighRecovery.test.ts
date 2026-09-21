@@ -6,7 +6,11 @@ import { readFileSync } from 'node:fs'
 import type { DailyTestRecord } from '../types/records.ts'
 import { dailyTestFormToSavePayload, dailyTestRecordToForm, type DailyTestFormData } from './dailyTest.ts'
 import { EMPTY_DAILY_LEARNING_DIAGNOSIS } from './learningDiagnosis.ts'
-import { applyFixedWrongFormatToDiagnosis, mathWeeklyRecoveryFacts } from './mathDailyTest.ts'
+import {
+  applyFixedWrongFormatToDiagnosis,
+  mathWeeklyRecoveryFacts,
+  mathWrongTrackingStatus,
+} from './mathDailyTest.ts'
 import {
   MATH_DAILY_TEST_FORMAT_HIGH_RECOVERY,
   applyHighRecoveryToDiagnosis,
@@ -93,7 +97,12 @@ assert.deepEqual(mathWeeklyRecoveryFacts(mathRecord({ learningDiagnosis: zeroSav
   unrecoveredWrong: 0,
   retakeQuestionCount: 0,
   recoveryRate: null,
+  trackingStatus: 'COMPLETE',
 })
+assert.equal(
+  mathWrongTrackingStatus(mathRecord({ learningDiagnosis: zeroSaved.learningDiagnosis })),
+  'COMPLETE',
+)
 
 assert.equal(
   parseHighRecoveryDrafts({ firstWrong: '4', endSession: 1, session3Questions: '', session4Questions: '' }),
@@ -176,6 +185,25 @@ assert.equal(shouldUseHighRecoveryMathInput('수학', undefined, '초6'), false)
 
 const highRecord = mathRecord({ learningDiagnosis: fourth.learningDiagnosis })
 assert.equal(usesHighRecoveryMathDailyTest(highRecord), true)
+assert.equal(mathWrongTrackingStatus(highRecord), 'COMPLETE')
+assert.equal(mathWeeklyRecoveryFacts(highRecord)?.trackingStatus, 'COMPLETE')
+assert.equal(mathWrongTrackingStatus(mathRecord({ learningDiagnosis: second.learningDiagnosis })), 'COMPLETE')
+
+const invalidEndAtFirst = mathRecord({
+  learningDiagnosis: {
+    ...EMPTY_DAILY_LEARNING_DIAGNOSIS,
+    mathDailyTestFormat: MATH_DAILY_TEST_FORMAT_HIGH_RECOVERY,
+    mathHighFirstWrongCount: 4,
+    mathHighEndSession: 1,
+    mathHighSession3Questions: null,
+    mathHighSession4Questions: null,
+  },
+})
+assert.equal(usesHighRecoveryMathDailyTest(invalidEndAtFirst), true)
+assert.equal(parseHighRecoveryDrafts(highDraftsFromDiagnosis(invalidEndAtFirst.learningDiagnosis)), null)
+assert.equal(mathWrongTrackingStatus(invalidEndAtFirst), 'IN_PROGRESS')
+assert.equal(mathWeeklyRecoveryFacts(invalidEndAtFirst)?.trackingStatus, 'IN_PROGRESS')
+assert.notEqual(mathWeeklyRecoveryFacts(invalidEndAtFirst)?.recoveryRate, undefined)
 assert.equal(dailyTestRecordScore(highRecord), null)
 assert.equal(shouldUseHighRecoveryMathInput('수학', highRecord, '중1'), true)
 

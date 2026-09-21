@@ -7,6 +7,7 @@ import type {
 import { DAILY_WRONG_TYPES } from '../../utils/learningDiagnosis'
 import {
   buildParentWeeklyVocabClassContext,
+  formatParentMathWrongTrackingStatus,
   formatParentWeeklyVocabSuccessRate,
   parentWeeklyVocabMemorizedWords,
   parentWeeklyVocabSuccessRate,
@@ -63,11 +64,6 @@ function StatTile({
 
 function EmptyNote({ message }: { message: string }) {
   return <p className="mt-3 text-sm leading-6 text-slate-600">{message}</p>
-}
-
-function formatRate(rate: number | null): string {
-  if (rate == null) return '해당 없음'
-  return `${Math.round(rate)}%`
 }
 
 export function ParentWeeklyWrongVocabReport({
@@ -131,14 +127,24 @@ export function ParentWeeklyWrongVocabReport({
         {model.hasMathWeekRecords ? (
           <>
             {recovery ? (
-              <div className="mt-4 grid grid-cols-2 gap-2.5">
-                <StatTile label="발견 오답" value={`${recovery.discoveredWrong}개`} />
-                <StatTile label="추적 학습" value={`${recovery.retakeQuestionCount}문제`} />
-                <StatTile label="회수 완료" value={`${recovery.recoveredWrong}개`} />
-                <StatTile label="회수율" value={formatRate(recovery.recoveryRate)} />
-              </div>
+              <>
+                <div className="mt-4 grid grid-cols-2 gap-2.5">
+                  <StatTile label="발견 오답" value={`${recovery.discoveredWrong}문제`} />
+                  <StatTile label="추적 학습" value={`${recovery.retakeQuestionCount}문제`} />
+                  <div className="col-span-2">
+                    <StatTile
+                      label="추적 상태"
+                      value={formatParentMathWrongTrackingStatus(recovery.trackingStatus)}
+                      wrap
+                    />
+                  </div>
+                </div>
+                <p className="mt-3 text-xs leading-5 text-slate-500">
+                  추적 후 필요한 내용은 보강·시험 대비에서 다시 점검합니다.
+                </p>
+              </>
             ) : (
-              <EmptyNote message="이번 주 오답 회수 기록이 없습니다." />
+              <EmptyNote message="이번 주 오답 추적 기록이 없습니다." />
             )}
             <h4 className="mt-5 text-sm font-bold text-navy-900">오답 원인</h4>
             <div className="mt-2.5 grid grid-cols-2 gap-2.5">

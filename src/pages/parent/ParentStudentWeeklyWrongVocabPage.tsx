@@ -57,7 +57,7 @@ export function ParentStudentWeeklyWrongVocabPage() {
     <div className="parent-page space-y-4 pb-6">
       <ParentPageHeader
         title="주간 수학 오답 · 영어 단어 누적 현황"
-        description="이번 주 수학 오답 회수와 영어 누적 단어 학습을 확인합니다."
+        description="이번 주 수학 오답 추적과 영어 누적 단어 학습을 확인합니다."
       />
 
       {weeks.length > 1 ? (

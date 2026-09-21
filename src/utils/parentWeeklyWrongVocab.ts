@@ -4,7 +4,7 @@ import type {
   StudentTextbookSlot,
   WeeklyLearningSummaryRecord,
 } from '../types/records'
-import type { MathWeeklyRecoveryFacts } from './mathDailyTest'
+import type { MathWeeklyRecoveryFacts, MathWrongTrackingStatus } from './mathDailyTest'
 import { weekDatesMondayToFriday } from './studentCare/dailyTestWeeklyFlow'
 import { getMondayOfWeek, getFridayOfWeek, formatPeriodLabel } from './studentCare/week'
 import { getSeoulDateString } from './seoulDate'
@@ -72,7 +72,16 @@ export function summarizeParentWeeklyMathRecovery(
     unrecoveredWrong,
     retakeQuestionCount,
     recoveryRate: discoveredWrong === 0 ? null : (recoveredWrong / discoveredWrong) * 100,
+    trackingStatus: facts.some((item) => item.trackingStatus === 'IN_PROGRESS')
+      ? 'IN_PROGRESS'
+      : 'COMPLETE',
   }
+}
+
+export function formatParentMathWrongTrackingStatus(
+  status: MathWrongTrackingStatus,
+): string {
+  return status === 'COMPLETE' ? '1차 오답 추적 완료' : '오답 추적 진행 중'
 }
 
 export function pickLatestParentWeeklyVocab(

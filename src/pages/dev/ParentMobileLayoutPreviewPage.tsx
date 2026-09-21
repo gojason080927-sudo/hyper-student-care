@@ -359,11 +359,28 @@ export function ParentMobileLayoutPreviewPage() {
 
           <section data-preview-section="weekly-wrong-vocab" className="parent-page space-y-4 pb-6">
             <p className="text-base font-bold text-navy-900">주간 수학 오답 · 영어 단어 누적 현황</p>
-            <p className="text-sm text-slate-600">이번 주 수학 오답 회수와 영어 누적 단어 학습을 확인합니다.</p>
+            <p className="text-sm text-slate-600">이번 주 수학 오답 추적과 영어 누적 단어 학습을 확인합니다.</p>
             <ParentWeeklyWrongVocabReport
               studentId={previewStudent.id}
               weekStart={previewSummary.weekStart}
               dailyTests={previewDailyTests}
+              studentTextbookSlots={previewEnglishTextbookSlots}
+              classTodayReportCommon={previewEnglishClassCommon}
+              grade={previewStudent.grade}
+              className={previewStudent.className}
+            />
+            <p className="text-sm text-slate-500">오답 추적 진행 중</p>
+            <ParentWeeklyWrongVocabReport
+              studentId={previewStudent.id}
+              weekStart="2026-08-31"
+              dailyTests={[
+                previewDailyTest('2026-08-31', [
+                  { session: 1, status: '불합격', score: 70, totalScore: 100, incorrectCount: 3 },
+                  { session: 2, status: '미응시' },
+                  { session: 3, status: '미응시' },
+                  { session: 4, status: '미응시' },
+                ]),
+              ]}
               studentTextbookSlots={previewEnglishTextbookSlots}
               classTodayReportCommon={previewEnglishClassCommon}
               grade={previewStudent.grade}

@@ -249,6 +249,7 @@ assert.equal(highFlow.recoveryResults[1]?.facts.retakeQuestionCount, 10)
 assert.equal(highFlow.recoveryResults[2]?.facts.retakeQuestionCount, 15)
 assert.equal(highFlow.recoveryResults.every((item) => item.facts.unrecoveredWrong === 0), true)
 assert.equal(highFlow.recoveryResults.every((item) => item.facts.recoveryRate === 100), true)
+assert.equal(highFlow.recoveryResults.every((item) => item.facts.trackingStatus === 'COMPLETE'), true)
 assert.deepEqual(
   highFlow.days[0]?.sessions.map((item) => [item.kind, item.score, item.passed]),
   [
@@ -326,6 +327,8 @@ assert.equal(middleFlow.recoveryResults[0]?.facts.recoveryRate, 100)
 assert.equal(middleFlow.recoveryResults[1]?.facts.recoveredWrong, 0)
 assert.equal(middleFlow.recoveryResults[1]?.facts.unrecoveredWrong, 3)
 assert.equal(middleFlow.recoveryResults[1]?.facts.recoveryRate, 0)
+assert.equal(middleFlow.recoveryResults[0]?.facts.trackingStatus, 'COMPLETE')
+assert.equal(middleFlow.recoveryResults[1]?.facts.trackingStatus, 'IN_PROGRESS')
 assert.match(middleFlow.recoveryResults[1]?.label ?? '', /미회수 3개/)
 assert.equal(middleFlow.wrongTypeTotal, 0)
 
@@ -534,6 +537,7 @@ assert.doesNotMatch(
 const preview = readFileSync('src/pages/dev/ParentMobileLayoutPreviewPage.tsx', 'utf8')
 assert.match(preview, /data-preview-section="weekly-wrong-vocab"/)
 assert.match(preview, /ParentWeeklyWrongVocabReport/)
+assert.match(preview, /오답 추적 진행 중/)
 assert.doesNotMatch(preview, /showRecoveryFacts/)
 assert.match(preview, /WeeklySummaryDetail/)
 assert.match(card, /주간 오답 현황/)
