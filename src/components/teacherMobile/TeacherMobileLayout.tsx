@@ -18,7 +18,7 @@ export function TeacherMobileLayout() {
     document.title = 'HYPER TEACHER'
 
     const theme = document.querySelector('meta[name="theme-color"]')
-    if (theme) theme.setAttribute('content', '#0B1F4A')
+    if (theme) theme.setAttribute('content', '#5b348a')
 
     let appleIcon = document.querySelector(
       'link[rel="apple-touch-icon"]',

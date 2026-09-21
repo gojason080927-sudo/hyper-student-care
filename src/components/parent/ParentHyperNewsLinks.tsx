@@ -30,21 +30,21 @@ function SocialLinkCard({ href, title, subtitle, accent }: SocialLinkCardProps) 
           window.location.assign(url)
         }
       }}
-      className="group flex min-w-0 items-center gap-2.5 rounded-2xl border border-[rgba(22,58,112,0.06)] bg-white px-3 py-2.5 shadow-[var(--tm-shadow-soft)] transition-[transform,box-shadow,border-color] duration-[180ms] active:scale-[0.98] hover:border-[rgba(40,199,183,0.35)] hover:shadow-[var(--tm-shadow-card)]"
+      className="group flex min-w-0 items-center gap-2.5 rounded-2xl border border-[color:var(--hub-border)] bg-white px-3 py-2.5 shadow-[var(--hp-shadow-soft)] transition-[transform,box-shadow,border-color] duration-[180ms] active:scale-[0.98] hover:border-[color:var(--hub-purple)] hover:shadow-[var(--hp-shadow-card)]"
     >
       <span className="flex h-9 w-9 shrink-0 items-center justify-center" aria-hidden>
         {accent}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-1 text-[13px] font-semibold leading-tight text-[var(--tm-navy)]">
+        <span className="flex items-center gap-1 text-[13px] font-semibold leading-tight text-[color:var(--hp-navy)]">
           <span className="truncate">{title}</span>
           <ExternalLink
-            className="h-3 w-3 shrink-0 text-[var(--tm-text-muted)] opacity-70"
+            className="h-3 w-3 shrink-0 text-[color:var(--hp-text-muted)] opacity-70"
             strokeWidth={2.25}
             aria-hidden
           />
         </span>
-        <span className="mt-0.5 block truncate text-[11px] leading-snug text-[var(--tm-text-muted)]">
+        <span className="mt-0.5 block truncate text-[11px] leading-snug text-[color:var(--hp-text-muted)]">
           {subtitle}
         </span>
       </span>
@@ -54,7 +54,7 @@ function SocialLinkCard({ href, title, subtitle, accent }: SocialLinkCardProps) 
 
 function NaverAccent() {
   return (
-    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[rgba(40,199,183,0.12)]">
+    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[color:var(--hub-lavender)]">
       <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#03C75A] text-[11px] font-bold leading-none text-white">
         N
       </span>
@@ -67,7 +67,7 @@ function InstagramAccent() {
   const gradId = `ig-icon-grad-${useId().replace(/:/g, '')}`
 
   return (
-    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[rgba(22,58,112,0.06)]">
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[color:var(--hub-lavender)]">
       <svg
         className="h-6 w-6 overflow-visible"
         viewBox="0 0 24 24"

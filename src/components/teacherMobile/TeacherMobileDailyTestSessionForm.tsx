@@ -150,7 +150,7 @@ export const TeacherMobileDailyTestSessionForm = forwardRef<
       </div>
       <p className="text-[11px] font-medium text-slate-500">
         최종 결과:{' '}
-        <span className={passRound ? 'text-[#28C7B7] font-semibold' : 'text-[#6B7280]'}>
+        <span className={passRound ? 'font-semibold text-emerald-600' : 'text-[#6B7280]'}>
           {getFinalPassLabel(rounds)}
         </span>
       </p>

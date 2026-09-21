@@ -8,12 +8,12 @@ export function HubPageHeader({ title }: { title: string }) {
     <header className="mb-4 flex items-center gap-3">
       <Link
         to={`/hub/${accessKey}`}
-        className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#163A70] shadow-sm"
+        className="hub-page-header-back inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white shadow-sm"
         aria-label="홈"
       >
         <ArrowLeft className="h-5 w-5" />
       </Link>
-      <h1 className="min-w-0 text-lg font-bold leading-tight text-[#163A70]">{title}</h1>
+      <h1 className="hub-page-header-title min-w-0 text-lg font-bold leading-tight">{title}</h1>
     </header>
   )
 }
