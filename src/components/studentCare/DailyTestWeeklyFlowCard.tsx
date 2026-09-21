@@ -188,11 +188,14 @@ export function DailyTestWeeklyFlowCard({
   weekStart,
   dailyTests,
   grade,
+  showRecoveryFacts = false,
 }: {
   studentId: string
   weekStart: string
   dailyTests: DailyTestRecord[]
   grade: WeeklySummaryGrade | null
+  /** 주간 SUMMARY는 false. 별도 주간 오답 현황에서만 true. */
+  showRecoveryFacts?: boolean
 }) {
   const [subject, setSubject] = useState<string | null>(null)
   const clipId = useId().replace(/:/g, '')
@@ -251,7 +254,7 @@ export function DailyTestWeeklyFlowCard({
           ))}
         </div>
       ) : null}
-      {model.recoveryResults.length > 0 ? (
+      {showRecoveryFacts && model.recoveryResults.length > 0 ? (
         <div className="mt-3 space-y-1.5 rounded-xl bg-slate-50 px-3 py-2.5">
           <p className="text-[11px] font-semibold text-[#163A70]">오답 회수</p>
           {model.recoveryResults.map((item) => (

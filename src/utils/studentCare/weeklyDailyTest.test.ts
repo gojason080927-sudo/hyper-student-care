@@ -327,8 +327,12 @@ assert.match(
 )
 
 const card = readFileSync('src/components/studentCare/DailyTestWeeklyFlowCard.tsx', 'utf8')
-assert.match(card, /recoveryResults/)
+assert.match(card, /showRecoveryFacts/)
 assert.match(card, /오답 회수/)
+assert.doesNotMatch(
+  readFileSync('src/pages/parent/ParentStudentWeeklySummaryPage.tsx', 'utf8'),
+  /showRecoveryFacts/,
+)
 assert.doesNotMatch(readFileSync('src/utils/voiceInput/parseStudentDailyTestVoice.ts', 'utf8'), /weeklyDailyTestDayFact/)
 
 console.log('weeklyDailyTest OK')
