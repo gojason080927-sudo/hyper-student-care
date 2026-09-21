@@ -53,7 +53,7 @@ function StatTile({
             ? `mt-1 break-words text-base font-bold leading-snug ${
                 muted ? 'text-slate-500' : 'text-[#163A70]'
               }`
-            : 'mt-1 text-2xl font-bold tabular-nums leading-none text-[#163A70]'
+            : 'mt-1 text-xl font-bold tabular-nums leading-none text-[#163A70]'
         }
       >
         {value}
