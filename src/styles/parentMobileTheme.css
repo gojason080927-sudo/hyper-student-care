@@ -598,6 +598,7 @@
   font-size: 0.86rem;
   line-height: 1.25;
   -webkit-line-clamp: 3;
+  white-space: pre-line;
 }
 
 .parent-mobile-app .parent-hub-home .hub-hero {

@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import {
   CalendarCheck,
+  CalendarDays,
   ClipboardList,
   FileBarChart2,
   GraduationCap,
@@ -47,14 +48,35 @@ export const parentCategoryItems: ParentCategoryItem[] = [
   { segment: 'questions', label: '질문하기', icon: MessageCircleQuestion, description: '학습 질문·답변' },
 ]
 
+export const parentWeeklyWrongVocabItem: ParentCategoryItem = {
+  segment: 'weekly-wrong-vocab',
+  label: '주간 수학 오답\n영어 단어 누적',
+  icon: FileBarChart2,
+  description: '주간 수학 오답 · 영어 단어 누적 현황',
+}
+
+export const parentScheduleItem: ParentCategoryItem = {
+  segment: 'schedule',
+  label: '시간표',
+  icon: CalendarDays,
+  description: '내 수업 시간표',
+}
+
+export const parentSuggestionsItem: ParentCategoryItem = {
+  segment: 'suggestions',
+  label: '건의사항',
+  icon: MessageCircleQuestion,
+  description: '학부모 건의 · 학원 답변',
+}
+
 /** HOME 3×2 타일. 사이드바 문구와 달리 짧은 Hub 타일용 라벨을 쓴다. */
 export const parentHomeCategoryItems: ParentCategoryItem[] = [
   { ...weeklyLearningSummaryItem, label: '주간 SUMMARY' },
-  { ...parentCategoryItems[0], label: '월간 학습진단' },
-  { ...parentCategoryItems[1], label: '월말평가' },
-  { ...parentCategoryItems[2], label: '공지사항·보강계획' },
-  { ...parentCategoryItems[3], label: '고입·대입 입시전략' },
-  { ...parentCategoryItems[4], label: '질문하기' },
+  parentWeeklyWrongVocabItem,
+  parentScheduleItem,
+  { ...parentCategoryItems[3], label: '입시전략' },
+  { ...parentCategoryItems[2], label: '공지사항 · 보강계획' },
+  parentSuggestionsItem,
 ]
 
 /** 사이드바·더보기용 — 주간 SUMMARY 추가, 월간 학습진단 유지 */

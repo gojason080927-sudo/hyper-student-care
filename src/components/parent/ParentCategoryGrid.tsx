@@ -6,14 +6,24 @@ import { useData } from '../../hooks/useData'
 import { useParentAdmissionStrategyMaterials } from '../../hooks/useParentAdmissionStrategyMaterials'
 import { hasUnreadAdmissionStrategyMaterials } from '../../lib/db/admissionStrategyMaterial'
 import { hasUnreadWeeklySummary } from '../../utils/studentCare/weeklySummaryDisplay'
+import {
+  hasUnreadParentSuggestions,
+  readParentSuggestionLastRead,
+} from '../../utils/parentUnread'
 import { parentHomeCategoryItems, parentTodayReportItem } from './parentNavItems'
 
 export function ParentCategoryGrid() {
   const student = useParentStudent()
   const { materials } = useParentAdmissionStrategyMaterials()
-  const { weeklyLearningSummaries, weeklySummaryRead, ensureWeeklyLearningSummaries } = useData()
+  const { weeklyLearningSummaries, weeklySummaryRead, ensureWeeklyLearningSummaries, questions } =
+    useData()
   const admissionUnread = hasUnreadAdmissionStrategyMaterials(materials)
   const weeklyUnread = hasUnreadWeeklySummary(weeklyLearningSummaries, student.id, weeklySummaryRead)
+  const suggestionUnread = hasUnreadParentSuggestions(
+    questions,
+    student.id,
+    readParentSuggestionLastRead(student.studentAccessKey),
+  )
   const basePath = `/care/${student.studentAccessKey}`
   const todayPath = `${basePath}/${parentTodayReportItem.segment}`
   const TodayIcon = parentTodayReportItem.icon
@@ -28,15 +38,16 @@ export function ParentCategoryGrid() {
         {parentHomeCategoryItems.map(({ segment, label, icon: Icon }) => {
           const showAdmissionUnread = segment === 'admission-strategy' && admissionUnread
           const showWeeklyUnread = segment === 'weekly-learning-summary' && weeklyUnread
+          const showSuggestionUnread = segment === 'suggestions' && suggestionUnread
           return (
             <Link key={segment} to={`${basePath}/${segment}`} className="hub-tile">
-              {showAdmissionUnread || showWeeklyUnread ? (
+              {showAdmissionUnread || showWeeklyUnread || showSuggestionUnread ? (
                 <span className="parent-hub-unread" aria-label="확인하지 않은 새 자료" />
               ) : null}
               <span className="hub-tile-icon" aria-hidden>
                 <Icon strokeWidth={2.4} />
               </span>
-              <span className="hub-tile-label">{label}</span>
+              <span className="hub-tile-label whitespace-pre-line">{label}</span>
             </Link>
           )
         })}

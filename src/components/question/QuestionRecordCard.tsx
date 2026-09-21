@@ -5,6 +5,7 @@ import { StatusBadge } from '../ui/StatusBadge'
 import { getQuestionStatusColor } from '../../utils/labels'
 import { QuestionImageGallery } from './QuestionImageGallery'
 import { QuestionStorageAttachments } from './QuestionStorageAttachments'
+import { isParentSuggestionRecord, questionKindBadge } from '../../utils/parentSuggestions'
 
 type QuestionRecordCardProps = {
   record: QuestionRecord
@@ -72,7 +73,9 @@ export function QuestionRecordCard({
             )}
 
             <section className="tm-question-section space-y-2">
-              <p className="text-xs font-bold uppercase tracking-wide text-[#6B7280]">학생 질문</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-[#6B7280]">
+                {isParentSuggestionRecord(record) ? '학부모 건의' : '학생 질문'}
+              </p>
               <p className="whitespace-pre-wrap break-anywhere text-sm text-slate-700">
                 {record.content}
               </p>
@@ -135,10 +138,12 @@ export function QuestionRecordCard({
               className={`rounded-lg px-2 py-0.5 text-xs font-semibold ${
                 record.source === 'student'
                   ? 'bg-[#28c7b7]/15 text-[#0f766e]'
-                  : 'bg-navy-50 text-navy-700'
+                  : isParentSuggestionRecord(record)
+                    ? 'bg-amber-50 text-amber-800'
+                    : 'bg-navy-50 text-navy-700'
               }`}
             >
-              {record.source === 'student' ? '학생 Hub' : '학부모'}
+              {questionKindBadge(record)}
             </span>
           </div>
 

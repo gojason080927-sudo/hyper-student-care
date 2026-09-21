@@ -68,6 +68,8 @@ type QuestionFormFieldsProps = {
   allowQuestionImages?: boolean
   allowAnswerEdit?: boolean
   allowAnswerImages?: boolean
+  lockCategory?: boolean
+  contentLabel?: string
 }
 
 export function QuestionFormFields({
@@ -80,7 +82,10 @@ export function QuestionFormFields({
   allowQuestionImages = true,
   allowAnswerEdit = true,
   allowAnswerImages = true,
+  lockCategory = false,
+  contentLabel,
 }: QuestionFormFieldsProps) {
+  const categoryLocked = lockCategory || form.category === '건의사항'
   return (
     <div className="space-y-4">
       {showStudentSelect && (
@@ -106,19 +111,25 @@ export function QuestionFormFields({
         </div>
         <div>
           <label className="mb-1.5 block text-sm font-medium text-slate-700">분류</label>
-          <select
-            value={form.category}
-            onChange={(e) =>
-              onChange({ ...form, category: e.target.value as QuestionCategory })
-            }
-            className={inputClass()}
-          >
-            {QUESTION_CATEGORIES.map((category) => (
-              <option key={category} value={category}>
-                {category}
-              </option>
-            ))}
-          </select>
+          {categoryLocked ? (
+            <p className="rounded-xl bg-slate-50 px-3 py-2.5 text-sm font-semibold text-navy-800">
+              {form.category}
+            </p>
+          ) : (
+            <select
+              value={form.category}
+              onChange={(e) =>
+                onChange({ ...form, category: e.target.value as QuestionCategory })
+              }
+              className={inputClass()}
+            >
+              {QUESTION_CATEGORIES.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
       </div>
 
@@ -133,7 +144,9 @@ export function QuestionFormFields({
       </div>
 
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-slate-700">질문 내용 *</label>
+        <label className="mb-1.5 block text-sm font-medium text-slate-700">
+          {contentLabel ?? '질문 내용'} *
+        </label>
         <textarea
           value={form.content}
           onChange={(e) => onChange({ ...form, content: e.target.value })}
