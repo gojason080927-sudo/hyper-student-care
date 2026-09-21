@@ -317,6 +317,14 @@ export function ParentMobileLayoutPreviewPage() {
               grade={previewSummary.scores.dailyTest.grade}
               showRecoveryFacts
             />
+            <p className="text-xs text-slate-500">기록 없는 주. 0문제와 구분되는 empty state.</p>
+            <DailyTestWeeklyFlowCard
+              studentId={previewStudent.id}
+              weekStart="2026-09-21"
+              dailyTests={previewDailyTests}
+              grade={null}
+              showRecoveryFacts
+            />
           </section>
 
           <section data-preview-section="today-report" className="parent-page space-y-3 pb-4">

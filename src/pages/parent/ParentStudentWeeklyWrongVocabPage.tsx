@@ -8,6 +8,7 @@ import { useParentStudent } from '../../contexts/ParentStudentContext'
 import { useData } from '../../hooks/useData'
 import {
   listParentWeeklyWrongVocabWeeks,
+  pickDefaultParentWeeklyWrongVocabWeek,
   weeklyWrongVocabPeriodLabel,
 } from '../../utils/parentWeeklyWrongVocab'
 
@@ -23,16 +24,29 @@ export function ParentStudentWeeklyWrongVocabPage() {
       }),
     [dailyTests, student.id, weeklyLearningSummaries],
   )
-  const [weekStart, setWeekStart] = useState(weeks[0] ?? '')
+  const defaultWeek = useMemo(
+    () =>
+      pickDefaultParentWeeklyWrongVocabWeek({
+        studentId: student.id,
+        dailyTests,
+      }),
+    [dailyTests, student.id],
+  )
+  const [weekStart, setWeekStart] = useState('')
+  const [weekTouched, setWeekTouched] = useState(false)
 
   useEffect(() => {
-    if (!weekStart && weeks[0]) setWeekStart(weeks[0])
-    if (weekStart && weeks.length > 0 && !weeks.includes(weekStart)) {
-      setWeekStart(weeks[0])
+    if (weekTouched) {
+      if (weekStart && weeks.length > 0 && !weeks.includes(weekStart)) {
+        setWeekStart(defaultWeek)
+        setWeekTouched(false)
+      }
+      return
     }
-  }, [weekStart, weeks])
+    setWeekStart(defaultWeek)
+  }, [defaultWeek, weekStart, weekTouched, weeks])
 
-  const activeWeek = weekStart || weeks[0]
+  const activeWeek = weekStart || defaultWeek
   const grade =
     weeklyLearningSummaries.find(
       (summary) => summary.studentId === student.id && summary.weekStart === activeWeek,
@@ -50,7 +64,10 @@ export function ParentStudentWeeklyWrongVocabPage() {
           <span className="mb-1 block text-xs font-semibold text-slate-600">조회 주간</span>
           <select
             value={activeWeek}
-            onChange={(event) => setWeekStart(event.target.value)}
+            onChange={(event) => {
+              setWeekTouched(true)
+              setWeekStart(event.target.value)
+            }}
             className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800"
           >
             {weeks.map((week) => (

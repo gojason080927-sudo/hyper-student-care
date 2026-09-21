@@ -183,6 +183,15 @@ function FlowChart({ days, clipId }: { days: WeeklyFlowDay[]; clipId: string }) 
   )
 }
 
+function FactEmpty({ title }: { title: string }) {
+  return (
+    <div className="mt-3 space-y-1.5 rounded-xl bg-slate-50 px-3 py-2.5">
+      <p className="text-[11px] font-semibold text-[#163A70]">{title}</p>
+      <p className="text-sm font-semibold text-slate-500">이번 주 기록 없음</p>
+    </div>
+  )
+}
+
 export function DailyTestWeeklyFlowCard({
   studentId,
   weekStart,
@@ -244,25 +253,33 @@ export function DailyTestWeeklyFlowCard({
           })}
         </div>
       ) : null}
-      {showRecoveryFacts && model.cumulativeResults.length > 0 ? (
-        <div className="mt-3 space-y-1.5 rounded-xl bg-slate-50 px-3 py-2.5">
-          <p className="text-[11px] font-semibold text-[#163A70]">누적 단어 TEST</p>
-          {model.cumulativeResults.map((item) => (
-            <p key={item.date} className="text-sm font-semibold text-slate-800">
-              {item.label}
-            </p>
-          ))}
-        </div>
+      {showRecoveryFacts ? (
+        model.weekCumulativeResults.length > 0 ? (
+          <div className="mt-3 space-y-1.5 rounded-xl bg-slate-50 px-3 py-2.5">
+            <p className="text-[11px] font-semibold text-[#163A70]">누적 단어 TEST</p>
+            {model.weekCumulativeResults.map((item) => (
+              <p key={item.date} className="text-sm font-semibold text-slate-800">
+                {item.label}
+              </p>
+            ))}
+          </div>
+        ) : (
+          <FactEmpty title="누적 단어 TEST" />
+        )
       ) : null}
-      {showRecoveryFacts && model.recoveryResults.length > 0 ? (
-        <div className="mt-3 space-y-1.5 rounded-xl bg-slate-50 px-3 py-2.5">
-          <p className="text-[11px] font-semibold text-[#163A70]">오답 회수</p>
-          {model.recoveryResults.map((item) => (
-            <p key={item.date} className="text-sm font-semibold leading-snug text-slate-800">
-              {item.label}
-            </p>
-          ))}
-        </div>
+      {showRecoveryFacts ? (
+        model.weekRecoveryResults.length > 0 ? (
+          <div className="mt-3 space-y-1.5 rounded-xl bg-slate-50 px-3 py-2.5">
+            <p className="text-[11px] font-semibold text-[#163A70]">오답 회수</p>
+            {model.weekRecoveryResults.map((item) => (
+              <p key={item.date} className="text-sm font-semibold leading-snug text-slate-800">
+                {item.label}
+              </p>
+            ))}
+          </div>
+        ) : (
+          <FactEmpty title="오답 회수" />
+        )
       ) : null}
       {model.days.some((day) => day.sessions.some((session) => session.kind === 'score')) ? (
         <div className="mt-3 overflow-visible pt-5">
@@ -272,6 +289,7 @@ export function DailyTestWeeklyFlowCard({
       {showRecoveryFacts ? (
       <div className="mt-3">
         <h4 className="text-sm font-bold text-navy-900">주간 오답 현황</h4>
+        {model.hasMathWeekRecords ? (
         <div className="mt-2 grid grid-cols-2 gap-1.5">
           {DAILY_WRONG_TYPES.map((item) => {
             const count = model.wrongTypes[item.key]
@@ -290,6 +308,11 @@ export function DailyTestWeeklyFlowCard({
             )
           })}
         </div>
+        ) : (
+          <p className="mt-2 rounded-xl bg-slate-50 px-3 py-2.5 text-sm font-semibold text-slate-500">
+            이번 주 기록 없음
+          </p>
+        )}
       </div>
       ) : null}
       {model.max != null ? (

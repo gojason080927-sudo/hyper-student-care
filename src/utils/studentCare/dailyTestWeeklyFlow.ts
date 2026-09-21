@@ -12,6 +12,7 @@ import {
 } from '../mathHighRecovery.ts'
 import {
   formatMathWeeklyRecoveryFactLine,
+  isMathSubject,
   mathFixedWrongScore,
   mathWeeklyRecoveryFacts,
   type MathWeeklyRecoveryFacts,
@@ -88,6 +89,9 @@ export type DailyTestWeeklyFlowModel = {
     label: string
     facts: MathWeeklyRecoveryFacts
   }>
+  weekCumulativeResults: DailyTestWeeklyFlowModel['cumulativeResults']
+  weekRecoveryResults: DailyTestWeeklyFlowModel['recoveryResults']
+  hasMathWeekRecords: boolean
 }
 
 const FALLBACK_SUBJECT = '일일테스트'
@@ -346,6 +350,28 @@ export function buildDailyTestWeeklyFlow(input: {
     dailyTests: input.dailyTests,
   })
   const weekRecords = pickLatestWeeklyTestRecords(input.dailyTests, input.studentId, weekStart)
+  const weekCumulativeResults = weekRecords
+    .filter((record) => usesCumulativeEnglishVocabTest(record))
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((record) => {
+      const diagnosis = normalizeDailyLearningDiagnosis(record.learningDiagnosis)
+      const totalWords = diagnosis.englishVocabTotalWords ?? 0
+      const wrongWords = diagnosis.englishVocabWrongWords ?? 0
+      return {
+        date: record.date,
+        totalWords,
+        wrongWords,
+        label: formatCumulativeVocabResult(totalWords, wrongWords),
+      }
+    })
+  const weekRecoveryResults = [...weekRecords]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .flatMap((record) => {
+      const facts = mathWeeklyRecoveryFacts(record)
+      return facts
+        ? [{ date: record.date, label: formatMathWeeklyRecoveryFactLine(facts), facts }]
+        : []
+    })
   const cumulativeResults = weekRecords
     .filter(
       (record) =>
@@ -400,5 +426,8 @@ export function buildDailyTestWeeklyFlow(input: {
     cumulativeResults,
     highRecoveryResults,
     recoveryResults,
+    weekCumulativeResults,
+    weekRecoveryResults,
+    hasMathWeekRecords: weekRecords.some((record) => isMathSubject(record.subject)),
   }
 }
