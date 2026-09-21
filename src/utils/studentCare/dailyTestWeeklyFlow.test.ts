@@ -523,9 +523,18 @@ assert.match(
   readFileSync('src/pages/parent/ParentStudentWeeklyWrongVocabPage.tsx', 'utf8'),
   /weekTouched/,
 )
+assert.match(
+  readFileSync('src/pages/parent/ParentStudentWeeklyWrongVocabPage.tsx', 'utf8'),
+  /ParentWeeklyWrongVocabReport/,
+)
+assert.doesNotMatch(
+  readFileSync('src/pages/parent/ParentStudentWeeklyWrongVocabPage.tsx', 'utf8'),
+  /DailyTestWeeklyFlowCard/,
+)
 const preview = readFileSync('src/pages/dev/ParentMobileLayoutPreviewPage.tsx', 'utf8')
 assert.match(preview, /data-preview-section="weekly-wrong-vocab"/)
-assert.match(preview, /showRecoveryFacts/)
+assert.match(preview, /ParentWeeklyWrongVocabReport/)
+assert.doesNotMatch(preview, /showRecoveryFacts/)
 assert.match(preview, /WeeklySummaryDetail/)
 assert.match(card, /주간 오답 현황/)
 assert.match(card, /주간 최고/)

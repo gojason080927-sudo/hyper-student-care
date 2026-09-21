@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { DailyTestWeeklyFlowCard } from '../../components/studentCare/DailyTestWeeklyFlowCard'
+import { ParentWeeklyWrongVocabReport } from '../../components/parent/ParentWeeklyWrongVocabReport'
 import {
   ParentEmptyState,
   ParentPageHeader,
@@ -47,16 +47,12 @@ export function ParentStudentWeeklyWrongVocabPage() {
   }, [defaultWeek, weekStart, weekTouched, weeks])
 
   const activeWeek = weekStart || defaultWeek
-  const grade =
-    weeklyLearningSummaries.find(
-      (summary) => summary.studentId === student.id && summary.weekStart === activeWeek,
-    )?.scores.dailyTest.grade ?? null
 
   return (
     <div className="parent-page space-y-4 pb-6">
       <ParentPageHeader
         title="주간 수학 오답 · 영어 단어 누적 현황"
-        description="이미 집계된 일일테스트 오답·단어·고등 오답 회수를 한 화면에서 확인합니다."
+        description="이번 주 수학 오답 회수와 영어 누적 단어 학습을 확인합니다."
       />
 
       {weeks.length > 1 ? (
@@ -82,12 +78,10 @@ export function ParentStudentWeeklyWrongVocabPage() {
       ) : null}
 
       {activeWeek ? (
-        <DailyTestWeeklyFlowCard
+        <ParentWeeklyWrongVocabReport
           studentId={student.id}
           weekStart={activeWeek}
           dailyTests={dailyTests}
-          grade={grade}
-          showRecoveryFacts
         />
       ) : (
         <ParentEmptyState message="확인할 주간 일일테스트 기록이 없습니다." />

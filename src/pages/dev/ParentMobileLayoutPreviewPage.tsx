@@ -9,7 +9,7 @@ import { StudentSummaryCard } from '../../components/todayReport/TodayReportView
 import { classAttitudeDisplay } from '../../components/studentCare/ClassAttitudePicker'
 import { ParentAttitudeTeacherComment } from '../../components/todayReport/ParentAttitudeTeacherComment'
 import { materialPrepDisplay } from '../../components/studentCare/MaterialPrepPicker'
-import { DailyTestWeeklyFlowCard } from '../../components/studentCare/DailyTestWeeklyFlowCard'
+import { ParentWeeklyWrongVocabReport } from '../../components/parent/ParentWeeklyWrongVocabReport'
 import { WeeklySummaryDetail } from '../parent/ParentStudentWeeklySummaryPage'
 import { parentHomeCategoryItems, parentTodayReportHighlights, parentTodayReportItem } from '../../components/parent/parentNavItems'
 import type { Student } from '../../types/student'
@@ -306,24 +306,18 @@ export function ParentMobileLayoutPreviewPage() {
           </section>
 
           <section data-preview-section="weekly-wrong-vocab" className="parent-page space-y-4 pb-6">
-            <p className="text-sm font-bold text-navy-900">주간 수학 오답 · 영어 단어 누적 현황</p>
-            <p className="text-xs text-slate-500">
-              개발 미리보기. 별도 현황 화면이 이 카드에 회수 상세를 켤 때와 같다.
-            </p>
-            <DailyTestWeeklyFlowCard
+            <p className="text-base font-bold text-navy-900">주간 수학 오답 · 영어 단어 누적 현황</p>
+            <p className="text-sm text-slate-600">이번 주 수학 오답 회수와 영어 누적 단어 학습을 확인합니다.</p>
+            <ParentWeeklyWrongVocabReport
               studentId={previewStudent.id}
               weekStart={previewSummary.weekStart}
               dailyTests={previewDailyTests}
-              grade={previewSummary.scores.dailyTest.grade}
-              showRecoveryFacts
             />
-            <p className="text-xs text-slate-500">기록 없는 주. 0문제와 구분되는 empty state.</p>
-            <DailyTestWeeklyFlowCard
+            <p className="text-sm text-slate-500">기록 없는 주</p>
+            <ParentWeeklyWrongVocabReport
               studentId={previewStudent.id}
               weekStart="2026-09-21"
               dailyTests={previewDailyTests}
-              grade={null}
-              showRecoveryFacts
             />
           </section>
 
