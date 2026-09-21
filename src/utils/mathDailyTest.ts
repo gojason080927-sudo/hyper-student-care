@@ -208,7 +208,7 @@ export function hasFixedWrongDraftContent(drafts: MathFixedWrongDrafts): boolean
   return MATH_FIXED_WRONG_SESSIONS.some((session) => (drafts[session] ?? '').trim() !== '')
 }
 
-/** 향후 Parent 주간 오답 통계용. 이번 단계 UI는 만들지 않는다. */
+/** daily_tests에서 파생하는 중·고등 오답 회수. 원본 입력은 추가하지 않는다. */
 export type MathWeeklyRecoveryFacts = {
   discoveredWrong: number
   recoveredWrong: number
@@ -216,6 +216,20 @@ export type MathWeeklyRecoveryFacts = {
   retakeQuestionCount: number
   /** 발견 오답이 0이면 해당 없음 */
   recoveryRate: number | null
+}
+
+export function formatMathWeeklyRecoveryFactLine(facts: MathWeeklyRecoveryFacts): string {
+  const rateLabel = facts.recoveryRate == null ? '해당 없음' : `${facts.recoveryRate}%`
+  const parts = [
+    `발견 오답 ${facts.discoveredWrong}개`,
+    `추적 ${facts.retakeQuestionCount}문제`,
+    `회수 완료 ${facts.recoveredWrong}개`,
+  ]
+  if (facts.unrecoveredWrong > 0) {
+    parts.push(`미회수 ${facts.unrecoveredWrong}개`)
+  }
+  parts.push(`회수율 ${rateLabel}`)
+  return parts.join(' · ')
 }
 
 export function mathWeeklyRecoveryFacts(

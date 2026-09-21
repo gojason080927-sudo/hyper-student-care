@@ -5,8 +5,17 @@ import {
 } from '../englishVocabTest.ts'
 import {
   formatHighRecoveryWeeklyFactLine,
+  highRecoveryFirstScore,
+  highSession2WrongFromQ3,
+  highSession3WrongFromQ4,
   usesHighRecoveryMathDailyTest,
 } from '../mathHighRecovery.ts'
+import {
+  formatMathWeeklyRecoveryFactLine,
+  mathFixedWrongScore,
+  mathWeeklyRecoveryFacts,
+  type MathWeeklyRecoveryFacts,
+} from '../mathDailyTest.ts'
 import {
   getFinalPassSession,
   getSessionScoreOnFullScale,
@@ -74,6 +83,11 @@ export type DailyTestWeeklyFlowModel = {
     date: string
     label: string
   }>
+  recoveryResults: Array<{
+    date: string
+    label: string
+    facts: MathWeeklyRecoveryFacts
+  }>
 }
 
 const FALLBACK_SUBJECT = '일일테스트'
@@ -132,17 +146,87 @@ function sessionDisplayScore(session: TestSessionResult): number | null {
   return score === '' ? null : score
 }
 
+function absentSessions(): WeeklyFlowSessionPoint[] {
+  return TEST_SESSION_NUMBERS.map((session) => ({
+    session,
+    kind: 'absent' as const,
+    score: null,
+    passed: false,
+  }))
+}
+
+/** high-recovery-v1 차트. session_results를 채우지 않고 learning_diagnosis만 파생한다. */
+export function highRecoveryWeeklyFlowSessions(
+  record: DailyTestRecord,
+): WeeklyFlowSessionPoint[] | null {
+  if (!usesHighRecoveryMathDailyTest(record)) return null
+  const firstScore = highRecoveryFirstScore(record)
+  const diagnosis = normalizeDailyLearningDiagnosis(record.learningDiagnosis)
+  const firstWrong = diagnosis.mathHighFirstWrongCount
+  const endSession = diagnosis.mathHighEndSession
+  if (firstScore == null || firstWrong == null || endSession == null) return null
+
+  const points = absentSessions()
+  points[0] = {
+    session: 1,
+    kind: 'score',
+    score: firstScore,
+    passed: endSession === 1,
+  }
+  if (endSession < 2 || firstWrong <= 0) return points
+
+  const session2Wrong =
+    endSession === 2 ? 0 : highSession2WrongFromQ3(diagnosis.mathHighSession3Questions ?? Number.NaN)
+  if (!Number.isInteger(session2Wrong) || session2Wrong < 0 || session2Wrong > firstWrong) {
+    return points
+  }
+  points[1] = {
+    session: 2,
+    kind: 'score',
+    score: mathFixedWrongScore(firstWrong, session2Wrong),
+    passed: endSession === 2,
+  }
+  if (endSession < 3) return points
+
+  const session3Questions = diagnosis.mathHighSession3Questions
+  if (session3Questions == null || session3Questions <= 0) return points
+  const session3Wrong =
+    endSession === 3 ? 0 : highSession3WrongFromQ4(diagnosis.mathHighSession4Questions ?? Number.NaN)
+  if (
+    !Number.isInteger(session3Wrong) ||
+    session3Wrong < 0 ||
+    session3Wrong > session3Questions
+  ) {
+    return points
+  }
+  points[2] = {
+    session: 3,
+    kind: 'score',
+    score: mathFixedWrongScore(session3Questions, session3Wrong),
+    passed: endSession === 3,
+  }
+  if (endSession < 4) return points
+
+  const session4Questions = diagnosis.mathHighSession4Questions
+  if (session4Questions == null || session4Questions <= 0) return points
+  points[3] = {
+    session: 4,
+    kind: 'score',
+    score: mathFixedWrongScore(session4Questions, 0),
+    passed: true,
+  }
+  return points
+}
+
 export function buildWeeklyFlowDaySessions(
   record: DailyTestRecord | null,
 ): WeeklyFlowSessionPoint[] {
   if (!record || usesCumulativeEnglishVocabTest(record)) {
-    return TEST_SESSION_NUMBERS.map((session) => ({
-      session,
-      kind: 'absent',
-      score: null,
-      passed: false,
-    }))
+    return absentSessions()
   }
+
+  const highSessions = highRecoveryWeeklyFlowSessions(record)
+  if (highSessions) return highSessions
 
   const sessions = migrateSessionResults(record)
   const passSession = getFinalPassSession(sessions)
@@ -280,6 +364,18 @@ export function buildDailyTestWeeklyFlow(input: {
         label: formatCumulativeVocabResult(totalWords, wrongWords),
       }
     })
+  const recoveryResults = weekRecords
+    .filter(
+      (record) =>
+        selectedSubject == null || weeklyFlowSubjectLabel(record.subject) === selectedSubject,
+    )
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .flatMap((record) => {
+      const facts = mathWeeklyRecoveryFacts(record)
+      return facts
+        ? [{ date: record.date, label: formatMathWeeklyRecoveryFactLine(facts), facts }]
+        : []
+    })
   const highRecoveryResults = weekRecords
     .filter(
       (record) =>
@@ -303,5 +399,6 @@ export function buildDailyTestWeeklyFlow(input: {
     wrongTypeTotal: sumDailyWrongTypeCounts(wrongTypes),
     cumulativeResults,
     highRecoveryResults,
+    recoveryResults,
   }
 }

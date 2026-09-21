@@ -6,10 +6,12 @@ import { readFileSync } from 'node:fs'
 import type { DailyTestRecord, TestSessionResult } from '../../types/records.ts'
 import { EMPTY_DAILY_LEARNING_DIAGNOSIS } from '../learningDiagnosis.ts'
 import { applyHighRecoveryToDiagnosis } from '../mathHighRecovery.ts'
+import { applyFixedWrongFormatToDiagnosis } from '../mathDailyTest.ts'
 import {
   buildDailyTestWeeklyFlow,
   buildWeeklyFlowDaySessions,
   buildWeeklyWrongAnalysis,
+  highRecoveryWeeklyFlowSessions,
 } from './dailyTestWeeklyFlow.ts'
 import { ATTENDANCE_WEEKLY_MAX, DAILY_TEST_WEEKLY_MAX, WEEKLY_SUMMARY_TOTAL_MAX } from './constants.ts'
 
@@ -175,32 +177,157 @@ assert.equal(
   true,
 )
 
-const highRecovery = testRecord('2026-09-07', '수학', [
-  session(1, '미응시'),
-  session(2, '미응시'),
-  session(3, '미응시'),
-  session(4, '미응시'),
-], '2026-09-12T00:00:00.000Z', applyHighRecoveryToDiagnosis(EMPTY_DAILY_LEARNING_DIAGNOSIS, {
-  firstWrong: 4,
-  endSession: 4,
-  session3Questions: 6,
-  session4Questions: 5,
-}))
+function highRecord(
+  date: string,
+  firstWrong: number,
+  endSession: 1 | 2 | 3 | 4,
+  session3Questions: number | null = null,
+  session4Questions: number | null = null,
+): DailyTestRecord {
+  return testRecord(
+    date,
+    '수학',
+    [session(1, '미응시'), session(2, '미응시'), session(3, '미응시'), session(4, '미응시')],
+    `${date}T00:00:00.000Z`,
+    applyHighRecoveryToDiagnosis(EMPTY_DAILY_LEARNING_DIAGNOSIS, {
+      firstWrong,
+      endSession,
+      session3Questions,
+      session4Questions,
+    }),
+  )
+}
+
+const highEnd2 = highRecord('2026-09-07', 4, 2)
+const highEnd3 = highRecord('2026-09-09', 4, 3, 6)
+const highEnd4 = highRecord('2026-09-11', 4, 4, 6, 5)
+
+assert.deepEqual(
+  highRecoveryWeeklyFlowSessions(highEnd2)?.map((item) => [item.kind, item.score, item.passed]),
+  [
+    ['score', 60, false],
+    ['score', 100, true],
+    ['absent', null, false],
+    ['absent', null, false],
+  ],
+)
+assert.deepEqual(
+  highRecoveryWeeklyFlowSessions(highEnd3)?.map((item) => [item.kind, item.score, item.passed]),
+  [
+    ['score', 60, false],
+    ['score', 50, false],
+    ['score', 100, true],
+    ['absent', null, false],
+  ],
+)
+assert.deepEqual(
+  highRecoveryWeeklyFlowSessions(highEnd4)?.map((item) => [item.kind, item.score, item.passed]),
+  [
+    ['score', 60, false],
+    ['score', 50, false],
+    ['score', 83, false],
+    ['score', 100, true],
+  ],
+)
+assert.equal(highEnd2.sessionResults.every((item) => item.status === '미응시'), true)
+assert.equal(highEnd4.sessionResults.every((item) => item.status === '미응시'), true)
+
 const highFlow = buildDailyTestWeeklyFlow({
   studentId: 'stu-1',
   weekStart: '2026-09-07',
-  dailyTests: [highRecovery],
+  dailyTests: [highEnd2, highEnd3, highEnd4],
   subject: '수학',
 })
 assert.equal(
-  highFlow.highRecoveryResults[0]?.label,
+  highFlow.highRecoveryResults[2]?.label,
   '발견 오답 4개 · 추적 15문제 · 회수 완료 4개 · 회수율 100%',
 )
-assert.equal(highFlow.max, null)
-assert.equal(
-  highFlow.days.every((day) => day.sessions.every((item) => item.kind === 'absent')),
-  true,
+assert.equal(highFlow.recoveryResults.length, 3)
+assert.equal(highFlow.recoveryResults[0]?.facts.discoveredWrong, 4)
+assert.equal(highFlow.recoveryResults[0]?.facts.retakeQuestionCount, 4)
+assert.equal(highFlow.recoveryResults[1]?.facts.retakeQuestionCount, 10)
+assert.equal(highFlow.recoveryResults[2]?.facts.retakeQuestionCount, 15)
+assert.equal(highFlow.recoveryResults.every((item) => item.facts.unrecoveredWrong === 0), true)
+assert.equal(highFlow.recoveryResults.every((item) => item.facts.recoveryRate === 100), true)
+assert.deepEqual(
+  highFlow.days[0]?.sessions.map((item) => [item.kind, item.score, item.passed]),
+  [
+    ['score', 60, false],
+    ['score', 100, true],
+    ['absent', null, false],
+    ['absent', null, false],
+  ],
 )
+assert.deepEqual(
+  highFlow.days[1]?.sessions.map((item) => [item.kind, item.score, item.passed]),
+  [
+    ['score', 60, false],
+    ['score', 50, false],
+    ['score', 100, true],
+    ['absent', null, false],
+  ],
+)
+assert.deepEqual(
+  highFlow.days[2]?.sessions.map((item) => [item.kind, item.score, item.passed]),
+  [
+    ['score', 60, false],
+    ['score', 50, false],
+    ['score', 83, false],
+    ['score', 100, true],
+  ],
+)
+assert.equal(highFlow.max, 100)
+assert.equal(highFlow.min, 50)
+
+const middleRecovered = testRecord(
+  '2026-09-07',
+  '수학',
+  [
+    { session: 1, status: '불합격', score: 70, totalScore: 100, incorrectCount: 3 },
+    { session: 2, status: '합격', score: 80, totalScore: 100, incorrectCount: 1 },
+    session(3, '미응시'),
+    session(4, '미응시'),
+  ],
+  '2026-09-07T00:00:00.000Z',
+  applyFixedWrongFormatToDiagnosis(EMPTY_DAILY_LEARNING_DIAGNOSIS),
+)
+const middleOpen = testRecord(
+  '2026-09-09',
+  '수학',
+  [
+    { session: 1, status: '불합격', score: 70, totalScore: 100, incorrectCount: 3 },
+    session(2, '미응시'),
+    session(3, '미응시'),
+    session(4, '미응시'),
+  ],
+  '2026-09-09T00:00:00.000Z',
+  applyFixedWrongFormatToDiagnosis(EMPTY_DAILY_LEARNING_DIAGNOSIS),
+)
+const middleFlow = buildDailyTestWeeklyFlow({
+  studentId: 'stu-1',
+  weekStart: '2026-09-07',
+  dailyTests: [middleRecovered, middleOpen],
+  subject: '수학',
+})
+assert.deepEqual(
+  middleFlow.days[0]?.sessions.map((item) => [item.kind, item.score, item.passed]),
+  [
+    ['score', 70, false],
+    ['score', 80, true],
+    ['absent', null, false],
+    ['absent', null, false],
+  ],
+)
+assert.equal(middleFlow.recoveryResults[0]?.facts.discoveredWrong, 3)
+assert.equal(middleFlow.recoveryResults[0]?.facts.retakeQuestionCount, 5)
+assert.equal(middleFlow.recoveryResults[0]?.facts.recoveredWrong, 3)
+assert.equal(middleFlow.recoveryResults[0]?.facts.unrecoveredWrong, 0)
+assert.equal(middleFlow.recoveryResults[0]?.facts.recoveryRate, 100)
+assert.equal(middleFlow.recoveryResults[1]?.facts.recoveredWrong, 0)
+assert.equal(middleFlow.recoveryResults[1]?.facts.unrecoveredWrong, 3)
+assert.equal(middleFlow.recoveryResults[1]?.facts.recoveryRate, 0)
+assert.match(middleFlow.recoveryResults[1]?.label ?? '', /미회수 3개/)
+assert.equal(middleFlow.wrongTypeTotal, 0)
 
 const newer = testRecord(
   '2026-09-11',
@@ -321,8 +448,9 @@ assert.doesNotMatch(sql, /^\s*DROP TABLE/im)
 
 const card = readFileSync('src/components/studentCare/DailyTestWeeklyFlowCard.tsx', 'utf8')
 const parentWeekly = readFileSync('src/pages/parent/ParentStudentWeeklySummaryPage.tsx', 'utf8')
-assert.match(card, /highRecoveryResults/)
-assert.match(card, /고등 오답 회수/)
+assert.match(card, /recoveryResults/)
+assert.match(card, /오답 회수/)
+assert.doesNotMatch(card, /고등 오답 회수/)
 assert.match(card, /주간 오답 현황/)
 assert.match(card, /주간 최고/)
 assert.match(card, /주간 최저/)

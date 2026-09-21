@@ -12,6 +12,7 @@ import {
   buildFixedWrongSessionResults,
   hasFixedWrongDraftContent,
   isLegacyMathDailyTestRecord,
+  formatMathWeeklyRecoveryFactLine,
   mathFixedWrongScore,
   mathFixedWrongStatus,
   mathSessionQuestionCount,
@@ -195,6 +196,14 @@ assert.deepEqual(mathWeeklyRecoveryFacts(recovered), {
   retakeQuestionCount: 5,
   recoveryRate: 100,
 })
+assert.equal(
+  formatMathWeeklyRecoveryFactLine(mathWeeklyRecoveryFacts(recovered)!),
+  '발견 오답 3개 · 추적 5문제 · 회수 완료 3개 · 회수율 100%',
+)
+assert.equal(
+  formatMathWeeklyRecoveryFactLine(mathWeeklyRecoveryFacts(failedOpen)!),
+  '발견 오답 3개 · 추적 0문제 · 회수 완료 0개 · 미회수 3개 · 회수율 0%',
+)
 
 assert.equal(mathWeeklyRecoveryFacts(legacyMath), null)
 
