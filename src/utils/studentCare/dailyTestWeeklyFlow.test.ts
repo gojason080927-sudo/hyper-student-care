@@ -537,6 +537,7 @@ assert.doesNotMatch(
 const preview = readFileSync('src/pages/dev/ParentMobileLayoutPreviewPage.tsx', 'utf8')
 assert.match(preview, /data-preview-section="weekly-wrong-vocab"/)
 assert.match(preview, /ParentWeeklyWrongVocabReport/)
+assert.match(preview, /오답 추적 진행 중/)
 assert.doesNotMatch(preview, /showRecoveryFacts/)
 assert.match(preview, /WeeklySummaryDetail/)
 assert.match(card, /주간 오답 현황/)

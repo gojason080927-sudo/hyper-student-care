@@ -369,6 +369,23 @@ export function ParentMobileLayoutPreviewPage() {
               grade={previewStudent.grade}
               className={previewStudent.className}
             />
+            <p className="text-sm text-slate-500">오답 추적 진행 중</p>
+            <ParentWeeklyWrongVocabReport
+              studentId={previewStudent.id}
+              weekStart="2026-08-31"
+              dailyTests={[
+                previewDailyTest('2026-08-31', [
+                  { session: 1, status: '불합격', score: 70, totalScore: 100, incorrectCount: 3 },
+                  { session: 2, status: '미응시' },
+                  { session: 3, status: '미응시' },
+                  { session: 4, status: '미응시' },
+                ]),
+              ]}
+              studentTextbookSlots={previewEnglishTextbookSlots}
+              classTodayReportCommon={previewEnglishClassCommon}
+              grade={previewStudent.grade}
+              className={previewStudent.className}
+            />
             <p className="text-sm text-slate-500">기록 없는 주</p>
             <ParentWeeklyWrongVocabReport
               studentId={previewStudent.id}
