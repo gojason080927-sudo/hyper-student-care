@@ -22,6 +22,7 @@ import { HUB_QUESTION_ATTACHMENTS_BUCKET } from '../../hub/types'
 import {
   filterQuestionsByKind,
   isParentSuggestionRecord,
+  formatParentSuggestionAuthor,
   questionKindBadge,
   type TeacherQuestionKindFilter,
 } from '../../utils/parentSuggestions'
@@ -107,7 +108,9 @@ function MobileQuestionListCard({
                     : 'bg-navy-50 text-navy-700'
               }`}
             >
-              {questionKindBadge(record)}
+              {isParentSuggestionRecord(record)
+                ? `작성자 ${formatParentSuggestionAuthor(studentName)}`
+                : questionKindBadge(record)}
             </span>
             {record.title && (
               <p className="text-sm font-medium text-navy-800">{record.title}</p>
@@ -429,7 +432,9 @@ export function TeacherMobileQuestionsPage() {
                       : 'bg-navy-50 text-navy-700'
                 }`}
               >
-                {questionKindBadge(selectedQuestion)}
+                {isParentSuggestionRecord(selectedQuestion)
+                  ? `작성자 ${formatParentSuggestionAuthor(getStudentName(selectedQuestion.studentId))}`
+                  : questionKindBadge(selectedQuestion)}
               </span>
               {selectedQuestion.title && (
                 <p className="font-medium text-navy-800">{selectedQuestion.title}</p>

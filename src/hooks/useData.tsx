@@ -42,6 +42,11 @@ import {
   upsertHubAssignmentRow,
 } from '../lib/hubFromTodayReport'
 import { getParentAccessKeyFromPath } from '../lib/supabase'
+import {
+  isParentSuggestionCategory,
+  mergePersistedQuestion,
+  parentRecordSaveCopy,
+} from '../utils/parentSuggestions'
 import { mergeTodayReportIntoState } from '../lib/db/mergeTodayReport'
 import { mergeClassTodayReportCommonRecords } from '../utils/mergeClassTodayReportCommon'
 import { findProgressRecordIndex, findProgressRecordIndexForDate } from '../utils/progressRecord'
@@ -249,7 +254,7 @@ export type DataContextValue = {
   deleteMonthlyEvaluationRecord: (id: string) => void
   saveQuestionRecord: (
     data: Omit<QuestionRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
-  ) => boolean
+  ) => boolean | Promise<boolean>
   deleteQuestionRecord: (id: string) => void
   saveProgressRecord: (
     data: Omit<ProgressRecord, 'id' | 'createdAt' | 'updatedAt' | 'progressRate'> & {
@@ -1547,6 +1552,48 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
       const parentAccessKey = getParentAccessKeyFromPath()
       if (parentAccessKey && !data.id) {
+        if (isParentSuggestionCategory(data.category)) {
+          return (async () => {
+            if (savingRef.current) return false
+            savingRef.current = true
+            setIsSaving(true)
+            const copy = parentRecordSaveCopy(data.category)
+            try {
+              const record = await rpcSubmitParentQuestion(parentAccessKey, {
+                date: data.date,
+                category: data.category,
+                title: data.title.trim(),
+                content: data.content.trim(),
+                questionImages: data.questionImages ?? [],
+              })
+              if (!record) {
+                showToast(copy.failure)
+                return false
+              }
+              showToast(copy.success)
+              try {
+                const result = await fetchParentCareData(parentAccessKey)
+                applyLoadedData(result.data)
+                setDataSource(result.source)
+              } catch (reloadError) {
+                console.error(
+                  '[ParentAccess] parent suggestion reload failed after persist:',
+                  reloadError,
+                )
+              }
+              setQuestions((prev) => mergePersistedQuestion(prev, record))
+              return true
+            } catch (error) {
+              console.error('[ParentAccess] parent suggestion persist failed:', error)
+              showToast(copy.failure)
+              return false
+            } finally {
+              savingRef.current = false
+              setIsSaving(false)
+            }
+          })()
+        }
+
         void persistWithReload(
           () =>
             rpcSubmitParentQuestion(parentAccessKey, {
@@ -1608,7 +1655,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       showToast('질문이 저장되었습니다.')
       return true
     },
-    [persistWithReload, questions, showToast, validateStudent],
+    [applyLoadedData, persistWithReload, questions, showToast, validateStudent],
   )
 
   const deleteQuestionRecord = useCallback(

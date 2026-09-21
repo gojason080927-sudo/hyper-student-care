@@ -7,9 +7,14 @@ import {
   filterParentQuestions,
   filterParentSuggestions,
   filterQuestionsByKind,
+  formatParentSuggestionAuthor,
   isParentSuggestionCategory,
+  mergePersistedQuestion,
+  PARENT_SUGGESTION_AUTHOR_SUFFIX,
   PARENT_SUGGESTION_CATEGORY,
+  parentRecordSaveCopy,
   questionKindBadge,
+  toastsForParentQuestionSubmit,
 } from './parentSuggestions.ts'
 import {
   computeParentSuggestionUpdatedAt,
@@ -65,6 +70,53 @@ assert.equal(filterQuestionsByKind([question, suggestion], 'suggestion')[0]?.id,
 assert.equal(questionKindBadge(suggestion), '학부모 건의')
 assert.equal(questionKindBadge(question), '학부모')
 assert.equal(questionKindBadge({ category: '수업질문', source: 'student' }), '학생 Hub')
+
+assert.equal(formatParentSuggestionAuthor('김민수'), '김민수 학부모님')
+assert.equal(formatParentSuggestionAuthor('박서연'), '박서연 학부모님')
+assert.equal(formatParentSuggestionAuthor('  김민수  '), '김민수 학부모님')
+assert.equal(formatParentSuggestionAuthor(''), '학부모님')
+assert.equal(formatParentSuggestionAuthor('-'), '학부모님')
+assert.equal(PARENT_SUGGESTION_AUTHOR_SUFFIX, '학부모님')
+
+assert.deepEqual(parentRecordSaveCopy('건의사항'), {
+  success: '건의사항이 등록되었습니다.',
+  failure: '건의사항 등록에 실패했습니다.',
+})
+assert.deepEqual(parentRecordSaveCopy('수업질문'), {
+  success: '질문이 저장되었습니다.',
+  failure: '질문 저장에 실패했습니다.',
+})
+
+assert.deepEqual(
+  toastsForParentQuestionSubmit('건의사항', { persist: 'ok', reload: 'ok' }),
+  ['건의사항이 등록되었습니다.'],
+)
+assert.deepEqual(
+  toastsForParentQuestionSubmit('건의사항', { persist: 'failed' }),
+  ['건의사항 등록에 실패했습니다.'],
+)
+assert.deepEqual(
+  toastsForParentQuestionSubmit('건의사항', { persist: 'ok', reload: 'failed' }),
+  ['건의사항이 등록되었습니다.'],
+)
+assert.deepEqual(toastsForParentQuestionSubmit('건의사항', { persist: 'busy' }), [])
+assert.equal(
+  toastsForParentQuestionSubmit('건의사항', { persist: 'ok', reload: 'failed' }).includes(
+    '건의사항 등록에 실패했습니다.',
+  ),
+  false,
+)
+assert.deepEqual(
+  toastsForParentQuestionSubmit('수업질문', { persist: 'ok', reload: 'ok' }),
+  ['질문이 저장되었습니다.'],
+)
+
+const merged = mergePersistedQuestion([{ id: 'g1' }], { id: 'g2' })
+assert.deepEqual(merged.map((item) => item.id), ['g1', 'g2'])
+assert.deepEqual(
+  mergePersistedQuestion([{ id: 'g1' }], { id: 'g1' }).map((item) => item.id),
+  ['g1'],
+)
 
 const student: Student = {
   id: 's1',
@@ -194,15 +246,51 @@ assert.doesNotMatch(sql, /generate_weekly_learning_summaries/)
 const questionsPage = readFileSync('src/pages/parent/ParentStudentQuestionsPage.tsx', 'utf8')
 assert.match(questionsPage, /filterParentQuestions/)
 assert.doesNotMatch(questionsPage, /PARENT_SUGGESTION_CATEGORY/)
+assert.doesNotMatch(questionsPage, /건의사항이 등록되었습니다/)
+assert.doesNotMatch(questionsPage, /await saveQuestionRecord/)
 
 const suggestionPage = readFileSync('src/pages/parent/ParentStudentSuggestionsPage.tsx', 'utf8')
 assert.match(suggestionPage, /PARENT_SUGGESTION_CATEGORY/)
 assert.match(suggestionPage, /filterParentSuggestions/)
 assert.match(suggestionPage, /writeParentSuggestionLastRead/)
+assert.match(suggestionPage, /formatParentSuggestionAuthor\(student\.name\)/)
+assert.match(suggestionPage, /작성자/)
+assert.match(suggestionPage, /await saveQuestionRecord/)
+assert.match(suggestionPage, /if \(!validate\(\) \|\| submitting \|\| isSaving\) return/)
+assert.match(suggestionPage, /disabled=\{busy\}/)
+assert.doesNotMatch(suggestionPage, /질문이 저장되었습니다/)
+assert.doesNotMatch(suggestionPage, /질문 저장에 실패했습니다/)
+
+const useData = readFileSync('src/hooks/useData.tsx', 'utf8')
+assert.match(useData, /isParentSuggestionCategory\(data\.category\)/)
+assert.match(useData, /parentRecordSaveCopy/)
+assert.match(useData, /showToast\(copy\.success\)/)
+assert.match(useData, /showToast\(copy\.failure\)/)
+assert.match(useData, /parent suggestion reload failed after persist/)
+assert.match(useData, /mergePersistedQuestion\(prev, record\)/)
+assert.match(useData, /showToast\('질문이 저장되었습니다\.'\)/)
+assert.match(useData, /'질문 저장에 실패했습니다\.'/)
+assert.match(useData, /rpcSubmitParentQuestion/)
+assert.doesNotMatch(
+  useData,
+  /void persistWithReload\(\s*\(\) =>\s*rpcSubmitParentQuestion[\s\S]*PARENT_SUGGESTION/,
+)
+
+const card = readFileSync('src/components/question/QuestionRecordCard.tsx', 'utf8')
+assert.match(card, /formatParentSuggestionAuthor\(studentName\)/)
+assert.match(card, /작성자 \$\{formatParentSuggestionAuthor/)
+
+const teacherMobile = readFileSync('src/pages/teacherMobile/TeacherMobileQuestionsPage.tsx', 'utf8')
+assert.match(teacherMobile, /작성자 \$\{formatParentSuggestionAuthor/)
+assert.match(teacherMobile, /upsertQuestion|saveQuestionRecord/)
 
 const teacherPage = readFileSync('src/pages/QuestionsPage.tsx', 'utf8')
 assert.match(teacherPage, /학부모 건의/)
 assert.match(teacherPage, /kindFilter/)
+assert.match(teacherPage, /saveQuestionRecord/)
+
+const hubQuestions = readFileSync('src/hub/HubQuestionsPage.tsx', 'utf8')
+assert.match(hubQuestions, /질문 저장에 실패했습니다/)
 
 const hubSuggestions = readFileSync('src/hub/HubSuggestionsPage.tsx', 'utf8')
 assert.match(hubSuggestions, /rpcSubmitHubInbox/)
