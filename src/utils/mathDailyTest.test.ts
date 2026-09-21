@@ -18,6 +18,7 @@ import {
   mathSessionQuestionCount,
   mathWeeklyRecoveryFacts,
   mathWrongDraftsFromSessions,
+  mathWrongTrackingStatus,
   maxEnabledFixedWrongSession,
   parseMathWrongCountDraft,
   shouldUseFixedWrongMathInput,
@@ -171,7 +172,9 @@ assert.deepEqual(firstPassFacts, {
   unrecoveredWrong: 0,
   retakeQuestionCount: 0,
   recoveryRate: 100,
+  trackingStatus: 'COMPLETE',
 })
+assert.equal(mathWrongTrackingStatus(v1Math), 'COMPLETE')
 
 const failedOpen = mathRecord({
   learningDiagnosis: applyFixedWrongFormatToDiagnosis(EMPTY_DAILY_LEARNING_DIAGNOSIS),
@@ -183,7 +186,9 @@ assert.deepEqual(mathWeeklyRecoveryFacts(failedOpen), {
   unrecoveredWrong: 3,
   retakeQuestionCount: 0,
   recoveryRate: 0,
+  trackingStatus: 'IN_PROGRESS',
 })
+assert.equal(mathWrongTrackingStatus(failedOpen), 'IN_PROGRESS')
 
 const recovered = mathRecord({
   learningDiagnosis: applyFixedWrongFormatToDiagnosis(EMPTY_DAILY_LEARNING_DIAGNOSIS),
@@ -195,7 +200,9 @@ assert.deepEqual(mathWeeklyRecoveryFacts(recovered), {
   unrecoveredWrong: 0,
   retakeQuestionCount: 5,
   recoveryRate: 100,
+  trackingStatus: 'COMPLETE',
 })
+assert.equal(mathWrongTrackingStatus(recovered), 'COMPLETE')
 assert.equal(
   formatMathWeeklyRecoveryFactLine(mathWeeklyRecoveryFacts(recovered)!),
   '발견 오답 3개 · 추적 5문제 · 회수 완료 3개 · 회수율 100%',
@@ -206,6 +213,32 @@ assert.equal(
 )
 
 assert.equal(mathWeeklyRecoveryFacts(legacyMath), null)
+assert.equal(mathWrongTrackingStatus(legacyMath), null)
+
+const session4Fail = mathRecord({
+  learningDiagnosis: applyFixedWrongFormatToDiagnosis(EMPTY_DAILY_LEARNING_DIAGNOSIS),
+  sessionResults: buildFixedWrongSessionResults({ 1: '3', 2: '2', 3: '2', 4: '2' }),
+})
+assert.equal(session4Fail.sessionResults[3]?.status, '불합격')
+assert.equal(mathWrongTrackingStatus(session4Fail), 'COMPLETE')
+assert.equal(mathWeeklyRecoveryFacts(session4Fail)?.recoveredWrong, 0)
+assert.equal(mathWeeklyRecoveryFacts(session4Fail)?.recoveryRate, 0)
+assert.equal(mathWeeklyRecoveryFacts(session4Fail)?.retakeQuestionCount, 15)
+assert.equal(mathWeeklyRecoveryFacts(session4Fail)?.trackingStatus, 'COMPLETE')
+
+const zeroWrongPass = mathRecord({
+  learningDiagnosis: applyFixedWrongFormatToDiagnosis(EMPTY_DAILY_LEARNING_DIAGNOSIS),
+  sessionResults: buildFixedWrongSessionResults({ 1: '0', 2: '', 3: '', 4: '' }),
+})
+assert.deepEqual(mathWeeklyRecoveryFacts(zeroWrongPass), {
+  discoveredWrong: 0,
+  recoveredWrong: 0,
+  unrecoveredWrong: 0,
+  retakeQuestionCount: 0,
+  recoveryRate: null,
+  trackingStatus: 'COMPLETE',
+})
+assert.notEqual(mathWeeklyRecoveryFacts(zeroWrongPass), null)
 
 const form: DailyTestFormData = {
   studentId: 'stu-1',

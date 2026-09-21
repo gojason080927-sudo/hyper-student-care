@@ -8,10 +8,13 @@ import type {
   DailyTestRecord,
   StudentTextbookSlot,
 } from '../types/records.ts'
-import { EMPTY_DAILY_LEARNING_DIAGNOSIS } from './learningDiagnosis.ts'
 import { buildDailyTestWeeklyFlow } from './studentCare/dailyTestWeeklyFlow.ts'
+import { EMPTY_DAILY_LEARNING_DIAGNOSIS } from './learningDiagnosis.ts'
+import { applyFixedWrongFormatToDiagnosis, mathWrongTrackingStatus } from './mathDailyTest.ts'
+import { applyHighRecoveryToDiagnosis } from './mathHighRecovery.ts'
 import {
   buildParentWeeklyVocabClassContext,
+  formatParentMathWrongTrackingStatus,
   formatParentWeeklyVocabSuccessRate,
   listParentWeeklyWrongVocabWeeks,
   parentWeeklyVocabMemorizedWords,
@@ -92,7 +95,7 @@ const page = readFileSync('src/pages/parent/ParentStudentWeeklyWrongVocabPage.ts
 assert.match(page, /pickDefaultParentWeeklyWrongVocabWeek/)
 assert.match(page, /weekTouched/)
 assert.match(page, /ParentWeeklyWrongVocabReport/)
-assert.match(page, /이번 주 수학 오답 회수와 영어 누적 단어 학습을 확인합니다/)
+assert.match(page, /이번 주 수학 오답 추적과 영어 누적 단어 학습을 확인합니다/)
 assert.doesNotMatch(page, /setWeekStart\(weeks\[0\]\)/)
 assert.doesNotMatch(page, /DailyTestWeeklyFlowCard/)
 assert.doesNotMatch(page, /일일테스트 주간 흐름/)
@@ -105,6 +108,15 @@ assert.match(report, /오답 원인/)
 assert.match(report, /영어 단어 누적/)
 assert.match(report, /이번 주 수학 일일테스트 기록이 없습니다/)
 assert.match(report, /이번 주 영어 누적 단어 TEST 기록이 없습니다/)
+assert.match(report, /추적 상태/)
+assert.match(report, /formatParentMathWrongTrackingStatus/)
+assert.match(report, /보강·시험 대비에서 다시 점검합니다/)
+assert.match(report, /recovery\.discoveredWrong\}문제/)
+assert.doesNotMatch(report, /회수 완료/)
+assert.doesNotMatch(report, /회수율/)
+assert.doesNotMatch(report, /formatRate/)
+assert.doesNotMatch(report, /recovery\.recoveryRate/)
+assert.doesNotMatch(report, /recovery\.recoveredWrong/)
 assert.doesNotMatch(report, /DAILY TEST/)
 assert.doesNotMatch(report, /FlowChart/)
 assert.doesNotMatch(report, /일일테스트 주간 흐름/)
@@ -117,6 +129,7 @@ assert.deepEqual(
       unrecoveredWrong: 0,
       retakeQuestionCount: 5,
       recoveryRate: 100,
+      trackingStatus: 'COMPLETE',
     },
     {
       discoveredWrong: 1,
@@ -124,6 +137,7 @@ assert.deepEqual(
       unrecoveredWrong: 1,
       retakeQuestionCount: 0,
       recoveryRate: 0,
+      trackingStatus: 'IN_PROGRESS',
     },
   ]),
   {
@@ -132,6 +146,7 @@ assert.deepEqual(
     unrecoveredWrong: 1,
     retakeQuestionCount: 5,
     recoveryRate: 75,
+    trackingStatus: 'IN_PROGRESS',
   },
 )
 assert.equal(summarizeParentWeeklyMathRecovery([]), null)
@@ -337,5 +352,170 @@ const summary = readFileSync('src/pages/parent/ParentStudentWeeklySummaryPage.ts
 assert.doesNotMatch(summary, /pickDefaultParentWeeklyWrongVocabWeek/)
 assert.doesNotMatch(summary, /ParentWeeklyWrongVocabReport/)
 assert.match(summary, /DailyTestWeeklyFlowCard/)
+
+function session(
+  number: 1 | 2 | 3 | 4,
+  status: '합격' | '불합격' | '미응시',
+  score?: number,
+  incorrectCount?: number,
+) {
+  return {
+    session: number,
+    status,
+    ...(score == null ? {} : { score, totalScore: 100 }),
+    ...(incorrectCount == null ? {} : { incorrectCount }),
+  }
+}
+
+function middleMath(
+  date: string,
+  sessions: DailyTestRecord['sessionResults'],
+): DailyTestRecord {
+  return {
+    ...mathRecord(date),
+    learningDiagnosis: applyFixedWrongFormatToDiagnosis(EMPTY_DAILY_LEARNING_DIAGNOSIS),
+    sessionResults: sessions,
+  }
+}
+
+function highMath(
+  date: string,
+  parsed: Parameters<typeof applyHighRecoveryToDiagnosis>[1],
+): DailyTestRecord {
+  return {
+    ...mathRecord(date),
+    learningDiagnosis: applyHighRecoveryToDiagnosis(EMPTY_DAILY_LEARNING_DIAGNOSIS, parsed),
+    sessionResults: [session(1, '미응시'), session(2, '미응시'), session(3, '미응시'), session(4, '미응시')],
+  }
+}
+
+function weekFacts(records: DailyTestRecord[], weekStart = '2026-09-07') {
+  const model = buildDailyTestWeeklyFlow({
+    studentId: 's1',
+    weekStart,
+    dailyTests: records,
+  })
+  return {
+    model,
+    recovery: summarizeParentWeeklyMathRecovery(model.weekRecoveryResults.map((item) => item.facts)),
+  }
+}
+
+assert.equal(formatParentMathWrongTrackingStatus('COMPLETE'), '1차 오답 추적 완료')
+assert.equal(formatParentMathWrongTrackingStatus('IN_PROGRESS'), '오답 추적 진행 중')
+
+// CASE 1: 최초 오답 있음 + 추적 종료
+const case1Record = middleMath('2026-09-07', [
+  session(1, '불합격', 70, 3),
+  session(2, '합격', 80, 1),
+  session(3, '미응시'),
+  session(4, '미응시'),
+])
+const case1 = weekFacts([case1Record])
+assert.equal(case1.model.hasMathWeekRecords, true)
+assert.equal(mathWrongTrackingStatus(case1Record), 'COMPLETE')
+assert.equal(case1.recovery?.discoveredWrong, 3)
+assert.equal(case1.recovery?.retakeQuestionCount, 5)
+assert.equal(case1.recovery?.trackingStatus, 'COMPLETE')
+
+// CASE 2: 최초 오답 있음 + 다음 추적 차시 필요
+const case2Open = middleMath('2026-09-07', [
+  session(1, '불합격', 70, 3),
+  session(2, '미응시'),
+  session(3, '미응시'),
+  session(4, '미응시'),
+])
+const case2 = weekFacts([case2Open])
+assert.equal(mathWrongTrackingStatus(case2Open), 'IN_PROGRESS')
+assert.equal(case2.recovery?.trackingStatus, 'IN_PROGRESS')
+assert.equal(case2.recovery?.discoveredWrong, 3)
+assert.equal(case2.recovery?.retakeQuestionCount, 0)
+
+// CASE 3: 한 주에 일부 완료 + 일부 진행 중
+const case3 = weekFacts([
+  middleMath('2026-09-07', [
+    session(1, '불합격', 70, 3),
+    session(2, '합격', 80, 1),
+    session(3, '미응시'),
+    session(4, '미응시'),
+  ]),
+  middleMath('2026-09-09', [
+    session(1, '불합격', 70, 3),
+    session(2, '미응시'),
+    session(3, '미응시'),
+    session(4, '미응시'),
+  ]),
+])
+assert.equal(case3.recovery?.trackingStatus, 'IN_PROGRESS')
+assert.equal(case3.recovery?.discoveredWrong, 6)
+assert.equal(case3.recovery?.retakeQuestionCount, 5)
+
+// CASE 4: 한 주의 모든 추적 대상 기록 완료
+const case4 = weekFacts([
+  middleMath('2026-09-07', [
+    session(1, '불합격', 70, 3),
+    session(2, '합격', 80, 1),
+    session(3, '미응시'),
+    session(4, '미응시'),
+  ]),
+  middleMath('2026-09-11', [
+    session(1, '합격', 90, 1),
+    session(2, '미응시'),
+    session(3, '미응시'),
+    session(4, '미응시'),
+  ]),
+])
+assert.equal(case4.recovery?.trackingStatus, 'COMPLETE')
+assert.equal(case4.recovery?.discoveredWrong, 4)
+
+// CASE 5: 최초 오답 0 → 데이터 없음으로 오판하지 않음
+const case5Zero = middleMath('2026-09-07', [
+  session(1, '합격', 100, 0),
+  session(2, '미응시'),
+  session(3, '미응시'),
+  session(4, '미응시'),
+])
+const case5 = weekFacts([case5Zero])
+assert.equal(case5.model.hasMathWeekRecords, true)
+assert.notEqual(case5.recovery, null)
+assert.equal(case5.recovery?.discoveredWrong, 0)
+assert.equal(case5.recovery?.retakeQuestionCount, 0)
+assert.equal(case5.recovery?.recoveryRate, null)
+assert.equal(case5.recovery?.trackingStatus, 'COMPLETE')
+
+// CASE 6: high-recovery-v1 정상 종료
+const case6Record = highMath('2026-09-07', {
+  firstWrong: 4,
+  endSession: 2,
+  session3Questions: null,
+  session4Questions: null,
+})
+const case6 = weekFacts([case6Record])
+assert.equal(mathWrongTrackingStatus(case6Record), 'COMPLETE')
+assert.equal(case6.recovery?.trackingStatus, 'COMPLETE')
+assert.equal(case6.recovery?.discoveredWrong, 4)
+assert.equal(case6.recovery?.retakeQuestionCount, 4)
+
+// CASE 7: 고등부 완료를 증명하지 못하면 완료 처리하지 않음
+const case7Record: DailyTestRecord = {
+  ...mathRecord('2026-09-07'),
+  learningDiagnosis: {
+    ...EMPTY_DAILY_LEARNING_DIAGNOSIS,
+    mathDailyTestFormat: 'high-recovery-v1',
+    mathHighFirstWrongCount: 4,
+    mathHighEndSession: 1,
+    mathHighSession3Questions: null,
+    mathHighSession4Questions: null,
+  },
+}
+const case7 = weekFacts([case7Record])
+assert.equal(mathWrongTrackingStatus(case7Record), 'IN_PROGRESS')
+assert.equal(case7.recovery?.trackingStatus, 'IN_PROGRESS')
+
+// CASE 11: NO DATA vs 0문제
+const noMath = weekFacts([cumulativeEnglish('2026-09-07', 300, 30)])
+assert.equal(noMath.model.hasMathWeekRecords, false)
+assert.equal(noMath.recovery, null)
+assert.notEqual(case5.model.hasMathWeekRecords, noMath.model.hasMathWeekRecords)
 
 console.log('parentWeeklyWrongVocab OK')
