@@ -194,7 +194,7 @@ export function DailyTestWeeklyFlowCard({
   weekStart: string
   dailyTests: DailyTestRecord[]
   grade: WeeklySummaryGrade | null
-  /** 주간 SUMMARY는 false. 별도 주간 오답 현황에서만 true. */
+  /** 주간 SUMMARY는 false. 별도 weekly-wrong-vocab에서만 오답 회수·4유형을 연다. */
   showRecoveryFacts?: boolean
 }) {
   const [subject, setSubject] = useState<string | null>(null)
@@ -244,7 +244,7 @@ export function DailyTestWeeklyFlowCard({
           })}
         </div>
       ) : null}
-      {model.cumulativeResults.length > 0 ? (
+      {showRecoveryFacts && model.cumulativeResults.length > 0 ? (
         <div className="mt-3 space-y-1.5 rounded-xl bg-slate-50 px-3 py-2.5">
           <p className="text-[11px] font-semibold text-[#163A70]">누적 단어 TEST</p>
           {model.cumulativeResults.map((item) => (
@@ -269,6 +269,7 @@ export function DailyTestWeeklyFlowCard({
           <FlowChart days={model.days} clipId={clipId} />
         </div>
       ) : null}
+      {showRecoveryFacts ? (
       <div className="mt-3">
         <h4 className="text-sm font-bold text-navy-900">주간 오답 현황</h4>
         <div className="mt-2 grid grid-cols-2 gap-1.5">
@@ -290,6 +291,7 @@ export function DailyTestWeeklyFlowCard({
           })}
         </div>
       </div>
+      ) : null}
       {model.max != null ? (
         <div className="mt-3 grid grid-cols-3 gap-2">
           {[

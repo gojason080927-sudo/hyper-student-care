@@ -451,7 +451,13 @@ const parentWeekly = readFileSync('src/pages/parent/ParentStudentWeeklySummaryPa
 assert.match(card, /showRecoveryFacts/)
 assert.match(card, /오답 회수/)
 assert.match(card, /showRecoveryFacts && model\.recoveryResults/)
+assert.match(card, /showRecoveryFacts && model\.cumulativeResults/)
+assert.match(card, /showRecoveryFacts \? \(/)
 assert.doesNotMatch(parentWeekly, /showRecoveryFacts/)
+assert.match(
+  readFileSync('src/pages/parent/ParentStudentWeeklyWrongVocabPage.tsx', 'utf8'),
+  /showRecoveryFacts/,
+)
 const preview = readFileSync('src/pages/dev/ParentMobileLayoutPreviewPage.tsx', 'utf8')
 assert.match(preview, /data-preview-section="weekly-wrong-vocab"/)
 assert.match(preview, /showRecoveryFacts/)
@@ -480,6 +486,11 @@ assert.doesNotMatch(parentWeekly, /AREA_ORDER: WeeklySummaryAreaKey\[] = \[[^\]]
 assert.match(parentWeekly, /DailyTestWeeklyFlowCard/)
 assert.match(parentWeekly, /grade=\{summary\.scores\.dailyTest\.grade\}/)
 assert.match(readFileSync('src/hub/HubWeeklyPage.tsx', 'utf8'), /WeeklySummaryDetail/)
+assert.match(readFileSync('src/App.tsx', 'utf8'), /weekly-wrong-vocab/)
+assert.match(
+  readFileSync('src/pages/parent/ParentStudentWeeklyWrongVocabPage.tsx', 'utf8'),
+  /주간 수학 오답 · 영어 단어 누적 현황/,
+)
 
 const weeklySummary = readFileSync('src/utils/studentCare/weeklySummary.ts', 'utf8')
 assert.doesNotMatch(weeklySummary, /comprehensionLackCount/)

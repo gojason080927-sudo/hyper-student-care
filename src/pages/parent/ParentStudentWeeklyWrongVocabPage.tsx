@@ -70,6 +70,7 @@ export function ParentStudentWeeklyWrongVocabPage() {
           weekStart={activeWeek}
           dailyTests={dailyTests}
           grade={grade}
+          showRecoveryFacts
         />
       ) : (
         <ParentEmptyState message="확인할 주간 일일테스트 기록이 없습니다." />

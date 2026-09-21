@@ -99,13 +99,14 @@ function previewDailyTest(
     applicationLackCount: 0,
     comprehensionLackCount: date === '2026-09-09' ? 1 : 0,
   }),
+  subject = '수학',
 ): DailyTestRecord {
   return {
-    id: `preview-${date}`,
+    id: `preview-${date}-${subject}`,
     studentId: previewStudent.id,
     date,
     testName: '일일테스트',
-    subject: '수학',
+    subject,
     score: sessions.find((item) => item.score != null)?.score ?? 0,
     totalScore: 100,
     percentage: sessions.find((item) => item.score != null)?.score ?? 0,
@@ -153,6 +154,22 @@ const previewDailyTests: DailyTestRecord[] = [
         session4Questions: 5,
       },
     ),
+  ),
+  previewDailyTest(
+    '2026-09-09',
+    [
+      { session: 1, status: '미응시' },
+      { session: 2, status: '미응시' },
+      { session: 3, status: '미응시' },
+      { session: 4, status: '미응시' },
+    ],
+    {
+      ...EMPTY_DAILY_LEARNING_DIAGNOSIS,
+      englishVocabTestFormat: 'cumulative',
+      englishVocabTotalWords: 300,
+      englishVocabWrongWords: 6,
+    },
+    '영어',
   ),
 ]
 
