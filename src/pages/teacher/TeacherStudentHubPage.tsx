@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
 import { useData } from '../../hooks/useData'
 import { GRADES, btnPrimary, btnSecondary, inputClass } from '../../utils/labels'
 import { getClassOptionsForGrade } from '../../utils/studentGradeClass'
@@ -9,6 +10,7 @@ import { createId } from '../../utils/id'
 import type { HubAudienceType, HubInboxItem, HubMaterial, HubVideo } from '../../hub/types'
 import { HUB_QUESTION_ATTACHMENTS_BUCKET } from '../../hub/types'
 import {
+  teacherDeleteMaterial,
   teacherDeleteVideo,
   teacherFetchInbox,
   teacherFetchMaterials,
@@ -172,8 +174,11 @@ export function TeacherStudentHubPage() {
         마세요.
       </p>
       <p className="text-sm text-slate-600">
-        학생 질문은 기존 <Link className="font-semibold text-navy-700" to="/questions">질문하기</Link>에서
-        source 필터로 확인합니다.
+        학생 Hub 건의는 아래 「건의」 탭에서 확인하고 답변합니다. 학부모 건의사항과 학생 질문은{' '}
+        <Link className="font-semibold text-navy-700" to="/questions">
+          질문하기
+        </Link>
+        에서 source·유형 필터로 확인합니다.
       </p>
       {error ? <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">{error}</p> : null}
       <div className="flex flex-wrap gap-2">
@@ -194,20 +199,18 @@ export function TeacherStudentHubPage() {
         <MaterialPanel
           materials={materials}
           students={students.map((student) => ({ id: student.id, name: student.name }))}
-          onSaved={async () => {
-            showToast('자료를 저장했습니다.')
-            await reload()
-          }}
+          showToast={showToast}
+          onRemoved={(id) => setMaterials((prev) => prev.filter((item) => item.id !== id))}
+          onChanged={reload}
         />
       ) : null}
       {tab === 'videos' ? (
         <VideoPanel
           videos={videos}
           students={students.map((student) => ({ id: student.id, name: student.name }))}
-          onSaved={async () => {
-            showToast('영상을 저장했습니다.')
-            await reload()
-          }}
+          showToast={showToast}
+          onRemoved={(id) => setVideos((prev) => prev.filter((item) => item.id !== id))}
+          onChanged={reload}
         />
       ) : null}
       {tab === 'requests' || tab === 'suggestions' ? (
@@ -221,14 +224,21 @@ export function TeacherStudentHubPage() {
   )
 }
 
+const deleteBtnClass =
+  'min-h-11 rounded-xl border border-rose-200 px-5 py-2.5 text-sm font-medium text-rose-600 hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60'
+
 function MaterialPanel({
   materials,
   students,
-  onSaved,
+  onChanged,
+  onRemoved,
+  showToast,
 }: {
   materials: HubMaterial[]
   students: { id: string; name: string }[]
-  onSaved: () => Promise<void>
+  onChanged: () => Promise<void>
+  onRemoved: (id: string) => void
+  showToast: (text: string) => void
 }) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -251,6 +261,8 @@ function MaterialPanel({
     targetClassName: '',
     targetStudentId: '',
   })
+  const [deleteTarget, setDeleteTarget] = useState<HubMaterial | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -277,7 +289,8 @@ function MaterialPanel({
       setTitle('')
       setDescription('')
       setFile(null)
-      await onSaved()
+      showToast('자료를 저장했습니다.')
+      await onChanged()
     } catch (err) {
       setError(err instanceof Error ? err.message : '자료 업로드에 실패했습니다.')
     } finally {
@@ -325,9 +338,31 @@ function MaterialPanel({
         previous: { published: metaEdit.status === 'PUBLISHED' },
       })
       setMetaEdit(null)
-      await onSaved()
+      showToast('자료를 저장했습니다.')
+      await onChanged()
     } catch (err) {
       setError(err instanceof Error ? err.message : '자료 정보 수정에 실패했습니다.')
+    }
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteTarget || deleting) return
+    const target = deleteTarget
+    setDeleting(true)
+    setError('')
+    try {
+      await teacherDeleteMaterial(target)
+      if (metaEdit?.id === target.id) setMetaEdit(null)
+      onRemoved(target.id)
+      setDeleteTarget(null)
+      showToast('자료를 삭제했습니다.')
+      await onChanged().catch(() => undefined)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '자료 삭제에 실패했습니다.'
+      setError(message)
+      showToast(message)
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -401,15 +436,41 @@ function MaterialPanel({
                     entityId: item.id,
                     previous: { published: previousPublished },
                   })
-                  await onSaved()
+                  showToast('자료를 저장했습니다.')
+                  await onChanged()
                 }}
               >
                 {item.status === 'PUBLISHED' ? '숨기기' : '게시'}
+              </button>
+              <button
+                type="button"
+                className={deleteBtnClass}
+                disabled={deleting}
+                onClick={() => setDeleteTarget(item)}
+              >
+                삭제
               </button>
             </div>
           </article>
         ))}
       </div>
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="문제 자료 삭제"
+        message={
+          deleteTarget
+            ? `"${deleteTarget.title}" 자료를 삭제합니다. 학생 Hub에서도 더 이상 보이지 않습니다.`
+            : ''
+        }
+        confirmLabel="삭제"
+        busy={deleting}
+        onCancel={() => {
+          if (!deleting) setDeleteTarget(null)
+        }}
+        onConfirm={() => {
+          void confirmDelete()
+        }}
+      />
     </div>
   )
 }
@@ -417,11 +478,15 @@ function MaterialPanel({
 function VideoPanel({
   videos,
   students,
-  onSaved,
+  onChanged,
+  onRemoved,
+  showToast,
 }: {
   videos: HubVideo[]
   students: { id: string; name: string }[]
-  onSaved: () => Promise<void>
+  onChanged: () => Promise<void>
+  onRemoved: (id: string) => void
+  showToast: (text: string) => void
 }) {
   const emptyForm = {
     id: '',
@@ -437,6 +502,8 @@ function VideoPanel({
   }
   const [form, setForm] = useState(emptyForm)
   const editing = Boolean(form.id)
+  const [deleteTarget, setDeleteTarget] = useState<HubVideo | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -467,7 +534,26 @@ function VideoPanel({
       previous: existing ? { published: existing.published } : undefined,
     })
     setForm(emptyForm)
-    await onSaved()
+    showToast(editing ? '영상을 수정했습니다.' : '영상을 저장했습니다.')
+    await onChanged()
+  }
+
+  const confirmDeleteVideo = async () => {
+    if (!deleteTarget || deleting) return
+    const target = deleteTarget
+    setDeleting(true)
+    try {
+      await teacherDeleteVideo(target.id)
+      if (form.id === target.id) setForm(emptyForm)
+      onRemoved(target.id)
+      setDeleteTarget(null)
+      showToast('영상을 삭제했습니다.')
+      await onChanged().catch(() => undefined)
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : '영상 삭제에 실패했습니다.')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   return (
@@ -574,12 +660,9 @@ function VideoPanel({
               </button>
               <button
                 type="button"
-                className={btnSecondary}
-                onClick={async () => {
-                  await teacherDeleteVideo(item.id)
-                  if (form.id === item.id) setForm(emptyForm)
-                  await onSaved()
-                }}
+                className={deleteBtnClass}
+                disabled={deleting}
+                onClick={() => setDeleteTarget(item)}
               >
                 삭제
               </button>
@@ -587,6 +670,23 @@ function VideoPanel({
           </article>
         ))}
       </div>
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="영상 자료 삭제"
+        message={
+          deleteTarget
+            ? `"${deleteTarget.title}" 영상을 삭제합니다. 학생 Hub에서도 더 이상 보이지 않습니다. YouTube 원본은 삭제하지 않습니다.`
+            : ''
+        }
+        confirmLabel="삭제"
+        busy={deleting}
+        onCancel={() => {
+          if (!deleting) setDeleteTarget(null)
+        }}
+        onConfirm={() => {
+          void confirmDeleteVideo()
+        }}
+      />
     </div>
   )
 }

@@ -12,6 +12,10 @@ import type {
 } from './types'
 import { HUB_LEARNING_MATERIALS_BUCKET } from './types'
 import { classifyHubMaterialFile, materialKindFromDecision } from './hubFilePolicy'
+import {
+  collectHubMaterialStoragePaths,
+  mergeOwnedHubMaterialStoragePaths,
+} from './hubMaterialStorage'
 
 function throwIfError(error: { message?: string } | null, fallback: string): void {
   if (error) throw new Error(error.message || fallback)
@@ -338,6 +342,53 @@ export async function teacherSetMaterialStatus(id: string, status: 'DRAFT' | 'PU
     })
     .eq('id', id)
   throwIfError(error, '자료 상태 변경에 실패했습니다.')
+}
+
+function isMissingStoragePrefixError(message: string): boolean {
+  return /not found|not exist|invalidkey|no such file|the resource was not found/i.test(message)
+}
+
+async function listHubMaterialStorageFolder(prefix: string): Promise<string[]> {
+  const { data, error } = await getSupabase()
+    .storage.from(HUB_LEARNING_MATERIALS_BUCKET)
+    .list(prefix, { limit: 1000 })
+  if (error) {
+    if (isMissingStoragePrefixError(error.message || '')) return []
+    throw new Error(error.message || '자료 파일을 확인하지 못했습니다.')
+  }
+  return (data ?? [])
+    .map((entry) => entry.name)
+    .filter((name) => Boolean(name) && name !== '.emptyFolderPlaceholder')
+}
+
+async function listHubMaterialStoragePaths(materialId: string): Promise<string[]> {
+  const root = await listHubMaterialStorageFolder(materialId)
+  const nestedPrefixes = root.filter((name) => !name.includes('.'))
+  const files: string[] = root
+    .filter((name) => name.includes('.'))
+    .map((name) => `${materialId}/${name}`)
+  for (const folder of nestedPrefixes) {
+    const prefix = `${materialId}/${folder}`
+    const names = await listHubMaterialStorageFolder(prefix)
+    for (const name of names) files.push(`${prefix}/${name}`)
+  }
+  return files
+}
+
+export async function teacherDeleteMaterial(material: HubMaterial): Promise<void> {
+  const paths = mergeOwnedHubMaterialStoragePaths(
+    material.id,
+    collectHubMaterialStoragePaths(material),
+    await listHubMaterialStoragePaths(material.id),
+  )
+  if (paths.length > 0) {
+    const { error } = await getSupabase().storage.from(HUB_LEARNING_MATERIALS_BUCKET).remove(paths)
+    if (error && !isMissingStoragePrefixError(error.message || '')) {
+      throw new Error(error.message || '자료 파일을 삭제하지 못했습니다.')
+    }
+  }
+  const { error } = await getSupabase().from('hub_learning_materials').delete().eq('id', material.id)
+  throwIfError(error, '자료 삭제에 실패했습니다.')
 }
 
 export async function teacherUpdateMaterialMetadata(params: {

@@ -42,6 +42,8 @@ assert.match(teacherCms, /교사 답변/)
 assert.doesNotMatch(teacherCms, /학생 앱 연결은 다음 단계에서/)
 assert.match(teacherRepo, /teacherSaveInboxReply/)
 assert.match(teacherRepo, /teacher_reply/)
+assert.match(teacherCms, /label: '건의'/)
+assert.match(teacherCms, /teacherDeleteMaterial/)
 
 assert.match(hubRpc, /rpcUpdateHubInbox/)
 assert.match(hubRpc, /rpcDeleteHubInbox/)
