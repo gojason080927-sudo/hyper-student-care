@@ -310,6 +310,9 @@ function MaterialPanel({
     const next = pickHubMaterialFiles(nextFiles)
     setFiles(next.accepted.map((item) => item.file))
     setFailedNames((prev) => prev.filter((name) => next.accepted.some((item) => item.file.name === name)))
+    if (next.accepted.length === 1 && !title.trim()) {
+      setTitle(next.accepted[0].title)
+    }
   }
 
   const submit = async (event: FormEvent) => {
