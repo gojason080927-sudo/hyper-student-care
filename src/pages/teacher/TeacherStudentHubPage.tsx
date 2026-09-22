@@ -37,7 +37,7 @@ import {
   mergeMaterialFiles,
   pickHubMaterialFiles,
 } from '../../hub/hubMaterialBatch'
-import { notifyHubPush } from '../../lib/hubPushInvoke'
+import { HUB_MATERIAL_PUSH_FAILURE, invokeHubPush, isHubPushDeliveryOk, notifyHubPush } from '../../lib/hubPushInvoke'
 import {
   HUB_INBOX_REPLY_SAVE_FAILURE,
   HUB_INBOX_REPLY_SAVE_SUCCESS,
@@ -362,7 +362,11 @@ function MaterialPanel({
         setProgress({ done: index + 1, total: queue.length })
       }
       const pushId = hubMaterialBatchPushEntityId(successIds)
-      if (pushId) notifyHubPush({ event: 'material_saved', entityId: pushId })
+      let pushFailed = false
+      if (pushId) {
+        const pushResult = await invokeHubPush({ event: 'material_saved', entityId: pushId })
+        pushFailed = !isHubPushDeliveryOk(pushResult)
+      }
       const remaining = files.filter((file) => nextFailed.includes(file.name) && !succeededNames.has(file.name))
       setFiles(remaining)
       setFailedNames(nextFailed)
@@ -372,12 +376,13 @@ function MaterialPanel({
         setDescription('')
       }
       const summary = formatMaterialBatchResult(successIds.length, nextFailed)
-      if (successIds.length > 0) showToast(summary)
-      if (nextFailed.length > 0) {
-        setError(`${summary}\n${nextFailed.join('\n')}`)
-      } else {
-        setError('')
+      if (successIds.length > 0) {
+        showToast(pushFailed ? HUB_MATERIAL_PUSH_FAILURE : summary)
       }
+      const parts: string[] = []
+      if (nextFailed.length > 0) parts.push(`${summary}\n${nextFailed.join('\n')}`)
+      if (pushFailed) parts.push(HUB_MATERIAL_PUSH_FAILURE)
+      setError(parts.join('\n'))
       if (successIds.length > 0) await onChanged()
     } catch (err) {
       setError(err instanceof Error ? err.message : '자료 업로드에 실패했습니다.')

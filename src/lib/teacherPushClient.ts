@@ -8,10 +8,26 @@ import {
   rpcGetTeacherPushSubscriptionStatus,
   rpcUpsertTeacherPushSubscription,
 } from './db/hubPushRpc'
+import {
+  PUSH_RPC_TIMEOUT_MS,
+  PUSH_SUBSCRIBE_TIMEOUT_MS,
+  SERVICE_WORKER_ACTIVATE_TIMEOUT_MS,
+  TEACHER_PUSH_TIMEOUT_MESSAGE,
+  waitForActiveServiceWorker,
+  withTimeout,
+} from './serviceWorkerActivation'
 
 const TEACHER_SW_URL = '/teacher/sw.js'
 const TEACHER_SW_SCOPE = '/teacher/'
 let inFlightSync: Promise<void> | null = null
+
+export function teacherPushUserMessage(error: unknown): string {
+  if (error instanceof Error && /알림|푸시|인터넷|브라우저|아이폰|권한/.test(error.message)) {
+    return error.message
+  }
+  console.warn('[TeacherPush]', error)
+  return '알림 등록에 실패했습니다. 잠시 후 다시 시도해 주세요.'
+}
 
 export async function registerTeacherPushServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (!('serviceWorker' in navigator)) return null
@@ -49,16 +65,21 @@ async function createSubscription(
   vapidKey: string,
 ): Promise<PushSubscription> {
   try {
-    return await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(vapidKey) as BufferSource,
-    })
+    return await withTimeout(
+      registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey) as BufferSource,
+      }),
+      PUSH_SUBSCRIBE_TIMEOUT_MS,
+      TEACHER_PUSH_TIMEOUT_MESSAGE,
+    )
   } catch (error) {
+    if (error instanceof Error && error.message === TEACHER_PUSH_TIMEOUT_MESSAGE) throw error
     const message = error instanceof Error ? error.message : ''
     if (/push service not available/i.test(message)) {
       throw new Error('이 환경에서는 푸시 서비스를 사용할 수 없습니다. 휴대폰 브라우저에서 다시 시도해 주세요.')
     }
-    throw error instanceof Error ? error : new Error('알림 등록에 실패했습니다.')
+    throw new Error('알림 등록에 실패했습니다. 잠시 후 다시 시도해 주세요.')
   }
 }
 
@@ -88,15 +109,25 @@ async function syncTeacherPushSubscription(options: { allowPermissionPrompt: boo
     )
   }
 
-  await registerTeacherPushServiceWorker()
-  await navigator.serviceWorker.ready
-  const registration = await navigator.serviceWorker.getRegistration(TEACHER_SW_SCOPE)
-  if (!registration) {
+  const registered = await withTimeout(
+    registerTeacherPushServiceWorker(),
+    SERVICE_WORKER_ACTIVATE_TIMEOUT_MS,
+    TEACHER_PUSH_TIMEOUT_MESSAGE,
+  )
+  if (!registered) {
+    throw new Error('알림 서비스를 등록하지 못했습니다.')
+  }
+  const registration = await waitForActiveServiceWorker(registered)
+  if (!registration.active?.scriptURL.includes('/teacher/sw.js')) {
     throw new Error('알림 서비스를 등록하지 못했습니다.')
   }
 
   const expectedKey = urlBase64ToUint8Array(vapid)
-  const existing = await registration.pushManager.getSubscription()
+  const existing = await withTimeout(
+    registration.pushManager.getSubscription(),
+    PUSH_SUBSCRIBE_TIMEOUT_MS,
+    TEACHER_PUSH_TIMEOUT_MESSAGE,
+  )
   let subscription = existing
 
   if (existing) {
@@ -109,7 +140,11 @@ async function syncTeacherPushSubscription(options: { allowPermissionPrompt: boo
       }
       subscription = await createSubscription(registration, vapid)
       if (oldEndpoint !== subscription.endpoint) {
-        await rpcDeactivateTeacherPushSubscription(oldEndpoint)
+        await withTimeout(
+          rpcDeactivateTeacherPushSubscription(oldEndpoint),
+          PUSH_RPC_TIMEOUT_MS,
+          TEACHER_PUSH_TIMEOUT_MESSAGE,
+        )
       }
     }
   }
@@ -119,12 +154,21 @@ async function syncTeacherPushSubscription(options: { allowPermissionPrompt: boo
   }
 
   const keys = subscriptionKeys(subscription)
-  await rpcUpsertTeacherPushSubscription({
-    endpoint: subscription.endpoint,
-    p256dh: keys.p256dh,
-    auth: keys.auth,
-    userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
-  })
+  try {
+    await withTimeout(
+      rpcUpsertTeacherPushSubscription({
+        endpoint: subscription.endpoint,
+        p256dh: keys.p256dh,
+        auth: keys.auth,
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+      }),
+      PUSH_RPC_TIMEOUT_MS,
+      TEACHER_PUSH_TIMEOUT_MESSAGE,
+    )
+  } catch (error) {
+    if (error instanceof Error && error.message === TEACHER_PUSH_TIMEOUT_MESSAGE) throw error
+    throw new Error('알림 등록에 실패했습니다. 잠시 후 다시 시도해 주세요.')
+  }
 }
 
 export async function subscribeTeacherPush(): Promise<void> {
