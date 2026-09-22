@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { getVapidPublicKey } from '../../lib/parentPushSupport'
-import { ensureTeacherPushSubscription, getTeacherPushUiState, subscribeTeacherPush } from '../../lib/teacherPushClient'
+import {
+  ensureTeacherPushSubscription,
+  getTeacherPushUiState,
+  subscribeTeacherPush,
+  teacherPushUserMessage,
+} from '../../lib/teacherPushClient'
 
 type Props = {
   placement?: 'page' | 'sidebar'
@@ -58,8 +63,8 @@ export function TeacherPushOptIn({ placement = 'page' }: Props) {
           .catch((error) => {
             if (cancelled) return
             setStatusLabel('알림 꺼짐')
-            setCanRequest(false)
-            setHint(error instanceof Error ? error.message : '알림 등록에 실패했습니다.')
+            setCanRequest(true)
+            setHint(teacherPushUserMessage(error))
           })
         return
       }
@@ -80,7 +85,9 @@ export function TeacherPushOptIn({ placement = 'page' }: Props) {
       setStatusLabel('알림 켜짐')
       setCanRequest(false)
     } catch (error) {
-      setHint(error instanceof Error ? error.message : '알림 등록에 실패했습니다.')
+      setStatusLabel('알림 꺼짐')
+      setCanRequest(true)
+      setHint(teacherPushUserMessage(error))
     } finally {
       setBusy(false)
     }
