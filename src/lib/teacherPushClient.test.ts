@@ -16,7 +16,8 @@ assert.match(client, /existingKey/)
 assert.match(client, /sameBytes\(existingKey, expectedKey\)/)
 assert.match(client, /inFlightSync = null/)
 assert.match(optIn, /setBusy\(false\)/)
-assert.match(optIn, /setCanRequest\(true\)/)
+assert.match(optIn, /canRequest/)
+assert.match(optIn, /isLoading/)
 
 assert.equal(teacherPushUserMessage(new Error(TEACHER_PUSH_TIMEOUT_MESSAGE)), TEACHER_PUSH_TIMEOUT_MESSAGE)
 assert.equal(

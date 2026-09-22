@@ -7,87 +7,218 @@ import {
   subscribeTeacherPush,
   teacherPushUserMessage,
 } from '../../lib/teacherPushClient'
+import {
+  resolveTeacherPushOptInView,
+  type TeacherPushOptInView,
+} from '../../lib/teacherPushOptInView'
 
 type Props = {
   placement?: 'page' | 'sidebar'
 }
 
 export function TeacherPushOptIn({ placement = 'page' }: Props) {
-  const { session } = useAuth()
-  const [statusLabel, setStatusLabel] = useState('알림 꺼짐')
-  const [hint, setHint] = useState('')
+  const { session, isLoading } = useAuth()
+  const [view, setView] = useState<TeacherPushOptInView>(() =>
+    resolveTeacherPushOptInView({
+      authLoading: true,
+      hasSession: false,
+      vapidReady: true,
+      capabilitySupported: true,
+      permission: null,
+      phase: 'checking',
+    }),
+  )
   const [busy, setBusy] = useState(false)
-  const [canRequest, setCanRequest] = useState(false)
 
   useEffect(() => {
     let cancelled = false
-    if (!session) {
-      setStatusLabel('알림 꺼짐')
-      setHint('강사 로그인 후 이 기기에서 알림을 받을 수 있습니다.')
-      setCanRequest(false)
-      return
+    const apply = (next: TeacherPushOptInView) => {
+      if (!cancelled) setView(next)
     }
 
-    void getTeacherPushUiState().then((state) => {
-      if (cancelled) return
-      if (!getVapidPublicKey()) {
-        setStatusLabel('알림 꺼짐')
-        setHint('알림 설정이 아직 준비되지 않았습니다.')
-        setCanRequest(false)
-        return
+    if (isLoading) {
+      apply(
+        resolveTeacherPushOptInView({
+          authLoading: true,
+          hasSession: Boolean(session),
+          vapidReady: true,
+          capabilitySupported: true,
+          permission: null,
+          phase: 'checking',
+        }),
+      )
+      return () => {
+        cancelled = true
       }
-      if (!state.capability.supported) {
-        setStatusLabel('알림 꺼짐')
-        setCanRequest(false)
-        setHint(
-          state.capability.reason === 'ios-install-required'
-            ? '아이폰·아이패드에서는 홈 화면에 추가한 앱에서만 알림을 받을 수 있습니다.'
-            : '이 브라우저에서는 푸시 알림을 지원하지 않습니다.',
+    }
+
+    if (!session) {
+      apply(
+        resolveTeacherPushOptInView({
+          authLoading: false,
+          hasSession: false,
+          vapidReady: true,
+          capabilitySupported: true,
+          permission: null,
+          phase: 'ready',
+        }),
+      )
+      return () => {
+        cancelled = true
+      }
+    }
+
+    apply(
+      resolveTeacherPushOptInView({
+        authLoading: false,
+        hasSession: true,
+        vapidReady: true,
+        capabilitySupported: true,
+        permission: null,
+        phase: 'checking',
+      }),
+    )
+
+    void getTeacherPushUiState()
+      .then((state) => {
+        if (cancelled) return
+        const vapidReady = Boolean(getVapidPublicKey())
+        if (!vapidReady) {
+          apply(
+            resolveTeacherPushOptInView({
+              authLoading: false,
+              hasSession: true,
+              vapidReady: false,
+              capabilitySupported: state.capability.supported,
+              capabilityReason: state.capability.reason,
+              permission: state.permission,
+              phase: 'ready',
+            }),
+          )
+          return
+        }
+        if (!state.capability.supported) {
+          apply(
+            resolveTeacherPushOptInView({
+              authLoading: false,
+              hasSession: true,
+              vapidReady: true,
+              capabilitySupported: false,
+              capabilityReason: state.capability.reason,
+              permission: state.permission,
+              phase: 'ready',
+            }),
+          )
+          return
+        }
+        if (state.permission === 'denied') {
+          apply(
+            resolveTeacherPushOptInView({
+              authLoading: false,
+              hasSession: true,
+              vapidReady: true,
+              capabilitySupported: true,
+              permission: 'denied',
+              phase: 'ready',
+            }),
+          )
+          return
+        }
+        if (state.permission === 'granted') {
+          apply(
+            resolveTeacherPushOptInView({
+              authLoading: false,
+              hasSession: true,
+              vapidReady: true,
+              capabilitySupported: true,
+              permission: 'granted',
+              phase: 'ensuring',
+            }),
+          )
+          void ensureTeacherPushSubscription()
+            .then(() => {
+              apply(
+                resolveTeacherPushOptInView({
+                  authLoading: false,
+                  hasSession: true,
+                  vapidReady: true,
+                  capabilitySupported: true,
+                  permission: 'granted',
+                  phase: 'ready',
+                }),
+              )
+            })
+            .catch((error) => {
+              apply(
+                resolveTeacherPushOptInView({
+                  authLoading: false,
+                  hasSession: true,
+                  vapidReady: true,
+                  capabilitySupported: true,
+                  permission: 'granted',
+                  phase: 'error',
+                  errorMessage: teacherPushUserMessage(error),
+                }),
+              )
+            })
+          return
+        }
+        apply(
+          resolveTeacherPushOptInView({
+            authLoading: false,
+            hasSession: true,
+            vapidReady: true,
+            capabilitySupported: true,
+            permission: state.permission,
+            phase: 'ready',
+          }),
         )
-        return
-      }
-      if (state.permission === 'denied') {
-        setStatusLabel('알림 꺼짐')
-        setCanRequest(false)
-        setHint('알림이 차단되어 있습니다. 브라우저 설정에서 허용한 뒤 다시 시도해 주세요.')
-        return
-      }
-      if (state.permission === 'granted') {
-        void ensureTeacherPushSubscription()
-          .then(() => {
-            if (cancelled) return
-            setStatusLabel('알림 켜짐')
-            setHint('')
-            setCanRequest(false)
-          })
-          .catch((error) => {
-            if (cancelled) return
-            setStatusLabel('알림 꺼짐')
-            setCanRequest(true)
-            setHint(teacherPushUserMessage(error))
-          })
-        return
-      }
-      setStatusLabel('알림 꺼짐')
-      setHint('')
-      setCanRequest(true)
-    })
+      })
+      .catch((error) => {
+        apply(
+          resolveTeacherPushOptInView({
+            authLoading: false,
+            hasSession: true,
+            vapidReady: Boolean(getVapidPublicKey()),
+            capabilitySupported: true,
+            permission: 'default',
+            phase: 'error',
+            errorMessage: teacherPushUserMessage(error),
+          }),
+        )
+      })
+
     return () => {
       cancelled = true
     }
-  }, [session])
+  }, [session, isLoading])
 
   const handleSubscribe = async () => {
     setBusy(true)
-    setHint('')
     try {
       await subscribeTeacherPush()
-      setStatusLabel('알림 켜짐')
-      setCanRequest(false)
+      setView(
+        resolveTeacherPushOptInView({
+          authLoading: false,
+          hasSession: true,
+          vapidReady: true,
+          capabilitySupported: true,
+          permission: 'granted',
+          phase: 'ready',
+        }),
+      )
     } catch (error) {
-      setStatusLabel('알림 꺼짐')
-      setCanRequest(true)
-      setHint(teacherPushUserMessage(error))
+      setView(
+        resolveTeacherPushOptInView({
+          authLoading: false,
+          hasSession: true,
+          vapidReady: true,
+          capabilitySupported: true,
+          permission: 'default',
+          phase: 'error',
+          errorMessage: teacherPushUserMessage(error),
+        }),
+      )
     } finally {
       setBusy(false)
     }
@@ -102,8 +233,8 @@ export function TeacherPushOptIn({ placement = 'page' }: Props) {
     <section className={wrapperClass} data-teacher-push-opt-in="true">
       <p className="text-[11px] font-semibold tracking-wide text-[#6B7280]">알림 설정</p>
       <div className="mt-1.5 flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold text-[#163A70]">{statusLabel}</p>
-        {canRequest ? (
+        <p className="text-xs font-semibold text-[#163A70]">{view.statusLabel}</p>
+        {view.canRequest ? (
           <button
             type="button"
             className="min-h-9 rounded-xl bg-[#163A70] px-3 text-xs font-semibold text-white disabled:opacity-60"
@@ -114,7 +245,7 @@ export function TeacherPushOptIn({ placement = 'page' }: Props) {
           </button>
         ) : null}
       </div>
-      {hint ? <p className="mt-1.5 text-xs leading-relaxed text-[#6B7280]">{hint}</p> : null}
+      {view.hint ? <p className="mt-1.5 text-xs leading-relaxed text-[#6B7280]">{view.hint}</p> : null}
     </section>
   )
 }

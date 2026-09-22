@@ -195,10 +195,22 @@ export async function getTeacherPushUiState(): Promise<{
 
   let subscribed = false
   try {
-    const registration = await navigator.serviceWorker.getRegistration(TEACHER_SW_SCOPE)
-    const subscription = await registration?.pushManager.getSubscription()
+    const registration = await withTimeout(
+      navigator.serviceWorker.getRegistration(TEACHER_SW_SCOPE),
+      SERVICE_WORKER_ACTIVATE_TIMEOUT_MS,
+      TEACHER_PUSH_TIMEOUT_MESSAGE,
+    )
+    const subscription = await withTimeout(
+      registration?.pushManager.getSubscription() ?? Promise.resolve(null),
+      PUSH_SUBSCRIBE_TIMEOUT_MS,
+      TEACHER_PUSH_TIMEOUT_MESSAGE,
+    )
     if (subscription) {
-      subscribed = await rpcGetTeacherPushSubscriptionStatus(subscription.endpoint)
+      subscribed = await withTimeout(
+        rpcGetTeacherPushSubscriptionStatus(subscription.endpoint),
+        PUSH_RPC_TIMEOUT_MS,
+        TEACHER_PUSH_TIMEOUT_MESSAGE,
+      )
     }
   } catch {
     subscribed = false
