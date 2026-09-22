@@ -19,7 +19,7 @@ assert.match(teacherPush, /waitForActiveServiceWorker/)
 assert.match(teacherPush, /withTimeout/)
 assert.match(teacherPush, /TEACHER_PUSH_TIMEOUT_MESSAGE/)
 assert.match(optIn, /teacherPushUserMessage/)
-assert.match(optIn, /setCanRequest\(true\)/)
+assert.match(optIn, /canRequest/)
 assert.match(optIn, /busy \? '등록 중…' : '알림 받기'/)
 
 await assert.rejects(
