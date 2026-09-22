@@ -12,6 +12,7 @@ import type {
 } from './types'
 import { HUB_LEARNING_MATERIALS_BUCKET } from './types'
 import { classifyHubMaterialFile, materialKindFromDecision } from './hubFilePolicy'
+import { hubAudienceFieldsForSave } from './hubAudience'
 import {
   HUB_INBOX_REPLY_SAVE_FAILURE,
   HUB_INBOX_STATUS_SAVE_FAILURE,
@@ -335,6 +336,12 @@ export async function teacherUploadMaterial(params: {
     pages.push({ page_number: 1, asset_path: assetPath, width: null, height: null })
   }
 
+  const audience = hubAudienceFieldsForSave({
+    audienceType: params.audienceType,
+    targetGrade: params.targetGrade ?? '',
+    targetClassName: params.targetClassName ?? '',
+    targetStudentId: params.targetStudentId ?? '',
+  })
   const { error } = await getSupabase().from('hub_learning_materials').insert({
     id,
     title: params.title,
@@ -345,10 +352,10 @@ export async function teacherUploadMaterial(params: {
     kind,
     status: params.publish ? 'PUBLISHED' : 'DRAFT',
     page_count: pages.length,
-    audience_type: params.audienceType,
-    target_grade: params.targetGrade,
-    target_class_name: params.targetClassName,
-    target_student_id: params.targetStudentId,
+    audience_type: audience.audienceType,
+    target_grade: audience.targetGrade,
+    target_class_name: audience.targetClassName,
+    target_student_id: audience.targetStudentId,
     published_at: params.publish ? new Date().toISOString() : null,
   })
   throwIfError(error, '자료 저장에 실패했습니다.')
@@ -430,15 +437,21 @@ export async function teacherUpdateMaterialMetadata(params: {
   status: 'DRAFT' | 'PUBLISHED' | 'HIDDEN'
   publishedAt?: string | null
 }): Promise<void> {
+  const audience = hubAudienceFieldsForSave({
+    audienceType: params.audienceType,
+    targetGrade: params.targetGrade ?? '',
+    targetClassName: params.targetClassName ?? '',
+    targetStudentId: params.targetStudentId ?? '',
+  })
   const { error } = await getSupabase()
     .from('hub_learning_materials')
     .update({
       title: params.title,
       description: params.description,
-      audience_type: params.audienceType,
-      target_grade: params.targetGrade,
-      target_class_name: params.targetClassName,
-      target_student_id: params.targetStudentId,
+      audience_type: audience.audienceType,
+      target_grade: audience.targetGrade,
+      target_class_name: audience.targetClassName,
+      target_student_id: audience.targetStudentId,
       status: params.status,
       published_at:
         params.status === 'PUBLISHED' ? params.publishedAt || new Date().toISOString() : null,

@@ -9,7 +9,12 @@ import { readFileSync } from 'node:fs'
 import { parseTimestampLines, parseYoutubeVideoId, youtubeEmbedUrl } from './youtube.ts'
 import { STUDENT_QUESTION_CATEGORIES } from './types.ts'
 import { classifyHubUpload, isHubFileAllowed } from './hubFilePolicy.ts'
-import { canStudentSignHubMaterialPath, hubAudienceSelectionError, isHubAudienceVisible } from './hubAudience.ts'
+import {
+  canStudentSignHubMaterialPath,
+  hubAudienceFieldsForSave,
+  hubAudienceSelectionError,
+  isHubAudienceVisible,
+} from './hubAudience.ts'
 
 const sql = readFileSync('supabase/student-learning-hub-v1-migration.sql', 'utf8')
 const app = readFileSync('src/App.tsx', 'utf8')
@@ -138,6 +143,15 @@ assert.match(teacherCms, /option value="all"/)
 assert.match(teacherCms, /option value="grade"/)
 assert.match(teacherCms, /option value="class"/)
 assert.match(teacherCms, /option value="student"/)
+assert.match(teacherCms, /전체 학생/)
+assert.match(teacherCms, /학년 전체/)
+assert.match(teacherCms, /특정 반/)
+assert.match(teacherCms, /개별 학생/)
+assert.match(teacherCms, /파일 선택/)
+assert.match(teacherCms, /폴더 선택/)
+assert.match(teacherCms, /\bmultiple\b/)
+assert.match(teacherCms, /pickHubMaterialFiles/)
+assert.match(teacherCms, /hubMaterialBatchPushEntityId/)
 assert.match(teacherCms, /HUB_MATERIAL_ACCEPT/)
 assert.match(teacherCms, /parseYoutubeVideoId/)
 assert.match(home, /HubInstallGuide/)
@@ -300,6 +314,10 @@ assert.equal(
 assert.equal(
   hubAudienceSelectionError({ audienceType: 'student', targetGrade: '고1', targetClassName: '고1 수학B', targetStudentId: '' }),
   '학생을 선택해 주세요.',
+)
+assert.deepEqual(
+  hubAudienceFieldsForSave({ audienceType: 'grade', targetGrade: '고1', targetClassName: '고1 수학B', targetStudentId: 's1' }),
+  { audienceType: 'grade', targetGrade: '고1', targetClassName: null, targetStudentId: null },
 )
 
 const classBMaterial = {
