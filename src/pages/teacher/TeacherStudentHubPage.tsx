@@ -25,7 +25,18 @@ import {
 } from '../../hub/teacherHubRepo'
 import { parseTimestampLines, parseYoutubeVideoId } from '../../hub/youtube'
 import { HUB_MATERIAL_ACCEPT } from '../../hub/hubFilePolicy'
-import { hubAudienceSelectionError } from '../../hub/hubAudience'
+import {
+  hubAudienceSelectionError,
+  hubAudienceSummary,
+  nextHubAudienceOnTypeChange,
+} from '../../hub/hubAudience'
+import {
+  applyFolderPickerAttributes,
+  formatMaterialBatchResult,
+  hubMaterialBatchPushEntityId,
+  mergeMaterialFiles,
+  pickHubMaterialFiles,
+} from '../../hub/hubMaterialBatch'
 import { notifyHubPush } from '../../lib/hubPushInvoke'
 import {
   HUB_INBOX_REPLY_SAVE_FAILURE,
@@ -57,65 +68,47 @@ function AudienceFields(props: {
   }) => void
 }) {
   const classOptions = getClassOptionsForGrade(props.targetGrade)
+  const showGrade = props.audienceType === 'grade' || props.audienceType === 'class'
+  const showClass = props.audienceType === 'class'
+  const showStudent = props.audienceType === 'student'
   return (
     <div className="grid gap-3 sm:grid-cols-3">
       <select
         className={inputClass()}
         value={props.audienceType}
         onChange={(event) =>
-          props.onChange({
-            audienceType: event.target.value as HubAudienceType,
-            targetGrade: props.targetGrade,
-            targetClassName: props.targetClassName,
-            targetStudentId: props.targetStudentId,
-          })
+          props.onChange(
+            nextHubAudienceOnTypeChange(props, event.target.value as HubAudienceType),
+          )
         }
       >
-        <option value="all">전체</option>
-        <option value="grade">학년</option>
-        <option value="class">반</option>
+        <option value="all">전체 학생</option>
+        <option value="grade">학년 전체</option>
+        <option value="class">특정 반</option>
         <option value="student">개별 학생</option>
       </select>
-      <select
-        className={inputClass()}
-        value={props.targetGrade}
-        onChange={(event) =>
-          props.onChange({
-            audienceType: props.audienceType,
-            targetGrade: event.target.value,
-            targetClassName: '',
-            targetStudentId: props.targetStudentId,
-          })
-        }
-      >
-        <option value="">학년 선택</option>
-        {GRADES.map((grade) => (
-          <option key={grade} value={grade}>
-            {grade}
-          </option>
-        ))}
-      </select>
-      {props.audienceType === 'student' ? (
+      {showGrade ? (
         <select
           className={inputClass()}
-          value={props.targetStudentId}
+          value={props.targetGrade}
           onChange={(event) =>
             props.onChange({
               audienceType: props.audienceType,
-              targetGrade: props.targetGrade,
-              targetClassName: props.targetClassName,
-              targetStudentId: event.target.value,
+              targetGrade: event.target.value,
+              targetClassName: '',
+              targetStudentId: props.targetStudentId,
             })
           }
         >
-          <option value="">학생 선택</option>
-          {(props.students ?? []).map((student) => (
-            <option key={student.id} value={student.id}>
-              {student.name}
+          <option value="">학년 선택</option>
+          {GRADES.map((grade) => (
+            <option key={grade} value={grade}>
+              {grade}
             </option>
           ))}
         </select>
-      ) : (
+      ) : null}
+      {showClass ? (
         <select
           className={inputClass()}
           value={props.targetClassName}
@@ -135,7 +128,28 @@ function AudienceFields(props: {
             </option>
           ))}
         </select>
-      )}
+      ) : null}
+      {showStudent ? (
+        <select
+          className={inputClass()}
+          value={props.targetStudentId}
+          onChange={(event) =>
+            props.onChange({
+              audienceType: props.audienceType,
+              targetGrade: props.targetGrade,
+              targetClassName: props.targetClassName,
+              targetStudentId: event.target.value,
+            })
+          }
+        >
+          <option value="">학생 선택</option>
+          {(props.students ?? []).map((student) => (
+            <option key={student.id} value={student.id}>
+              {student.name}
+            </option>
+          ))}
+        </select>
+      ) : null}
     </div>
   )
 }
@@ -252,7 +266,10 @@ function MaterialPanel({
 }) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [file, setFile] = useState<File | null>(null)
+  const [files, setFiles] = useState<File[]>([])
+  const [skippedUnsupported, setSkippedUnsupported] = useState<string[]>([])
+  const [failedNames, setFailedNames] = useState<string[]>([])
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [audience, setAudience] = useState({
     audienceType: 'all' as HubAudienceType,
     targetGrade: '',
@@ -274,37 +291,96 @@ function MaterialPanel({
   const [deleteTarget, setDeleteTarget] = useState<HubMaterial | null>(null)
   const [deleting, setDeleting] = useState(false)
 
+  const picked = pickHubMaterialFiles(files)
+  const accepted = picked.accepted
+
+  const applyIncomingFiles = (incoming: Iterable<File>) => {
+    const merged = mergeMaterialFiles(files, incoming)
+    const next = pickHubMaterialFiles(merged)
+    setFiles(next.accepted.map((item) => item.file))
+    setSkippedUnsupported(next.skipped.filter((item) => item.reason === 'unsupported').map((item) => item.name))
+    setFailedNames((prev) => prev.filter((name) => next.accepted.some((item) => item.file.name === name)))
+    if (next.accepted.length === 1 && !title.trim()) {
+      setTitle(next.accepted[0].title)
+    }
+  }
+
+  const removeFile = (index: number) => {
+    const nextFiles = files.filter((_, itemIndex) => itemIndex !== index)
+    const next = pickHubMaterialFiles(nextFiles)
+    setFiles(next.accepted.map((item) => item.file))
+    setFailedNames((prev) => prev.filter((name) => next.accepted.some((item) => item.file.name === name)))
+  }
+
   const submit = async (event: FormEvent) => {
     event.preventDefault()
-    if (!file) return
+    const batch = pickHubMaterialFiles(files)
+    if (batch.accepted.length === 0) {
+      setError('파일을 선택해 주세요.')
+      return
+    }
     const audienceError = hubAudienceSelectionError(audience)
     if (audienceError) {
       setError(audienceError)
       return
     }
+    const queue = batch.accepted
+    if (queue.length === 0) {
+      setError('업로드할 파일이 없습니다.')
+      return
+    }
     setBusy(true)
     setError('')
+    setProgress({ done: 0, total: queue.length })
+    const successIds: string[] = []
+    const nextFailed: string[] = []
+    const succeededNames = new Set<string>()
     try {
-      const saved = await teacherUploadMaterial({
-        title,
-        description,
-        file,
-        audienceType: audience.audienceType,
-        targetGrade: audience.targetGrade || null,
-        targetClassName: audience.targetClassName || null,
-        targetStudentId: audience.audienceType === 'student' ? audience.targetStudentId || null : null,
-        publish: true,
-      })
-      notifyHubPush({ event: 'material_saved', entityId: saved.id })
-      setTitle('')
-      setDescription('')
-      setFile(null)
-      showToast('자료를 저장했습니다.')
-      await onChanged()
+      for (let index = 0; index < queue.length; index += 1) {
+        const item = queue[index]
+        const itemTitle =
+          queue.length === 1 && title.trim() ? title.trim() : item.title
+        try {
+          const saved = await teacherUploadMaterial({
+            title: itemTitle,
+            description,
+            file: item.file,
+            audienceType: audience.audienceType,
+            targetGrade: audience.targetGrade || null,
+            targetClassName: audience.targetClassName || null,
+            targetStudentId: audience.audienceType === 'student' ? audience.targetStudentId || null : null,
+            publish: true,
+          })
+          successIds.push(saved.id)
+          succeededNames.add(item.file.name)
+        } catch {
+          nextFailed.push(item.file.name)
+        }
+        setProgress({ done: index + 1, total: queue.length })
+      }
+      const pushId = hubMaterialBatchPushEntityId(successIds)
+      if (pushId) notifyHubPush({ event: 'material_saved', entityId: pushId })
+      const remaining = files.filter((file) => nextFailed.includes(file.name) && !succeededNames.has(file.name))
+      setFiles(remaining)
+      setFailedNames(nextFailed)
+      setSkippedUnsupported([])
+      if (nextFailed.length === 0) {
+        setTitle('')
+        setDescription('')
+      }
+      const summary = formatMaterialBatchResult(successIds.length, nextFailed)
+      if (successIds.length > 0) showToast(summary)
+      if (nextFailed.length > 0) {
+        setError(`${summary}\n${nextFailed.join('\n')}`)
+      } else {
+        setError('')
+      }
+      if (successIds.length > 0) await onChanged()
     } catch (err) {
       setError(err instanceof Error ? err.message : '자료 업로드에 실패했습니다.')
     } finally {
       setBusy(false)
+      setProgress(null)
     }
   }
 
@@ -381,20 +457,94 @@ function MaterialPanel({
       <div className="space-y-4">
         <form onSubmit={(event) => void submit(event)} className="space-y-3 rounded-2xl bg-white p-5 shadow-sm">
           <h3 className="font-bold text-navy-900">자료 업로드</h3>
-          {error ? <p className="break-keep text-sm text-rose-600">{error}</p> : null}
-          <input className={inputClass()} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="제목" required />
+          {error ? <p className="whitespace-pre-wrap break-keep text-sm text-rose-600">{error}</p> : null}
+          {accepted.length <= 1 ? (
+            <input
+              className={inputClass()}
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              placeholder="제목"
+              required={accepted.length === 1}
+            />
+          ) : (
+            <p className="break-keep text-xs text-slate-500">여러 자료는 각 파일명(확장자 제외)이 제목으로 저장됩니다.</p>
+          )}
           <textarea className={inputClass()} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="설명 (선택)" />
           <AudienceFields {...audience} students={students} onChange={setAudience} />
-          <input
-            type="file"
-            accept={HUB_MATERIAL_ACCEPT}
-            onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-            required
-          />
+          <div className="flex flex-wrap gap-2">
+            <label className={`${btnSecondary} cursor-pointer`}>
+              파일 선택
+              <input
+                type="file"
+                accept={HUB_MATERIAL_ACCEPT}
+                multiple
+                className="sr-only"
+                disabled={busy}
+                onChange={(event) => {
+                  applyIncomingFiles(event.target.files ?? [])
+                  event.target.value = ''
+                }}
+              />
+            </label>
+            <label className={`${btnSecondary} cursor-pointer`}>
+              폴더 선택
+              <input
+                ref={applyFolderPickerAttributes}
+                type="file"
+                accept={HUB_MATERIAL_ACCEPT}
+                multiple
+                className="sr-only"
+                disabled={busy}
+                onChange={(event) => {
+                  applyIncomingFiles(event.target.files ?? [])
+                  event.target.value = ''
+                }}
+              />
+            </label>
+          </div>
+          {accepted.length > 0 ? (
+            <div className="space-y-2 rounded-xl bg-slate-50 px-3 py-2">
+              <p className="text-sm font-semibold text-slate-700">선택된 자료 {accepted.length}개</p>
+              <ul className="space-y-1">
+                {accepted.map((item, index) => (
+                  <li key={`${item.file.name}-${index}`} className="flex items-center justify-between gap-2 text-sm text-slate-700">
+                    <span className="break-anywhere">✓ {item.file.name}</span>
+                    <button
+                      type="button"
+                      className="shrink-0 text-xs font-semibold text-rose-600 disabled:opacity-50"
+                      disabled={busy}
+                      onClick={() => removeFile(index)}
+                    >
+                      제거
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {skippedUnsupported.length > 0 ? (
+            <div className="break-keep text-xs text-amber-800">
+              <p>
+                업로드 가능 {accepted.length}개 · 지원하지 않는 파일 {skippedUnsupported.length}개 제외
+              </p>
+              <ul className="mt-1 list-disc pl-4">
+                {skippedUnsupported.map((name) => (
+                  <li key={name}>{name}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {progress ? (
+            <p className="text-sm font-semibold text-navy-700">
+              {progress.done} / {progress.total} 업로드 완료
+            </p>
+          ) : null}
           <p className="break-keep text-xs text-slate-500">PDF/이미지는 미리보기, HWP·DOC·DOCX·PPT·PPTX는 다운로드 우선. 파일 교체는 새 자료 업로드.</p>
-          <button type="submit" className={btnPrimary} disabled={busy}>
-            {busy ? '업로드 중…' : '게시'}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button type="submit" className={btnPrimary} disabled={busy || accepted.length === 0}>
+              {busy ? '업로드 중…' : failedNames.length > 0 ? '실패 파일 다시 시도' : '게시'}
+            </button>
+          </div>
         </form>
         {metaEdit ? (
           <form onSubmit={(event) => void saveMeta(event)} className="space-y-3 rounded-2xl bg-white p-5 shadow-sm">
@@ -429,7 +579,11 @@ function MaterialPanel({
           <article key={item.id} className="rounded-2xl bg-white p-4 shadow-sm">
             <p className="break-anywhere font-semibold">{item.title}</p>
             <p className="break-keep text-xs text-slate-500">
-              {item.kind} · {item.status} · {students.find((student) => student.id === item.targetStudentId)?.name ?? item.audienceType}
+              {item.kind} · {item.status} ·{' '}
+              {hubAudienceSummary(
+                item,
+                students.find((student) => student.id === item.targetStudentId)?.name,
+              )}
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               <button type="button" className={btnSecondary} onClick={() => startMetaEdit(item)}>
