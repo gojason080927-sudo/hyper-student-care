@@ -574,6 +574,8 @@ export function hasDailyTestDisplayData(record?: DailyTestRecord): boolean {
     diagnosis.englishVocabTestFormat === 'cumulative' ||
     diagnosis.englishVocabTotalWords !== null ||
     diagnosis.englishVocabWrongWords !== null ||
+    diagnosis.englishGrammarWrittenResult !== null ||
+    diagnosis.englishCompositionGrade !== null ||
     diagnosis.mathDailyTestFormat === 'fixed-wrong-v1' ||
     diagnosis.mathDailyTestFormat === 'high-recovery-v1' ||
     diagnosis.mathHighFirstWrongCount !== null ||

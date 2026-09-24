@@ -97,6 +97,22 @@ export function ParentDailyTestDiagnosisBlock({
         </div>
       ) : null}
 
+      {isEnglish && diagnosis.englishGrammarWrittenResult ? (
+        <div>
+          <h4 className="text-sm font-bold text-[#163A70]">문법 서술형 TEST</h4>
+          <p className="mt-1 text-sm font-semibold text-slate-800">
+            {diagnosis.englishGrammarWrittenResult}
+          </p>
+        </div>
+      ) : null}
+
+      {isEnglish && diagnosis.englishCompositionGrade ? (
+        <div>
+          <h4 className="text-sm font-bold text-[#163A70]">영어 작문</h4>
+          <p className="mt-1 text-sm font-semibold text-slate-800">{diagnosis.englishCompositionGrade}</p>
+        </div>
+      ) : null}
+
       {isEnglish ? (
         <div>
           <h4 className="text-sm font-bold text-[#163A70]">듣기 평가</h4>

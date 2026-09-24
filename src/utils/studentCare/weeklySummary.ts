@@ -33,6 +33,7 @@ import {
   materialPrepIndex,
   scaleIndex,
 } from './scoring.ts'
+import { blendEnglishWeeklyIndex, englishWrittenScoresForWeek } from '../englishWrittenAssessment.ts'
 import { weeklyDailyTestDayFact, weeklyTestIndexFromFacts } from './weeklyDailyTest.ts'
 import { sumEnglishVocabWeeklyDeduction } from '../englishVocabTest.ts'
 import { formatPeriodLabel, getFridayOfWeek, getMondayOfWeek, listDatesInclusive } from './week.ts'
@@ -157,7 +158,13 @@ export function buildWeeklyLearningSummary(
     testScores.length === 0
       ? null
       : roundScore(testScores.reduce((sum, score) => sum + score, 0) / testScores.length)
-  const testIndex = weeklyTestIndexFromFacts(testFacts)
+  const baseTestIndex = weeklyTestIndexFromFacts(testFacts)
+  const written = englishWrittenScoresForWeek(weekDailyTests)
+  const testIndex = blendEnglishWeeklyIndex(
+    baseTestIndex,
+    written.grammar,
+    written.composition,
+  )
 
   const attitudeIssueCounts: Record<ClassAttitudeIssue, number> = {
     '집중 저하': 0,
