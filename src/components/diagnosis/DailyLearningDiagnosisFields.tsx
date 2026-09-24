@@ -4,6 +4,12 @@ import {
   hasDailyLearningDiagnosisContent,
   normalizeDailyLearningDiagnosis,
 } from '../../utils/learningDiagnosis'
+import {
+  COMPOSITION_GRADES,
+  GRAMMAR_WRITTEN_RESULTS,
+  type CompositionGrade,
+  type GrammarWrittenResult,
+} from '../../utils/englishWrittenAssessment'
 import { getDailyTestSessionColor, inputClass } from '../../utils/labels'
 import { KoreanTextarea } from '../ui/KoreanTextField'
 
@@ -130,6 +136,70 @@ export function DailyLearningDiagnosisFields({
 
       {isEnglish ? (
         <div className="space-y-2">
+          <p className={`font-semibold text-slate-700 ${compact ? 'text-xs' : 'text-sm'}`}>
+            문법 서술형 TEST
+          </p>
+          <div className={`grid grid-cols-3 ${compact ? 'gap-1.5' : 'gap-2'}`}>
+            {GRAMMAR_WRITTEN_RESULTS.map((status) => {
+              const selected = diagnosis.englishGrammarWrittenResult === status
+              return (
+                <button
+                  key={status}
+                  type="button"
+                  aria-pressed={selected}
+                  disabled={disabled}
+                  onClick={() =>
+                    patch({
+                      englishGrammarWrittenResult: selected ? null : (status as GrammarWrittenResult),
+                    })
+                  }
+                  className={`flex items-center justify-center rounded-lg border font-semibold ${
+                    compact
+                      ? 'min-h-9 px-1 py-1 text-xs'
+                      : 'min-h-[44px] rounded-xl px-2 py-2 text-xs sm:text-sm'
+                  } ${
+                    selected
+                      ? getDailyTestSessionColor(status === '불합격' ? '불합격' : '합격')
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {status}
+                </button>
+              )
+            })}
+          </div>
+          <p className={`font-semibold text-slate-700 ${compact ? 'text-xs' : 'text-sm'}`}>
+            영어 작문
+          </p>
+          <div className={`grid grid-cols-3 ${compact ? 'gap-1.5' : 'gap-2'}`}>
+            {COMPOSITION_GRADES.map((grade) => {
+              const selected = diagnosis.englishCompositionGrade === grade
+              return (
+                <button
+                  key={grade}
+                  type="button"
+                  aria-pressed={selected}
+                  disabled={disabled}
+                  onClick={() =>
+                    patch({
+                      englishCompositionGrade: selected ? null : (grade as CompositionGrade),
+                    })
+                  }
+                  className={`flex items-center justify-center rounded-lg border font-semibold ${
+                    compact
+                      ? 'min-h-9 px-1 py-1 text-xs'
+                      : 'min-h-[44px] rounded-xl px-2 py-2 text-xs sm:text-sm'
+                  } ${
+                    selected
+                      ? 'border-navy-200 bg-navy-50 text-navy-900 ring-1 ring-navy-100'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {grade}
+                </button>
+              )
+            })}
+          </div>
           <p className={`font-semibold text-slate-700 ${compact ? 'text-xs' : 'text-sm'}`}>
             듣기 평가
           </p>

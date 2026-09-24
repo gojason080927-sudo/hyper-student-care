@@ -42,6 +42,10 @@ export type DailyLearningDiagnosis = {
   englishVocabTotalWords: number | null
   /** 틀린 단어 절대 개수. Weekly SUMMARY 감점에만 사용 */
   englishVocabWrongWords: number | null
+  /** 문법 서술형 TEST. 미입력은 null이며 0점/불합격이 아니다 */
+  englishGrammarWrittenResult: '합격' | '부분 합격' | '불합격' | null
+  /** 영어 작문. 미입력은 null이며 0점/C가 아니다 */
+  englishCompositionGrade: 'A' | 'B' | 'C' | null
   /** 수학 일일테스트 형식. 중등 오답입력 / 고등 최소입력 */
   mathDailyTestFormat: 'fixed-wrong-v1' | 'high-recovery-v1' | null
   mathHighFirstWrongCount: number | null
@@ -68,6 +72,8 @@ export const EMPTY_DAILY_LEARNING_DIAGNOSIS: DailyLearningDiagnosis = {
   englishVocabTestFormat: null,
   englishVocabTotalWords: null,
   englishVocabWrongWords: null,
+  englishGrammarWrittenResult: null,
+  englishCompositionGrade: null,
   mathDailyTestFormat: null,
   mathHighFirstWrongCount: null,
   mathHighEndSession: null,
@@ -118,6 +124,16 @@ function toNullableScore100(value: unknown): number | null {
   const n = Number(value)
   if (!Number.isFinite(n)) return null
   return Math.max(0, Math.min(100, Math.floor(n)))
+}
+
+function toGrammarWrittenResult(
+  value: unknown,
+): '합격' | '부분 합격' | '불합격' | null {
+  return value === '합격' || value === '부분 합격' || value === '불합격' ? value : null
+}
+
+function toCompositionGrade(value: unknown): 'A' | 'B' | 'C' | null {
+  return value === 'A' || value === 'B' || value === 'C' ? value : null
 }
 
 function toPassFailResult(value: unknown): EnglishVocabResult | null {
@@ -270,6 +286,8 @@ export function normalizeDailyLearningDiagnosis(raw: unknown): DailyLearningDiag
     englishVocabTestFormat: toVocabTestFormat(row.englishVocabTestFormat),
     englishVocabTotalWords: toNullableNonNegInt(row.englishVocabTotalWords),
     englishVocabWrongWords: toNullableNonNegInt(row.englishVocabWrongWords),
+    englishGrammarWrittenResult: toGrammarWrittenResult(row.englishGrammarWrittenResult),
+    englishCompositionGrade: toCompositionGrade(row.englishCompositionGrade),
     mathDailyTestFormat: toMathDailyTestFormat(row.mathDailyTestFormat),
     mathHighFirstWrongCount: toNullableNonNegInt(row.mathHighFirstWrongCount),
     mathHighEndSession: toHighEndSession(row.mathHighEndSession),
@@ -302,6 +320,8 @@ export function hasDailyLearningDiagnosisContent(
   if (d.englishVocabTestFormat === 'cumulative') return true
   if (d.englishVocabTotalWords !== null) return true
   if (d.englishVocabWrongWords !== null) return true
+  if (d.englishGrammarWrittenResult !== null) return true
+  if (d.englishCompositionGrade !== null) return true
   if (d.mathDailyTestFormat === 'fixed-wrong-v1') return true
   if (d.mathDailyTestFormat === 'high-recovery-v1') return true
   if (d.mathHighFirstWrongCount !== null) return true

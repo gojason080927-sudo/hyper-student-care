@@ -132,6 +132,10 @@ export type DailyLearningDiagnosisData = {
   englishVocabTotalWords: number | null
   /** 틀린 단어 절대 개수. Weekly SUMMARY 감점에만 사용 */
   englishVocabWrongWords: number | null
+  /** 문법 서술형 TEST. 미입력 null. Weekly 영어 지수에만 반영 */
+  englishGrammarWrittenResult: '합격' | '부분 합격' | '불합격' | null
+  /** 영어 작문. 미입력 null. Weekly 영어 지수에만 반영 */
+  englishCompositionGrade: 'A' | 'B' | 'C' | null
   /** 수학 일일테스트 형식. 중등 오답입력 / 고등 최소입력 */
   mathDailyTestFormat: 'fixed-wrong-v1' | 'high-recovery-v1' | null
   /** 고등 최소입력 raw. 1차 오답 수 */
