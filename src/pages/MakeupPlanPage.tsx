@@ -38,6 +38,7 @@ type FormState = {
   targetGrade: string
   targetClassName: string
   studentId: string
+  studentIds: string[]
   scheduledDate: string
   scheduledTime: string
   method: MakeupMethod | ''
@@ -52,6 +53,7 @@ const emptyForm = (): FormState => ({
   targetGrade: '',
   targetClassName: '',
   studentId: '',
+  studentIds: [],
   scheduledDate: getTodayString(),
   scheduledTime: '19:00',
   method: '',
@@ -88,6 +90,7 @@ export function MakeupPlanPage({ embedded = false }: MakeupPlanPageProps = {}) {
         targetGrade: form.targetGrade,
         targetClassName: form.targetClassName,
         targetStudentId: form.studentId,
+        targetStudentIds: form.studentIds,
       })
 
   const filtered = useMemo(() => {
@@ -118,6 +121,7 @@ export function MakeupPlanPage({ embedded = false }: MakeupPlanPageProps = {}) {
       targetGrade: '',
       targetClassName: '',
       studentId: record.studentId,
+      studentIds: [],
       scheduledDate: record.scheduledDate,
       scheduledTime: record.scheduledTime,
       method: record.method,
@@ -140,6 +144,7 @@ export function MakeupPlanPage({ embedded = false }: MakeupPlanPageProps = {}) {
         targetGrade: form.targetGrade,
         targetClassName: form.targetClassName,
         targetStudentId: form.studentId,
+        targetStudentIds: form.studentIds,
       })
       if (target.error) {
         if (form.audienceType === 'all') next.audienceType = target.error
@@ -183,6 +188,7 @@ export function MakeupPlanPage({ embedded = false }: MakeupPlanPageProps = {}) {
         targetGrade: form.targetGrade,
         targetClassName: form.targetClassName,
         targetStudentId: form.studentId,
+        targetStudentIds: form.studentIds,
       })
       if (target.error) return
       saveMakeupPlanRecords(target.studentIds, shared)
@@ -361,6 +367,7 @@ export function MakeupPlanPage({ embedded = false }: MakeupPlanPageProps = {}) {
                     targetGrade: '',
                     targetClassName: '',
                     studentId: '',
+                    studentIds: [],
                   })
                 }
               >
@@ -431,13 +438,43 @@ export function MakeupPlanPage({ embedded = false }: MakeupPlanPageProps = {}) {
                 </div>
               ) : null}
               {form.audienceType === 'student' ? (
-                <StudentSelect
-                  students={enrolledStudents}
-                  value={form.studentId}
-                  onChange={(v) => setForm({ ...form, studentId: v })}
-                  error={errors.studentId}
-                  required
-                />
+                <div>
+                  <div className="mb-1.5 flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium text-slate-700">
+                      학생 <span className="text-rose-500">*</span>
+                    </p>
+                    <p className="text-xs font-semibold text-navy-700">선택 {form.studentIds.length}명</p>
+                  </div>
+                  <div className="max-h-56 space-y-1 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2">
+                    {enrolledStudents.map((student) => {
+                      const checked = form.studentIds.includes(student.id)
+                      return (
+                        <label
+                          key={student.id}
+                          className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-slate-50"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() =>
+                              setForm({
+                                ...form,
+                                studentIds: checked
+                                  ? form.studentIds.filter((id) => id !== student.id)
+                                  : [...form.studentIds, student.id],
+                              })
+                            }
+                            className="h-4 w-4 rounded border-slate-300"
+                          />
+                          <span className="text-sm text-slate-800">
+                            {student.name} ({student.school} · {student.grade})
+                          </span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                  {errors.studentId ? <p className="mt-1 text-sm text-rose-500">{errors.studentId}</p> : null}
+                </div>
               ) : null}
               {createTargetPreview && !createTargetPreview.error ? (
                 <p className="text-xs font-semibold text-navy-700">

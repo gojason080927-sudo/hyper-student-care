@@ -7,6 +7,14 @@ export type MakeupPlanAudienceSelection = {
   targetGrade: string
   targetClassName: string
   targetStudentId: string
+  targetStudentIds?: string[]
+}
+
+export function selectedMakeupStudentIds(audience: MakeupPlanAudienceSelection): string[] {
+  const fromList = (audience.targetStudentIds ?? []).map((id) => id.trim()).filter(Boolean)
+  if (fromList.length > 0) return [...new Set(fromList)]
+  const one = audience.targetStudentId.trim()
+  return one ? [one] : []
 }
 
 export const MAKEUP_PLAN_AUDIENCE_OPTIONS: { value: MakeupPlanAudienceType; label: string }[] = [
@@ -29,7 +37,7 @@ export function makeupPlanAudienceSelectionError(
     if (!audience.targetClassName.trim()) return '반을 선택해 주세요.'
     return null
   }
-  return audience.targetStudentId.trim() ? null : '학생을 선택해 주세요.'
+  return selectedMakeupStudentIds(audience).length > 0 ? null : '학생을 선택해 주세요.'
 }
 
 export function enrolledStudentsForMakeup(
@@ -58,7 +66,8 @@ export function resolveMakeupPlanTargetStudentIds(
       (student) => student.grade === grade && student.className.trim() === className,
     )
   } else if (type === 'student') {
-    matched = enrolled.filter((student) => student.id === audience.targetStudentId.trim())
+    const selected = new Set(selectedMakeupStudentIds(audience))
+    matched = enrolled.filter((student) => selected.has(student.id))
   }
 
   const studentIds = [...new Set(matched.map((student) => student.id))]
