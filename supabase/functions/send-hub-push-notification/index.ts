@@ -13,9 +13,10 @@ type PushEvent =
   | 'inbox_replied'
   | 'question_answered'
   | 'notice_saved'
-  | 'material_saved'
-  | 'video_saved'
-  | 'weekly_summary_scan'
+    | 'material_saved'
+    | 'video_saved'
+    | 'weekly_summary_scan'
+    | 'makeup_plan_saved'
 
 type RequestBody = {
   event?: PushEvent
@@ -23,6 +24,8 @@ type RequestBody = {
   accessKey?: string
   entity_id?: string
   entityId?: string
+  student_ids?: string[]
+  studentIds?: string[]
   previous?: Record<string, unknown>
 }
 
@@ -100,9 +103,16 @@ async function deactivateTeacherEndpoint(supabase: SupabaseClient, endpoint: str
     .eq('endpoint', endpoint)
 }
 
+async function deactivateParentEndpoint(supabase: SupabaseClient, endpoint: string): Promise<void> {
+  await supabase
+    .from('parent_push_subscriptions')
+    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .eq('endpoint', endpoint)
+}
+
 async function sendToSubscriptions(
   supabase: SupabaseClient,
-  audience: 'student' | 'teacher',
+  audience: 'student' | 'teacher' | 'parent',
   subscriptions: SubscriptionRow[],
   payload: { title: string; body: string; url: string },
 ): Promise<{ sent: number; failed: number }> {
@@ -123,6 +133,7 @@ async function sendToSubscriptions(
       const status = Number((error as { statusCode?: number }).statusCode ?? 0)
       if (status === 404 || status === 410) {
         if (audience === 'student') await deactivateStudentEndpoint(supabase, row.endpoint)
+        else if (audience === 'parent') await deactivateParentEndpoint(supabase, row.endpoint)
         else await deactivateTeacherEndpoint(supabase, row.endpoint)
       }
       failed += 1
@@ -143,6 +154,23 @@ async function loadStudentSubscriptions(
     .eq('is_active', true)
   if (error) {
     console.warn('[HubPush] student subscriptions', error.message)
+    return []
+  }
+  return (data ?? []) as SubscriptionRow[]
+}
+
+async function loadParentSubscriptions(
+  supabase: SupabaseClient,
+  studentIds: string[],
+): Promise<SubscriptionRow[]> {
+  if (studentIds.length === 0) return []
+  const { data, error } = await supabase
+    .from('parent_push_subscriptions')
+    .select('endpoint, p256dh, auth')
+    .in('student_id', studentIds)
+    .eq('is_active', true)
+  if (error) {
+    console.warn('[HubPush] parent subscriptions', error.message)
     return []
   }
   return (data ?? []) as SubscriptionRow[]
@@ -502,6 +530,55 @@ function subscriptionsOrNone(visibleCount: number, sent: number): string {
   return sent > 0 ? 'sent' : 'no_subscribers'
 }
 
+function uniqueStudentIds(values: unknown): string[] {
+  if (!Array.isArray(values)) return []
+  return [...new Set(values.map((value) => asString(value).trim()).filter(Boolean))]
+}
+
+async function handleMakeupPlanSaved(
+  supabase: SupabaseClient,
+  entityId: string,
+  studentIds: string[],
+): Promise<Record<string, unknown>> {
+  const ids = uniqueStudentIds(studentIds)
+  if (!entityId || ids.length === 0) return { status: 'ignored' }
+  if (!(await claimDelivery(supabase, `makeup_plan:${entityId}:created`))) {
+    return { status: 'duplicate' }
+  }
+
+  const { data: students } = await supabase
+    .from('students')
+    .select('id, student_access_key')
+    .in('id', ids)
+  const recipients = ((students ?? []) as { id?: string; student_access_key?: string }[])
+    .map((row) => ({ id: asString(row.id), key: asString(row.student_access_key) }))
+    .filter((row) => row.id && row.key)
+
+  const copy = {
+    title: 'HYPER 보강계획 안내',
+    body: '새로운 보강계획이 등록되었습니다. 앱에서 일정과 내용을 확인해 주세요.',
+  }
+
+  let sent = 0
+  let failed = 0
+  for (const student of recipients) {
+    const studentSubs = await loadStudentSubscriptions(supabase, [student.id])
+    const parentSubs = await loadParentSubscriptions(supabase, [student.id])
+    const studentResult = await sendToSubscriptions(supabase, 'student', studentSubs, {
+      ...copy,
+      url: `/hub/${encodeURIComponent(student.key)}`,
+    })
+    const parentResult = await sendToSubscriptions(supabase, 'parent', parentSubs, {
+      ...copy,
+      url: `/care/${encodeURIComponent(student.key)}/notices-makeup?tab=makeup`,
+    })
+    sent += studentResult.sent + parentResult.sent
+    failed += studentResult.failed + parentResult.failed
+  }
+  if (recipients.length === 0) return { status: 'no_recipients', sent, failed }
+  return { status: sent > 0 ? 'sent' : 'no_subscribers', sent, failed }
+}
+
 async function handleWeeklySummaryScan(supabase: SupabaseClient): Promise<Record<string, unknown>> {
   const { data } = await supabase
     .from('weekly_learning_summaries')
@@ -601,6 +678,11 @@ Deno.serve(async (request) => {
     }
     if (event === 'video_saved' && entityId) {
       return jsonResponse(await handleVideoSaved(supabase, entityId, body.previous))
+    }
+    if (event === 'makeup_plan_saved' && entityId) {
+      return jsonResponse(
+        await handleMakeupPlanSaved(supabase, entityId, body.studentIds ?? body.student_ids ?? []),
+      )
     }
     return jsonResponse({ status: 'ignored' })
   } catch (error) {

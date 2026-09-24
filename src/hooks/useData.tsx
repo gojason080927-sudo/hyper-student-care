@@ -2440,7 +2440,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
           ? '보강계획이 저장되었습니다.'
           : `보강계획 ${records.length}건이 저장되었습니다.`,
       )
-      void persistWithReload(() => upsertMakeupPlans(records), '보강계획 저장에 실패했습니다.')
+      void persistWithReload(async () => {
+        await upsertMakeupPlans(records)
+        notifyHubPush({
+          event: 'makeup_plan_saved',
+          entityId: records[0].id,
+          studentIds: uniqueIds,
+        })
+      }, '보강계획 저장에 실패했습니다.')
       return true
     },
     [handlePersistError, showToast, validateStudent],
