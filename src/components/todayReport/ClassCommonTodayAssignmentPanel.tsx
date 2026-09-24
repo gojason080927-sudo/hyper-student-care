@@ -6,8 +6,10 @@ import type {
   TextbookSubject,
 } from '../../types/records'
 import type { Student } from '../../types/student'
-import { type ClassTodayReportSyncContext } from '../../utils/classTodayReportCommon'
-import { findClassTodayReportCommonForDisplay } from '../../utils/todayReportDisplayFallback'
+import {
+  findClassTodayReportCommon,
+  type ClassTodayReportSyncContext,
+} from '../../utils/classTodayReportCommon'
 import { formatKoreanDate } from '../../utils/date'
 import { btnPrimary, inputClass } from '../../utils/labels'
 import { getVisibleTextbookSubjects } from '../../utils/todayReportVisibleSubjects'
@@ -39,6 +41,7 @@ type ClassCommonTodayAssignmentPanelProps = {
   students: Student[]
   classSync?: ClassTodayReportSyncContext
   compact?: boolean
+  focusSubject?: TextbookSubject | null
 }
 
 export function ClassCommonTodayAssignmentPanel({
@@ -48,6 +51,7 @@ export function ClassCommonTodayAssignmentPanel({
   students,
   classSync,
   compact = false,
+  focusSubject = null,
 }: ClassCommonTodayAssignmentPanelProps) {
   const {
     classTodayReportCommon,
@@ -90,10 +94,10 @@ export function ClassCommonTodayAssignmentPanel({
   }
 
 
-  const subjects = useMemo(
-    () => getVisibleTextbookSubjects(className),
-    [className],
-  )
+  const subjects = useMemo(() => {
+    const visible = getVisibleTextbookSubjects(className)
+    return focusSubject ? visible.filter((subject) => subject === focusSubject) : visible
+  }, [className, focusSubject])
 
   const slotPlan = useMemo(() => {
     const plan: Array<{ subject: TextbookSubject; slotNumber: TextbookSlotNumber }> =
@@ -123,8 +127,8 @@ export function ClassCommonTodayAssignmentPanel({
     setDrafts((prev) => {
       const loaded: Record<string, SlotDraft> = {}
       for (const { subject, slotNumber } of slotPlan) {
-        // Display fallback only — save still writes the selected `date`.
-        const { record: found } = findClassTodayReportCommonForDisplay(
+        // 오늘 과제 문장은 같은 날짜 행만 사용한다. 이전 수업 문장을 새 수업에 복사하지 않는다.
+        const found = findClassTodayReportCommon(
           classTodayReportCommon,
           grade,
           className,

@@ -5,7 +5,7 @@ import { HighRecoveryFields } from '../dailytest/HighRecoveryFields'
 import { MathFixedWrongSessionFields } from '../dailytest/MathFixedWrongSessionFields'
 import { DailyTestPassRuleBadge } from '../dailytest/DailyTestSessionFormSection'
 import { useData } from '../../hooks/useData'
-import type { DailyLearningDiagnosisData } from '../../types/records'
+import type { DailyLearningDiagnosisData, TextbookSubject } from '../../types/records'
 import type { Student } from '../../types/student'
 import { formatKoreanDate } from '../../utils/date'
 import {
@@ -80,6 +80,7 @@ type ClassDailyTestBulkPanelProps = {
   className: string
   students: Student[]
   compact?: boolean
+  focusSubject?: TextbookSubject | null
 }
 
 function emptyStudentDraft(): StudentDraft {
@@ -111,6 +112,7 @@ export function ClassDailyTestBulkPanel({
   className,
   students,
   compact = false,
+  focusSubject = null,
 }: ClassDailyTestBulkPanelProps) {
   const { attendance, dailyTests, saveDailyTestRecordAsync, showToast } = useData()
   const [saving, setSaving] = useState(false)
@@ -126,10 +128,10 @@ export function ClassDailyTestBulkPanel({
   const dirtyDailyTestKeysRef = useRef(new Set<string>())
   const dirtyTestNameRef = useRef(false)
 
-  const subjectOptions = useMemo(
-    () => getVisibleDailyTestSubjects(className),
-    [className],
-  )
+  const subjectOptions = useMemo(() => {
+    const visible = getVisibleDailyTestSubjects(className)
+    return focusSubject ? visible.filter((subject) => subject === focusSubject) : visible
+  }, [className, focusSubject])
 
   const studentIdsKey = useMemo(
     () => students.map((s) => s.id).join('|'),

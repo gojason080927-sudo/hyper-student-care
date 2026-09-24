@@ -41,6 +41,7 @@ type ClassCommonProgressPanelProps = {
   students: Student[]
   classSync?: ClassTodayReportSyncContext
   compact?: boolean
+  focusSubject?: TextbookSubject | null
 }
 
 export function ClassCommonProgressPanel({
@@ -50,6 +51,7 @@ export function ClassCommonProgressPanel({
   students,
   classSync,
   compact = false,
+  focusSubject = null,
 }: ClassCommonProgressPanelProps) {
   const {
     classTodayReportCommon,
@@ -92,10 +94,10 @@ export function ClassCommonProgressPanel({
   }
 
 
-  const subjects = useMemo(
-    () => getVisibleTextbookSubjects(className),
-    [className],
-  )
+  const subjects = useMemo(() => {
+    const visible = getVisibleTextbookSubjects(className)
+    return focusSubject ? visible.filter((subject) => subject === focusSubject) : visible
+  }, [className, focusSubject])
 
   const slotPlan = useMemo(() => {
     const plan: Array<{ subject: TextbookSubject; slotNumber: TextbookSlotNumber }> =

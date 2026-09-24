@@ -122,7 +122,17 @@ import {
   inputClass,
 } from '../../utils/labels'
 import { resolveCommonClassContext } from '../../utils/classCommonDataKey'
-import { getVisibleDailyTestSubjects } from '../../utils/studentGradeClass'
+import { getVisibleDailyTestSubjects, getVisibleTextbookSubjects } from '../../utils/studentGradeClass'
+import { TodayReportSubjectNav } from './TodayReportSubjectNav'
+import {
+  datesForSubject,
+  latestSubjectReportDate,
+  recordedSubjectsOnDate,
+  resolveAutoSubject,
+  scheduledSubjectOnDate,
+  subjectReportDatesOnOrBefore,
+} from '../../utils/todayReportSubjectNav'
+import type { TextbookSubject } from '../../types/records'
 import { attendanceDisplayLabel } from '../../utils/studentCare/scoring'
 import { computePriorDayLearningEvaluation } from '../../utils/studentCare'
 import { parentAttitudeNoteForSelectedDate } from '../../utils/parentAttitudeTeacherComment'
@@ -340,6 +350,8 @@ export function TodayReportView({
   const today = getSeoulDateString()
   const parentMinDate = readOnly ? getParentTodayReportMinDate(today) : undefined
   const [selectedDate, setSelectedDate] = useState(initialDate ?? today)
+  const [manualSubject, setManualSubject] = useState<TextbookSubject | null>(null)
+  const [pastOpen, setPastOpen] = useState(false)
   const {
     attendance: attendanceRaw,
     progressRecords: progressRecordsRaw,
@@ -410,6 +422,59 @@ export function TodayReportView({
   }
 
   const selectedDateIsToday = isTodaySeoul(selectedDate)
+  const parentVisibleSubjects = useMemo(
+    () => (readOnly ? getVisibleTextbookSubjects(student.className, student.subjects) : []),
+    [readOnly, student.className, student.subjects],
+  )
+  const parentSubjectRows = useMemo(() => {
+    if (!readOnly) return []
+    const rows: { date: string; subject: string }[] = []
+    for (const record of dailyTests) {
+      if (record.studentId === student.id) rows.push({ date: record.date, subject: record.subject })
+    }
+    for (const entry of homeworkTextbookEntries) {
+      if (entry.studentId === student.id) rows.push({ date: entry.date, subject: entry.subject })
+    }
+    for (const record of progressRecords) {
+      if (record.studentId === student.id) rows.push({ date: record.lastStudyDate, subject: record.subject })
+    }
+    for (const record of classTodayReportCommon) {
+      if (record.grade === student.grade.trim() && record.className === student.className.trim()) {
+        rows.push({ date: record.reportDate, subject: record.subject })
+      }
+    }
+    return rows
+  }, [
+    classTodayReportCommon,
+    dailyTests,
+    homeworkTextbookEntries,
+    progressRecords,
+    readOnly,
+    student.className,
+    student.grade,
+    student.id,
+  ])
+  const parentAutoSubject = useMemo(
+    () =>
+      resolveAutoSubject({
+        visible: parentVisibleSubjects,
+        recorded: recordedSubjectsOnDate(parentSubjectRows, today),
+        scheduled: scheduledSubjectOnDate(today, student.mathClassDays, student.englishClassDays),
+      }),
+    [parentSubjectRows, parentVisibleSubjects, student.englishClassDays, student.mathClassDays, today],
+  )
+  const parentActiveSubject =
+    manualSubject && parentVisibleSubjects.includes(manualSubject)
+      ? manualSubject
+      : parentAutoSubject
+  const parentPastDates = useMemo(() => {
+    if (!parentActiveSubject || !parentMinDate) return []
+    return subjectReportDatesOnOrBefore(
+      datesForSubject(parentSubjectRows, parentActiveSubject),
+      today,
+      parentMinDate,
+    )
+  }, [parentActiveSubject, parentMinDate, parentSubjectRows, today])
   const parentAllowCarryForward = !readOnly || selectedDateIsToday
   const parentEmptyMessages = getParentTodayReportSectionEmptyMessages(
     readOnly && !selectedDateIsToday,
@@ -661,6 +726,35 @@ export function TodayReportView({
       {!hideHeader && !embeddedMobile &&
         (readOnly ? (
         <>
+          <TodayReportSubjectNav
+            subjects={parentVisibleSubjects}
+            activeSubject={parentActiveSubject}
+            onSubject={(subject) => {
+              setManualSubject(subject)
+              setPastOpen(false)
+              if (subject === parentAutoSubject) {
+                setSelectedDate(today)
+                return
+              }
+              const latest = latestSubjectReportDate(
+                datesForSubject(parentSubjectRows, subject),
+                today,
+                parentMinDate,
+              )
+              if (latest) setSelectedDate(latest)
+            }}
+            todayActive={!pastOpen && selectedDate === today}
+            onToday={() => {
+              setSelectedDate(today)
+              setManualSubject(null)
+              setPastOpen(false)
+            }}
+            pastActive={pastOpen}
+            onPast={() => setPastOpen((open) => !open)}
+            pastDates={parentPastDates}
+            selectedDate={selectedDate}
+            onPickDate={(next) => setSelectedDate(next)}
+          />
           <div className="flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
             <button
               type="button"
@@ -806,6 +900,7 @@ export function TodayReportView({
             <TextbookSlotHomeworkSection
               key={`homework-slots-${selectedDate}`}
               readOnly={readOnly}
+              onlySubject={readOnly ? parentActiveSubject : null}
               studentId={student.id}
               date={selectedDate}
               slots={studentSlots}
@@ -887,6 +982,7 @@ export function TodayReportView({
           {useTextbookSlotProgress ? (
             <TextbookSlotProgressSection
               key={`progress-slots-${selectedDate}`}
+              onlySubject={readOnly ? parentActiveSubject : null}
               readOnly={readOnly}
               studentId={student.id}
               date={selectedDate}
@@ -949,7 +1045,11 @@ export function TodayReportView({
             key={`daily-test-${selectedDate}`}
             readOnly={readOnly}
             record={dayDailyTest}
-            records={dayDailyTests}
+            records={
+              readOnly && parentActiveSubject
+                ? dayDailyTests.filter((record) => record.subject === parentActiveSubject)
+                : dayDailyTests
+            }
             classNote={readOnly ? dayClassNote : undefined}
             studentId={student.id}
             date={selectedDate}

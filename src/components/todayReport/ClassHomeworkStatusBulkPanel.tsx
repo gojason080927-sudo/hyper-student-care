@@ -45,6 +45,7 @@ type ClassHomeworkStatusBulkPanelProps = {
   className: string
   students: Student[]
   compact?: boolean
+  focusSubject?: TextbookSubject | null
 }
 
 export function ClassHomeworkStatusBulkPanel({
@@ -53,6 +54,7 @@ export function ClassHomeworkStatusBulkPanel({
   className,
   students,
   compact = false,
+  focusSubject = null,
 }: ClassHomeworkStatusBulkPanelProps) {
   const {
     attendance,
@@ -65,10 +67,10 @@ export function ClassHomeworkStatusBulkPanel({
   const [drafts, setDrafts] = useState<Record<string, SlotDraft>>({})
   const anchorStudentId = students[0]?.id ?? ''
 
-  const subjects = useMemo(
-    () => getVisibleTextbookSubjects(className),
-    [className],
-  )
+  const subjects = useMemo(() => {
+    const visible = getVisibleTextbookSubjects(className)
+    return focusSubject ? visible.filter((subject) => subject === focusSubject) : visible
+  }, [className, focusSubject])
 
   const slotPlan = useMemo(() => {
     const plan: Array<{ subject: TextbookSubject; slotNumber: TextbookSlotNumber }> =
@@ -140,16 +142,16 @@ export function ClassHomeworkStatusBulkPanel({
             subject,
             slotNumber,
           )
-          // Status/entryId only from actual same-date records (no event carry-forward).
-          // Text fields may display the latest prior save for teacher convenience.
+          // Status and assignment text stay on the same date.
+          // A new class does not copy the previous assignment sentence.
           const fromServer: SlotDraft = {
             status:
               !isFallback && isHomeworkStatusSelected(entry?.status)
                 ? (entry!.status as HomeworkStatus)
                 : '',
             entryId: isFallback ? undefined : entry?.id,
-            todayAssignment: entry?.todayAssignment ?? '',
-            previousAssignment: entry?.previousAssignment ?? '',
+            todayAssignment: isFallback ? '' : (entry?.todayAssignment ?? ''),
+            previousAssignment: isFallback ? '' : (entry?.previousAssignment ?? ''),
           }
           // Keep in-progress local selections when server data reloads
           if (dirtyStatusKeysRef.current.has(key) && prev[key]) {

@@ -10,6 +10,7 @@ import { ClassHomeworkStatusBulkPanel } from '../components/todayReport/ClassHom
 import { ClassMaterialPrepBulkPanel } from '../components/todayReport/ClassMaterialPrepBulkPanel'
 import { TodayReportCompleteButton } from '../components/todayReport/TodayReportCompleteButton'
 import { TodayReportStudentAccordion } from '../components/todayReport/TodayReportStudentAccordion'
+import { TodayReportSubjectNav } from '../components/todayReport/TodayReportSubjectNav'
 import { useData } from '../hooks/useData'
 import { formatKoreanDate, getTodayString } from '../utils/date'
 import { GRADES, inputClass } from '../utils/labels'
@@ -21,6 +22,16 @@ import {
 } from '../utils/studentGradeClass'
 import type { ClassTodayReportSyncContext } from '../utils/classTodayReportCommon'
 import type { TodayReportLookupContext } from '../utils/todayReportLookup'
+import {
+  agreedScheduledSubject,
+  datesForSubject,
+  recordedSubjectsOnDate,
+  resolveAutoSubject,
+  subjectReportDatesOnOrBefore,
+  todaySeoul,
+  visibleSubjectsForClass,
+} from '../utils/todayReportSubjectNav'
+import type { TextbookSubject } from '../types/records'
 
 export function TeacherTodayReportBulkPage() {
   const [searchParams] = useSearchParams()
@@ -38,6 +49,7 @@ export function TeacherTodayReportBulkPage() {
     classNotes,
     dailyTests,
     progressRecords,
+    classTodayReportCommon,
     isLoading,
   } = useData()
 
@@ -45,6 +57,8 @@ export function TeacherTodayReportBulkPage() {
   const [grade, setGrade] = useState('')
   const [className, setClassName] = useState('')
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  const [manualSubject, setManualSubject] = useState<TextbookSubject | null>(null)
+  const [pastOpen, setPastOpen] = useState(false)
 
   const activeStudents = useMemo(
     () => students.filter((student) => student.status === '재원'),
@@ -64,6 +78,45 @@ export function TeacherTodayReportBulkPage() {
       )
       .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
   }, [activeStudents, className, grade])
+
+  const visibleSubjects = useMemo(
+    () => (className ? visibleSubjectsForClass(className, classStudents) : []),
+    [className, classStudents],
+  )
+  const subjectRows = useMemo(() => {
+    const ids = new Set(classStudents.map((student) => student.id))
+    const rows: { date: string; subject: string }[] = []
+    for (const record of dailyTests) {
+      if (ids.has(record.studentId)) rows.push({ date: record.date, subject: record.subject })
+    }
+    for (const entry of homeworkTextbookEntries) {
+      if (ids.has(entry.studentId)) rows.push({ date: entry.date, subject: entry.subject })
+    }
+    for (const record of progressRecords) {
+      if (ids.has(record.studentId)) rows.push({ date: record.lastStudyDate, subject: record.subject })
+    }
+    for (const record of classTodayReportCommon) {
+      if (record.grade === grade && record.className === className) {
+        rows.push({ date: record.reportDate, subject: record.subject })
+      }
+    }
+    return rows
+  }, [className, classStudents, classTodayReportCommon, dailyTests, grade, homeworkTextbookEntries, progressRecords])
+  const autoSubject = useMemo(
+    () =>
+      resolveAutoSubject({
+        visible: visibleSubjects,
+        recorded: recordedSubjectsOnDate(subjectRows, date),
+        scheduled: agreedScheduledSubject(classStudents, date),
+      }),
+    [classStudents, date, subjectRows, visibleSubjects],
+  )
+  const activeSubject =
+    manualSubject && visibleSubjects.includes(manualSubject) ? manualSubject : autoSubject
+  const pastDates = useMemo(() => {
+    if (!activeSubject) return []
+    return subjectReportDatesOnOrBefore(datesForSubject(subjectRows, activeSubject), todaySeoul())
+  }, [activeSubject, subjectRows])
 
   const classSync = useMemo((): ClassTodayReportSyncContext | undefined => {
     if (!grade || !className || classStudents.length === 0) return undefined
@@ -233,6 +286,25 @@ export function TeacherTodayReportBulkPage() {
         </p>
       ) : (
         <>
+          <TodayReportSubjectNav
+            subjects={visibleSubjects}
+            activeSubject={activeSubject}
+            onSubject={(subject) => {
+              setManualSubject(subject)
+              setPastOpen(false)
+            }}
+            todayActive={!pastOpen && date === todaySeoul()}
+            onToday={() => {
+              setDate(todaySeoul())
+              setManualSubject(null)
+              setPastOpen(false)
+            }}
+            pastActive={pastOpen}
+            onPast={() => setPastOpen((open) => !open)}
+            pastDates={pastDates}
+            selectedDate={date}
+            onPickDate={(next) => setDate(next)}
+          />
           <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
             <h3 className="mb-2 text-sm font-bold text-navy-900">반 전체 출결</h3>
             <ClassAttendanceBulkPanel
@@ -252,6 +324,7 @@ export function TeacherTodayReportBulkPage() {
               grade={grade}
               className={className}
               students={classStudents}
+              focusSubject={activeSubject}
             />
           </section>
 
@@ -264,6 +337,7 @@ export function TeacherTodayReportBulkPage() {
               className={className}
               students={classStudents}
               classSync={classSync}
+              focusSubject={activeSubject}
             />
           </section>
 
@@ -286,6 +360,7 @@ export function TeacherTodayReportBulkPage() {
               className={className}
               students={classStudents}
               classSync={classSync}
+              focusSubject={activeSubject}
             />
           </section>
 
@@ -297,6 +372,7 @@ export function TeacherTodayReportBulkPage() {
               grade={grade}
               className={className}
               students={classStudents}
+              focusSubject={activeSubject}
             />
           </section>
 
