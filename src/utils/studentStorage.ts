@@ -5,6 +5,7 @@ import {
   hasStudentAccessKey,
   STUDENT_ACCESS_KEY_MAX_RETRIES,
 } from './studentAccessKey'
+import { classDaysForSave } from './subjectClassDays'
 
 function subjectToSubjects(subject: string): string[] {
   return [subject]
@@ -25,6 +26,7 @@ function createStudentFromForm(data: StudentFormData): Student {
     enrollmentDate: data.enrollmentDate,
     status: data.status,
     memo: data.memo.trim(),
+    ...savedClassDays(data),
     studentAccessKey: generateUniqueStudentAccessKey([]),
     accessKeyActive: true,
     createdAt: now,
@@ -68,7 +70,23 @@ export function formDataToStudentUpdate(
     enrollmentDate: data.enrollmentDate,
     status: data.status,
     memo: data.memo.trim(),
+    ...savedClassDays(data),
     updatedAt: new Date().toISOString(),
+  }
+}
+
+function savedClassDays(data: StudentFormData) {
+  const saved = classDaysForSave(
+    data.subject,
+    data.mathClassDays ?? null,
+    data.englishClassDays ?? null,
+  )
+  if (saved.overlap.length > 0) {
+    throw new Error('같은 요일에 수학과 영어를 함께 지정할 수 없습니다.')
+  }
+  return {
+    mathClassDays: saved.mathClassDays,
+    englishClassDays: saved.englishClassDays,
   }
 }
 

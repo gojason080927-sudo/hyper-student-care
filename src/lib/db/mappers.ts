@@ -28,6 +28,7 @@ import {
 } from '../../utils/learningDiagnosis'
 import type { Student } from '../../types/student'
 import { normalizeHomeworkStatus, persistStoredHomeworkStatus } from '../../utils/homework'
+import { normalizeClassDays } from '../../utils/subjectClassDays'
 
 export type StudentRow = {
   id: string
@@ -44,6 +45,8 @@ export type StudentRow = {
   enrollment_date: string
   status: string
   memo: string
+  math_class_days?: string[] | null
+  english_class_days?: string[] | null
   created_at: string
   updated_at: string
 }
@@ -296,6 +299,8 @@ export function studentToRow(student: Student): StudentRow {
     enrollment_date: student.enrollmentDate,
     status: student.status,
     memo: student.memo,
+    math_class_days: student.mathClassDays ?? null,
+    english_class_days: student.englishClassDays ?? null,
     created_at: student.createdAt,
     updated_at: student.updatedAt,
   }
@@ -317,6 +322,8 @@ export function studentFromRow(row: StudentRow): Student {
     enrollmentDate: row.enrollment_date,
     status: row.status as Student['status'],
     memo: row.memo,
+    mathClassDays: normalizeClassDays(row.math_class_days),
+    englishClassDays: normalizeClassDays(row.english_class_days),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   }
