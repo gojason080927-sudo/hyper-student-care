@@ -125,6 +125,7 @@ import { resolveCommonClassContext } from '../../utils/classCommonDataKey'
 import { getVisibleDailyTestSubjects, getVisibleTextbookSubjects } from '../../utils/studentGradeClass'
 import { TodayReportSubjectNav } from './TodayReportSubjectNav'
 import {
+  collectSubjectReportRows,
   datesForSubject,
   latestSubjectReportDate,
   recordedSubjectsOnDate,
@@ -428,22 +429,15 @@ export function TodayReportView({
   )
   const parentSubjectRows = useMemo(() => {
     if (!readOnly) return []
-    const rows: { date: string; subject: string }[] = []
-    for (const record of dailyTests) {
-      if (record.studentId === student.id) rows.push({ date: record.date, subject: record.subject })
-    }
-    for (const entry of homeworkTextbookEntries) {
-      if (entry.studentId === student.id) rows.push({ date: entry.date, subject: entry.subject })
-    }
-    for (const record of progressRecords) {
-      if (record.studentId === student.id) rows.push({ date: record.lastStudyDate, subject: record.subject })
-    }
-    for (const record of classTodayReportCommon) {
-      if (record.grade === student.grade.trim() && record.className === student.className.trim()) {
-        rows.push({ date: record.reportDate, subject: record.subject })
-      }
-    }
-    return rows
+    return collectSubjectReportRows({
+      studentIds: new Set([student.id]),
+      grade: student.grade,
+      className: student.className,
+      dailyTests,
+      homeworkTextbookEntries,
+      progressRecords,
+      classTodayReportCommon,
+    })
   }, [
     classTodayReportCommon,
     dailyTests,

@@ -24,6 +24,7 @@ import type { ClassTodayReportSyncContext } from '../utils/classTodayReportCommo
 import type { TodayReportLookupContext } from '../utils/todayReportLookup'
 import {
   agreedScheduledSubject,
+  collectSubjectReportRows,
   datesForSubject,
   recordedSubjectsOnDate,
   resolveAutoSubject,
@@ -83,25 +84,19 @@ export function TeacherTodayReportBulkPage() {
     () => (className ? visibleSubjectsForClass(className, classStudents) : []),
     [className, classStudents],
   )
-  const subjectRows = useMemo(() => {
-    const ids = new Set(classStudents.map((student) => student.id))
-    const rows: { date: string; subject: string }[] = []
-    for (const record of dailyTests) {
-      if (ids.has(record.studentId)) rows.push({ date: record.date, subject: record.subject })
-    }
-    for (const entry of homeworkTextbookEntries) {
-      if (ids.has(entry.studentId)) rows.push({ date: entry.date, subject: entry.subject })
-    }
-    for (const record of progressRecords) {
-      if (ids.has(record.studentId)) rows.push({ date: record.lastStudyDate, subject: record.subject })
-    }
-    for (const record of classTodayReportCommon) {
-      if (record.grade === grade && record.className === className) {
-        rows.push({ date: record.reportDate, subject: record.subject })
-      }
-    }
-    return rows
-  }, [className, classStudents, classTodayReportCommon, dailyTests, grade, homeworkTextbookEntries, progressRecords])
+  const subjectRows = useMemo(
+    () =>
+      collectSubjectReportRows({
+        studentIds: new Set(classStudents.map((student) => student.id)),
+        grade,
+        className,
+        dailyTests,
+        homeworkTextbookEntries,
+        progressRecords,
+        classTodayReportCommon,
+      }),
+    [className, classStudents, classTodayReportCommon, dailyTests, grade, homeworkTextbookEntries, progressRecords],
+  )
   const autoSubject = useMemo(
     () =>
       resolveAutoSubject({

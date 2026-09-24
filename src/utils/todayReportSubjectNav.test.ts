@@ -10,8 +10,10 @@ import {
 } from './todayReportDisplayFallback.ts'
 import {
   agreedScheduledSubject,
+  collectSubjectReportRows,
   datesForSubject,
   latestSubjectReportDate,
+  TODAY_REPORT_OPERATION_START,
   recordedSubjectsOnDate,
   resolveAutoSubject,
   scheduledSubjectOnDate,
@@ -193,5 +195,56 @@ const sameDateStatus = !homework.isFallback ? homework.entry?.status : ''
 const sameDateAssignment = homework.isFallback ? '' : (homework.entry?.todayAssignment ?? '')
 assert.equal(sameDateStatus, '')
 assert.equal(sameDateAssignment, '')
+
+assert.equal(TODAY_REPORT_OPERATION_START, '2026-09-07')
+
+const ids = new Set(['s1'])
+const collected = collectSubjectReportRows({
+  studentIds: ids,
+  grade: '고2',
+  className: '고2 영수',
+  dailyTests: [
+    { studentId: 's1', date: '2026-09-06', subject: '수학' },
+    { studentId: 's1', date: '2026-09-07', subject: '수학' },
+    { studentId: 's1', date: '2026-09-19', subject: '수학' },
+  ],
+  homeworkTextbookEntries: [
+    { studentId: 's1', date: '2026-09-09', subject: '영어', status: '완료', todayAssignment: '', previousAssignment: '' },
+    { studentId: 's1', date: '2026-09-11', subject: '수학', status: '', todayAssignment: '', previousAssignment: '' },
+  ],
+  progressRecords: [
+    { studentId: 's1', lastStudyDate: '2026-08-20', subject: '수학', currentProgress: '예전 진도', currentPage: 3, totalPage: 10 },
+    { studentId: 's1', lastStudyDate: '2026-09-14', subject: '수학', currentProgress: '', currentPage: 0, totalPage: 0 },
+    { studentId: 's1', lastStudyDate: '2026-09-16', subject: '영어', currentProgress: 'Unit 2', currentPage: 4, totalPage: 20 },
+  ],
+  classTodayReportCommon: [
+    { grade: '고2', className: '고2 영수', reportDate: '2026-09-12', subject: '수학', textbookName: '개념원리', todayAssignment: '', currentProgress: '', currentPage: 0, totalPage: 0 },
+    { grade: '고2', className: '고2 영수', reportDate: '2026-09-18', subject: '수학', todayAssignment: '금 과제', currentProgress: '', currentPage: 0, totalPage: 0 },
+    { grade: '고2', className: '다른반', reportDate: '2026-09-21', subject: '수학', todayAssignment: '다른 반', currentProgress: '', currentPage: 0, totalPage: 0 },
+  ],
+})
+const mathPast = subjectReportDatesOnOrBefore(datesForSubject(collected, '수학'), '2026-09-25')
+const englishPast = subjectReportDatesOnOrBefore(datesForSubject(collected, '영어'), '2026-09-25')
+assert.deepEqual(mathPast, ['2026-09-19', '2026-09-18', '2026-09-07'])
+assert.deepEqual(englishPast, ['2026-09-16', '2026-09-09'])
+assert.equal(mathPast.includes('2026-09-06'), false)
+assert.equal(mathPast.includes('2026-08-20'), false)
+assert.equal(mathPast.includes('2026-09-11'), false)
+assert.equal(mathPast.includes('2026-09-14'), false)
+assert.equal(mathPast.includes('2026-09-12'), false)
+assert.equal(mathPast.includes('2026-09-21'), false)
+assert.equal(
+  latestSubjectReportDate(datesForSubject(collected, '영어'), '2026-09-25', '2026-08-26'),
+  '2026-09-16',
+)
+assert.equal(
+  latestSubjectReportDate(['2026-09-06', '2026-08-01'], '2026-09-25'),
+  null,
+)
+assert.equal(scheduledSubjectOnDate('2026-09-19', ['월', '수', '금'], ['화', '목']), null)
+assert.equal(
+  resolveAutoSubject({ visible: ['수학', '영어'], recorded: [], scheduled: scheduledSubjectOnDate('2026-09-18', ['월', '수', '금'], ['화', '목']) }),
+  '수학',
+)
 
 console.log('todayReportSubjectNav.test.ts ok')
