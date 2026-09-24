@@ -33,6 +33,10 @@ export type Student = {
   enrollmentDate: string
   status: StudentStatus
   memo: string
+  /** 수학 정규 수업요일. null이면 미설정. 기존 학생 기본값. */
+  mathClassDays?: string[] | null
+  /** 영어 정규 수업요일. null이면 미설정. 기존 학생 기본값. */
+  englishClassDays?: string[] | null
   createdAt: string
   updatedAt: string
 }
@@ -49,6 +53,8 @@ export type StudentFormData = {
   enrollmentDate: string
   status: StudentStatus
   memo: string
+  mathClassDays?: string[] | null
+  englishClassDays?: string[] | null
 }
 
 export type StudentListFilters = {

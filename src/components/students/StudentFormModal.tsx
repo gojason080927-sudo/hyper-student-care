@@ -13,6 +13,13 @@ import {
 } from '../../utils/studentGradeClass'
 import { useData } from '../../hooks/useData'
 import { Modal } from '../ui/Modal'
+import {
+  CLASS_DAYS,
+  classDaysAfterSubjectChange,
+  classDaysOverlap,
+  toggleClassDay,
+  type ClassDay,
+} from '../../utils/subjectClassDays'
 
 type StudentFormModalProps = {
   open: boolean
@@ -33,6 +40,8 @@ const emptyForm: StudentFormData = {
   enrollmentDate: new Date().toISOString().slice(0, 10),
   status: '재원',
   memo: '',
+  mathClassDays: null,
+  englishClassDays: null,
 }
 
 function studentToForm(student: Student): StudentFormData {
@@ -52,6 +61,8 @@ function studentToForm(student: Student): StudentFormData {
     enrollmentDate: student.enrollmentDate,
     status: student.status,
     memo: student.memo,
+    mathClassDays: student.mathClassDays ?? null,
+    englishClassDays: student.englishClassDays ?? null,
   }
 }
 
@@ -103,6 +114,10 @@ function StudentFormModalContent({
     if (!form.school.trim()) next.school = '학교를 입력해 주세요.'
     if (!form.grade) next.grade = '학년을 선택해 주세요.'
     if (!form.subject) next.subject = '수강 과목을 선택해 주세요.'
+    const overlap = classDaysOverlap(form.mathClassDays ?? null, form.englishClassDays ?? null)
+    if (form.subject === '영어·수학' && overlap.length > 0) {
+      next.mathClassDays = '같은 요일에 수학과 영어를 함께 지정할 수 없습니다.'
+    }
     if (!form.className.trim()) {
       next.className = '반/과정을 선택해 주세요.'
     } else if (!validateGradeClassCombination(form.grade, form.className)) {
@@ -129,10 +144,38 @@ function StudentFormModalContent({
 
   const handleClassChange = (className: string) => {
     const syncedSubject = syncSubjectFromClassName(className)
+    setForm((prev) => {
+      const subject = syncedSubject ?? prev.subject
+      return {
+        ...prev,
+        className,
+        subject,
+        ...classDaysAfterSubjectChange(subject, {
+          mathClassDays: prev.mathClassDays ?? null,
+          englishClassDays: prev.englishClassDays ?? null,
+        }),
+      }
+    })
+  }
+
+  const handleSubjectChange = (subject: SubjectOption) => {
     setForm((prev) => ({
       ...prev,
-      className,
-      ...(syncedSubject ? { subject: syncedSubject } : {}),
+      subject,
+      ...classDaysAfterSubjectChange(subject, {
+        mathClassDays: prev.mathClassDays ?? null,
+        englishClassDays: prev.englishClassDays ?? null,
+      }),
+    }))
+  }
+
+  const handleToggleDay = (row: '수학' | '영어', day: ClassDay) => {
+    setForm((prev) => ({
+      ...prev,
+      ...toggleClassDay(prev.subject, row, day, {
+        mathClassDays: prev.mathClassDays ?? null,
+        englishClassDays: prev.englishClassDays ?? null,
+      }),
     }))
   }
 
@@ -205,12 +248,7 @@ function StudentFormModalContent({
           <Field label="수강 과목" required error={errors.subject}>
             <select
               value={form.subject}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  subject: e.target.value as SubjectOption,
-                })
-              }
+              onChange={(e) => handleSubjectChange(e.target.value as SubjectOption)}
               className={inputClass(errors.subject)}
             >
               {SUBJECTS.map((subject) => (
@@ -220,6 +258,24 @@ function StudentFormModalContent({
               ))}
             </select>
           </Field>
+          {form.subject !== '영어' ? (
+            <ClassDayField
+              label="수학 수업요일"
+              tone="math"
+              selected={form.mathClassDays ?? []}
+              error={errors.mathClassDays}
+              onToggle={(day) => handleToggleDay('수학', day)}
+            />
+          ) : null}
+          {form.subject !== '수학' ? (
+            <ClassDayField
+              label="영어 수업요일"
+              tone="english"
+              selected={form.englishClassDays ?? []}
+              error={errors.englishClassDays}
+              onToggle={(day) => handleToggleDay('영어', day)}
+            />
+          ) : null}
           <Field label="학생 연락처">
             <input
               value={form.studentPhone}
@@ -304,6 +360,49 @@ function StudentFormModalContent({
         </div>
       </form>
     </Modal>
+  )
+}
+
+function ClassDayField({
+  label,
+  tone,
+  selected,
+  error,
+  onToggle,
+}: {
+  label: string
+  tone: 'math' | 'english'
+  selected: string[]
+  error?: string
+  onToggle: (day: ClassDay) => void
+}) {
+  const activeClass =
+    tone === 'math'
+      ? 'border-[#163A70] bg-[#eef4fc] text-[#163A70]'
+      : 'border-[#0f766e] bg-[#eefbf8] text-[#0f766e]'
+  return (
+    <div className="sm:col-span-2">
+      <p className="mb-1.5 text-sm font-medium text-slate-700">{label}</p>
+      <div className="flex flex-nowrap gap-1">
+        {CLASS_DAYS.map((day) => {
+          const active = selected.includes(day)
+          return (
+            <button
+              key={day}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onToggle(day)}
+              className={`min-h-9 flex-1 rounded-lg border px-1.5 py-1 text-xs font-semibold transition sm:text-sm ${
+                active ? activeClass : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              {day}
+            </button>
+          )
+        })}
+      </div>
+      {error ? <p className="mt-1 text-sm text-rose-500">{error}</p> : null}
+    </div>
   )
 }
 
