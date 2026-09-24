@@ -78,6 +78,7 @@ import {
   upsertHomeworkTextbookEntry,
   upsertClassTodayReportCommon,
   upsertMakeupPlan,
+  upsertMakeupPlans,
   upsertMonthlyEvaluation,
   upsertMonthlyLearningReport,
   upsertNotice,
@@ -286,6 +287,10 @@ export type DataContextValue = {
   deleteProgressRecord: (id: string) => void
   saveMakeupPlanRecord: (
     data: Omit<MakeupPlanRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
+  ) => boolean
+  saveMakeupPlanRecords: (
+    studentIds: string[],
+    data: Omit<MakeupPlanRecord, 'id' | 'studentId' | 'createdAt' | 'updatedAt'>,
   ) => boolean
   deleteMakeupPlanRecord: (id: string) => void
   saveContentPost: (
@@ -2408,6 +2413,39 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [handlePersistError, makeupPlans, showToast, validateStudent],
   )
 
+  const saveMakeupPlanRecords = useCallback(
+    (
+      studentIds: string[],
+      data: Omit<MakeupPlanRecord, 'id' | 'studentId' | 'createdAt' | 'updatedAt'>,
+    ) => {
+      const uniqueIds = [...new Set(studentIds.filter(Boolean))]
+      if (uniqueIds.length === 0) {
+        showToast('해당하는 재원 학생이 없습니다.')
+        return false
+      }
+      if (uniqueIds.some((studentId) => !validateStudent(studentId))) {
+        showToast('존재하지 않는 학생이 포함되어 있습니다.')
+        return false
+      }
+      const ts = createTimestamps()
+      const records: MakeupPlanRecord[] = uniqueIds.map((studentId) => ({
+        ...data,
+        studentId,
+        id: createId(),
+        ...ts,
+      }))
+      setMakeupPlans((prev) => [...prev, ...records])
+      showToast(
+        records.length === 1
+          ? '보강계획이 저장되었습니다.'
+          : `보강계획 ${records.length}건이 저장되었습니다.`,
+      )
+      void persistWithReload(() => upsertMakeupPlans(records), '보강계획 저장에 실패했습니다.')
+      return true
+    },
+    [handlePersistError, showToast, validateStudent],
+  )
+
   const deleteMakeupPlanRecord = useCallback(
     (id: string) => {
       setMakeupPlans((prev) => prev.filter((r) => r.id !== id))
@@ -2829,6 +2867,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       saveProgressSubjectWithClassSync,
       deleteProgressRecord,
       saveMakeupPlanRecord,
+      saveMakeupPlanRecords,
       deleteMakeupPlanRecord,
       saveContentPost,
       deleteContentPost,
@@ -2913,6 +2952,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       saveClassCommonTextbookName,
       saveStudentTextbookSlot,
       saveMakeupPlanRecord,
+      saveMakeupPlanRecords,
       saveMonthlyEvaluationRecord,
       saveMonthlyLearningReportRecord,
       saveProgressRecord,

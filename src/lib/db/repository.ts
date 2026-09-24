@@ -817,6 +817,18 @@ export async function upsertMakeupPlan(record: MakeupPlanRecord): Promise<void> 
   await upsertRow('makeup_plans', makeupPlanToRow(record))
 }
 
+export async function upsertMakeupPlans(records: MakeupPlanRecord[]): Promise<void> {
+  if (records.length === 0) return
+  if (records.length === 1) {
+    await upsertMakeupPlan(records[0])
+    return
+  }
+  const { error } = await getSupabase()
+    .from('makeup_plans')
+    .upsert(records.map(makeupPlanToRow), { onConflict: 'id' })
+  throwIfError(error, 'makeup_plans', 'makeup_plans 저장 실패')
+}
+
 export async function deleteMakeupPlan(id: string): Promise<void> {
   await deleteRow('makeup_plans', id)
 }

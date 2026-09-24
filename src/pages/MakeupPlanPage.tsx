@@ -11,8 +11,15 @@ import { StudentSelect } from '../components/ui/StudentSelect'
 import { useData } from '../hooks/useData'
 import type { MakeupMethod, MakeupPlanRecord, MakeupPlanStatus } from '../types/records'
 import { formatKoreanDateTime, getTodayString } from '../utils/date'
-import { sortMakeupPlans } from '../utils/makeupPlan'
 import {
+  MAKEUP_PLAN_AUDIENCE_OPTIONS,
+  resolveMakeupPlanTargetStudentIds,
+  type MakeupPlanAudienceType,
+} from '../utils/makeupPlanAudience'
+import { sortMakeupPlans } from '../utils/makeupPlan'
+import { getClassOptionsForGrade } from '../utils/studentGradeClass'
+import {
+  GRADES,
   MAKEUP_METHODS,
   MAKEUP_PLAN_STATUSES,
   SUBJECTS,
@@ -27,6 +34,9 @@ import { requireDate, requireTime } from '../utils/validation'
 
 type FormState = {
   id?: string
+  audienceType: MakeupPlanAudienceType
+  targetGrade: string
+  targetClassName: string
   studentId: string
   scheduledDate: string
   scheduledTime: string
@@ -38,6 +48,9 @@ type FormState = {
 }
 
 const emptyForm = (): FormState => ({
+  audienceType: 'student',
+  targetGrade: '',
+  targetClassName: '',
   studentId: '',
   scheduledDate: getTodayString(),
   scheduledTime: '19:00',
@@ -54,7 +67,8 @@ type MakeupPlanPageProps = {
 }
 
 export function MakeupPlanPage({ embedded = false }: MakeupPlanPageProps = {}) {
-  const { students, makeupPlans, saveMakeupPlanRecord, deleteMakeupPlanRecord } = useData()
+  const { students, makeupPlans, saveMakeupPlanRecord, saveMakeupPlanRecords, deleteMakeupPlanRecord } =
+    useData()
   const [dateFilter, setDateFilter] = useState('')
   const [studentSearch, setStudentSearch] = useState('')
   const [methodFilter, setMethodFilter] = useState('')
@@ -65,6 +79,16 @@ export function MakeupPlanPage({ embedded = false }: MakeupPlanPageProps = {}) {
   const [deleteTarget, setDeleteTarget] = useState<MakeupPlanRecord | null>(null)
 
   const getStudent = (id: string) => students.find((s) => s.id === id)
+  const classOptions = getClassOptionsForGrade(form.targetGrade)
+  const enrolledStudents = students.filter((student) => student.status === '재원')
+  const createTargetPreview = form.id
+    ? null
+    : resolveMakeupPlanTargetStudentIds(students, {
+        audienceType: form.audienceType,
+        targetGrade: form.targetGrade,
+        targetClassName: form.targetClassName,
+        targetStudentId: form.studentId,
+      })
 
   const filtered = useMemo(() => {
     let list = sortMakeupPlans(makeupPlans)
@@ -90,6 +114,9 @@ export function MakeupPlanPage({ embedded = false }: MakeupPlanPageProps = {}) {
   const openEdit = (record: MakeupPlanRecord) => {
     setForm({
       id: record.id,
+      audienceType: 'student',
+      targetGrade: '',
+      targetClassName: '',
       studentId: record.studentId,
       scheduledDate: record.scheduledDate,
       scheduledTime: record.scheduledTime,
@@ -105,7 +132,24 @@ export function MakeupPlanPage({ embedded = false }: MakeupPlanPageProps = {}) {
 
   const validate = () => {
     const next: Partial<Record<keyof FormState, string>> = {}
-    if (!form.studentId) next.studentId = '학생을 선택해 주세요.'
+    if (form.id) {
+      if (!form.studentId) next.studentId = '학생을 선택해 주세요.'
+    } else {
+      const target = resolveMakeupPlanTargetStudentIds(students, {
+        audienceType: form.audienceType,
+        targetGrade: form.targetGrade,
+        targetClassName: form.targetClassName,
+        targetStudentId: form.studentId,
+      })
+      if (target.error) {
+        if (form.audienceType === 'all') next.audienceType = target.error
+        else if (form.audienceType === 'grade') next.targetGrade = target.error
+        else if (form.audienceType === 'class') {
+          next.targetGrade = target.error.includes('학년') ? target.error : undefined
+          next.targetClassName = target.error
+        } else next.studentId = target.error
+      }
+    }
     const dateErr = requireDate(form.scheduledDate, '보강 예정 날짜')
     if (dateErr) next.scheduledDate = dateErr
     const timeErr = requireTime(form.scheduledTime)
@@ -118,11 +162,31 @@ export function MakeupPlanPage({ embedded = false }: MakeupPlanPageProps = {}) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!validate()) return
-    saveMakeupPlanRecord({
-      ...form,
+    const shared = {
+      scheduledDate: form.scheduledDate,
+      scheduledTime: form.scheduledTime,
       method: form.method as MakeupMethod,
-      id: form.id,
-    })
+      subject: form.subject,
+      reason: form.reason,
+      memo: form.memo,
+      status: form.status,
+    }
+    if (form.id) {
+      saveMakeupPlanRecord({
+        ...shared,
+        studentId: form.studentId,
+        id: form.id,
+      })
+    } else {
+      const target = resolveMakeupPlanTargetStudentIds(students, {
+        audienceType: form.audienceType,
+        targetGrade: form.targetGrade,
+        targetClassName: form.targetClassName,
+        targetStudentId: form.studentId,
+      })
+      if (target.error) return
+      saveMakeupPlanRecords(target.studentIds, shared)
+    }
     setModalOpen(false)
   }
 
@@ -132,7 +196,7 @@ export function MakeupPlanPage({ embedded = false }: MakeupPlanPageProps = {}) {
         <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold text-navy-900">보강계획</h2>
-            <p className="text-sm text-slate-500">학생별 보강 예정 날짜와 진행 방식을 관리합니다.</p>
+            <p className="text-sm text-slate-500">전체·학년·반·학생 대상으로 보강 예정 날짜와 진행 방식을 관리합니다.</p>
           </div>
           <button type="button" onClick={openAdd} className={`${btnPrimary} inline-flex items-center gap-2`}>
             <Plus className="h-4 w-4" />
@@ -142,7 +206,7 @@ export function MakeupPlanPage({ embedded = false }: MakeupPlanPageProps = {}) {
       ) : (
         <PageHeader
           title="보강계획"
-          description="학생별 보강 예정 날짜와 진행 방식을 관리합니다."
+          description="전체·학년·반·학생 대상으로 보강 예정 날짜와 진행 방식을 관리합니다."
           action={
             <button type="button" onClick={openAdd} className={`${btnPrimary} inline-flex items-center gap-2`}>
               <Plus className="h-4 w-4" />
@@ -276,13 +340,112 @@ export function MakeupPlanPage({ embedded = false }: MakeupPlanPageProps = {}) {
         wide
       >
         <form onSubmit={handleSubmit} className="space-y-5">
-          <StudentSelect
-            students={students.filter((s) => s.status === '재원')}
-            value={form.studentId}
-            onChange={(v) => setForm({ ...form, studentId: v })}
-            error={errors.studentId}
-            required
-          />
+          {form.id ? (
+            <StudentSelect
+              students={enrolledStudents}
+              value={form.studentId}
+              onChange={(v) => setForm({ ...form, studentId: v })}
+              error={errors.studentId}
+              required
+            />
+          ) : (
+            <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-sm font-semibold text-slate-800">보강 대상</p>
+              <select
+                className={inputClass()}
+                value={form.audienceType}
+                onChange={(event) =>
+                  setForm({
+                    ...form,
+                    audienceType: event.target.value as MakeupPlanAudienceType,
+                    targetGrade: '',
+                    targetClassName: '',
+                    studentId: '',
+                  })
+                }
+              >
+                {MAKEUP_PLAN_AUDIENCE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              {errors.audienceType ? <p className="text-sm text-rose-500">{errors.audienceType}</p> : null}
+              {form.audienceType === 'grade' ? (
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">학년 *</label>
+                  <select
+                    className={inputClass(errors.targetGrade)}
+                    value={form.targetGrade}
+                    onChange={(event) => setForm({ ...form, targetGrade: event.target.value })}
+                  >
+                    <option value="">학년 선택</option>
+                    {GRADES.map((grade) => (
+                      <option key={grade} value={grade}>
+                        {grade}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.targetGrade ? <p className="mt-1 text-sm text-rose-500">{errors.targetGrade}</p> : null}
+                </div>
+              ) : null}
+              {form.audienceType === 'class' ? (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">학년 *</label>
+                    <select
+                      className={inputClass(errors.targetGrade)}
+                      value={form.targetGrade}
+                      onChange={(event) =>
+                        setForm({ ...form, targetGrade: event.target.value, targetClassName: '' })
+                      }
+                    >
+                      <option value="">학년 선택</option>
+                      {GRADES.map((grade) => (
+                        <option key={grade} value={grade}>
+                          {grade}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.targetGrade ? <p className="mt-1 text-sm text-rose-500">{errors.targetGrade}</p> : null}
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-sm font-medium text-slate-700">반 *</label>
+                    <select
+                      className={inputClass(errors.targetClassName)}
+                      value={form.targetClassName}
+                      onChange={(event) => setForm({ ...form, targetClassName: event.target.value })}
+                      disabled={!form.targetGrade}
+                    >
+                      <option value="">반 선택</option>
+                      {classOptions.map((name) => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.targetClassName ? (
+                      <p className="mt-1 text-sm text-rose-500">{errors.targetClassName}</p>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+              {form.audienceType === 'student' ? (
+                <StudentSelect
+                  students={enrolledStudents}
+                  value={form.studentId}
+                  onChange={(v) => setForm({ ...form, studentId: v })}
+                  error={errors.studentId}
+                  required
+                />
+              ) : null}
+              {createTargetPreview && !createTargetPreview.error ? (
+                <p className="text-xs font-semibold text-navy-700">
+                  대상 학생 {createTargetPreview.studentIds.length}명
+                </p>
+              ) : null}
+            </div>
+          )}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1.5 block text-sm font-medium text-slate-700">
