@@ -229,6 +229,31 @@ export function studentNotificationUrl(accessKey: string, path: string): string 
   return key ? `/hub/${encodeURIComponent(key)}/${path}` : '/hub/'
 }
 
+export function uniqueMakeupPushStudentIds(studentIds: string[]): string[] {
+  return [...new Set(studentIds.map((id) => id.trim()).filter(Boolean))]
+}
+
+export function makeupPlanPushEventKey(entityId: string): string {
+  return hubPushEventKey('makeup_plan', entityId, 'created')
+}
+
+export function makeupPlanPushCopy(): { title: string; body: string } {
+  return {
+    title: 'HYPER 보강계획 안내',
+    body: '새로운 보강계획이 등록되었습니다. 앱에서 일정과 내용을 확인해 주세요.',
+  }
+}
+
+export function studentMakeupPlanUrl(accessKey: string): string {
+  const key = accessKey.trim()
+  return key ? `/hub/${encodeURIComponent(key)}` : '/hub/'
+}
+
+export function parentMakeupPlanUrl(accessKey: string): string {
+  const key = accessKey.trim()
+  return key ? `/care/${encodeURIComponent(key)}/notices-makeup?tab=makeup` : '/care/'
+}
+
 export function payloadContainsSensitiveStudentContent(text: string): boolean {
   return /질문\s*내용|건의\s*내용|상담|점수|전화번호|학번/.test(text)
 }

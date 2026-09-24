@@ -12,8 +12,10 @@ export type HubPushInvokeBody = {
     | 'material_saved'
     | 'video_saved'
     | 'weekly_summary_scan'
+    | 'makeup_plan_saved'
   accessKey?: string
   entityId?: string
+  studentIds?: string[]
   previous?: Record<string, unknown>
 }
 

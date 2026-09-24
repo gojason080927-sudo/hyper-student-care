@@ -11,8 +11,13 @@ import {
   isFirstTeacherReply,
   payloadContainsSensitiveStudentContent,
   studentInboxReplyCopy,
+  makeupPlanPushCopy,
+  makeupPlanPushEventKey,
+  parentMakeupPlanUrl,
+  studentMakeupPlanUrl,
   studentNotificationUrl,
   studentPushCopy,
+  uniqueMakeupPushStudentIds,
   teacherInboxEventKey,
   teacherPushCopy,
   teacherQuestionEventKey,
@@ -86,6 +91,18 @@ assert.equal(teacherPushCopy('suggestion').url, '/teacher/mobile/student-hub')
 assert.equal(studentNotificationUrl('abc', 'weekly'), '/hub/abc/weekly')
 assert.equal(studentNotificationUrl('abc', 'materials'), '/hub/abc/materials')
 assert.equal(studentNotificationUrl('abc', 'videos'), '/hub/abc/videos')
+assert.deepEqual(uniqueMakeupPushStudentIds(['a', 'b', 'a', '', 'c']), ['a', 'b', 'c'])
+assert.deepEqual(uniqueMakeupPushStudentIds(['a']), ['a'])
+assert.deepEqual(uniqueMakeupPushStudentIds([]), [])
+assert.equal(makeupPlanPushEventKey('r1'), 'makeup_plan:r1:created')
+assert.equal(makeupPlanPushCopy().title, 'HYPER 보강계획 안내')
+assert.equal(
+  makeupPlanPushCopy().body,
+  '새로운 보강계획이 등록되었습니다. 앱에서 일정과 내용을 확인해 주세요.',
+)
+assert.equal(payloadContainsSensitiveStudentContent(makeupPlanPushCopy().body), false)
+assert.equal(studentMakeupPlanUrl('abc'), '/hub/abc')
+assert.equal(parentMakeupPlanUrl('abc'), '/care/abc/notices-makeup?tab=makeup')
 assert.equal(teacherQuestionEventKey('q1'), 'teacher:question:q1:created')
 assert.equal(teacherInboxEventKey('i1'), 'teacher:inbox:i1:created')
 
