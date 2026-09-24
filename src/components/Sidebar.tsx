@@ -6,6 +6,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   FileBarChart2,
+  FolderOpen,
   LayoutDashboard,
   MessageCircleQuestion,
   Newspaper,
@@ -56,6 +57,12 @@ const navItems: NavItem[] = [
     label: '학생 Hub 배포',
     multilineLabel: ['학생 Hub', '배포'],
     icon: QrCode,
+  },
+  {
+    path: '/teacher/content-library',
+    label: '영상·콘텐츠 자료 보관함',
+    multilineLabel: ['영상·콘텐츠', '자료 보관함'],
+    icon: FolderOpen,
   },
   {
     path: '/monthly-learning-reports',

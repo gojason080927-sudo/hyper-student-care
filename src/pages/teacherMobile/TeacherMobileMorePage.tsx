@@ -7,6 +7,7 @@ import {
   ClipboardList,
   ExternalLink,
   FileBarChart2,
+  FolderOpen,
   GraduationCap,
   HelpCircle,
   Megaphone,
@@ -21,6 +22,7 @@ import { TeacherPushOptIn } from '../../components/teacherMobile/TeacherPushOptI
 const links = [
   { to: '/teacher/mobile/student-hub', label: '학생 학습자료', icon: BookOpen },
   { to: '/teacher/mobile/student-hub-share', label: '학생 Hub 배포', icon: QrCode },
+  { to: '/teacher/mobile/content-library', label: '영상·콘텐츠 자료 보관함', icon: FolderOpen },
   { to: '/teacher/mobile/monthly-learning-reports', label: '월간 학습진단 REPORT', icon: FileBarChart2 },
   { to: '/entrance-exam', label: '신입생 평가 및 성향 진단', icon: ClipboardCheck },
   { to: '/teacher/mobile/career-assessment', label: '진로·학과 적성검사', icon: Compass },

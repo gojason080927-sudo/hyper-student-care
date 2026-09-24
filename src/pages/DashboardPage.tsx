@@ -4,6 +4,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   FileBarChart2,
+  FolderOpen,
   MessageCircleQuestion,
   Newspaper,
   Compass,
@@ -37,6 +38,12 @@ const categories = [
     title: '학생 Hub 배포',
     description: '학생별 Hub 링크 복사 · QR · 반 단위 배포',
     icon: QrCode,
+  },
+  {
+    to: '/teacher/content-library',
+    title: '영상·콘텐츠 자료 보관함',
+    description: '강사 전용 URL·파일·콘텐츠 메모 보관',
+    icon: FolderOpen,
   },
   {
     to: '/monthly-learning-reports',

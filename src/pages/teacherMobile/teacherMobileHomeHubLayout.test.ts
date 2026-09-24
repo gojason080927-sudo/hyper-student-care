@@ -24,6 +24,7 @@ const tileOrder = [...tileBlock.matchAll(/title: '([^']+)'/g)].map((match) => ma
 assert.deepEqual(tileOrder, [
   '학생 학습자료',
   '학생 Hub 배포',
+  '콘텐츠 보관함',
   '학생관리',
   '학습공지',
   '질문관리',
