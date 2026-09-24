@@ -27,9 +27,11 @@ import {
   collectSubjectReportRows,
   datesForSubject,
   recordedSubjectsOnDate,
+  isActualTodayClass,
   resolveAutoSubject,
   subjectReportDatesOnOrBefore,
   todaySeoul,
+  viewSubjectForReport,
   visibleSubjectsForClass,
 } from '../utils/todayReportSubjectNav'
 import type { TextbookSubject } from '../types/records'
@@ -106,8 +108,17 @@ export function TeacherTodayReportBulkPage() {
       }),
     [classStudents, date, subjectRows, visibleSubjects],
   )
-  const activeSubject =
-    manualSubject && visibleSubjects.includes(manualSubject) ? manualSubject : autoSubject
+  const activeSubject = viewSubjectForReport({
+    visible: visibleSubjects,
+    manual: manualSubject,
+    actualToday: autoSubject,
+  })
+  const todayClassActive = isActualTodayClass({
+    viewingToday: date === todaySeoul(),
+    pastOpen,
+    actualToday: autoSubject,
+    viewSubject: activeSubject,
+  })
   const pastDates = useMemo(() => {
     if (!activeSubject) return []
     return subjectReportDatesOnOrBefore(datesForSubject(subjectRows, activeSubject), todaySeoul())
@@ -288,7 +299,7 @@ export function TeacherTodayReportBulkPage() {
               setManualSubject(subject)
               setPastOpen(false)
             }}
-            todayActive={!pastOpen && date === todaySeoul()}
+            todayActive={todayClassActive}
             onToday={() => {
               setDate(todaySeoul())
               setManualSubject(null)

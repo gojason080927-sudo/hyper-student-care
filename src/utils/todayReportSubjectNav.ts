@@ -58,6 +58,36 @@ export function resolveAutoSubject(input: {
   return null
 }
 
+/**
+ * 화면에 보여줄 과목. 수강 과목이 하나여도 오늘 수업으로 단정하지 않는다.
+ * 수동 선택 → 오늘 실제 과목 → 수강 과목이 하나일 때만 그 과목.
+ */
+export function viewSubjectForReport(input: {
+  visible: readonly TextbookSubject[]
+  manual: TextbookSubject | null
+  actualToday: TextbookSubject | null
+}): TextbookSubject | null {
+  if (input.manual && input.visible.includes(input.manual)) return input.manual
+  if (input.actualToday && input.visible.includes(input.actualToday)) return input.actualToday
+  if (input.visible.length === 1) return input.visible[0]
+  return null
+}
+
+/** 오늘 날짜를 보고 있고, 그 과목이 실제 오늘 수업일 때만 true. */
+export function isActualTodayClass(input: {
+  viewingToday: boolean
+  pastOpen: boolean
+  actualToday: TextbookSubject | null
+  viewSubject: TextbookSubject | null
+}): boolean {
+  return (
+    input.viewingToday &&
+    !input.pastOpen &&
+    input.actualToday != null &&
+    input.viewSubject === input.actualToday
+  )
+}
+
 export function latestSubjectReportDate(
   dates: readonly string[],
   limitDate: string,

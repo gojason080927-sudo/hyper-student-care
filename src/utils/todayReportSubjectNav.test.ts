@@ -15,8 +15,10 @@ import {
   latestSubjectReportDate,
   TODAY_REPORT_OPERATION_START,
   recordedSubjectsOnDate,
+  isActualTodayClass,
   resolveAutoSubject,
   scheduledSubjectOnDate,
+  viewSubjectForReport,
   seoulClassDay,
   subjectReportDatesOnOrBefore,
   visibleSubjectsForClass,
@@ -245,6 +247,94 @@ assert.equal(scheduledSubjectOnDate('2026-09-19', ['월', '수', '금'], ['화',
 assert.equal(
   resolveAutoSubject({ visible: ['수학', '영어'], recorded: [], scheduled: scheduledSubjectOnDate('2026-09-18', ['월', '수', '금'], ['화', '목']) }),
   '수학',
+)
+
+const FRI25 = '2026-09-25'
+const englishOnlyVisible = ['영어'] as const
+const mathOnlyVisible = ['수학'] as const
+const bothSubjects = ['수학', '영어'] as const
+const tueThu = ['화', '목']
+const mwf = ['월', '수', '금']
+
+function actualToday(
+  visible: readonly ('수학' | '영어')[],
+  date: string,
+  mathDays: readonly string[] | null,
+  englishDays: readonly string[] | null,
+  recorded: ('수학' | '영어')[] = [],
+) {
+  return resolveAutoSubject({
+    visible,
+    recorded,
+    scheduled: scheduledSubjectOnDate(date, mathDays, englishDays),
+  })
+}
+
+assert.equal(actualToday(englishOnlyVisible, FRI25, null, tueThu), null)
+assert.equal(actualToday(englishOnlyVisible, THU, null, tueThu), '영어')
+assert.equal(actualToday(englishOnlyVisible, FRI25, null, tueThu, ['영어']), '영어')
+assert.equal(actualToday(mathOnlyVisible, THU, mwf, null), null)
+assert.equal(actualToday(mathOnlyVisible, FRI25, mwf, null), '수학')
+assert.equal(actualToday(bothSubjects, FRI25, mwf, tueThu), '수학')
+assert.equal(actualToday(bothSubjects, THU, mwf, tueThu), '영어')
+assert.equal(
+  agreedScheduledSubject(
+    [
+      { mathClassDays: null, englishClassDays: tueThu },
+      { mathClassDays: mwf, englishClassDays: null },
+    ],
+    FRI25,
+  ),
+  null,
+)
+
+const fridayRows = collectSubjectReportRows({
+  studentIds: new Set(['s1']),
+  grade: '고1',
+  className: '고1 영어',
+  dailyTests: [],
+  homeworkTextbookEntries: [],
+  progressRecords: [],
+  classTodayReportCommon: [
+    {
+      grade: '고1',
+      className: '고1 영어',
+      reportDate: FRI25,
+      subject: '영어',
+      textbookName: '교재',
+      todayAssignment: '',
+      currentProgress: '',
+      currentPage: 0,
+      totalPage: 0,
+    },
+  ],
+})
+assert.deepEqual(recordedSubjectsOnDate(fridayRows, FRI25), [])
+assert.equal(actualToday(englishOnlyVisible, FRI25, null, tueThu, recordedSubjectsOnDate(fridayRows, FRI25)), null)
+
+const fridayView = viewSubjectForReport({
+  visible: englishOnlyVisible,
+  manual: null,
+  actualToday: null,
+})
+assert.equal(fridayView, '영어')
+assert.equal(
+  isActualTodayClass({
+    viewingToday: true,
+    pastOpen: false,
+    actualToday: null,
+    viewSubject: fridayView,
+  }),
+  false,
+)
+assert.equal(
+  isActualTodayClass({
+    viewingToday: true,
+    pastOpen: false,
+    actualToday: '영어',
+    viewSubject: '영어',
+  }),
+  true,
 )
 
 console.log('todayReportSubjectNav.test.ts ok')
