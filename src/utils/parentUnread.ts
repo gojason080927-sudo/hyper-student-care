@@ -15,7 +15,6 @@ import type {
 import type { AttendanceRecord } from '../types/records'
 import type { Student } from '../types/student'
 import { filterNoticesForStudent } from './noticeAudience'
-import { filterScheduleGridsForStudent } from './classScheduleAccess'
 import { getMathSharedLinkedClassNames } from './mathSharedGroup'
 import { isParentSuggestionRecord } from './parentSuggestions'
 
@@ -125,8 +124,7 @@ function computeMakeupPlansUpdatedAt(input: ParentUnreadInput): string | null {
 
 function computeLearningNoticesUpdatedAt(input: ParentUnreadInput): string | null {
   const notices = filterNoticesForStudent(input.contentPosts, input.student)
-  const schedules = filterScheduleGridsForStudent(input.classScheduleGrids, input.student)
-  return maxUpdatedAt([...notices, ...schedules])
+  return maxUpdatedAt(notices)
 }
 
 function computeQuestionsUpdatedAt(input: ParentUnreadInput): string | null {
@@ -231,15 +229,114 @@ export function coerceParentReadTimestamp(value: unknown): string | null {
   return null
 }
 
+export function laterParentReadTimestamp(
+  a: string | null | undefined,
+  b: string | null | undefined,
+): string | null {
+  const aTime = a ? new Date(a).getTime() : Number.NaN
+  const bTime = b ? new Date(b).getTime() : Number.NaN
+  const aOk = Number.isFinite(aTime)
+  const bOk = Number.isFinite(bTime)
+  if (!aOk && !bOk) return null
+  if (!aOk) return b ?? null
+  if (!bOk) return a ?? null
+  return aTime >= bTime ? (a as string) : (b as string)
+}
+
+export function parentCategoryContentUpdatedAt(
+  input: ParentUnreadInput,
+  category: ParentUnreadCategory,
+): string | null {
+  switch (category) {
+    case 'today-report':
+      return computeTodayReportUpdatedAt(input)
+    case 'monthly-evaluation':
+      return computeMonthlyEvaluationUpdatedAt(input)
+    case 'makeup-plans':
+      return computeMakeupPlansUpdatedAt(input)
+    case 'learning-notices':
+      return computeLearningNoticesUpdatedAt(input)
+    case 'questions':
+      return computeQuestionsUpdatedAt(input)
+  }
+}
+
+/** 화면에 있던 내용의 updatedAt보다 읽음 시각이 앞서면 배지가 꺼지지 않는다. */
+export function parentCategoryReadFloor(
+  nowIso: string,
+  contentUpdatedAt: string | null,
+  seenThrough?: string | null,
+): string {
+  return (
+    laterParentReadTimestamp(
+      laterParentReadTimestamp(nowIso, contentUpdatedAt),
+      seenThrough,
+    ) ?? nowIso
+  )
+}
+
 export function applyParentCategoryRead(
   prev: ParentCategoryReads,
   category: ParentUnreadCategory,
   rpcValue: unknown,
   fallbackIso: string,
 ): ParentCategoryReads {
+  const next = coerceParentReadTimestamp(rpcValue) ?? fallbackIso
   return {
     ...prev,
-    [category]: coerceParentReadTimestamp(rpcValue) ?? fallbackIso,
+    [category]: laterParentReadTimestamp(prev[category], next) ?? next,
+  }
+}
+
+export function mergeParentCategoryReads(
+  base: ParentCategoryReads,
+  incoming: ParentCategoryReads,
+): ParentCategoryReads {
+  const merged: ParentCategoryReads = { ...base }
+  for (const category of PARENT_UNREAD_CATEGORIES) {
+    const next = laterParentReadTimestamp(base[category], incoming[category])
+    if (next) merged[category] = next
+  }
+  return merged
+}
+
+export function parentCategoryReadStorageKey(accessKey: string): string {
+  return `hyper-parent-category-reads:${accessKey.trim()}`
+}
+
+export function readStoredParentCategoryReads(accessKey: string): ParentCategoryReads {
+  if (typeof localStorage === 'undefined') return {}
+  try {
+    const raw = localStorage.getItem(parentCategoryReadStorageKey(accessKey))
+    if (!raw) return {}
+    const parsed: unknown = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
+    const reads: ParentCategoryReads = {}
+    for (const category of PARENT_UNREAD_CATEGORIES) {
+      const stamp = coerceParentReadTimestamp((parsed as Record<string, unknown>)[category])
+      if (stamp) reads[category] = stamp
+    }
+    return reads
+  } catch {
+    return {}
+  }
+}
+
+export function writeStoredParentCategoryRead(
+  accessKey: string,
+  category: ParentUnreadCategory,
+  stamp: string,
+): void {
+  if (typeof localStorage === 'undefined') return
+  try {
+    const prev = readStoredParentCategoryReads(accessKey)
+    const next = laterParentReadTimestamp(prev[category], stamp) ?? stamp
+    localStorage.setItem(
+      parentCategoryReadStorageKey(accessKey),
+      JSON.stringify({ ...prev, [category]: next }),
+    )
+  } catch {
+    /* ignore quota / private mode */
   }
 }
 

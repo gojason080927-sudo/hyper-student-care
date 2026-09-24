@@ -6,14 +6,18 @@ import type { ParentUnreadCategory } from '../utils/parentUnread'
 export function useMarkParentCategoryReadOnView(
   category: ParentUnreadCategory,
   ready = true,
+  seenThrough?: string | null,
 ) {
   const unread = useParentUnreadOptional()
   const markCategoryRead = unread?.markCategoryRead
-  const markedRef = useRef(false)
+  const markedRef = useRef<string | null>(null)
+  const seenKey = seenThrough ?? ''
 
   useEffect(() => {
-    if (!markCategoryRead || !ready || markedRef.current) return
-    markedRef.current = true
-    void markCategoryRead(category)
-  }, [category, ready, markCategoryRead])
+    if (!markCategoryRead || !ready) return
+    const markKey = `${category}:${seenKey}`
+    if (markedRef.current === markKey) return
+    markedRef.current = markKey
+    void markCategoryRead(category, seenThrough)
+  }, [category, ready, markCategoryRead, seenKey, seenThrough])
 }

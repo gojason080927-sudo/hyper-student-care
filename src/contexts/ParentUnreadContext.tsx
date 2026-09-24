@@ -18,7 +18,12 @@ import {
   applyParentCategoryRead,
   computeParentUnreadState,
   hasAnyParentUnread,
+  mergeParentCategoryReads,
+  parentCategoryContentUpdatedAt,
+  parentCategoryReadFloor,
+  readStoredParentCategoryReads,
   shouldAcceptParentCategoryReadsFetch,
+  writeStoredParentCategoryRead,
   type ParentCategoryReads,
   type ParentUnreadCategory,
   type ParentUnreadState,
@@ -28,7 +33,10 @@ type ParentUnreadContextValue = {
   unread: ParentUnreadState
   hasAnyUnread: boolean
   isCategoryUnread: (category: ParentUnreadCategory) => boolean
-  markCategoryRead: (category: ParentUnreadCategory) => Promise<void>
+  markCategoryRead: (
+    category: ParentUnreadCategory,
+    seenThrough?: string | null,
+  ) => Promise<void>
   refreshCategoryReads: () => Promise<void>
 }
 
@@ -64,7 +72,10 @@ export function ParentUnreadProvider({ children }: ParentUnreadProviderProps) {
     try {
       const reads = await rpcGetParentCategoryReads(student.studentAccessKey)
       if (!shouldAcceptParentCategoryReadsFetch(loadId, loadIdRef.current)) return
-      setCategoryReads(reads as ParentCategoryReads)
+      const stored = readStoredParentCategoryReads(student.studentAccessKey)
+      setCategoryReads((prev) =>
+        mergeParentCategoryReads(prev, mergeParentCategoryReads(stored, reads as ParentCategoryReads)),
+      )
     } catch (error) {
       console.error('[ParentUnread] failed to load category reads', error)
     }
@@ -113,18 +124,60 @@ export function ParentUnreadProvider({ children }: ParentUnreadProviderProps) {
   )
 
   const markCategoryRead = useCallback(
-    async (category: ParentUnreadCategory) => {
-      const fallbackIso = new Date().toISOString()
+    async (category: ParentUnreadCategory, seenThrough?: string | null) => {
+      const nowIso = new Date().toISOString()
+      const contentAt = seenThrough
+        ? null
+        : parentCategoryContentUpdatedAt(
+            {
+              student,
+              categoryReads,
+              attendance,
+              homework,
+              homeworkTextbookEntries,
+              dailyTests,
+              classNotes,
+              todayAssignments,
+              classTodayReportCommon,
+              progressRecords,
+              monthlyEvaluations,
+              makeupPlans,
+              contentPosts,
+              classScheduleGrids,
+              questions,
+            },
+            category,
+          )
+      const floor = seenThrough ?? parentCategoryReadFloor(nowIso, contentAt)
       loadIdRef.current += 1
-      setCategoryReads((prev) => applyParentCategoryRead(prev, category, null, fallbackIso))
+      writeStoredParentCategoryRead(student.studentAccessKey, category, floor)
+      setCategoryReads((prev) => applyParentCategoryRead(prev, category, null, floor))
       try {
         const lastReadAt = await rpcMarkParentCategoryRead(student.studentAccessKey, category)
-        setCategoryReads((prev) => applyParentCategoryRead(prev, category, lastReadAt, fallbackIso))
+        const stamp = seenThrough ?? parentCategoryReadFloor(lastReadAt ?? floor, contentAt)
+        writeStoredParentCategoryRead(student.studentAccessKey, category, stamp)
+        setCategoryReads((prev) => applyParentCategoryRead(prev, category, stamp, floor))
       } catch (error) {
         console.error('[ParentUnread] failed to mark category read', category, error)
       }
     },
-    [student.studentAccessKey],
+    [
+      attendance,
+      categoryReads,
+      classNotes,
+      classScheduleGrids,
+      classTodayReportCommon,
+      contentPosts,
+      dailyTests,
+      homework,
+      homeworkTextbookEntries,
+      makeupPlans,
+      monthlyEvaluations,
+      progressRecords,
+      questions,
+      student,
+      todayAssignments,
+    ],
   )
 
   const value = useMemo<ParentUnreadContextValue>(

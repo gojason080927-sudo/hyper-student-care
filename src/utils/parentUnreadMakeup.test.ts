@@ -10,13 +10,20 @@ import {
   coerceParentReadTimestamp,
   computeParentUnreadState,
   hasUnreadNoticesOrMakeup,
+  laterParentReadTimestamp,
+  mergeParentCategoryReads,
+  parentCategoryReadFloor,
+  parentCategoryReadStorageKey,
+  readStoredParentCategoryReads,
   shouldAcceptParentCategoryReadsFetch,
+  writeStoredParentCategoryRead,
   type ParentUnreadInput,
 } from './parentUnread.ts'
 
 const grid = readFileSync('src/components/parent/ParentCategoryGrid.tsx', 'utf8')
 const layout = readFileSync('src/components/layout/ParentStudentLayout.tsx', 'utf8')
 const page = readFileSync('src/pages/parent/ParentStudentNoticesMakeupPage.tsx', 'utf8')
+const detail = readFileSync('src/pages/LearningNoticeDetailPage.tsx', 'utf8')
 const provider = readFileSync('src/contexts/ParentUnreadContext.tsx', 'utf8')
 const hook = readFileSync('src/hooks/useMarkParentCategoryReadOnView.ts', 'utf8')
 const rpc = readFileSync('src/lib/db/parentAccessRpc.ts', 'utf8')
@@ -240,14 +247,177 @@ assert.equal(shouldAcceptParentCategoryReadsFetch(1, 2), false)
 assert.match(grid, /hasUnreadNoticesOrMakeup/)
 assert.match(grid, /segment === 'notices-makeup'/)
 assert.match(layout, /ParentUnreadProvider/)
-assert.match(page, /useMarkParentCategoryReadOnView\('learning-notices'\)/)
-assert.match(page, /useMarkParentCategoryReadOnView\('makeup-plans'\)/)
+assert.match(page, /useMarkParentCategoryReadOnView\('makeup-plans', tab === 'makeup'\)/)
+assert.doesNotMatch(page, /useMarkParentCategoryReadOnView\('learning-notices'\)/)
+assert.match(detail, /useMarkParentCategoryReadOnView\('learning-notices', Boolean\(post\), post\?\.updatedAt\)/)
 assert.match(hook, /markCategoryRead = unread\?\.markCategoryRead/)
-assert.match(hook, /void markCategoryRead\(category\)/)
+assert.match(hook, /void markCategoryRead\(category, seenThrough\)/)
 assert.match(provider, /applyParentCategoryRead/)
 assert.match(provider, /loadIdRef\.current \+= 1/)
 assert.match(provider, /shouldAcceptParentCategoryReadsFetch/)
 assert.match(rpc, /coerceParentReadTimestamp\(data\)/)
 assert.match(rpc, /coerceParentReadTimestamp\(value\)/)
+
+function notice(id: string, updatedAt: string) {
+  return {
+    id,
+    category: '공지사항' as const,
+    title: id,
+    content: '본문',
+    summary: '',
+    sourceName: '',
+    originalArticleTitle: '',
+    authorName: '',
+    isPinned: false,
+    isPublished: true,
+    publishedAt: updatedAt,
+    audienceType: 'all' as const,
+    createdAt: updatedAt,
+    updatedAt,
+  }
+}
+
+const olderNotice = notice('A', '2026-09-24T01:00:00.000Z')
+const newerNotice = notice('B', '2026-09-24T05:00:00.000Z')
+const clientNowBehindContent = '2026-09-24T04:00:00.000Z'
+
+assert.equal(
+  hasUnreadNoticesOrMakeup(
+    computeParentUnreadState(emptyInput({ contentPosts: [newerNotice] })),
+  ),
+  true,
+)
+
+const readNewer = applyParentCategoryRead(
+  {},
+  'learning-notices',
+  newerNotice.updatedAt,
+  clientNowBehindContent,
+)
+assert.equal(
+  hasUnreadNoticesOrMakeup(
+    computeParentUnreadState(
+      emptyInput({ contentPosts: [newerNotice], categoryReads: readNewer }),
+    ),
+  ),
+  false,
+)
+
+const readOlderOnly = applyParentCategoryRead(
+  {},
+  'learning-notices',
+  olderNotice.updatedAt,
+  olderNotice.updatedAt,
+)
+const stillUnread = computeParentUnreadState(
+  emptyInput({
+    contentPosts: [olderNotice, newerNotice],
+    categoryReads: readOlderOnly,
+  }),
+)
+assert.equal(stillUnread['learning-notices'], true)
+assert.equal(hasUnreadNoticesOrMakeup(stillUnread), true)
+
+const readBothNotices = applyParentCategoryRead(
+  readOlderOnly,
+  'learning-notices',
+  newerNotice.updatedAt,
+  newerNotice.updatedAt,
+)
+assert.equal(
+  hasUnreadNoticesOrMakeup(
+    computeParentUnreadState(
+      emptyInput({
+        contentPosts: [olderNotice, newerNotice],
+        categoryReads: readBothNotices,
+      }),
+    ),
+  ),
+  false,
+)
+
+const afterNewNotice = computeParentUnreadState(
+  emptyInput({
+    contentPosts: [olderNotice, newerNotice, notice('C', '2026-09-24T06:00:00.000Z')],
+    categoryReads: readBothNotices,
+  }),
+)
+assert.equal(hasUnreadNoticesOrMakeup(afterNewNotice), true)
+
+if (typeof localStorage === 'undefined') {
+  const memory = new Map<string, string>()
+  Object.defineProperty(globalThis, 'localStorage', {
+    value: {
+      getItem: (key: string) => memory.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        memory.set(key, value)
+      },
+    },
+  })
+}
+
+assert.equal(parentCategoryReadStorageKey('key-a'), 'hyper-parent-category-reads:key-a')
+assert.notEqual(parentCategoryReadStorageKey('key-a'), parentCategoryReadStorageKey('key-b'))
+writeStoredParentCategoryRead('key-a', 'learning-notices', newerNotice.updatedAt)
+writeStoredParentCategoryRead('key-b', 'learning-notices', olderNotice.updatedAt)
+assert.equal(readStoredParentCategoryReads('key-a')['learning-notices'], newerNotice.updatedAt)
+assert.equal(readStoredParentCategoryReads('key-b')['learning-notices'], olderNotice.updatedAt)
+
+const scheduleDoesNotKeepBadge = computeParentUnreadState(
+  emptyInput({
+    contentPosts: [olderNotice],
+    classScheduleGrids: [
+      {
+        id: 'grid',
+        grade: '고1',
+        className: '고1 수학A',
+        templateType: 'mon-sun',
+        timeLabels: [],
+        cells: {},
+        isActive: true,
+        createdAt: '2026-09-24T09:00:00.000Z',
+        updatedAt: '2026-09-24T09:00:00.000Z',
+      },
+    ],
+    categoryReads: readOlderOnly,
+  }),
+)
+assert.equal(scheduleDoesNotKeepBadge['learning-notices'], false)
+
+const makeupStillUnread = computeParentUnreadState(
+  emptyInput({
+    contentPosts: [olderNotice],
+    makeupPlans: [makeupA],
+    categoryReads: readOlderOnly,
+  }),
+)
+assert.equal(hasUnreadNoticesOrMakeup(makeupStillUnread), true)
+const makeupReadToo = applyParentCategoryRead(
+  readOlderOnly,
+  'makeup-plans',
+  parentCategoryReadFloor(clientNowBehindContent, makeupA.updatedAt),
+  clientNowBehindContent,
+)
+assert.equal(
+  hasUnreadNoticesOrMakeup(
+    computeParentUnreadState(
+      emptyInput({
+        contentPosts: [olderNotice],
+        makeupPlans: [makeupA],
+        categoryReads: makeupReadToo,
+      }),
+    ),
+  ),
+  false,
+)
+
+const refreshed = mergeParentCategoryReads(readNewer, {
+  'learning-notices': clientNowBehindContent,
+})
+assert.equal(refreshed['learning-notices'], newerNotice.updatedAt)
+assert.equal(
+  laterParentReadTimestamp(clientNowBehindContent, newerNotice.updatedAt),
+  newerNotice.updatedAt,
+)
 
 console.log('parentUnreadMakeup tests passed')
