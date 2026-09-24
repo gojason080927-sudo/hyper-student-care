@@ -2,7 +2,9 @@ import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { ChevronRight } from 'lucide-react'
 import { useParentStudent } from '../../contexts/ParentStudentContext'
+import { useParentUnreadOptional } from '../../contexts/ParentUnreadContext'
 import { useData } from '../../hooks/useData'
+import { hasUnreadNoticesOrMakeup } from '../../utils/parentUnread'
 import { useParentAdmissionStrategyMaterials } from '../../hooks/useParentAdmissionStrategyMaterials'
 import { hasUnreadAdmissionStrategyMaterials } from '../../lib/db/admissionStrategyMaterial'
 import { hasUnreadWeeklySummary } from '../../utils/studentCare/weeklySummaryDisplay'
@@ -24,6 +26,10 @@ export function ParentCategoryGrid() {
     student.id,
     readParentSuggestionLastRead(student.studentAccessKey),
   )
+  const parentUnread = useParentUnreadOptional()
+  const noticesMakeupUnread = parentUnread
+    ? hasUnreadNoticesOrMakeup(parentUnread.unread)
+    : false
   const basePath = `/care/${student.studentAccessKey}`
   const todayPath = `${basePath}/${parentTodayReportItem.segment}`
   const TodayIcon = parentTodayReportItem.icon
@@ -39,9 +45,13 @@ export function ParentCategoryGrid() {
           const showAdmissionUnread = segment === 'admission-strategy' && admissionUnread
           const showWeeklyUnread = segment === 'weekly-learning-summary' && weeklyUnread
           const showSuggestionUnread = segment === 'suggestions' && suggestionUnread
+          const showNoticesMakeupUnread = segment === 'notices-makeup' && noticesMakeupUnread
           return (
             <Link key={segment} to={`${basePath}/${segment}`} className="hub-tile">
-              {showAdmissionUnread || showWeeklyUnread || showSuggestionUnread ? (
+              {showAdmissionUnread ||
+              showWeeklyUnread ||
+              showSuggestionUnread ||
+              showNoticesMakeupUnread ? (
                 <span className="parent-hub-unread" aria-label="확인하지 않은 새 자료" />
               ) : null}
               <span className="hub-tile-icon" aria-hidden>

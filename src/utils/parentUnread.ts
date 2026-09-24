@@ -210,3 +210,7 @@ export function computeParentUnreadState(input: ParentUnreadInput): ParentUnread
 export function hasAnyParentUnread(unread: ParentUnreadState): boolean {
   return PARENT_UNREAD_CATEGORIES.some((category) => unread[category])
 }
+
+export function hasUnreadNoticesOrMakeup(unread: ParentUnreadState): boolean {
+  return unread['learning-notices'] || unread['makeup-plans']
+}
