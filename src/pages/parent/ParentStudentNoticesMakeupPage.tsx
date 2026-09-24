@@ -24,8 +24,7 @@ export function ParentStudentNoticesMakeupPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const tab = parseTab(searchParams.get('tab'))
 
-  useMarkParentCategoryReadOnView('learning-notices')
-  useMarkParentCategoryReadOnView('makeup-plans')
+  useMarkParentCategoryReadOnView('makeup-plans', tab === 'makeup')
 
   return (
     <div className="parent-page space-y-5 pb-6">
