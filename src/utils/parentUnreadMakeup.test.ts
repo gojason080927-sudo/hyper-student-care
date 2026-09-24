@@ -6,14 +6,20 @@ import { readFileSync } from 'node:fs'
 import type { MakeupPlanRecord } from '../types/records'
 import type { Student } from '../types/student'
 import {
+  applyParentCategoryRead,
+  coerceParentReadTimestamp,
   computeParentUnreadState,
   hasUnreadNoticesOrMakeup,
+  shouldAcceptParentCategoryReadsFetch,
   type ParentUnreadInput,
 } from './parentUnread.ts'
 
 const grid = readFileSync('src/components/parent/ParentCategoryGrid.tsx', 'utf8')
 const layout = readFileSync('src/components/layout/ParentStudentLayout.tsx', 'utf8')
 const page = readFileSync('src/pages/parent/ParentStudentNoticesMakeupPage.tsx', 'utf8')
+const provider = readFileSync('src/contexts/ParentUnreadContext.tsx', 'utf8')
+const hook = readFileSync('src/hooks/useMarkParentCategoryReadOnView.ts', 'utf8')
+const rpc = readFileSync('src/lib/db/parentAccessRpc.ts', 'utf8')
 
 const studentA: Student = {
   id: 'a',
@@ -120,10 +126,128 @@ assert.equal(unreadNoticeOnly['learning-notices'], true)
 assert.equal(unreadNoticeOnly['makeup-plans'], false)
 assert.equal(hasUnreadNoticesOrMakeup(unreadNoticeOnly), true)
 
+assert.equal(coerceParentReadTimestamp(new Date('2026-09-24T03:12:00.000Z')), '2026-09-24T03:12:00.000Z')
+assert.equal(coerceParentReadTimestamp('2026-09-24T03:12:00+00:00'), '2026-09-24T03:12:00+00:00')
+const epochMs = Date.parse('2026-09-24T03:20:00.000Z')
+assert.equal(coerceParentReadTimestamp(epochMs), '2026-09-24T03:20:00.000Z')
+assert.equal(coerceParentReadTimestamp({}), null)
+assert.equal(coerceParentReadTimestamp(null), null)
+
+const markedAt = '2026-09-24T03:12:00.000Z'
+const readsAfterNullRpc = applyParentCategoryRead({}, 'makeup-plans', null, markedAt)
+const readsAfterDateRpc = applyParentCategoryRead(
+  {},
+  'makeup-plans',
+  new Date(markedAt),
+  '2026-09-24T03:11:00.000Z',
+)
+assert.equal(readsAfterNullRpc['makeup-plans'], markedAt)
+assert.equal(readsAfterDateRpc['makeup-plans'], markedAt)
+
+const unreadAfterOptimisticRead = computeParentUnreadState(
+  emptyInput({
+    makeupPlans: [makeupA],
+    categoryReads: readsAfterNullRpc,
+  }),
+)
+assert.equal(hasUnreadNoticesOrMakeup(unreadAfterOptimisticRead), false)
+
+const unreadAfterHomeReturn = computeParentUnreadState(
+  emptyInput({
+    makeupPlans: [makeupA],
+    categoryReads: readsAfterNullRpc,
+  }),
+)
+assert.equal(hasUnreadNoticesOrMakeup(unreadAfterHomeReturn), false)
+
+const newerMakeup: MakeupPlanRecord = {
+  ...makeupA,
+  id: 'm3',
+  updatedAt: '2026-09-24T04:00:00.000Z',
+}
+const unreadAfterNewerMakeup = computeParentUnreadState(
+  emptyInput({
+    makeupPlans: [newerMakeup],
+    categoryReads: readsAfterNullRpc,
+  }),
+)
+assert.equal(unreadAfterNewerMakeup['makeup-plans'], true)
+assert.equal(hasUnreadNoticesOrMakeup(unreadAfterNewerMakeup), true)
+
+const noticeAndMakeupUnread = computeParentUnreadState(
+  emptyInput({
+    makeupPlans: [makeupA],
+    contentPosts: [
+      {
+        id: 'n1',
+        category: '공지사항',
+        title: '공지',
+        content: '',
+        summary: '',
+        sourceName: '',
+        originalArticleTitle: '',
+        authorName: '',
+        isPinned: false,
+        isPublished: true,
+        publishedAt: '2026-09-24T01:00:00.000Z',
+        audienceType: 'all',
+        createdAt: '2026-09-24T01:00:00.000Z',
+        updatedAt: '2026-09-24T01:00:00.000Z',
+      },
+    ],
+    categoryReads: applyParentCategoryRead({}, 'makeup-plans', null, markedAt),
+  }),
+)
+assert.equal(noticeAndMakeupUnread['learning-notices'], true)
+assert.equal(noticeAndMakeupUnread['makeup-plans'], false)
+assert.equal(hasUnreadNoticesOrMakeup(noticeAndMakeupUnread), true)
+
+const bothRead = applyParentCategoryRead(
+  applyParentCategoryRead({}, 'learning-notices', null, markedAt),
+  'makeup-plans',
+  null,
+  markedAt,
+)
+const unreadAfterBothRead = computeParentUnreadState(
+  emptyInput({
+    makeupPlans: [makeupA],
+    contentPosts: [
+      {
+        id: 'n1',
+        category: '공지사항',
+        title: '공지',
+        content: '',
+        summary: '',
+        sourceName: '',
+        originalArticleTitle: '',
+        authorName: '',
+        isPinned: false,
+        isPublished: true,
+        publishedAt: '2026-09-24T01:00:00.000Z',
+        audienceType: 'all',
+        createdAt: '2026-09-24T01:00:00.000Z',
+        updatedAt: '2026-09-24T01:00:00.000Z',
+      },
+    ],
+    categoryReads: bothRead,
+  }),
+)
+assert.equal(hasUnreadNoticesOrMakeup(unreadAfterBothRead), false)
+
+assert.equal(shouldAcceptParentCategoryReadsFetch(1, 1), true)
+assert.equal(shouldAcceptParentCategoryReadsFetch(1, 2), false)
+
 assert.match(grid, /hasUnreadNoticesOrMakeup/)
 assert.match(grid, /segment === 'notices-makeup'/)
 assert.match(layout, /ParentUnreadProvider/)
 assert.match(page, /useMarkParentCategoryReadOnView\('learning-notices'\)/)
 assert.match(page, /useMarkParentCategoryReadOnView\('makeup-plans'\)/)
+assert.match(hook, /markCategoryRead = unread\?\.markCategoryRead/)
+assert.match(hook, /void markCategoryRead\(category\)/)
+assert.match(provider, /applyParentCategoryRead/)
+assert.match(provider, /loadIdRef\.current \+= 1/)
+assert.match(provider, /shouldAcceptParentCategoryReadsFetch/)
+assert.match(rpc, /coerceParentReadTimestamp\(data\)/)
+assert.match(rpc, /coerceParentReadTimestamp\(value\)/)
 
 console.log('parentUnreadMakeup tests passed')
