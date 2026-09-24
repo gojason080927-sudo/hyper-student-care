@@ -4,6 +4,7 @@ import { Outlet, Navigate, useLocation, useParams } from 'react-router-dom'
 import { resolveStudentByAccessKey } from '../../lib/dataLoader'
 import { isSupabaseConfigured, normalizeRouteAccessKey } from '../../lib/supabase'
 import { ParentStudentProvider } from '../../contexts/ParentStudentContext'
+import { ParentUnreadProvider } from '../../contexts/ParentUnreadContext'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 import { useData } from '../../hooks/useData'
 import type { Student } from '../../types/student'
@@ -185,6 +186,7 @@ function ParentStudentLayoutInner({ studentAccessKey }: ParentStudentLayoutInner
 
   return (
     <ParentStudentProvider student={student}>
+      <ParentUnreadProvider>
       <ParentPwaRegistrar studentAccessKey={student.studentAccessKey} />
       <div className="parent-mobile-app flex min-h-svh overflow-x-hidden">
         <ParentStudentSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
@@ -227,6 +229,7 @@ function ParentStudentLayoutInner({ studentAccessKey }: ParentStudentLayoutInner
           </main>
         </div>
       </div>
+      </ParentUnreadProvider>
     </ParentStudentProvider>
   )
 }
