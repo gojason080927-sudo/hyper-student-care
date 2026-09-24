@@ -10,7 +10,18 @@ import { ClassDailyTestBulkPanel } from '../../components/todayReport/ClassDaily
 import { ClassHomeworkStatusBulkPanel } from '../../components/todayReport/ClassHomeworkStatusBulkPanel'
 import { ClassMaterialPrepBulkPanel } from '../../components/todayReport/ClassMaterialPrepBulkPanel'
 import { TodayReportCompleteButton } from '../../components/todayReport/TodayReportCompleteButton'
+import { TodayReportSubjectNav } from '../../components/todayReport/TodayReportSubjectNav'
 import { useData } from '../../hooks/useData'
+import type { TextbookSubject } from '../../types/records'
+import {
+  agreedScheduledSubject,
+  datesForSubject,
+  recordedSubjectsOnDate,
+  resolveAutoSubject,
+  subjectReportDatesOnOrBefore,
+  todaySeoul,
+  visibleSubjectsForClass,
+} from '../../utils/todayReportSubjectNav'
 import { formatKoreanDate, getTodayString } from '../../utils/date'
 import { GRADES, inputClass } from '../../utils/labels'
 import {
@@ -75,11 +86,20 @@ export function TeacherMobileTodayReportPage() {
   const initialStudentId = searchParams.get('student')?.trim() ?? ''
   const initialDateFromUrl = searchParams.get('date')?.trim() ?? ''
 
-  const { students, isLoading } = useData()
+  const {
+    students,
+    isLoading,
+    dailyTests,
+    progressRecords,
+    homeworkTextbookEntries,
+    classTodayReportCommon,
+  } = useData()
 
   const [date, setDate] = useState(initialDateFromUrl || getTodayString())
   const [grade, setGrade] = useState('')
   const [className, setClassName] = useState('')
+  const [manualSubject, setManualSubject] = useState<TextbookSubject | null>(null)
+  const [pastOpen, setPastOpen] = useState(false)
   const [openSections, setOpenSections] = useState<Set<ReportSection>>(
     () => new Set(['attendance', 'dailyTest']),
   )
@@ -103,6 +123,48 @@ export function TeacherMobileTodayReportPage() {
       )
       .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
   }, [activeStudents, className, grade])
+
+  const visibleSubjects = useMemo(
+    () => (className ? visibleSubjectsForClass(className, classStudents) : []),
+    [className, classStudents],
+  )
+  const subjectRows = useMemo(() => {
+    const ids = new Set(classStudents.map((student) => student.id))
+    const rows: { date: string; subject: string }[] = []
+    for (const record of dailyTests) {
+      if (ids.has(record.studentId)) rows.push({ date: record.date, subject: record.subject })
+    }
+    for (const entry of homeworkTextbookEntries) {
+      if (ids.has(entry.studentId)) rows.push({ date: entry.date, subject: entry.subject })
+    }
+    for (const record of progressRecords) {
+      if (ids.has(record.studentId)) rows.push({ date: record.lastStudyDate, subject: record.subject })
+    }
+    for (const record of classTodayReportCommon) {
+      if (record.grade === grade && record.className === className) {
+        rows.push({ date: record.reportDate, subject: record.subject })
+      }
+    }
+    return rows
+  }, [className, classStudents, classTodayReportCommon, dailyTests, grade, homeworkTextbookEntries, progressRecords])
+  const autoSubject = useMemo(
+    () =>
+      resolveAutoSubject({
+        visible: visibleSubjects,
+        recorded: recordedSubjectsOnDate(subjectRows, date),
+        scheduled: agreedScheduledSubject(classStudents, date),
+      }),
+    [classStudents, date, subjectRows, visibleSubjects],
+  )
+  const activeSubject =
+    manualSubject && visibleSubjects.includes(manualSubject) ? manualSubject : autoSubject
+  const pastDates = useMemo(
+    () =>
+      activeSubject
+        ? subjectReportDatesOnOrBefore(datesForSubject(subjectRows, activeSubject), todaySeoul())
+        : [],
+    [activeSubject, subjectRows],
+  )
 
   const classSync = useMemo((): ClassTodayReportSyncContext | undefined => {
     if (!grade || !className || classStudents.length === 0) return undefined
@@ -231,6 +293,25 @@ export function TeacherMobileTodayReportPage() {
           </p>
         ) : (
           <>
+            <TodayReportSubjectNav
+              subjects={visibleSubjects}
+              activeSubject={activeSubject}
+              onSubject={(subject) => {
+                setManualSubject(subject)
+                setPastOpen(false)
+              }}
+              todayActive={!pastOpen && date === todaySeoul()}
+              onToday={() => {
+                setDate(todaySeoul())
+                setManualSubject(null)
+                setPastOpen(false)
+              }}
+              pastActive={pastOpen}
+              onPast={() => setPastOpen((open) => !open)}
+              pastDates={pastDates}
+              selectedDate={date}
+              onPickDate={(next) => setDate(next)}
+            />
             {CLASS_SCOPED_SECTIONS.map((section) => (
               <MobileSectionAccordion
                 key={section.id}
@@ -255,6 +336,7 @@ export function TeacherMobileTodayReportPage() {
                     className={className}
                     students={classStudents}
                     compact
+                    focusSubject={activeSubject}
                   />
                 ) : section.id === 'materialPrep' ? (
                   <ClassMaterialPrepBulkPanel
@@ -273,6 +355,7 @@ export function TeacherMobileTodayReportPage() {
                     students={classStudents}
                     classSync={classSync}
                     compact
+                    focusSubject={activeSubject}
                   />
                 ) : section.id === 'progress' ? (
                   <ClassCommonProgressPanel
@@ -283,6 +366,7 @@ export function TeacherMobileTodayReportPage() {
                     students={classStudents}
                     classSync={classSync}
                     compact
+                    focusSubject={activeSubject}
                   />
                 ) : (
                   <ClassDailyTestBulkPanel
@@ -292,6 +376,7 @@ export function TeacherMobileTodayReportPage() {
                     className={className}
                     students={classStudents}
                     compact
+                    focusSubject={activeSubject}
                   />
                 )}
               </MobileSectionAccordion>

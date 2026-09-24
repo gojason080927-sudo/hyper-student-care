@@ -120,6 +120,7 @@ export function TextbookSlotHomeworkSection({
   visibleSlots,
   useMobileStatusPicker = false,
   allowCarryForward = true,
+  onlySubject = null,
 }: {
   readOnly: boolean
   studentId: string
@@ -155,16 +156,17 @@ export function TextbookSlotHomeworkSection({
   useMobileStatusPicker?: boolean
   /** 학부모 오늘 화면만 최근값 유지. 과거 날짜는 false. */
   allowCarryForward?: boolean
+  onlySubject?: TextbookSubject | null
 }) {
   const subjectsToRender = useMemo(
     () => {
       const selectedClassName = classSync?.className ?? classContext?.className ?? ''
-      if (!selectedClassName.trim()) return [...TEXTBOOK_SUBJECTS]
-      return TEXTBOOK_SUBJECTS.filter((subject) =>
-        classTrackIncludesSubject(selectedClassName, subject),
-      )
+      const visible = !selectedClassName.trim()
+        ? [...TEXTBOOK_SUBJECTS]
+        : TEXTBOOK_SUBJECTS.filter((subject) => classTrackIncludesSubject(selectedClassName, subject))
+      return onlySubject ? visible.filter((subject) => subject === onlySubject) : visible
     },
-    [classContext?.className, classSync?.className],
+    [classContext?.className, classSync?.className, onlySubject],
   )
 
   const initialDisplays = useMemo(
