@@ -127,11 +127,13 @@ import { TodayReportSubjectNav } from './TodayReportSubjectNav'
 import {
   collectSubjectReportRows,
   datesForSubject,
+  isActualTodayClass,
   latestSubjectReportDate,
   recordedSubjectsOnDate,
   resolveAutoSubject,
   scheduledSubjectOnDate,
   subjectReportDatesOnOrBefore,
+  viewSubjectForReport,
 } from '../../utils/todayReportSubjectNav'
 import type { TextbookSubject } from '../../types/records'
 import { attendanceDisplayLabel } from '../../utils/studentCare/scoring'
@@ -457,10 +459,17 @@ export function TodayReportView({
       }),
     [parentSubjectRows, parentVisibleSubjects, student.englishClassDays, student.mathClassDays, today],
   )
-  const parentActiveSubject =
-    manualSubject && parentVisibleSubjects.includes(manualSubject)
-      ? manualSubject
-      : parentAutoSubject
+  const parentActiveSubject = viewSubjectForReport({
+    visible: parentVisibleSubjects,
+    manual: manualSubject,
+    actualToday: parentAutoSubject,
+  })
+  const parentTodayClassActive = isActualTodayClass({
+    viewingToday: selectedDate === today,
+    pastOpen,
+    actualToday: parentAutoSubject,
+    viewSubject: parentActiveSubject,
+  })
   const parentPastDates = useMemo(() => {
     if (!parentActiveSubject || !parentMinDate) return []
     return subjectReportDatesOnOrBefore(
@@ -737,7 +746,7 @@ export function TodayReportView({
               )
               if (latest) setSelectedDate(latest)
             }}
-            todayActive={!pastOpen && selectedDate === today}
+            todayActive={parentTodayClassActive}
             onToday={() => {
               setSelectedDate(today)
               setManualSubject(null)
