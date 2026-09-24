@@ -3,7 +3,15 @@ import { CLASS_DAYS, type ClassDay } from './subjectClassDays'
 import { getSeoulDateString } from './seoulDate'
 import { getVisibleTextbookSubjects } from './studentGradeClass'
 
+/** Today Report 실운영 시작일. 이전 legacy/test 행은 삭제하지 않고 이전 수업 탐색에서만 제외한다. */
+export const TODAY_REPORT_OPERATION_START = '2026-09-07'
+
 const WEEKDAY_CHAR = /^[월화수목금토일]/
+
+function operationMinDate(minDate?: string): string {
+  if (!minDate || minDate < TODAY_REPORT_OPERATION_START) return TODAY_REPORT_OPERATION_START
+  return minDate
+}
 
 export function seoulClassDay(date: string): ClassDay | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null
@@ -55,8 +63,9 @@ export function latestSubjectReportDate(
   limitDate: string,
   minDate?: string,
 ): string | null {
+  const min = operationMinDate(minDate)
   const sorted = [...new Set(dates)]
-    .filter((date) => date <= limitDate && (!minDate || date >= minDate))
+    .filter((date) => date <= limitDate && date >= min)
     .sort((a, b) => b.localeCompare(a))
   return sorted[0] ?? null
 }
@@ -66,8 +75,9 @@ export function subjectReportDatesOnOrBefore(
   limitDate: string,
   minDate?: string,
 ): string[] {
+  const min = operationMinDate(minDate)
   return [...new Set(dates)]
-    .filter((date) => date <= limitDate && (!minDate || date >= minDate))
+    .filter((date) => date <= limitDate && date >= min)
     .sort((a, b) => b.localeCompare(a))
 }
 
@@ -105,6 +115,97 @@ export function recordedSubjectsOnDate(
     if (row.date === date && isSubjectBearing(row.subject)) found.add(row.subject)
   }
   return [...found]
+}
+
+function hasProgressBody(record: {
+  currentProgress?: string
+  currentPage?: number
+  totalPage?: number
+  teacherMemo?: string
+}): boolean {
+  return Boolean(
+    record.currentProgress?.trim() ||
+      (record.currentPage ?? 0) > 0 ||
+      (record.totalPage ?? 0) > 0 ||
+      record.teacherMemo?.trim(),
+  )
+}
+
+/**
+ * 이전 수업 날짜는 선택 과목의 실제 수업 내용이 있는 행만 사용한다.
+ * 출결·교재 준비·태도·강사 피드백·교재명만 있는 행은 포함하지 않는다.
+ * 정규 수업요일로 날짜를 만들지 않는다.
+ */
+export function collectSubjectReportRows(input: {
+  studentIds: ReadonlySet<string>
+  grade: string
+  className: string
+  dailyTests: readonly { studentId: string; date: string; subject: string }[]
+  homeworkTextbookEntries: readonly {
+    studentId: string
+    date: string
+    subject: string
+    status?: string
+    todayAssignment?: string
+    previousAssignment?: string
+  }[]
+  progressRecords: readonly {
+    studentId: string
+    lastStudyDate: string
+    subject: string
+    currentProgress?: string
+    currentPage?: number
+    totalPage?: number
+    teacherMemo?: string
+  }[]
+  classTodayReportCommon: readonly {
+    grade: string
+    className: string
+    reportDate: string
+    subject: string
+    todayAssignment?: string
+    previousAssignment?: string
+    currentProgress?: string
+    currentPage?: number
+    totalPage?: number
+    textbookName?: string
+  }[]
+}): { date: string; subject: string }[] {
+  const rows: { date: string; subject: string }[] = []
+  const grade = input.grade.trim()
+  const className = input.className.trim()
+
+  for (const record of input.dailyTests) {
+    if (!input.studentIds.has(record.studentId) || !isSubjectBearing(record.subject)) continue
+    rows.push({ date: record.date, subject: record.subject })
+  }
+  for (const entry of input.homeworkTextbookEntries) {
+    if (!input.studentIds.has(entry.studentId) || !isSubjectBearing(entry.subject)) continue
+    const hasHomework =
+      Boolean(entry.status?.trim()) ||
+      Boolean(entry.todayAssignment?.trim()) ||
+      Boolean(entry.previousAssignment?.trim())
+    if (!hasHomework) continue
+    rows.push({ date: entry.date, subject: entry.subject })
+  }
+  for (const record of input.progressRecords) {
+    if (!input.studentIds.has(record.studentId) || !isSubjectBearing(record.subject)) continue
+    if (!hasProgressBody(record)) continue
+    rows.push({ date: record.lastStudyDate, subject: record.subject })
+  }
+  for (const record of input.classTodayReportCommon) {
+    if (record.grade !== grade || record.className !== className) continue
+    if (!isSubjectBearing(record.subject)) continue
+    const hasClassContent =
+      Boolean(record.todayAssignment?.trim()) ||
+      Boolean(record.previousAssignment?.trim()) ||
+      Boolean(record.currentProgress?.trim()) ||
+      (record.currentPage ?? 0) > 0 ||
+      (record.totalPage ?? 0) > 0
+    if (!hasClassContent) continue
+    rows.push({ date: record.reportDate, subject: record.subject })
+  }
+  return rows
 }
 
 export function datesForSubject(
