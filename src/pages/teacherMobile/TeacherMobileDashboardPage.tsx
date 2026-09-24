@@ -5,6 +5,7 @@ import {
   ChevronRight,
   ClipboardList,
   FileBarChart2,
+  FolderOpen,
   GraduationCap,
   LogOut,
   Megaphone,
@@ -20,6 +21,7 @@ import '../../hub/hub.css'
 const tiles = [
   { to: '/teacher/mobile/student-hub', title: '학생 학습자료', icon: BookOpen },
   { to: '/teacher/mobile/student-hub-share', title: '학생 Hub 배포', icon: QrCode },
+  { to: '/teacher/mobile/content-library', title: '콘텐츠 보관함', icon: FolderOpen },
   { to: '/teacher/mobile/students', title: '학생관리', icon: Users },
   { to: '/teacher/mobile/notices', title: '학습공지', icon: Megaphone },
   { to: '/teacher/mobile/questions', title: '질문관리', icon: MessageSquare },

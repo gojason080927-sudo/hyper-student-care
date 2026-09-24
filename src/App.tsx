@@ -93,6 +93,7 @@ import { ParentStudentTodayReportPage } from './pages/parent/ParentStudentTodayR
 import { ParentStudentWeeklySummaryPage } from './pages/parent/ParentStudentWeeklySummaryPage'
 import { TeacherStudentHubPage } from './pages/teacher/TeacherStudentHubPage'
 import { TeacherStudentHubSharePage } from './pages/teacher/TeacherStudentHubSharePage'
+import { TeacherContentLibraryPage } from './pages/teacher/TeacherContentLibraryPage'
 import { HubLayout } from './hub/HubLayout'
 import { HubHomePage } from './hub/HubHomePage'
 import { HubLaunchPage } from './hub/HubLaunchPage'
@@ -443,6 +444,22 @@ function App() {
                 </TeacherMobilePageShell>
               }
             />
+            <Route
+              path="content-library"
+              element={
+                <TeacherMobilePageShell title="영상·콘텐츠 자료 보관함">
+                  <TeacherContentLibraryPage />
+                </TeacherMobilePageShell>
+              }
+            />
+            <Route
+              path="content-library/:itemId"
+              element={
+                <TeacherMobilePageShell title="영상·콘텐츠 자료 보관함">
+                  <TeacherContentLibraryPage />
+                </TeacherMobilePageShell>
+              }
+            />
 
             <Route
 
@@ -543,6 +560,8 @@ function App() {
             <Route path="teacher/today-report-bulk" element={<TeacherTodayReportBulkPage />} />
             <Route path="teacher/today-report" element={<RedirectToTodayReportBulk />} />
             <Route path="teacher/class-bulk-input" element={<RedirectToTodayReportBulk />} />
+            <Route path="teacher/content-library" element={<TeacherContentLibraryPage />} />
+            <Route path="teacher/content-library/:itemId" element={<TeacherContentLibraryPage />} />
           </Route>
 
           <Route path="teacher/learning-notices" element={<TeacherLearningNoticesPage />} />
