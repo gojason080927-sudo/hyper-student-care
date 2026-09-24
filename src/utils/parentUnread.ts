@@ -214,3 +214,38 @@ export function hasAnyParentUnread(unread: ParentUnreadState): boolean {
 export function hasUnreadNoticesOrMakeup(unread: ParentUnreadState): boolean {
   return unread['learning-notices'] || unread['makeup-plans']
 }
+
+export function coerceParentReadTimestamp(value: unknown): string | null {
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (trimmed && !Number.isNaN(Date.parse(trimmed))) return trimmed
+    return null
+  }
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString()
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const date = new Date(value)
+    return Number.isNaN(date.getTime()) ? null : date.toISOString()
+  }
+  return null
+}
+
+export function applyParentCategoryRead(
+  prev: ParentCategoryReads,
+  category: ParentUnreadCategory,
+  rpcValue: unknown,
+  fallbackIso: string,
+): ParentCategoryReads {
+  return {
+    ...prev,
+    [category]: coerceParentReadTimestamp(rpcValue) ?? fallbackIso,
+  }
+}
+
+export function shouldAcceptParentCategoryReadsFetch(
+  loadId: number,
+  latestLoadId: number,
+): boolean {
+  return loadId === latestLoadId
+}

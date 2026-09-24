@@ -1,6 +1,7 @@
 import type { TodayReportData } from './repository'
 import { getSupabase } from '../supabase'
 import { getPreviousSeoulDateString } from '../../utils/seoulDate'
+import { coerceParentReadTimestamp } from '../../utils/parentUnread'
 import { getMathSharedLinkedClassNames } from '../../utils/mathSharedGroup'
 import { mergeClassTodayReportCommonRecords } from '../../utils/mergeClassTodayReportCommon'
 import { filterNoticesForStudent } from '../../utils/noticeAudience'
@@ -632,9 +633,8 @@ export async function rpcGetParentCategoryReads(
 
   const reads: Record<string, string> = {}
   for (const [key, value] of Object.entries(parsed)) {
-    if (typeof value === 'string') {
-      reads[key] = value
-    }
+    const stamp = coerceParentReadTimestamp(value)
+    if (stamp) reads[key] = stamp
   }
   return reads
 }
@@ -654,5 +654,5 @@ export async function rpcMarkParentCategoryRead(
     throw error
   }
 
-  return typeof data === 'string' ? data : null
+  return coerceParentReadTimestamp(data)
 }

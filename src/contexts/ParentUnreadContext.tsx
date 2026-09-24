@@ -15,8 +15,10 @@ import {
   rpcMarkParentCategoryRead,
 } from '../lib/db/parentAccessRpc'
 import {
+  applyParentCategoryRead,
   computeParentUnreadState,
   hasAnyParentUnread,
+  shouldAcceptParentCategoryReadsFetch,
   type ParentCategoryReads,
   type ParentUnreadCategory,
   type ParentUnreadState,
@@ -61,7 +63,7 @@ export function ParentUnreadProvider({ children }: ParentUnreadProviderProps) {
     const loadId = ++loadIdRef.current
     try {
       const reads = await rpcGetParentCategoryReads(student.studentAccessKey)
-      if (loadIdRef.current !== loadId) return
+      if (!shouldAcceptParentCategoryReadsFetch(loadId, loadIdRef.current)) return
       setCategoryReads(reads as ParentCategoryReads)
     } catch (error) {
       console.error('[ParentUnread] failed to load category reads', error)
@@ -112,10 +114,12 @@ export function ParentUnreadProvider({ children }: ParentUnreadProviderProps) {
 
   const markCategoryRead = useCallback(
     async (category: ParentUnreadCategory) => {
+      const fallbackIso = new Date().toISOString()
+      loadIdRef.current += 1
+      setCategoryReads((prev) => applyParentCategoryRead(prev, category, null, fallbackIso))
       try {
         const lastReadAt = await rpcMarkParentCategoryRead(student.studentAccessKey, category)
-        if (!lastReadAt) return
-        setCategoryReads((prev) => ({ ...prev, [category]: lastReadAt }))
+        setCategoryReads((prev) => applyParentCategoryRead(prev, category, lastReadAt, fallbackIso))
       } catch (error) {
         console.error('[ParentUnread] failed to mark category read', category, error)
       }

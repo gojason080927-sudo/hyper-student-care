@@ -8,11 +8,12 @@ export function useMarkParentCategoryReadOnView(
   ready = true,
 ) {
   const unread = useParentUnreadOptional()
+  const markCategoryRead = unread?.markCategoryRead
   const markedRef = useRef(false)
 
   useEffect(() => {
-    if (!unread || !ready || markedRef.current) return
+    if (!markCategoryRead || !ready || markedRef.current) return
     markedRef.current = true
-    void unread.markCategoryRead(category)
-  }, [category, ready, unread])
+    void markCategoryRead(category)
+  }, [category, ready, markCategoryRead])
 }
