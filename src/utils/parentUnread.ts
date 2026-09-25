@@ -45,12 +45,23 @@ const EMPTY_UNREAD: ParentUnreadState = {
   questions: false,
 }
 
+function timestampMs(value: string | null | undefined): number | null {
+  if (!value) return null
+  const ms = new Date(value).getTime()
+  return Number.isFinite(ms) ? ms : null
+}
+
+/** 문자열 순서가 아니라 실제 시각으로 최댓값을 고른다. */
 function maxUpdatedAt(items: { updatedAt: string }[]): string | null {
-  if (items.length === 0) return null
-  return items.reduce(
-    (max, item) => (item.updatedAt > max ? item.updatedAt : max),
-    items[0].updatedAt,
-  )
+  let best: string | null = null
+  let bestMs = Number.NEGATIVE_INFINITY
+  for (const item of items) {
+    const ms = timestampMs(item.updatedAt)
+    if (ms == null || ms <= bestMs) continue
+    bestMs = ms
+    best = item.updatedAt
+  }
+  return best
 }
 
 function isCategoryUnread(contentUpdatedAt: string | null, lastReadAt: string | undefined): boolean {
@@ -275,13 +286,21 @@ export function parentCategoryReadFloor(
   )
 }
 
+export function canonicalParentReadTimestamp(value: string | null | undefined): string | null {
+  const ms = timestampMs(value)
+  if (ms == null) return null
+  return new Date(ms).toISOString()
+}
+
 export function applyParentCategoryRead(
   prev: ParentCategoryReads,
   category: ParentUnreadCategory,
   rpcValue: unknown,
   fallbackIso: string,
 ): ParentCategoryReads {
-  const next = coerceParentReadTimestamp(rpcValue) ?? fallbackIso
+  const raw = coerceParentReadTimestamp(rpcValue) ?? fallbackIso
+  const next = canonicalParentReadTimestamp(raw)
+  if (!next) return prev
   return {
     ...prev,
     [category]: laterParentReadTimestamp(prev[category], next) ?? next,
@@ -330,7 +349,8 @@ export function writeStoredParentCategoryRead(
   if (typeof localStorage === 'undefined') return
   try {
     const prev = readStoredParentCategoryReads(accessKey)
-    const next = laterParentReadTimestamp(prev[category], stamp) ?? stamp
+    const next = canonicalParentReadTimestamp(laterParentReadTimestamp(prev[category], stamp) ?? stamp)
+    if (!next) return
     localStorage.setItem(
       parentCategoryReadStorageKey(accessKey),
       JSON.stringify({ ...prev, [category]: next }),

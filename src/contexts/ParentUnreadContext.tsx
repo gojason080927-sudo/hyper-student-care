@@ -64,7 +64,9 @@ export function ParentUnreadProvider({ children }: ParentUnreadProviderProps) {
     questions,
   } = useData()
 
-  const [categoryReads, setCategoryReads] = useState<ParentCategoryReads>({})
+  const [categoryReads, setCategoryReads] = useState<ParentCategoryReads>(() =>
+    readStoredParentCategoryReads(student.studentAccessKey),
+  )
   const loadIdRef = useRef(0)
 
   const refreshCategoryReads = useCallback(async () => {
