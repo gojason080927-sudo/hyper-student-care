@@ -8,7 +8,9 @@
 <style>
   .studio-bar { position: sticky; top: 0; z-index: 2; display: flex; gap: 8px; align-items: center; padding: 10px 16px; background: #fff; border-bottom: 1px solid #d5dbe3; font-family: "Noto Sans CJK KR", sans-serif; }
   .studio-bar select, .studio-bar button { min-height: 36px; }
-  @media print { .studio-bar, #json, #note { display: none; } }
+  #advanced-panel { width: min(920px, 92vw); margin: 12px auto; }
+  #advanced-panel textarea { width: 100%; font: 12px/1.4 monospace; }
+  @media print { .studio-bar, #advanced-panel, #note { display: none; } }
 </style>
 </head>
 <body>
@@ -31,11 +33,15 @@
     <option value="math">수학</option>
   </select></label>
   <input id="file" type="file" accept="application/pdf,application/json,.pdf,.json,.txt">
-  <button id="sample" type="button">샘플 열기</button>
-  <button id="apply" type="button">수정 반영</button>
+  <button id="build" type="button">교재 만들기 시작</button>
+  <button id="sample" type="button" hidden>샘플 열기</button>
   <button id="print" type="button">PDF로 인쇄</button>
+  <button id="advanced" type="button">고급 수정</button>
 </div>
-<textarea id="json" rows="8" style="width:min(920px,92vw);margin:12px auto;display:block;font:12px/1.4 monospace"></textarea>
+<div id="advanced-panel" hidden>
+  <textarea id="json" rows="8"></textarea>
+  <button id="apply" type="button">수정 반영</button>
+</div>
 <p id="note" style="width:min(920px,92vw);margin:0 auto 12px;font:13px/1.5 sans-serif;color:#8a3b2a"></p>
 <div id="preview" class="screen-wrap"></div>
 <script type="module">
@@ -106,17 +112,25 @@ async function textFromPdf(file) {
   return pages.join('\n')
 }
 
-document.getElementById('file').addEventListener('change', async (event) => {
-  const file = event.target.files?.[0]
-  if (!file) return
-  const kind = document.getElementById('kind').value
-  const name = file.name.toLowerCase()
-  if (name.endsWith('.json')) {
-    show(JSON.parse(await file.text()), true)
+let picked = null
+document.getElementById('file').addEventListener('change', (event) => {
+  picked = event.target.files?.[0] ?? null
+  note.textContent = picked ? `${picked.name}을 선택했습니다. 교재 만들기 시작을 누르세요.` : ''
+})
+
+document.getElementById('build').addEventListener('click', async () => {
+  if (!picked) {
+    note.textContent = '파일을 선택하세요.'
     return
   }
-  const text = name.endsWith('.pdf') ? await textFromPdf(file) : await file.text()
-  show(extractBook(text, kind), true)
+  const kind = document.getElementById('kind').value
+  const name = picked.name.toLowerCase()
+  if (name.endsWith('.json')) {
+    show(JSON.parse(await picked.text()), true)
+    return
+  }
+  const text = name.endsWith('.pdf') ? await textFromPdf(picked) : await picked.text()
+  show(extractBook(text, kind))
 })
 
 document.getElementById('apply').addEventListener('click', () => {
@@ -129,6 +143,10 @@ document.getElementById('sample').addEventListener('click', async () => {
   show(await res.json(), true)
 })
 
+document.getElementById('advanced').addEventListener('click', () => {
+  const panel = document.getElementById('advanced-panel')
+  panel.hidden = !panel.hidden
+})
 document.getElementById('print').addEventListener('click', () => window.print())
 for (const id of ['school', 'year', 'series']) {
   document.getElementById(id).addEventListener('change', () => {

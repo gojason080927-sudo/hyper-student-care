@@ -60,8 +60,57 @@ function wordLine(line) {
   return null
 }
 
+function grammarHead(line) {
+  let match = line.match(/^(?:chapter|chap\.?)\s*(\d+)\s*[:.\-]?\s*(.*)$/i)
+  if (match) return { no: match[1], title: match[2].trim() || `Chapter ${match[1]}` }
+  match = line.match(/^제\s*(\d+)\s*(?:단원|장)\s*[:.\-]?\s*(.*)$/)
+  if (match) return { no: match[1], title: match[2].trim() || `${match[1]}단원` }
+  match = line.match(/^(\d+)\s*(?:단원|장)\s*[:.\-]?\s*(.*)$/)
+  if (match) return { no: match[1], title: match[2].trim() || `${match[1]}단원` }
+  match = line.match(/^(\d{2})\s+([^\d].{0,40})$/)
+  if (match && !/[?？.]$/.test(match[2])) return { no: match[1], title: match[2].trim() }
+  return null
+}
+
+function fillGrammar(title, rows, no, subtitle = '') {
+  const { before, questions } = splitNumbered(rows)
+  const english = before.filter((line) => /[A-Za-z]/.test(line) && !/[가-힣]/.test(line))
+  const korean = before.filter((line) => !english.includes(line))
+  const unit = {
+    no: String(no).padStart(2, '0'),
+    title,
+    subtitle,
+    passage: [],
+    points: [],
+    questions,
+    words: [],
+  }
+  if (english[0]) unit.example = english[0]
+  if (korean.length) unit.points.push({ label: '개념', title: '', body: korean.join(' ') })
+  if (english.length > 1) unit.passage = english.slice(1)
+  return unit
+}
+
+function splitGrammarUnits(rows) {
+  const heads = []
+  rows.forEach((line, index) => {
+    const head = grammarHead(line)
+    if (head) heads.push({ ...head, index })
+  })
+  if (heads.length < 2) return null
+  return heads.map((head, index) => fillGrammar(
+    head.title,
+    rows.slice(head.index + 1, heads[index + 1]?.index),
+    head.no,
+  ))
+}
+
 function plainBook(body, kind, meta) {
   const rows = linesOf(body)
+  if (kind === 'grammar') {
+    const units = splitGrammarUnits(rows)
+    if (units) return units
+  }
   const headed = titleFrom(rows)
   const { before, questions } = splitNumbered(headed.rest)
   const unit = {
@@ -89,12 +138,7 @@ function plainBook(body, kind, meta) {
     }
     unit.questions = questions
   } else if (kind === 'grammar') {
-    const english = before.filter((line) => /[A-Za-z]/.test(line) && !/[가-힣]/.test(line))
-    const korean = before.filter((line) => !english.includes(line))
-    if (english[0]) unit.example = english[0]
-    if (korean.length) unit.points.push({ label: '개념', title: '', body: korean.join(' ') })
-    if (english.length > 1) unit.passage = english.slice(1)
-    unit.questions = questions
+    return fillGrammar(unit.title, headed.rest, 1, unit.subtitle)
   } else {
     unit.passage = before
     unit.questions = questions
@@ -113,8 +157,8 @@ export function extractBook(text, kind) {
   }
   const meta = KINDS[kind] ?? KINDS.grammar
   if (!hasMarker(body)) {
-    const unit = plainBook(body, kind, meta)
-    return finish(meta, kind, [unit])
+    const built = plainBook(body, kind, meta)
+    return finish(meta, kind, Array.isArray(built) ? built : [built])
   }
   const units = []
   let unit = null
