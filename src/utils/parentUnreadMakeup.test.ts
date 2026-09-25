@@ -420,4 +420,76 @@ assert.equal(
   newerNotice.updatedAt,
 )
 
+const lexicalEarlier = notice('lex', '2026-09-25T04:00:00+09:00')
+const chronologicalLater = notice('chrono', '2026-09-24T20:00:00.000Z')
+assert.ok(lexicalEarlier.updatedAt > chronologicalLater.updatedAt)
+const mixed = computeParentUnreadState(
+  emptyInput({ contentPosts: [lexicalEarlier, chronologicalLater] }),
+)
+assert.equal(mixed['learning-notices'], true)
+const readLexicalOnly = applyParentCategoryRead(
+  {},
+  'learning-notices',
+  lexicalEarlier.updatedAt,
+  lexicalEarlier.updatedAt,
+)
+assert.equal(
+  computeParentUnreadState(
+    emptyInput({
+      contentPosts: [lexicalEarlier, chronologicalLater],
+      categoryReads: readLexicalOnly,
+    }),
+  )['learning-notices'],
+  true,
+)
+const readChrono = applyParentCategoryRead(
+  {},
+  'learning-notices',
+  chronologicalLater.updatedAt,
+  chronologicalLater.updatedAt,
+)
+const sameInstantsReloaded = [
+  notice('lex', '2026-09-24T19:00:00.000Z'),
+  notice('chrono', '2026-09-24T20:00:00.000Z'),
+]
+assert.equal(
+  hasUnreadNoticesOrMakeup(
+    computeParentUnreadState(
+      emptyInput({ contentPosts: sameInstantsReloaded, categoryReads: readChrono }),
+    ),
+  ),
+  false,
+)
+const reloaded = mergeParentCategoryReads(readChrono, {
+  'learning-notices': '2026-09-24T19:00:00.000Z',
+})
+assert.equal(
+  hasUnreadNoticesOrMakeup(
+    computeParentUnreadState(
+      emptyInput({ contentPosts: sameInstantsReloaded, categoryReads: reloaded }),
+    ),
+  ),
+  false,
+)
+writeStoredParentCategoryRead('key-reload', 'learning-notices', chronologicalLater.updatedAt)
+writeStoredParentCategoryRead('key-reload', 'makeup-plans', makeupA.updatedAt)
+const hydrated = mergeParentCategoryReads(
+  readStoredParentCategoryReads('key-reload'),
+  { 'learning-notices': '2020-01-01T00:00:00.000Z' },
+)
+assert.equal(
+  hasUnreadNoticesOrMakeup(
+    computeParentUnreadState(
+      emptyInput({
+        contentPosts: sameInstantsReloaded,
+        makeupPlans: [makeupA],
+        categoryReads: hydrated,
+      }),
+    ),
+  ),
+  false,
+)
+const otherKey = readStoredParentCategoryReads('key-b')['learning-notices']
+assert.equal(otherKey, olderNotice.updatedAt)
+
 console.log('parentUnreadMakeup tests passed')
