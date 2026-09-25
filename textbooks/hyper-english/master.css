@@ -156,6 +156,14 @@ html, body {
 }
 
 .passage p { margin: 0 0 3.5mm; }
+.passage-frame {
+  border: 0.6pt solid var(--accent);
+  padding: 3.5mm 4mm;
+  margin: 0 0 4mm;
+  break-inside: avoid;
+  background: transparent;
+}
+.passage-frame p:last-child { margin-bottom: 0; }
 
 .box {
   border: 0.7pt solid var(--accent-line);
