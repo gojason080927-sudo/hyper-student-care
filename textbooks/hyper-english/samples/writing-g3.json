@@ -1,0 +1,15 @@
+{
+  "grade": "g3",
+  "brand": "HYPER",
+  "brandLine": "ENGLISH",
+  "series": "고3 영작",
+  "kind": "writing",
+  "units": [
+    {
+      "no": "01",
+      "title": "문장 영작",
+      "subtitle": "주어와 동사",
+      "prompt": "다음 뜻을 한 문장으로 쓰시오. “미나는 매일 저녁 세 문장을 노트에 적는다.”"
+    }
+  ]
+}

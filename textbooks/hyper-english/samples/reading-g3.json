@@ -1,0 +1,24 @@
+{
+  "grade": "g3",
+  "brand": "HYPER",
+  "brandLine": "ENGLISH",
+  "series": "고3 독해",
+  "kind": "reading",
+  "units": [
+    {
+      "no": "01",
+      "title": "작은 습관",
+      "subtitle": "주제 찾기",
+      "passage": [
+        "Many students try to finish a whole chapter in one night. A better way is to read one short passage and write one sentence about its main idea."
+      ],
+      "questions": [
+        {
+          "stem": "이 글의 주제로 가장 적절한 것은?",
+          "choices": ["벼락치기", "짧게 읽고 핵심을 적는 습관", "교재 구매", "시험 시간", "단어장 만들기"],
+          "answer": "②"
+        }
+      ]
+    }
+  ]
+}

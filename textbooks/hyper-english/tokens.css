@@ -1,0 +1,32 @@
+/* HYPER ENGLISH design tokens — layout is shared, only the grade accent changes. */
+:root {
+  --font-sans: "Noto Sans CJK KR", "Noto Sans KR", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+  --font-serif: "Noto Serif CJK KR", "Noto Serif", Georgia, serif;
+  --ink: #1a2333;
+  --ink-soft: #4b5563;
+  --ink-faint: #8a94a6;
+  --rule: #c9cfd9;
+  --rule-strong: #9aa3b2;
+  --paper: #ffffff;
+}
+
+body[data-grade="g1"] {
+  --accent: #2e7d57;
+  --accent-line: #7fbf9b;
+  --band: #dcefe2;
+  --box-bg: #f1f8f3;
+}
+
+body[data-grade="g2"] {
+  --accent: #2f6aa0;
+  --accent-line: #7aa9d6;
+  --band: #dceaF7;
+  --box-bg: #f0f6fc;
+}
+
+body[data-grade="g3"] {
+  --accent: #5b4b9b;
+  --accent-line: #9b8bd4;
+  --band: #ded5f2;
+  --box-bg: #f4f1fb;
+}
