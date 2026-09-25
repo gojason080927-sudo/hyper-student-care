@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>HYPER 교재 제작</title>
+<link rel="stylesheet" href="./tokens.css">
+<link rel="stylesheet" href="./master.css">
+<style>
+  .studio-bar { position: sticky; top: 0; z-index: 2; display: flex; gap: 8px; align-items: center; padding: 10px 16px; background: #fff; border-bottom: 1px solid #d5dbe3; font-family: "Noto Sans CJK KR", sans-serif; }
+  .studio-bar select, .studio-bar button { min-height: 36px; }
+  @media print { .studio-bar { display: none; } }
+</style>
+</head>
+<body>
+<div class="studio-bar">
+  <label>유형 <select id="kind">
+    <option value="reading">영어 독해</option>
+    <option value="grammar" selected>영어 문법</option>
+    <option value="vocab">영어 단어</option>
+    <option value="writing">영어 영작</option>
+    <option value="math">수학</option>
+  </select></label>
+  <input id="file" type="file" accept="application/json,.json">
+  <button id="sample" type="button">샘플 열기</button>
+  <button id="print" type="button">PDF로 인쇄</button>
+</div>
+<div id="preview" class="screen-wrap"></div>
+<script type="module">
+import { renderBook } from './render.mjs'
+
+const files = {
+  reading: './samples/reading-g3.json',
+  grammar: './samples/grammar-g3.json',
+  vocab: './samples/vocab-g3.json',
+  writing: './samples/writing-g3.json',
+  math: './samples/math-g1.json',
+}
+
+function show(book) {
+  const html = renderBook(book)
+  const doc = new DOMParser().parseFromString(html, 'text/html')
+  document.body.dataset.grade = book.grade || 'g3'
+  document.getElementById('preview').innerHTML = doc.querySelector('.screen-wrap').innerHTML
+}
+
+document.getElementById('file').addEventListener('change', async (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+  show(JSON.parse(await file.text()))
+})
+
+document.getElementById('sample').addEventListener('click', async () => {
+  const kind = document.getElementById('kind').value
+  const res = await fetch(files[kind])
+  show(await res.json())
+})
+
+document.getElementById('print').addEventListener('click', () => window.print())
+</script>
+</body>
+</html>

@@ -26,6 +26,17 @@ node textbooks/hyper-english/build-pdf.mjs
 DOCX가 필요하면 이 HTML을 원본으로 pandoc 변환을 붙인다.
 문단·문항이 페이지 중간에서 잘리지 않도록 `.q`는 `break-inside: avoid`이다.
 
+## 제작기
+
+`studio.html`을 연다. 유형을 고르고 JSON 파일을 넣으면 같은 마스터로 미리보기가 나온다. 인쇄로 PDF를 저장한다.
+
+```bash
+node textbooks/hyper-english/generate.mjs textbooks/hyper-english/samples/grammar-g3.json
+```
+
+샘플 JSON: `samples/reading-g3.json`, `grammar-g3.json`, `vocab-g3.json`, `writing-g3.json`, `math-g1.json`.
+입력은 선택한 유형의 슬롯만 채운다. 자동 분류는 하지 않는다.
+
 ## 저작권 규칙
 
 기존 출판사 로고·본문·문항을 복제하지 않는다.

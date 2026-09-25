@@ -1,0 +1,20 @@
+{
+  "grade": "g3",
+  "brand": "HYPER",
+  "brandLine": "ENGLISH",
+  "series": "고3 단어",
+  "kind": "vocab",
+  "units": [
+    {
+      "no": "01",
+      "title": "기본 어휘",
+      "subtitle": "동사",
+      "words": [
+        { "word": "maintain", "meaning": "유지하다" },
+        { "word": "require", "meaning": "필요로 하다" },
+        { "word": "reduce", "meaning": "줄이다" },
+        { "word": "indicate", "meaning": "나타내다" }
+      ]
+    }
+  ]
+}

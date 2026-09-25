@@ -1,0 +1,58 @@
+{
+  "grade": "g3",
+  "brand": "HYPER",
+  "brandLine": "ENGLISH",
+  "series": "고3 문법편",
+  "kind": "grammar",
+  "units": [
+    {
+      "no": "01",
+      "title": "문장의 기초",
+      "subtitle": "문장의 구성",
+      "passage": [
+        "Mina keeps a small notebook on her desk. Every evening she writes down three sentences about her day. Each sentence always has a clear subject and a verb.",
+        "When she cannot find the verb, she underlines the words she is unsure about and asks her teacher the next day."
+      ],
+      "points": [
+        {
+          "label": "GRAMMAR POINT",
+          "title": "문장의 뼈대",
+          "body": "영어 문장은 주어와 동사가 뼈대이다. 긴 문장도 주어와 동사를 먼저 찾으면 구조가 보인다."
+        }
+      ],
+      "questions": [
+        {
+          "stem": "밑줄 친 문장에서 주어와 동사로 바르게 짝지은 것은?",
+          "choices": ["Mina — keeps", "notebook — writes", "desk — has", "evening — writes", "sentences — keeps"],
+          "answer": "①"
+        },
+        {
+          "stem": "Mina의 학습 습관으로 알 수 있는 것은?",
+          "choices": ["모르는 단어는 모두 외운다.", "긴 문장은 읽지 않는다.", "불확실한 부분은 표시하고 질문한다.", "매일 교재를 새로 산다.", "선생님 대신 친구에게 묻는다."],
+          "answer": "③"
+        },
+        {
+          "stem": "문장의 뼈대 찾기에 대한 설명으로 적절한 것은?",
+          "choices": ["수식어부터 먼저 찾는다.", "주어와 동사를 먼저 찾는다.", "접속사를 모두 지운다.", "긴 문장은 나누지 않는다.", "동사보다 형용사가 중요하다."],
+          "answer": "②"
+        },
+        {
+          "stem": "밑줄 친 this habit이 가리키는 것은?",
+          "choices": ["긴 문장을 외우는 일", "작은 기록을 이어가는 일", "새 교재를 사는 일", "시험을 자주 보는 일", "단어를 빨리 외우는 일"],
+          "answer": "②"
+        },
+        {
+          "stem": "다음 문장 중 어법상 올바른 것은?",
+          "english": "Each sentence always has a clear subject and a verb.",
+          "choices": ["Mina write three sentences.", "Each sentence have a subject.", "She underlines the words.", "She asking her teacher.", "Reading English changed slow."],
+          "answer": "③"
+        },
+        {
+          "stem": "윗글의 내용과 가장 거리가 먼 것은?",
+          "choices": ["꾸준한 작은 노력이 중요하다.", "뼈대를 먼저 찾으면 읽기가 쉬워진다.", "한 번에 완벽해야만 한다.", "모르는 것은 표시하고 질문한다.", "오늘 할 수 있는 일에 집중한다."],
+          "answer": "③"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "grade": "g1",
+  "brand": "HYPER",
+  "brandLine": "MATH",
+  "series": "고1 수학",
+  "kind": "math",
+  "units": [
+    {
+      "no": "01",
+      "title": "이차방정식",
+      "subtitle": "근의 공식",
+      "points": [
+        {
+          "label": "공식",
+          "title": "근의 공식",
+          "body": "ax² + bx + c = 0 (a ≠ 0) 의 근은 x = (-b ± √(b² - 4ac)) / 2a 이다."
+        }
+      ],
+      "example": "x² - 5x + 6 = 0 이면 (x - 2)(x - 3) = 0 이므로 x = 2 또는 x = 3 이다.",
+      "questions": [
+        {
+          "stem": "x² - 3x + 2 = 0 의 근을 모두 구하면?",
+          "choices": ["1, 2", "1, 3", "2, 3", "-1, 2", "-2, -1"],
+          "answer": "① x = 1, 2"
+        },
+        {
+          "stem": "x² + 4x + 4 = 0 의 근의 개수는?",
+          "choices": ["0", "1", "2", "3", "4"],
+          "answer": "② 중근 x = -2, 한 개"
+        }
+      ]
+    }
+  ]
+}
