@@ -3,6 +3,7 @@ import {
   ParentPageHeader,
   ParentSegmentTabs,
 } from '../../components/parent/ParentStudentComponents'
+import { useParentUnreadOptional } from '../../contexts/ParentUnreadContext'
 import { useMarkParentCategoryReadOnView } from '../../hooks/useMarkParentCategoryReadOnView'
 import { LearningNoticesPage } from '../LearningNoticesPage'
 import { ParentStudentMakeupPlanPage } from './ParentStudentMakeupPlanPage'
@@ -23,6 +24,9 @@ export function ParentCareNoticesMakeupRedirect({ tab }: { tab?: NoticesMakeupTa
 export function ParentStudentNoticesMakeupPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const tab = parseTab(searchParams.get('tab'))
+  const parentUnread = useParentUnreadOptional()
+  const noticeUnread = parentUnread?.isCategoryUnread('learning-notices') ?? false
+  const makeupUnread = parentUnread?.isCategoryUnread('makeup-plans') ?? false
 
   useMarkParentCategoryReadOnView('makeup-plans', tab === 'makeup')
 
@@ -40,8 +44,8 @@ export function ParentStudentNoticesMakeupPage() {
           else setSearchParams({}, { replace: true })
         }}
         items={[
-          { id: 'notices', label: '공지사항' },
-          { id: 'makeup', label: '보강계획' },
+          { id: 'notices', label: '공지사항', unread: noticeUnread },
+          { id: 'makeup', label: '보강계획', unread: makeupUnread },
         ]}
       />
 

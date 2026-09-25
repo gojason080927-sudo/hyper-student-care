@@ -23,6 +23,7 @@ import {
 const grid = readFileSync('src/components/parent/ParentCategoryGrid.tsx', 'utf8')
 const layout = readFileSync('src/components/layout/ParentStudentLayout.tsx', 'utf8')
 const page = readFileSync('src/pages/parent/ParentStudentNoticesMakeupPage.tsx', 'utf8')
+const tabs = readFileSync('src/components/parent/ParentStudentComponents.tsx', 'utf8')
 const detail = readFileSync('src/pages/LearningNoticeDetailPage.tsx', 'utf8')
 const provider = readFileSync('src/contexts/ParentUnreadContext.tsx', 'utf8')
 const hook = readFileSync('src/hooks/useMarkParentCategoryReadOnView.ts', 'utf8')
@@ -249,6 +250,13 @@ assert.match(grid, /segment === 'notices-makeup'/)
 assert.match(layout, /ParentUnreadProvider/)
 assert.match(page, /useMarkParentCategoryReadOnView\('makeup-plans', tab === 'makeup'\)/)
 assert.doesNotMatch(page, /useMarkParentCategoryReadOnView\('learning-notices'\)/)
+assert.match(page, /isCategoryUnread\('learning-notices'\)/)
+assert.match(page, /isCategoryUnread\('makeup-plans'\)/)
+assert.match(page, /unread: noticeUnread/)
+assert.match(page, /unread: makeupUnread/)
+assert.match(tabs, /item\.unread/)
+assert.match(tabs, /bg-\[#FF8A3D\]/)
+assert.match(tabs, /확인하지 않은 새 자료/)
 assert.match(detail, /useMarkParentCategoryReadOnView\('learning-notices', Boolean\(post\), post\?\.updatedAt\)/)
 assert.match(hook, /markCategoryRead = unread\?\.markCategoryRead/)
 assert.match(hook, /void markCategoryRead\(category, seenThrough\)/)
@@ -491,5 +499,117 @@ assert.equal(
 )
 const otherKey = readStoredParentCategoryReads('key-b')['learning-notices']
 assert.equal(otherKey, olderNotice.updatedAt)
+
+function tabIndicators(state: ReturnType<typeof computeParentUnreadState>) {
+  return {
+    notices: state['learning-notices'],
+    makeup: state['makeup-plans'],
+    home: hasUnreadNoticesOrMakeup(state),
+  }
+}
+
+const sharedNotice = notice('shared', '2026-09-22T13:11:37.311Z')
+const sharedMakeup: MakeupPlanRecord = {
+  ...makeupA,
+  updatedAt: '2026-09-24T03:20:23.911Z',
+}
+const noticeReadAt = '2026-09-25T03:24:45.546Z'
+const makeupReadAt = '2026-09-25T04:00:00.000Z'
+
+const noticeOnly = tabIndicators(
+  computeParentUnreadState(
+    emptyInput({
+      contentPosts: [sharedNotice],
+      makeupPlans: [sharedMakeup],
+      categoryReads: { 'makeup-plans': makeupReadAt },
+    }),
+  ),
+)
+assert.deepEqual(noticeOnly, { notices: true, makeup: false, home: true })
+
+const makeupOnly = tabIndicators(
+  computeParentUnreadState(
+    emptyInput({
+      contentPosts: [sharedNotice],
+      makeupPlans: [sharedMakeup],
+      categoryReads: { 'learning-notices': noticeReadAt },
+    }),
+  ),
+)
+assert.deepEqual(makeupOnly, { notices: false, makeup: true, home: true })
+
+const bothUnread = tabIndicators(
+  computeParentUnreadState(
+    emptyInput({ contentPosts: [sharedNotice], makeupPlans: [sharedMakeup] }),
+  ),
+)
+assert.deepEqual(bothUnread, { notices: true, makeup: true, home: true })
+
+const bothReadTabs = tabIndicators(
+  computeParentUnreadState(
+    emptyInput({
+      contentPosts: [sharedNotice],
+      makeupPlans: [sharedMakeup],
+      categoryReads: {
+        'learning-notices': noticeReadAt,
+        'makeup-plans': makeupReadAt,
+      },
+    }),
+  ),
+)
+assert.deepEqual(bothReadTabs, { notices: false, makeup: false, home: false })
+
+const noticeStaysAfterMakeupRead = tabIndicators(
+  computeParentUnreadState(
+    emptyInput({
+      contentPosts: [sharedNotice],
+      makeupPlans: [sharedMakeup],
+      categoryReads: applyParentCategoryRead({}, 'makeup-plans', null, makeupReadAt),
+    }),
+  ),
+)
+assert.equal(noticeStaysAfterMakeupRead.notices, true)
+assert.equal(noticeStaysAfterMakeupRead.makeup, false)
+assert.equal(noticeStaysAfterMakeupRead.home, true)
+
+const reloadedReads = mergeParentCategoryReads(
+  {
+    'learning-notices': noticeReadAt,
+    'makeup-plans': makeupReadAt,
+  },
+  readStoredParentCategoryReads('key-reload'),
+)
+const afterReload = tabIndicators(
+  computeParentUnreadState(
+    emptyInput({
+      contentPosts: [sharedNotice],
+      makeupPlans: [sharedMakeup],
+      categoryReads: reloadedReads,
+    }),
+  ),
+)
+assert.deepEqual(afterReload, { notices: false, makeup: false, home: false })
+
+const newerNoticeAgain = tabIndicators(
+  computeParentUnreadState(
+    emptyInput({
+      contentPosts: [sharedNotice, notice('fresh', '2026-09-26T01:00:00.000Z')],
+      makeupPlans: [sharedMakeup],
+      categoryReads: reloadedReads,
+    }),
+  ),
+)
+assert.deepEqual(newerNoticeAgain, { notices: true, makeup: false, home: true })
+
+const newerMakeupAgain = tabIndicators(
+  computeParentUnreadState(
+    emptyInput({
+      contentPosts: [sharedNotice],
+      makeupPlans: [{ ...sharedMakeup, id: 'm-new', updatedAt: '2026-09-26T02:00:00.000Z' }],
+      categoryReads: reloadedReads,
+    }),
+  ),
+)
+assert.deepEqual(newerMakeupAgain, { notices: false, makeup: true, home: true })
 
 console.log('parentUnreadMakeup tests passed')
