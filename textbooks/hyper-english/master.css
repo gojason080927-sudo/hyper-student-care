@@ -63,10 +63,10 @@ html, body {
 .toc-band {
   background: var(--band);
   margin: -15mm -21mm 0 -15mm;
-  padding: 10mm 21mm 8mm 15mm;
+  padding: 6mm 21mm 5mm 15mm;
 }
 
-.page.right .toc-band { margin: -15mm -15mm 0 -21mm; padding: 10mm 15mm 8mm 21mm; }
+.page.right .toc-band { margin: -15mm -15mm 0 -21mm; padding: 6mm 15mm 5mm 21mm; }
 
 .brand {
   font-weight: 800;
@@ -87,7 +87,7 @@ html, body {
 .toc-title {
   font-size: 22pt;
   font-weight: 800;
-  margin: 8mm 0 2mm;
+  margin: 5mm 0 2mm;
 }
 
 .toc-section {
