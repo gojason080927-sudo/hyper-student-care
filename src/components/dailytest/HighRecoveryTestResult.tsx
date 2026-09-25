@@ -1,4 +1,4 @@
-import { formatHighRecoveryResult, type HighRecoveryParsed } from '../../utils/mathHighRecovery'
+import { formatParentHighRecoveryJourney, type HighRecoveryParsed } from '../../utils/mathHighRecovery'
 
 type HighRecoveryTestResultProps = {
   parsed: HighRecoveryParsed
@@ -6,6 +6,7 @@ type HighRecoveryTestResultProps = {
 }
 
 export function HighRecoveryTestResult({ parsed, compact = false }: HighRecoveryTestResultProps) {
+  const journey = formatParentHighRecoveryJourney(parsed)
   return (
     <div className={compact ? 'space-y-0.5' : 'space-y-1'}>
       <p
@@ -15,7 +16,9 @@ export function HighRecoveryTestResult({ parsed, compact = false }: HighRecovery
       >
         고등 오답 추적
       </p>
-      <p className="text-sm font-semibold text-slate-800">{formatHighRecoveryResult(parsed)}</p>
+      {journey ? (
+        <p className="break-keep text-base font-bold leading-relaxed text-slate-900">{journey}</p>
+      ) : null}
     </div>
   )
 }

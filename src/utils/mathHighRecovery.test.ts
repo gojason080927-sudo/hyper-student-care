@@ -16,6 +16,7 @@ import {
   applyHighRecoveryToDiagnosis,
   highDraftsFromDiagnosis,
   highRecoveryWeeklyFacts,
+  formatParentHighRecoveryJourney,
   parseHighRecoveryDrafts,
   shouldUseHighRecoveryMathInput,
   usesHighRecoveryMathDailyTest,
@@ -215,5 +216,80 @@ assert.doesNotMatch(
   readFileSync('src/utils/voiceInput/parseStudentDailyTestVoice.ts', 'utf8'),
   /high-recovery-v1/,
 )
+
+assert.equal(
+  formatParentHighRecoveryJourney({
+    firstWrong: 0,
+    endSession: 1,
+    session3Questions: null,
+    session4Questions: null,
+  }),
+  '1차시 모두 해결',
+)
+assert.equal(
+  formatParentHighRecoveryJourney({
+    firstWrong: 2,
+    endSession: 2,
+    session3Questions: null,
+    session4Questions: null,
+  }),
+  '1차시 오답 2개 · 2차시 모두 해결',
+)
+assert.equal(
+  formatParentHighRecoveryJourney({
+    firstWrong: 2,
+    endSession: 3,
+    session3Questions: 3,
+    session4Questions: null,
+  }),
+  '1차시 오답 2개 · 2차시 오답 1개 · 3차시 모두 해결',
+)
+assert.equal(
+  formatParentHighRecoveryJourney({
+    firstWrong: 2,
+    endSession: 4,
+    session3Questions: 3,
+    session4Questions: 5,
+  }),
+  '1차시 오답 2개 · 2차시 오답 1개 · 3차시 오답 1개 · 4차시 모두 해결',
+)
+assert.equal(
+  formatParentHighRecoveryJourney({
+    firstWrong: 4,
+    endSession: 1,
+    session3Questions: null,
+    session4Questions: null,
+  }),
+  null,
+)
+assert.equal(
+  formatParentHighRecoveryJourney({
+    firstWrong: 4,
+    endSession: 3,
+    session3Questions: 7,
+    session4Questions: null,
+  }),
+  null,
+)
+assert.equal(
+  formatParentHighRecoveryJourney({
+    firstWrong: 4,
+    endSession: 4,
+    session3Questions: 6,
+    session4Questions: 6,
+  }),
+  null,
+)
+
+const parentResult = readFileSync('src/components/dailytest/HighRecoveryTestResult.tsx', 'utf8')
+const weeklyFlow = readFileSync('src/utils/studentCare/dailyTestWeeklyFlow.ts', 'utf8')
+const fixedWrong = readFileSync('src/utils/mathDailyTest.ts', 'utf8')
+assert.match(parentResult, /formatParentHighRecoveryJourney/)
+assert.match(parentResult, /text-base font-bold leading-relaxed/)
+assert.doesNotMatch(parentResult, /whitespace-nowrap/)
+assert.doesNotMatch(weeklyFlow, /formatParentHighRecoveryJourney/)
+assert.match(weeklyFlow, /highSession2WrongFromQ3/)
+assert.doesNotMatch(fixedWrong, /formatParentHighRecoveryJourney/)
+assert.match(fixedWrong, /MATH_FIXED_WRONG_PASS_SCORE/)
 
 console.log('mathHighRecovery OK')
