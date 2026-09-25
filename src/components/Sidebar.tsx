@@ -6,6 +6,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   FileBarChart2,
+  FileType2,
   FolderOpen,
   LayoutDashboard,
   Library,
@@ -69,6 +70,12 @@ const navItems: NavItem[] = [
     path: '/teacher/textbook-studio',
     label: '교재 제작',
     icon: Library,
+  },
+  {
+    path: '/teacher/pdf-to-docx',
+    label: 'PDF → DOCX 변환',
+    multilineLabel: ['PDF → DOCX', '변환'],
+    icon: FileType2,
   },
   {
     path: '/monthly-learning-reports',
