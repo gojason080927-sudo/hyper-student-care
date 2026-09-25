@@ -8,6 +8,7 @@ import {
   FileBarChart2,
   FolderOpen,
   LayoutDashboard,
+  Library,
   MessageCircleQuestion,
   Newspaper,
   Compass,
@@ -63,6 +64,11 @@ const navItems: NavItem[] = [
     label: '영상·콘텐츠 자료 보관함',
     multilineLabel: ['영상·콘텐츠', '자료 보관함'],
     icon: FolderOpen,
+  },
+  {
+    path: '/teacher/textbook-studio',
+    label: '교재 제작',
+    icon: Library,
   },
   {
     path: '/monthly-learning-reports',

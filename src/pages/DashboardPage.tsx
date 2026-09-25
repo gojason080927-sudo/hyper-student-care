@@ -5,6 +5,7 @@ import {
   ClipboardList,
   FileBarChart2,
   FolderOpen,
+  Library,
   MessageCircleQuestion,
   Newspaper,
   Compass,
@@ -44,6 +45,12 @@ const categories = [
     title: '영상·콘텐츠 자료 보관함',
     description: '강사 전용 URL·파일·콘텐츠 메모 보관',
     icon: FolderOpen,
+  },
+  {
+    to: '/teacher/textbook-studio',
+    title: '교재 제작',
+    description: 'PDF·TXT·JSON으로 HYPER 교재를 만들고 인쇄합니다',
+    icon: Library,
   },
   {
     to: '/monthly-learning-reports',

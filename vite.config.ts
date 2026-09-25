@@ -1,5 +1,6 @@
-import { cpSync, existsSync, mkdirSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { cpSync, createReadStream, existsSync, mkdirSync, statSync } from 'node:fs'
+import type { ServerResponse } from 'node:http'
+import { dirname, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -21,9 +22,69 @@ function copyPdfjsSupportFiles() {
 
 copyPdfjsSupportFiles()
 
+const studioRoot = resolve(repoRoot, 'textbooks/hyper-english')
+const studioVendor: Record<string, string> = {
+  'pdf.mjs': resolve(repoRoot, 'node_modules/pdfjs-dist/build/pdf.mjs'),
+  'pdf.worker.mjs': resolve(repoRoot, 'node_modules/pdfjs-dist/build/pdf.worker.mjs'),
+}
+
+function studioFile(rel: string) {
+  if (rel.startsWith('vendor/')) return studioVendor[rel.slice('vendor/'.length)]
+  if (rel === 'out' || rel.startsWith(`out${sep}`) || rel.startsWith('out/')) return undefined
+  const file = resolve(studioRoot, rel)
+  const fromRoot = relative(studioRoot, file)
+  if (fromRoot.startsWith('..') || fromRoot === 'out' || fromRoot.startsWith(`out${sep}`)) return undefined
+  return file
+}
+
+function textbookStudioPlugin() {
+  return {
+    name: 'textbook-studio',
+    configureServer(server: { middlewares: { use: (fn: (req: { url?: string }, res: ServerResponse, next: () => void) => void) => void } }) {
+      server.middlewares.use((req, res, next) => {
+        const url = req.url?.split('?')[0] ?? ''
+        if (!url.startsWith('/textbook-studio/')) return next()
+        const rel = decodeURIComponent(url.slice('/textbook-studio/'.length))
+        const file = studioFile(rel)
+        if (!file || !existsSync(file) || !statSync(file).isFile()) {
+          res.statusCode = 404
+          res.end()
+          return
+        }
+        const ext = file.slice(file.lastIndexOf('.'))
+        const types: Record<string, string> = {
+          '.html': 'text/html; charset=utf-8',
+          '.css': 'text/css; charset=utf-8',
+          '.mjs': 'text/javascript; charset=utf-8',
+          '.js': 'text/javascript; charset=utf-8',
+          '.json': 'application/json; charset=utf-8',
+          '.txt': 'text/plain; charset=utf-8',
+        }
+        res.setHeader('Content-Type', types[ext] ?? 'application/octet-stream')
+        createReadStream(file).pipe(res)
+      })
+    },
+    closeBundle() {
+      const dest = resolve(repoRoot, 'dist/textbook-studio')
+      cpSync(studioRoot, dest, {
+        recursive: true,
+        filter: (src) => {
+          const rel = relative(studioRoot, src)
+          return rel !== 'out' && !rel.startsWith(`out${sep}`)
+        },
+      })
+      mkdirSync(resolve(dest, 'vendor'), { recursive: true })
+      for (const [name, from] of Object.entries(studioVendor)) {
+        if (existsSync(from)) cpSync(from, resolve(dest, 'vendor', name))
+      }
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
+    textbookStudioPlugin(),
     react(),
     tailwindcss(),
     VitePWA({
