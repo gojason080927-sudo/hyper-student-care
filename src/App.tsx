@@ -95,6 +95,7 @@ import { TeacherStudentHubPage } from './pages/teacher/TeacherStudentHubPage'
 import { TeacherStudentHubSharePage } from './pages/teacher/TeacherStudentHubSharePage'
 import { TeacherContentLibraryPage } from './pages/teacher/TeacherContentLibraryPage'
 import { TeacherTextbookStudioPage } from './pages/teacher/TeacherTextbookStudioPage'
+import { TeacherPdfToDocxPage } from './pages/teacher/TeacherPdfToDocxPage'
 import { HubLayout } from './hub/HubLayout'
 import { HubHomePage } from './hub/HubHomePage'
 import { HubLaunchPage } from './hub/HubLaunchPage'
@@ -567,6 +568,7 @@ function App() {
 
           <Route path="teacher/learning-notices" element={<TeacherLearningNoticesPage />} />
           <Route path="teacher/textbook-studio" element={<TeacherTextbookStudioPage />} />
+          <Route path="teacher/pdf-to-docx" element={<TeacherPdfToDocxPage />} />
 
           <Route path="teacher/admission-strategy" element={<TeacherAdmissionStrategyPage />} />
           <Route path="teacher/student-hub" element={<TeacherStudentHubPage />} />
