@@ -142,7 +142,7 @@ function docxPathFor(storagePath: string): string {
 async function streamAssetToBuffer(streamAsset: { readStream: NodeJS.ReadableStream }): Promise<Buffer> {
   const chunks: Buffer[] = []
   for await (const chunk of streamAsset.readStream) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as Uint8Array))
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
   }
   return Buffer.concat(chunks)
 }
