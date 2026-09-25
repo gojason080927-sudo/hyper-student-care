@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@adobe/pdfservices-node-sdk": "^4.1.0",
     "@supabase/supabase-js": "^2.110.9",
     "@tailwindcss/vite": "^4.3.3",
     "lucide-react": "^1.27.0",
