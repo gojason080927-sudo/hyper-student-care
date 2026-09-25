@@ -59,8 +59,8 @@ function sheet(side, inner, series, label, folio, head) {
   return `<section class="page ${side}">${running}${inner}${foot(side, series, label, folio)}</section>`
 }
 
-function openingHtml(unit) {
-  const paras = (unit.passage ?? []).map((p) => `<p>${esc(p)}</p>`).join('')
+function openingHtml(unit, hidePassage) {
+  const paras = hidePassage ? '' : (unit.passage ?? []).map((p) => `<p>${esc(p)}</p>`).join('')
   const points = (unit.points ?? [])
     .map(
       (point) => `<div class="box${point.plain ? ' plain' : ''}">
@@ -99,7 +99,12 @@ export function planBook(book) {
   const content = []
   for (const unit of units) {
     const head = `UNIT ${unit.no} · ${unit.title}`
-    if (needsOpening(unit)) content.push({ kind: 'open', unit, head })
+    if (needsOpening(unit)) content.push({ kind: 'open', unit, head, hidePassage: book.kind === 'reading' })
+    if (book.kind === 'reading') {
+      for (const group of chunk(unit.passage ?? [], 2)) {
+        content.push({ kind: 'reading', unit, head, passages: group })
+      }
+    }
     const questions = (unit.questions ?? []).map((q, index) => ({ ...q, no: index + 1 }))
     for (const group of chunk(questions, QUESTIONS_PER_PAGE)) {
       content.push({ kind: 'questions', unit, head, questions: group })
@@ -131,7 +136,9 @@ export function planBook(book) {
 }
 
 export function renderBook(book, { css = './' } = {}) {
-  const series = `${book.brand ?? 'HYPER'} · ${book.series ?? ''}`
+  const schoolLabel = book.school === 'middle' ? '중학교' : book.school === 'high' ? '고등학교' : ''
+  const seriesName = [schoolLabel, book.series].filter(Boolean).join(' · ')
+  const series = `${book.brand ?? 'HYPER'} · ${seriesName}`
   const pages = planBook(book)
   const body = pages
     .map((page, index) => {
@@ -144,11 +151,17 @@ export function renderBook(book, { css = './' } = {}) {
           )
           .join('')
         const inner = `<div class="toc-band"><div class="brand">HYPER<small>${esc(book.brandLine ?? 'ENGLISH')}</small></div><div class="toc-title">차례</div></div>
-          <h3 class="toc-section">${esc(book.series ?? '')}</h3>${items}`
-        return sheet(side, inner, series, book.series ?? '', folio, '')
+          <h3 class="toc-section">${esc(seriesName)}</h3>${items}`
+        return sheet(side, inner, series, seriesName, folio, '')
       }
       if (page.kind === 'open') {
-        return sheet(side, openingHtml(page.unit), series, page.head, folio, page.head)
+        return sheet(side, openingHtml(page.unit, page.hidePassage), series, page.head, folio, page.head)
+      }
+      if (page.kind === 'reading') {
+        const blocks = page.passages.map(
+          (paragraph) => `<div class="passage passage-frame"><p>${esc(paragraph)}</p></div>`,
+        )
+        return sheet(side, columnsHtml(blocks), series, page.head, folio, page.head)
       }
       if (page.kind === 'questions') {
         return sheet(side, columnsHtml(page.questions.map(questionHtml)), series, page.head, folio, page.head)

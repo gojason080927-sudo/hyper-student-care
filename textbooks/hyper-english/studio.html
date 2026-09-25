@@ -13,6 +13,16 @@
 </head>
 <body>
 <div class="studio-bar">
+  <label>학교급 <select id="school">
+    <option value="middle">중학교</option>
+    <option value="high" selected>고등학교</option>
+  </select></label>
+  <label>학년 <select id="year">
+    <option value="1">1학년</option>
+    <option value="2">2학년</option>
+    <option value="3" selected>3학년</option>
+  </select></label>
+  <label>교재명 <input id="series" type="text" placeholder="예: 고1 모의고사 독해" style="width:14em"></label>
   <label>유형 <select id="kind">
     <option value="reading">영어 독해</option>
     <option value="grammar" selected>영어 문법</option>
@@ -43,11 +53,27 @@ const files = {
 const note = document.getElementById('note')
 const jsonBox = document.getElementById('json')
 
-function show(book) {
+function applyChoices(book, fromFile) {
+  const school = document.getElementById('school')
+  const year = document.getElementById('year')
+  const series = document.getElementById('series')
+  if (fromFile) {
+    if (book.school === 'middle' || book.school === 'high') school.value = book.school
+    if (/^g[123]$/.test(book.grade || '')) year.value = book.grade.slice(1)
+    if (book.series) series.value = book.series
+  }
+  book.school = school.value
+  book.grade = `g${year.value}`
+  if (series.value.trim()) book.series = series.value.trim()
+  return book
+}
+
+function show(book, fromFile) {
   if (book.error) {
     note.textContent = book.error
     return
   }
+  applyChoices(book, fromFile)
   note.textContent = ''
   jsonBox.value = JSON.stringify(book, null, 2)
   const html = renderBook(book)
@@ -86,11 +112,11 @@ document.getElementById('file').addEventListener('change', async (event) => {
   const kind = document.getElementById('kind').value
   const name = file.name.toLowerCase()
   if (name.endsWith('.json')) {
-    show(JSON.parse(await file.text()))
+    show(JSON.parse(await file.text()), true)
     return
   }
   const text = name.endsWith('.pdf') ? await textFromPdf(file) : await file.text()
-  show(extractBook(text, kind))
+  show(extractBook(text, kind), true)
 })
 
 document.getElementById('apply').addEventListener('click', () => {
@@ -100,10 +126,16 @@ document.getElementById('apply').addEventListener('click', () => {
 document.getElementById('sample').addEventListener('click', async () => {
   const kind = document.getElementById('kind').value
   const res = await fetch(files[kind])
-  show(await res.json())
+  show(await res.json(), true)
 })
 
 document.getElementById('print').addEventListener('click', () => window.print())
+for (const id of ['school', 'year', 'series']) {
+  document.getElementById(id).addEventListener('change', () => {
+    if (!jsonBox.value) return
+    show(JSON.parse(jsonBox.value))
+  })
+}
 </script>
 </body>
 </html>

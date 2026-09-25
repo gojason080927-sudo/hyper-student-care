@@ -29,4 +29,20 @@ for (const name of ['reading-g3.json', 'vocab-g3.json', 'writing-g3.json']) {
   assert.match(page, new RegExp(book.units[0].title))
 }
 
+const reading = JSON.parse(readFileSync(new URL('./samples/reading-g3.json', import.meta.url), 'utf8'))
+reading.school = 'middle'
+reading.grade = 'g1'
+reading.series = '중1 영어 독해'
+const readingHtml = renderBook(reading)
+assert.match(readingHtml, /data-grade="g1"/)
+assert.match(readingHtml, /중학교 · 중1 영어 독해/)
+assert.match(readingHtml, /class="passage passage-frame"/)
+assert.match(readingHtml, /class="cols"/)
+const readingPages = readingHtml.split('<section class="page')
+assert.doesNotMatch(readingPages[1], /class="cols"/)
+assert.match(readingPages[2], /class="unit-no"/)
+assert.doesNotMatch(readingPages[2], /passage-frame/)
+assert.match(readingPages[3], /passage-frame/)
+assert.match(readingPages[3], /class="cols"/)
+
 console.log('generate tests passed')
