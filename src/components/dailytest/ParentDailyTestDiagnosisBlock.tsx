@@ -66,7 +66,7 @@ function TeacherFeedbackDisplay({
 
 /**
  * 학부모 일일테스트 부가 정보 (읽기 전용)
- * - 수학: 오답 분석 → 강사 피드백 → 격주간 오답 재시험
+ * - 수학: 오답 분석 → 강사 피드백
  * - 영어: 듣기 평가 → 강사 피드백
  */
 export function ParentDailyTestDiagnosisBlock({
@@ -142,23 +142,6 @@ export function ParentDailyTestDiagnosisBlock({
       ) : null}
 
       <TeacherFeedbackDisplay diagnosis={diagnosis} classNote={classNote} />
-
-      {isMath ? (
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div>
-            <p className="text-xs font-semibold text-slate-600">격주간 오답 재시험</p>
-            <p className="mt-0.5 font-bold tabular-nums text-[#163A70]">
-              {diagnosis.fridayRetestTotal ?? '-'}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-slate-600">재시험 오답 수</p>
-            <p className="mt-0.5 font-bold tabular-nums text-[#163A70]">
-              {diagnosis.fridayRetestWrong ?? '-'}
-            </p>
-          </div>
-        </div>
-      ) : null}
     </div>
   )
 }

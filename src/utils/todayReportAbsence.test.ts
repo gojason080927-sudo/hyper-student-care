@@ -191,8 +191,10 @@ assert.match(diagnosisFields, /강사의 피드백/)
 assert.match(diagnosisFields, /오답 분석/)
 
 const parentDiagnosis = readFileSync('src/components/dailytest/ParentDailyTestDiagnosisBlock.tsx', 'utf8')
-assert.match(parentDiagnosis, /격주간 오답 재시험/)
-assert.match(parentDiagnosis, /재시험 오답 수/)
+assert.doesNotMatch(parentDiagnosis, /격주간 오답 재시험/)
+assert.doesNotMatch(parentDiagnosis, /재시험 오답 수/)
+assert.match(parentDiagnosis, /오답 분석/)
+assert.match(parentDiagnosis, /강사 피드백/)
 
 const attitudePanel = readFileSync('src/components/todayReport/ClassAttitudeBulkPanel.tsx', 'utf8')
 assert.match(attitudePanel, /수업태도 일괄 저장/)
