@@ -56,9 +56,20 @@ function show(book) {
   document.getElementById('preview').innerHTML = doc.querySelector('.screen-wrap').innerHTML
 }
 
+async function loadPdfjs() {
+  try {
+    const pdfjs = await import('./vendor/pdf.mjs')
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL('./vendor/pdf.worker.mjs', import.meta.url).href
+    return pdfjs
+  } catch {
+    const pdfjs = await import('../../node_modules/pdfjs-dist/build/pdf.mjs')
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL('../../node_modules/pdfjs-dist/build/pdf.worker.mjs', import.meta.url).href
+    return pdfjs
+  }
+}
+
 async function textFromPdf(file) {
-  const pdfjs = await import('../../node_modules/pdfjs-dist/build/pdf.mjs')
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL('../../node_modules/pdfjs-dist/build/pdf.worker.mjs', import.meta.url).href
+  const pdfjs = await loadPdfjs()
   const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise
   const pages = []
   for (let i = 1; i <= pdf.numPages; i += 1) {

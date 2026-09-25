@@ -94,6 +94,7 @@ import { ParentStudentWeeklySummaryPage } from './pages/parent/ParentStudentWeek
 import { TeacherStudentHubPage } from './pages/teacher/TeacherStudentHubPage'
 import { TeacherStudentHubSharePage } from './pages/teacher/TeacherStudentHubSharePage'
 import { TeacherContentLibraryPage } from './pages/teacher/TeacherContentLibraryPage'
+import { TeacherTextbookStudioPage } from './pages/teacher/TeacherTextbookStudioPage'
 import { HubLayout } from './hub/HubLayout'
 import { HubHomePage } from './hub/HubHomePage'
 import { HubLaunchPage } from './hub/HubLaunchPage'
@@ -565,6 +566,7 @@ function App() {
           </Route>
 
           <Route path="teacher/learning-notices" element={<TeacherLearningNoticesPage />} />
+          <Route path="teacher/textbook-studio" element={<TeacherTextbookStudioPage />} />
 
           <Route path="teacher/admission-strategy" element={<TeacherAdmissionStrategyPage />} />
           <Route path="teacher/student-hub" element={<TeacherStudentHubPage />} />
