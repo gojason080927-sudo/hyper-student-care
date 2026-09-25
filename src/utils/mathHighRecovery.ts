@@ -253,6 +253,59 @@ export function hasHighRecoveryDraftContent(drafts: HighRecoveryDrafts): boolean
   )
 }
 
+function exactSessionWrong(questionCount: number, multiplier: 3 | 5): number | null {
+  if (!Number.isInteger(questionCount) || questionCount <= 0 || questionCount % multiplier !== 0) {
+    return null
+  }
+  const wrong = questionCount / multiplier
+  return Number.isInteger(wrong) ? wrong : null
+}
+
+/**
+ * 학부모용 차시 순서. 종료 차시는 오답 0으로 저장된 완료만 「모두 해결」.
+ * 나누어 떨어지지 않으면 추정하지 않고 null.
+ */
+export function formatParentHighRecoveryJourney(parsed: HighRecoveryParsed): string | null {
+  const { firstWrong, endSession, session3Questions, session4Questions } = parsed
+  if (!Number.isInteger(firstWrong) || firstWrong < 0 || firstWrong > 10) return null
+
+  if (endSession === 1) {
+    return firstWrong === 0 ? '1차시 모두 해결' : null
+  }
+  if (firstWrong === 0) return null
+
+  const parts = [`1차시 오답 ${firstWrong}개`]
+  if (endSession === 2) {
+    parts.push('2차시 모두 해결')
+    return parts.join(' · ')
+  }
+
+  if (session3Questions == null) return null
+  const session2Wrong = exactSessionWrong(session3Questions, 3)
+  if (session2Wrong == null || session2Wrong < 1 || session2Wrong > firstWrong) return null
+  if (session3Questions > 3 * firstWrong) return null
+  parts.push(`2차시 오답 ${session2Wrong}개`)
+
+  if (endSession === 3) {
+    parts.push('3차시 모두 해결')
+    return parts.join(' · ')
+  }
+
+  if (session4Questions == null) return null
+  const session3Wrong = exactSessionWrong(session4Questions, 5)
+  if (
+    session3Wrong == null ||
+    session3Wrong < 1 ||
+    session3Wrong > session3Questions ||
+    session4Questions > 5 * session3Questions
+  ) {
+    return null
+  }
+  parts.push(`3차시 오답 ${session3Wrong}개`)
+  parts.push('4차시 모두 해결')
+  return parts.join(' · ')
+}
+
 export function formatHighRecoveryResult(parsed: HighRecoveryParsed): string {
   const parts = [`1차 오답 ${parsed.firstWrong}개`, `${parsed.endSession}차 종료`]
   if (parsed.endSession >= 3 && parsed.session3Questions != null) {
