@@ -37,6 +37,14 @@ node textbooks/hyper-english/generate.mjs textbooks/hyper-english/samples/gramma
 샘플 JSON: `samples/reading-g3.json`, `grammar-g3.json`, `vocab-g3.json`, `writing-g3.json`, `math-g1.json`.
 입력은 선택한 유형의 슬롯만 채운다. 자동 분류는 하지 않는다.
 
+텍스트 PDF는 표시줄을 읽어 같은 JSON으로 바꾼다. 표시: `UNIT`, `PASSAGE`/`지문`, `POINT`/`개념`/`공식`, `EXAMPLE`/`예제`, `Q`/`문제`, `①`, `정답`, `WORD`/`단어`, `PROMPT`/`영작`.
+
+```bash
+node textbooks/hyper-english/import-file.mjs file.pdf grammar from-file
+```
+
+글자가 없는 스캔 PDF는 `텍스트 추출 불가/OCR 필요`만 알린다. DOCX와 수식 엔진은 없다.
+
 ## 저작권 규칙
 
 기존 출판사 로고·본문·문항을 복제하지 않는다.

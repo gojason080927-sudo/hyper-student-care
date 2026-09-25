@@ -8,7 +8,7 @@
 <style>
   .studio-bar { position: sticky; top: 0; z-index: 2; display: flex; gap: 8px; align-items: center; padding: 10px 16px; background: #fff; border-bottom: 1px solid #d5dbe3; font-family: "Noto Sans CJK KR", sans-serif; }
   .studio-bar select, .studio-bar button { min-height: 36px; }
-  @media print { .studio-bar { display: none; } }
+  @media print { .studio-bar, #json, #note { display: none; } }
 </style>
 </head>
 <body>
@@ -20,13 +20,17 @@
     <option value="writing">영어 영작</option>
     <option value="math">수학</option>
   </select></label>
-  <input id="file" type="file" accept="application/json,.json">
+  <input id="file" type="file" accept="application/pdf,application/json,.pdf,.json,.txt">
   <button id="sample" type="button">샘플 열기</button>
+  <button id="apply" type="button">수정 반영</button>
   <button id="print" type="button">PDF로 인쇄</button>
 </div>
+<textarea id="json" rows="8" style="width:min(920px,92vw);margin:12px auto;display:block;font:12px/1.4 monospace"></textarea>
+<p id="note" style="width:min(920px,92vw);margin:0 auto 12px;font:13px/1.5 sans-serif;color:#8a3b2a"></p>
 <div id="preview" class="screen-wrap"></div>
 <script type="module">
 import { renderBook } from './render.mjs'
+import { extractBook } from './extract.mjs'
 
 const files = {
   reading: './samples/reading-g3.json',
@@ -36,17 +40,50 @@ const files = {
   math: './samples/math-g1.json',
 }
 
+const note = document.getElementById('note')
+const jsonBox = document.getElementById('json')
+
 function show(book) {
+  if (book.error) {
+    note.textContent = book.error
+    return
+  }
+  note.textContent = ''
+  jsonBox.value = JSON.stringify(book, null, 2)
   const html = renderBook(book)
   const doc = new DOMParser().parseFromString(html, 'text/html')
   document.body.dataset.grade = book.grade || 'g3'
   document.getElementById('preview').innerHTML = doc.querySelector('.screen-wrap').innerHTML
 }
 
+async function textFromPdf(file) {
+  const pdfjs = await import('../../node_modules/pdfjs-dist/build/pdf.mjs')
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL('../../node_modules/pdfjs-dist/build/pdf.worker.mjs', import.meta.url).href
+  const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise
+  const pages = []
+  for (let i = 1; i <= pdf.numPages; i += 1) {
+    const page = await pdf.getPage(i)
+    const content = await page.getTextContent()
+    pages.push(content.items.map((item) => item.str).join('\n'))
+  }
+  return pages.join('\n')
+}
+
 document.getElementById('file').addEventListener('change', async (event) => {
   const file = event.target.files?.[0]
   if (!file) return
-  show(JSON.parse(await file.text()))
+  const kind = document.getElementById('kind').value
+  const name = file.name.toLowerCase()
+  if (name.endsWith('.json')) {
+    show(JSON.parse(await file.text()))
+    return
+  }
+  const text = name.endsWith('.pdf') ? await textFromPdf(file) : await file.text()
+  show(extractBook(text, kind))
+})
+
+document.getElementById('apply').addEventListener('click', () => {
+  show(JSON.parse(jsonBox.value))
 })
 
 document.getElementById('sample').addEventListener('click', async () => {
