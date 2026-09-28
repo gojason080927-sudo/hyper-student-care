@@ -421,7 +421,7 @@ export async function fetchAllRecords(): Promise<AllRecords> {
     selectAllSafe<ClassScheduleGridRow>('class_schedule_grids'),
     selectAll<TodayAssignmentRow>('today_assignments'),
     selectAll<ClassNoteRow>('class_notes'),
-    selectAllSafe<ClassTodayReportCommonRow>('class_today_report_common'),
+    selectAllSafePaged<ClassTodayReportCommonRow>('class_today_report_common'),
     selectAllSafe<StudentDailyCareRow>('student_daily_care'),
     selectAllSafe<WeeklyLearningSummaryRow>('weekly_learning_summaries'),
   ])
