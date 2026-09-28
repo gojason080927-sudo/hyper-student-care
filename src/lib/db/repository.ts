@@ -160,6 +160,45 @@ async function selectAllSafe<T>(table: string): Promise<T[]> {
   return (data ?? []) as T[]
 }
 
+const PAGED_SELECT_PAGE_SIZE = 1000
+const PAGED_SELECT_MAX_PAGES = 200
+
+/**
+ * selectAllSafe와 동일하게 동작하되 Supabase 1,000줄 응답 제한을 넘는 표도 끝까지 읽는다.
+ * id(기본키)로 정렬을 고정해 페이지 사이에 줄이 빠지거나 겹치지 않게 한다.
+ * 서버가 요청보다 적게 돌려줘도 받은 만큼만 건너뛰고, 빈 페이지가 나올 때까지 읽는다.
+ */
+async function selectAllSafePaged<T>(table: string): Promise<T[]> {
+  const rows: T[] = []
+  let from = 0
+  for (let page = 0; page < PAGED_SELECT_MAX_PAGES; page++) {
+    const { data, error } = await getSupabase()
+      .from(table)
+      .select('*')
+      .order('id', { ascending: true })
+      .range(from, from + PAGED_SELECT_PAGE_SIZE - 1)
+    if (error) {
+      if (isSafeSelectSkipError(error)) {
+        if (isMissingTableError(error)) {
+          console.warn(
+            `[Repository] ${table} table missing — returning empty list. Run supabase/textbook-slots-migration.sql in Supabase SQL Editor.`,
+          )
+        }
+        return []
+      }
+      throwIfError(error, table, `${table} 조회 실패`)
+    }
+    const batch = (data ?? []) as T[]
+    if (batch.length === 0) return rows
+    rows.push(...batch)
+    from += batch.length
+  }
+  throw new RepositoryError(
+    `${table} 조회 실패: 페이지 수 제한(${PAGED_SELECT_MAX_PAGES})을 넘었습니다.`,
+    table,
+  )
+}
+
 async function selectByStudentIdSafe<T>(table: string, studentId: string): Promise<T[]> {
   const { data, error } = await getSupabase()
     .from(table)
@@ -369,7 +408,7 @@ export async function fetchAllRecords(): Promise<AllRecords> {
   ] = await Promise.all([
     selectAll<AttendanceRow>('attendance'),
     selectAll<HomeworkRow>('homework'),
-    selectAllSafe<HomeworkTextbookEntryRow>('homework_textbook_entries'),
+    selectAllSafePaged<HomeworkTextbookEntryRow>('homework_textbook_entries'),
     selectAll<AssignmentCompletionRow>('assignment_completions'),
     selectAll<DailyTestRow>('daily_tests'),
     selectAll<MonthlyEvaluationRow>('monthly_evaluations'),
