@@ -27,6 +27,8 @@ export const homeworkStatusStyles: Record<
 type HomeworkStatusButtonsProps = {
   value: HomeworkStatus | string
   onChange: (status: HomeworkStatus) => void
+  /** 지정하면 이미 선택된 버튼을 다시 눌렀을 때 선택 취소로 호출된다 */
+  onClear?: () => void
   label?: string
   labelClassName?: string
   error?: string
@@ -37,6 +39,7 @@ type HomeworkStatusButtonsProps = {
 export function HomeworkStatusButtons({
   value,
   onChange,
+  onClear,
   label,
   labelClassName,
   error,
@@ -69,7 +72,7 @@ export function HomeworkStatusButtons({
               type="button"
               aria-pressed={selected}
               disabled={disabled}
-              onClick={() => onChange(status)}
+              onClick={() => (selected && onClear ? onClear() : onChange(status))}
               className={`flex items-center justify-center gap-1.5 rounded-lg border font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${
                 compact
                   ? 'min-h-9 flex-1 px-2.5 py-1.5 text-sm sm:flex-none sm:min-w-[5.5rem]'

@@ -172,7 +172,7 @@ export function ClassHomeworkStatusBulkPanel({
     studentId: string,
     subject: TextbookSubject,
     slotNumber: TextbookSlotNumber,
-    status: HomeworkStatus,
+    status: HomeworkStatus | '',
   ) => {
     const key = draftKey(studentId, subject, slotNumber)
     dirtyStatusKeysRef.current.add(key)
@@ -220,8 +220,14 @@ export function ClassHomeworkStatusBulkPanel({
       return slotPlan.flatMap(({ subject, slotNumber }) => {
         const key = draftKey(student.id, subject, slotNumber)
         const draft = drafts[key]
-        if (!isHomeworkStatusSelected(draft?.status) || !draft) return []
-        return [{ student, subject, slotNumber, draft, key }]
+        if (!draft) return []
+        // 이미 저장된 수행 결과를 다시 눌러 취소한 항목은 빈 값으로 저장한다.
+        const clearStatus =
+          !isHomeworkStatusSelected(draft.status) &&
+          Boolean(draft.entryId) &&
+          dirtyStatusKeysRef.current.has(key)
+        if (!isHomeworkStatusSelected(draft.status) && !clearStatus) return []
+        return [{ student, subject, slotNumber, draft, key, clearStatus }]
       })
     })
 
@@ -242,7 +248,7 @@ export function ClassHomeworkStatusBulkPanel({
 
     try {
       const results = await Promise.all(
-        tasks.map(async ({ student, subject, slotNumber, draft }) => {
+        tasks.map(async ({ student, subject, slotNumber, draft, clearStatus }) => {
           try {
             const result = await saveHomeworkTextbookEntryAsync(
               {
@@ -255,7 +261,7 @@ export function ClassHomeworkStatusBulkPanel({
                 todayAssignment: draft.todayAssignment,
                 status: draft.status as HomeworkStatus,
               },
-              { silent: true },
+              { silent: true, clearStatus },
             )
             if (!result.success) {
               console.error('[class-homework-status] save failed', {
@@ -419,6 +425,7 @@ export function ClassHomeworkStatusBulkPanel({
                             onChange={(status) =>
                               setStatus(student.id, subject, slotNumber, status)
                             }
+                            onClear={() => setStatus(student.id, subject, slotNumber, '')}
                             label={heading}
                             compact
                             disabled={saving}

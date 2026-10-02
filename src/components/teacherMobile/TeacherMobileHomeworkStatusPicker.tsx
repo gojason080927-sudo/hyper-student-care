@@ -4,6 +4,7 @@ import { TeacherMobileHomeworkStatusButtons } from './TeacherMobileHomeworkStatu
 type TeacherMobileHomeworkStatusPickerProps = {
   value: HomeworkStatus | ''
   onChange: (status: HomeworkStatus) => void
+  onClear?: () => void
   error?: string
   compact?: boolean
   label?: string
@@ -14,6 +15,7 @@ type TeacherMobileHomeworkStatusPickerProps = {
 export function TeacherMobileHomeworkStatusPicker({
   value,
   onChange,
+  onClear,
   error,
   compact = false,
   label = '지난 과제 *',
@@ -25,6 +27,7 @@ export function TeacherMobileHomeworkStatusPicker({
       <TeacherMobileHomeworkStatusButtons
         value={value}
         onChange={onChange}
+        onClear={onClear}
         label={hideLabel ? undefined : label}
         labelClassName={labelClassName}
         error={error}

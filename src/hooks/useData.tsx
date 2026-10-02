@@ -183,7 +183,7 @@ export type DataContextValue = {
   ) => boolean
   saveHomeworkTextbookEntryAsync: (
     data: Omit<HomeworkTextbookEntry, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
-    options?: { silent?: boolean },
+    options?: { silent?: boolean; clearStatus?: boolean },
   ) => Promise<{ success: boolean; error?: string }>
   saveHomeworkSubjectWithClassSync: (
     anchorStudentId: string,
@@ -1039,7 +1039,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const saveHomeworkTextbookEntryAsync = useCallback(
     async (
       data: Omit<HomeworkTextbookEntry, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
-      options?: { silent?: boolean },
+      options?: { silent?: boolean; clearStatus?: boolean },
     ): Promise<{ success: boolean; error?: string }> => {
       if (!validateStudent(data.studentId)) {
         const message = '존재하지 않는 학생입니다.'
@@ -1066,7 +1066,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
         slotNumber: data.slotNumber,
         previousAssignment: (data.previousAssignment ?? existing?.previousAssignment ?? '').trim(),
         todayAssignment: data.todayAssignment.trim(),
-        status: resolveHomeworkStatusForSave(data.status, existing?.status),
+        // 선택 취소(clearStatus): 기존 값 보존 규칙을 건너뛰고 빈 값으로 저장한다. 알림은 보내지 않는다.
+        status: options?.clearStatus ? '' : resolveHomeworkStatusForSave(data.status, existing?.status),
         createdAt: existing?.createdAt ?? ts.createdAt,
         updatedAt: ts.updatedAt,
       }

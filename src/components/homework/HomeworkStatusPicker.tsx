@@ -4,6 +4,7 @@ import { HomeworkStatusButtons } from './HomeworkStatusButtons'
 type HomeworkStatusPickerProps = {
   value: HomeworkStatus | ''
   onChange: (status: HomeworkStatus) => void
+  onClear?: () => void
   error?: string
   compact?: boolean
   label?: string
@@ -15,6 +16,7 @@ type HomeworkStatusPickerProps = {
 export function HomeworkStatusPicker({
   value,
   onChange,
+  onClear,
   error,
   compact = false,
   label = '지난 과제 *',
@@ -26,6 +28,7 @@ export function HomeworkStatusPicker({
       <HomeworkStatusButtons
         value={value}
         onChange={onChange}
+        onClear={onClear}
         label={hideLabel ? undefined : label}
         labelClassName={labelClassName}
         error={error}

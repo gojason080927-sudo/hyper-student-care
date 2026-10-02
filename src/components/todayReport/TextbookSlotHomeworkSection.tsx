@@ -14,6 +14,7 @@ import type {
 } from '../../types/records'
 import { TEXTBOOK_SUBJECTS } from '../../types/records'
 import { inputClass } from '../../utils/labels'
+import { isHomeworkStatusSelected } from '../../utils/homework'
 import { TODAY_ASSIGNMENT_MAX_LENGTH } from '../../utils/todayAssignment'
 import {
   buildTextbookNameDrafts,
@@ -350,10 +351,14 @@ export function TextbookSlotHomeworkSection({
         saveTextbookName(subject, slotNumber, textbookName)
       }
 
+      // 이미 저장된 수행 결과를 다시 눌러 취소한 경우: 빈 값으로 저장한다.
+      const clearStatus = !draft.status && isHomeworkStatusSelected(display.status)
+
       const hasAssignmentContent =
         draft.previousAssignment.trim() ||
         draft.todayAssignment.trim() ||
-        draft.status
+        draft.status ||
+        clearStatus
 
       if (!hasAssignmentContent) return []
 
@@ -364,6 +369,7 @@ export function TextbookSlotHomeworkSection({
           todayAssignment: draft.todayAssignment,
           status: draft.status,
           entryId: display.entryId,
+          clearStatus,
         },
       ]
     })
@@ -401,7 +407,7 @@ export function TextbookSlotHomeworkSection({
           todayAssignment: slot.todayAssignment,
           status: slot.status,
         },
-        { silent: index < slotsToSave.length - 1 },
+        { silent: index < slotsToSave.length - 1, clearStatus: slot.clearStatus },
       )
       if (!result.success) {
         return
@@ -448,6 +454,9 @@ export function TextbookSlotHomeworkSection({
                         onChange={(status) =>
                           updateDraft(item.subject, item.slotNumber, { status })
                         }
+                        onClear={() =>
+                          updateDraft(item.subject, item.slotNumber, { status: '' })
+                        }
                       />
                     ) : (
                       <HomeworkStatusPicker
@@ -455,6 +464,9 @@ export function TextbookSlotHomeworkSection({
                         value={draft.status}
                         onChange={(status) =>
                           updateDraft(item.subject, item.slotNumber, { status })
+                        }
+                        onClear={() =>
+                          updateDraft(item.subject, item.slotNumber, { status: '' })
                         }
                       />
                     )}

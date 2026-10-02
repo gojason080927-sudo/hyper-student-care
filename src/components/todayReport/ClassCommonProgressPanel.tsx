@@ -8,6 +8,7 @@ import {
   type ClassTodayReportSyncContext,
 } from '../../utils/classTodayReportCommon'
 import { findClassTodayReportCommonForDisplay } from '../../utils/todayReportDisplayFallback'
+import { resolveClassProgressTotalPage } from '../../utils/classProgressTotalPage'
 import { formatKoreanDate } from '../../utils/date'
 import { btnPrimary, inputClass } from '../../utils/labels'
 import { getVisibleTextbookSubjects } from '../../utils/todayReportVisibleSubjects'
@@ -147,7 +148,10 @@ export function ClassCommonProgressPanel({
         loaded[slotKey(subject, slotNumber)] = {
           currentProgress: found?.currentProgress ?? '',
           currentPage: found?.currentPage ? String(found.currentPage) : '',
-          totalPage: found?.totalPage ? String(found.totalPage) : '',
+          totalPage: (() => {
+            const total = resolveClassProgressTotalPage(classTodayReportCommon, grade, className, date, subject, slotNumber, textbookName)
+            return total ? String(total) : ''
+          })(),
           textbookName,
         }
       }

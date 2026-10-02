@@ -6,6 +6,8 @@ import { resolveSelectedHomeworkStatus } from '../../utils/homework'
 type TeacherMobileHomeworkStatusButtonsProps = {
   value: HomeworkStatus | string
   onChange: (status: HomeworkStatus) => void
+  /** 지정하면 이미 선택된 버튼을 다시 눌렀을 때 선택 취소로 호출된다 */
+  onClear?: () => void
   label?: string
   labelClassName?: string
   error?: string
@@ -21,6 +23,7 @@ const STATUS_VARIANT: Record<HomeworkStatus, 'complete' | 'partial' | 'incomplet
 export function TeacherMobileHomeworkStatusButtons({
   value,
   onChange,
+  onClear,
   label,
   labelClassName,
   error,
@@ -50,7 +53,7 @@ export function TeacherMobileHomeworkStatusButtons({
               key={status}
               type="button"
               aria-pressed={selected}
-              onClick={() => onChange(status)}
+              onClick={() => (selected && onClear ? onClear() : onChange(status))}
               className={[
                 'tm-hw-status-btn',
                 `tm-hw-status-btn--${variant}`,
