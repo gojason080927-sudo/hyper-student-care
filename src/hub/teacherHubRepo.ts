@@ -1,6 +1,5 @@
 import { getSupabase } from '../lib/supabase'
 import { createId } from '../utils/id'
-import { renderPdfFileToPages } from '../lib/admissionStrategy/pdfToPageImages'
 import type {
   HubAssignment,
   HubAudienceType,
@@ -11,7 +10,7 @@ import type {
   HubVideo,
 } from './types'
 import { HUB_LEARNING_MATERIALS_BUCKET } from './types'
-import { classifyHubMaterialFile, materialKindFromDecision } from './hubFilePolicy'
+import { classifyHubMaterialFile, hubMaterialSizeError, materialKindFromDecision } from './hubFilePolicy'
 import { hubAudienceFieldsForSave } from './hubAudience'
 import {
   HUB_INBOX_REPLY_SAVE_FAILURE,
@@ -302,68 +301,73 @@ export async function teacherUploadMaterial(params: {
 }): Promise<{ id: string }> {
   const decision = classifyHubMaterialFile(params.file)
   if (!decision.ok) throw new Error(decision.error)
+  const sizeError = hubMaterialSizeError(params.file.size)
+  if (sizeError) throw new Error(sizeError)
   const id = createId()
   const kind = detectMaterialKind(params.file)
   const ext = decision.ext
   const sourcePath = `${id}/source/${createId()}.${ext}`
-  const { error: uploadError } = await getSupabase()
-    .storage.from(HUB_LEARNING_MATERIALS_BUCKET)
-    .upload(sourcePath, params.file, { upsert: true, contentType: decision.mime })
-  throwIfError(uploadError, '원본 업로드에 실패했습니다.')
+  const uploadedPaths: string[] = []
+  let rowSaved = false
+  try {
+    const { error: uploadError } = await getSupabase()
+      .storage.from(HUB_LEARNING_MATERIALS_BUCKET)
+      .upload(sourcePath, params.file, { upsert: true, contentType: decision.mime })
+    throwIfError(uploadError, '원본 업로드에 실패했습니다.')
+    uploadedPaths.push(sourcePath)
 
-  const pages: { page_number: number; asset_path: string; width: number | null; height: number | null }[] = []
-  if (kind === 'pdf') {
-    const rendered = await renderPdfFileToPages(params.file)
-    for (const page of rendered) {
-      const assetPath = `${id}/pages/${createId()}-${String(page.pageNumber).padStart(3, '0')}.${page.extension}`
+    // PDF는 원본 그대로 서명 URL로 열기 때문에 쪽 이미지를 만들지 않는다(쪽수 제한 없음).
+    // 이미지 자료만 미리보기용 1장을 둔다.
+    const pages: { page_number: number; asset_path: string; width: number | null; height: number | null }[] = []
+    if (kind === 'image') {
+      const assetPath = `${id}/pages/${createId()}-001.jpg`
       const { error } = await getSupabase()
         .storage.from(HUB_LEARNING_MATERIALS_BUCKET)
-        .upload(assetPath, page.blob, { upsert: true, contentType: page.contentType })
-      throwIfError(error, '미리보기 페이지 업로드에 실패했습니다.')
-      pages.push({
-        page_number: page.pageNumber,
-        asset_path: assetPath,
-        width: page.width,
-        height: page.height,
-      })
+        .upload(assetPath, params.file, { upsert: true, contentType: decision.mime })
+      throwIfError(error, '이미지 업로드에 실패했습니다.')
+      uploadedPaths.push(assetPath)
+      pages.push({ page_number: 1, asset_path: assetPath, width: null, height: null })
     }
-  } else if (kind === 'image') {
-    const assetPath = `${id}/pages/${createId()}-001.jpg`
-    const { error } = await getSupabase()
-      .storage.from(HUB_LEARNING_MATERIALS_BUCKET)
-      .upload(assetPath, params.file, { upsert: true, contentType: decision.mime })
-    throwIfError(error, '이미지 업로드에 실패했습니다.')
-    pages.push({ page_number: 1, asset_path: assetPath, width: null, height: null })
-  }
 
-  const audience = hubAudienceFieldsForSave({
-    audienceType: params.audienceType,
-    targetGrade: params.targetGrade ?? '',
-    targetClassName: params.targetClassName ?? '',
-    targetStudentId: params.targetStudentId ?? '',
-  })
-  const { error } = await getSupabase().from('hub_learning_materials').insert({
-    id,
-    title: params.title,
-    description: params.description,
-    original_file_name: params.file.name,
-    source_file_path: sourcePath,
-    mime: decision.mime,
-    kind,
-    status: params.publish ? 'PUBLISHED' : 'DRAFT',
-    page_count: pages.length,
-    audience_type: audience.audienceType,
-    target_grade: audience.targetGrade,
-    target_class_name: audience.targetClassName,
-    target_student_id: audience.targetStudentId,
-    published_at: params.publish ? new Date().toISOString() : null,
-  })
-  throwIfError(error, '자료 저장에 실패했습니다.')
-  if (pages.length > 0) {
-    const { error: pageError } = await getSupabase()
-      .from('hub_learning_material_pages')
-      .insert(pages.map((page) => ({ ...page, material_id: id })))
-    throwIfError(pageError, '미리보기 정보 저장에 실패했습니다.')
+    const audience = hubAudienceFieldsForSave({
+      audienceType: params.audienceType,
+      targetGrade: params.targetGrade ?? '',
+      targetClassName: params.targetClassName ?? '',
+      targetStudentId: params.targetStudentId ?? '',
+    })
+    const { error } = await getSupabase().from('hub_learning_materials').insert({
+      id,
+      title: params.title,
+      description: params.description,
+      original_file_name: params.file.name,
+      source_file_path: sourcePath,
+      mime: decision.mime,
+      kind,
+      status: params.publish ? 'PUBLISHED' : 'DRAFT',
+      page_count: pages.length,
+      audience_type: audience.audienceType,
+      target_grade: audience.targetGrade,
+      target_class_name: audience.targetClassName,
+      target_student_id: audience.targetStudentId,
+      published_at: params.publish ? new Date().toISOString() : null,
+    })
+    throwIfError(error, '자료 저장에 실패했습니다.')
+    rowSaved = true
+    if (pages.length > 0) {
+      const { error: pageError } = await getSupabase()
+        .from('hub_learning_material_pages')
+        .insert(pages.map((page) => ({ ...page, material_id: id })))
+      throwIfError(pageError, '미리보기 정보 저장에 실패했습니다.')
+    }
+  } catch (err) {
+    // 저장이 끝나지 않은 채 스토리지에만 남는 고아 파일을 정리한다(실패해도 원래 오류를 우선한다).
+    if (!rowSaved && uploadedPaths.length > 0) {
+      await getSupabase()
+        .storage.from(HUB_LEARNING_MATERIALS_BUCKET)
+        .remove(uploadedPaths)
+        .catch(() => undefined)
+    }
+    throw err
   }
   return { id }
 }

@@ -192,6 +192,15 @@ export function materialKindFromDecision(decision: Extract<HubFileDecision, { ok
   return 'file'
 }
 
+/** hub-learning-materials 버킷 file_size_limit(52428800)와 같은 값. 문제 자료는 쪽수 제한 없이 크기만 제한한다. */
+export const HUB_MATERIAL_MAX_BYTES = 50 * 1024 * 1024
+export const HUB_MATERIAL_MAX_LABEL = '50MB'
+
+export function hubMaterialSizeError(size: number): string | null {
+  if (!Number.isFinite(size) || size <= HUB_MATERIAL_MAX_BYTES) return null
+  return `${HUB_MATERIAL_MAX_LABEL} 이하 파일만 올릴 수 있습니다 (현재 ${formatByteSize(size)})`
+}
+
 export function formatByteSize(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return '0B'
   if (bytes < 1024) return `${bytes}B`

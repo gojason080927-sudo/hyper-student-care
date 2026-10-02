@@ -266,10 +266,17 @@ assert.match(hubSw, /preview-signed-v1/)
 assert.match(hubLayout, /setMode\('loading'\)/)
 assert.match(hubLayout, /\[accessKey, location\.pathname\]/)
 assert.match(viewer, /export function AdmissionStrategyMaterialViewer/)
-assert.match(teacherRepo, /renderPdfFileToPages/)
+assert.doesNotMatch(teacherRepo, /renderPdfFileToPages/) // 문제 자료 PDF는 쪽 이미지를 만들지 않는다(2026-10-02)
 assert.match(browserIo, /location\.assign/)
 assert.doesNotMatch(browserIo, /window\.open/)
 assert.doesNotMatch(browserIo, /window\.print/)
 assert.match(browserIo, /revokeObjectURL/)
 
 console.log('hubMaterialFileAccess.test.ts passed')
+
+// 문제 자료 크기 안내: 50MB 이하는 통과, 초과는 구체적인 안내 문구
+import { HUB_MATERIAL_MAX_BYTES, hubMaterialSizeError } from './hubFilePolicy.ts'
+assert.equal(hubMaterialSizeError(3.12 * 1024 * 1024), null)
+assert.equal(hubMaterialSizeError(HUB_MATERIAL_MAX_BYTES), null)
+assert.match(hubMaterialSizeError(HUB_MATERIAL_MAX_BYTES + 1) ?? '', /50MB 이하 파일만 올릴 수 있습니다 \(현재 50MB\)/)
+console.log('hubMaterialSizeError tests passed')

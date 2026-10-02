@@ -337,6 +337,7 @@ function MaterialPanel({
     setProgress({ done: 0, total: queue.length })
     const successIds: string[] = []
     const nextFailed: string[] = []
+    const failedReasons = new Map<string, string>()
     const succeededNames = new Set<string>()
     try {
       for (let index = 0; index < queue.length; index += 1) {
@@ -356,8 +357,9 @@ function MaterialPanel({
           })
           successIds.push(saved.id)
           succeededNames.add(item.file.name)
-        } catch {
+        } catch (err) {
           nextFailed.push(item.file.name)
+          if (err instanceof Error && err.message) failedReasons.set(item.file.name, err.message)
         }
         setProgress({ done: index + 1, total: queue.length })
       }
@@ -380,7 +382,13 @@ function MaterialPanel({
         showToast(pushFailed ? HUB_MATERIAL_PUSH_FAILURE : summary)
       }
       const parts: string[] = []
-      if (nextFailed.length > 0) parts.push(`${summary}\n${nextFailed.join('\n')}`)
+      if (nextFailed.length > 0) {
+        const lines = nextFailed.map((name) => {
+          const reason = failedReasons.get(name)
+          return reason ? `${name} — ${reason}` : name
+        })
+        parts.push([summary, ...lines].join('\n'))
+      }
       if (pushFailed) parts.push(HUB_MATERIAL_PUSH_FAILURE)
       setError(parts.join('\n'))
       if (successIds.length > 0) await onChanged()

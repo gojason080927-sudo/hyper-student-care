@@ -155,7 +155,7 @@ assert.match(hubStorageClient, /action: 'file'/)
 assert.match(hubStorage, /payload\.action === 'file'/)
 assert.match(hubStorage, /p_mode: action === 'upload' \? 'upload' : 'download'/)
 assert.match(hubStorage, /arrayBuffer/)
-assert.match(teacherRepo, /renderPdfFileToPages/)
+assert.doesNotMatch(teacherRepo, /renderPdfFileToPages/) // 문제 자료 PDF는 쪽 이미지를 만들지 않는다(2026-10-02)
 assert.match(teacherRepo, /hub_learning_material_pages/)
 
 console.log('hubRouteRefresh.test.ts passed')
