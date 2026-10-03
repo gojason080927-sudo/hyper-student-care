@@ -110,6 +110,8 @@ function materialFromRpc(row: Record<string, unknown>): HubMaterial {
       width: typeof page.width === 'number' ? page.width : null,
       height: typeof page.height === 'number' ? page.height : null,
     })),
+    folderId: typeof row.folder_id === 'string' && row.folder_id ? row.folder_id : null,
+    folderName: typeof row.folder_name === 'string' && row.folder_name ? row.folder_name : null,
   }
 }
 

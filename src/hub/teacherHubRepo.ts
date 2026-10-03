@@ -285,6 +285,8 @@ export async function teacherFetchMaterials(): Promise<HubMaterial[]> {
           }
         })
         .sort((a, b) => a.pageNumber - b.pageNumber),
+      folderId: typeof row.folder_id === 'string' && row.folder_id ? row.folder_id : null,
+      folderName: typeof row.folder_name === 'string' && row.folder_name ? row.folder_name : null,
     }
   })
 }
@@ -298,6 +300,9 @@ export async function teacherUploadMaterial(params: {
   targetClassName: string | null
   targetStudentId: string | null
   publish: boolean
+  /** 폴더 업로드일 때만 전달한다. 낱개 업로드는 생략해 기존 동작(칼럼 미사용)을 유지한다. */
+  folderId?: string | null
+  folderName?: string | null
 }): Promise<{ id: string }> {
   const decision = classifyHubMaterialFile(params.file)
   if (!decision.ok) throw new Error(decision.error)
@@ -350,6 +355,7 @@ export async function teacherUploadMaterial(params: {
       target_class_name: audience.targetClassName,
       target_student_id: audience.targetStudentId,
       published_at: params.publish ? new Date().toISOString() : null,
+      ...(params.folderId ? { folder_id: params.folderId, folder_name: params.folderName ?? null } : {}),
     })
     throwIfError(error, '자료 저장에 실패했습니다.')
     rowSaved = true

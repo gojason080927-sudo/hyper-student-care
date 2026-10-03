@@ -11,12 +11,23 @@ import { HubEmpty, HubPageHeader } from './HubChrome'
 import { useHub } from './HubContext'
 import { useHubContentRefresh } from './useHubContentRefresh'
 import type { HubMaterial } from './types'
+import { groupHubMaterialsByFolder } from './hubMaterialFolders'
 
 export function HubMaterialsPage() {
   const { accessKey, materials, reload } = useHub()
   useHubContentRefresh(reload)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState<'open' | 'download' | null>(null)
+  const [openFolders, setOpenFolders] = useState<Set<string>>(new Set())
+
+  const toggleFolder = (folderId: string) => {
+    setOpenFolders((prev) => {
+      const next = new Set(prev)
+      if (next.has(folderId)) next.delete(folderId)
+      else next.add(folderId)
+      return next
+    })
+  }
 
   const fileIo = {
     ...createBrowserHubMaterialFileIo(),
@@ -61,6 +72,41 @@ export function HubMaterialsPage() {
     }
   }
 
+  const renderMaterial = (material: HubMaterial, inFolder: boolean) => {
+    const openable = canOpenHubMaterial(material.kind) && Boolean(material.sourceFilePath)
+    const downloadable = Boolean(material.sourceFilePath)
+    return (
+      <li
+        key={material.id}
+        className={inFolder ? 'rounded-xl bg-slate-50 p-3' : 'rounded-2xl bg-white p-4 shadow-sm'}
+      >
+        <p className="font-bold text-[#163A70]">{material.title}</p>
+        {material.description ? <p className="mt-1 text-sm text-slate-600">{material.description}</p> : null}
+        <p className="mt-1 text-xs text-slate-400">{material.kind.toUpperCase()}</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {openable ? (
+            <button
+              type="button"
+              className="rounded-full bg-[#163A70] px-3 py-2 text-xs font-semibold text-white"
+              onClick={() => void openMaterial(material)}
+            >
+              열기
+            </button>
+          ) : null}
+          {downloadable ? (
+            <button
+              type="button"
+              className="rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700"
+              onClick={() => void downloadMaterial(material)}
+            >
+              다운로드
+            </button>
+          ) : null}
+        </div>
+      </li>
+    )
+  }
+
   return (
     <div className="mx-auto w-full max-w-lg px-3 pb-8 pt-4">
       <HubPageHeader title="문제 자료실" />
@@ -74,36 +120,25 @@ export function HubMaterialsPage() {
         <HubEmpty message="아직 공개된 문제 자료가 없습니다." />
       ) : (
         <ul className="space-y-3">
-          {materials.map((material) => {
-            const openable = canOpenHubMaterial(material.kind) && Boolean(material.sourceFilePath)
-            const downloadable = Boolean(material.sourceFilePath)
+          {groupHubMaterialsByFolder(materials).map((entry) => {
+            if (entry.type === 'single') return renderMaterial(entry.material, false)
+            const isOpen = openFolders.has(entry.folderId)
             return (
-              <li key={material.id} className="rounded-2xl bg-white p-4 shadow-sm">
-                <p className="font-bold text-[#163A70]">{material.title}</p>
-                {material.description ? (
-                  <p className="mt-1 text-sm text-slate-600">{material.description}</p>
+              <li key={`folder-${entry.folderId}`} className="rounded-2xl bg-white p-4 shadow-sm">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between gap-2 text-left"
+                  aria-expanded={isOpen}
+                  onClick={() => toggleFolder(entry.folderId)}
+                >
+                  <span className="min-w-0 break-words font-bold text-[#163A70]">📁 {entry.folderName}</span>
+                  <span className="shrink-0 text-xs text-slate-400">
+                    {entry.items.length}개 {isOpen ? '▲' : '▼'}
+                  </span>
+                </button>
+                {isOpen ? (
+                  <ul className="mt-3 space-y-2">{entry.items.map((material) => renderMaterial(material, true))}</ul>
                 ) : null}
-                <p className="mt-1 text-xs text-slate-400">{material.kind.toUpperCase()}</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {openable ? (
-                    <button
-                      type="button"
-                      className="rounded-full bg-[#163A70] px-3 py-2 text-xs font-semibold text-white"
-                      onClick={() => void openMaterial(material)}
-                    >
-                      열기
-                    </button>
-                  ) : null}
-                  {downloadable ? (
-                    <button
-                      type="button"
-                      className="rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700"
-                      onClick={() => void downloadMaterial(material)}
-                    >
-                      다운로드
-                    </button>
-                  ) : null}
-                </div>
               </li>
             )
           })}

@@ -31,6 +31,12 @@ export function fileRelativePath(file: File): string {
   return typeof rel === 'string' ? rel.trim() : ''
 }
 
+/** webkitRelativePath의 맨 위 폴더 이름. 폴더 업로드가 아니면 빈 문자열. */
+export function topFolderNameOf(file: File): string {
+  const parts = fileRelativePath(file).replace(/\\/g, '/').split('/').filter(Boolean)
+  return parts.length > 1 ? parts[0] : ''
+}
+
 export function materialFileKey(file: File): string {
   const relative = fileRelativePath(file)
   return `${relative || file.name}:${file.size}:${file.lastModified}`

@@ -50,6 +50,9 @@ export type HubMaterial = {
   publishedAt: string | null
   createdAt: string
   pages: HubMaterialPage[]
+  /** 폴더로 올린 자료만 값이 있다. 같은 folder_id는 앱에서 폴더 1개로 묶어 표시한다. */
+  folderId?: string | null
+  folderName?: string | null
 }
 
 export type HubVideoTimestamp = {

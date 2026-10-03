@@ -36,6 +36,7 @@ import {
   hubMaterialBatchPushEntityId,
   mergeMaterialFiles,
   pickHubMaterialFiles,
+  topFolderNameOf,
 } from '../../hub/hubMaterialBatch'
 import { HUB_MATERIAL_PUSH_FAILURE, invokeHubPush, isHubPushDeliveryOk, notifyHubPush } from '../../lib/hubPushInvoke'
 import {
@@ -339,11 +340,18 @@ function MaterialPanel({
     const nextFailed: string[] = []
     const failedReasons = new Map<string, string>()
     const succeededNames = new Set<string>()
+    const folderIds = new Map<string, string>()
     try {
       for (let index = 0; index < queue.length; index += 1) {
         const item = queue[index]
         const itemTitle =
           queue.length === 1 && title.trim() ? title.trim() : item.title
+        const folderName = topFolderNameOf(item.file)
+        let folderId: string | null = null
+        if (folderName) {
+          folderId = folderIds.get(folderName) ?? crypto.randomUUID()
+          folderIds.set(folderName, folderId)
+        }
         try {
           const saved = await teacherUploadMaterial({
             title: itemTitle,
@@ -354,6 +362,8 @@ function MaterialPanel({
             targetClassName: audience.targetClassName || null,
             targetStudentId: audience.audienceType === 'student' ? audience.targetStudentId || null : null,
             publish: true,
+            folderId,
+            folderName: folderName || null,
           })
           successIds.push(saved.id)
           succeededNames.add(item.file.name)
@@ -595,6 +605,7 @@ function MaterialPanel({
           <article key={item.id} className="rounded-2xl bg-white p-4 shadow-sm">
             <p className="break-anywhere font-semibold">{item.title}</p>
             <p className="break-keep text-xs text-slate-500">
+              {item.folderName ? `📁 ${item.folderName} · ` : ''}
               {item.kind} · {item.status} ·{' '}
               {hubAudienceSummary(
                 item,
