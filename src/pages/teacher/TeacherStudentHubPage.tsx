@@ -38,6 +38,7 @@ import {
   pickHubMaterialFiles,
   topFolderNameOf,
 } from '../../hub/hubMaterialBatch'
+import { groupHubMaterialsByFolder } from '../../hub/hubMaterialFolders'
 import { HUB_MATERIAL_PUSH_FAILURE, invokeHubPush, isHubPushDeliveryOk, notifyHubPush } from '../../lib/hubPushInvoke'
 import {
   HUB_INBOX_REPLY_SAVE_FAILURE,
@@ -290,6 +291,15 @@ function MaterialPanel({
     targetStudentId: '',
   })
   const [deleteTarget, setDeleteTarget] = useState<HubMaterial | null>(null)
+  const [openFolders, setOpenFolders] = useState<Set<string>>(new Set())
+  const toggleFolder = (folderId: string) => {
+    setOpenFolders((prev) => {
+      const next = new Set(prev)
+      if (next.has(folderId)) next.delete(folderId)
+      else next.add(folderId)
+      return next
+    })
+  }
   const [deleting, setDeleting] = useState(false)
 
   const picked = pickHubMaterialFiles(files)
@@ -478,6 +488,52 @@ function MaterialPanel({
     }
   }
 
+  const renderMaterialItem = (item: HubMaterial, inFolder: boolean) => (
+      <article
+        key={item.id}
+        className={inFolder ? 'rounded-xl bg-slate-50 p-3' : 'rounded-2xl bg-white p-4 shadow-sm'}
+      >
+        <p className="break-anywhere font-semibold">{item.title}</p>
+        <p className="break-keep text-xs text-slate-500">
+          {item.kind} · {item.status} ·{' '}
+          {hubAudienceSummary(
+            item,
+            students.find((student) => student.id === item.targetStudentId)?.name,
+          )}
+        </p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button type="button" className={btnSecondary} onClick={() => startMetaEdit(item)}>
+            수정
+          </button>
+          <button
+            type="button"
+            className={btnSecondary}
+            onClick={async () => {
+              const previousPublished = item.status === 'PUBLISHED'
+              await teacherSetMaterialStatus(item.id, previousPublished ? 'HIDDEN' : 'PUBLISHED')
+              notifyHubPush({
+                event: 'material_saved',
+                entityId: item.id,
+                previous: { published: previousPublished },
+              })
+              showToast('자료를 저장했습니다.')
+              await onChanged()
+            }}
+          >
+            {item.status === 'PUBLISHED' ? '숨기기' : '게시'}
+          </button>
+          <button
+            type="button"
+            className={deleteBtnClass}
+            disabled={deleting}
+            onClick={() => setDeleteTarget(item)}
+          >
+            삭제
+          </button>
+        </div>
+      </article>
+  )
+
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <div className="space-y-4">
@@ -601,49 +657,35 @@ function MaterialPanel({
       </div>
       <div className="space-y-3">
         {materials.length === 0 ? <EmptyState title="자료가 없습니다." /> : null}
-        {materials.map((item) => (
-          <article key={item.id} className="rounded-2xl bg-white p-4 shadow-sm">
-            <p className="break-anywhere font-semibold">{item.title}</p>
-            <p className="break-keep text-xs text-slate-500">
-              {item.folderName ? `📁 ${item.folderName} · ` : ''}
-              {item.kind} · {item.status} ·{' '}
-              {hubAudienceSummary(
-                item,
-                students.find((student) => student.id === item.targetStudentId)?.name,
-              )}
-            </p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <button type="button" className={btnSecondary} onClick={() => startMetaEdit(item)}>
-                수정
-              </button>
+        {groupHubMaterialsByFolder(materials).map((entry) => {
+          if (entry.type === 'single') return renderMaterialItem(entry.material, false)
+          const isOpen = openFolders.has(entry.folderId)
+          const first = entry.items[0]
+          return (
+            <article key={`folder-${entry.folderId}`} className="rounded-2xl bg-white p-4 shadow-sm">
               <button
                 type="button"
-                className={btnSecondary}
-                onClick={async () => {
-                  const previousPublished = item.status === 'PUBLISHED'
-                  await teacherSetMaterialStatus(item.id, previousPublished ? 'HIDDEN' : 'PUBLISHED')
-                  notifyHubPush({
-                    event: 'material_saved',
-                    entityId: item.id,
-                    previous: { published: previousPublished },
-                  })
-                  showToast('자료를 저장했습니다.')
-                  await onChanged()
-                }}
+                className="flex w-full items-center justify-between gap-2 text-left"
+                aria-expanded={isOpen}
+                onClick={() => toggleFolder(entry.folderId)}
               >
-                {item.status === 'PUBLISHED' ? '숨기기' : '게시'}
+                <span className="min-w-0">
+                  <span className="break-anywhere block font-semibold">📁 {entry.folderName}</span>
+                  <span className="break-keep block text-xs text-slate-500">
+                    {hubAudienceSummary(
+                      first,
+                      students.find((student) => student.id === first.targetStudentId)?.name,
+                    )}
+                  </span>
+                </span>
+                <span className="shrink-0 text-xs text-slate-400">
+                  {entry.items.length}개 {isOpen ? '▲' : '▼'}
+                </span>
               </button>
-              <button
-                type="button"
-                className={deleteBtnClass}
-                disabled={deleting}
-                onClick={() => setDeleteTarget(item)}
-              >
-                삭제
-              </button>
-            </div>
-          </article>
-        ))}
+              {isOpen ? <div className="mt-3 space-y-2">{entry.items.map((item) => renderMaterialItem(item, true))}</div> : null}
+            </article>
+          )
+        })}
       </div>
       <ConfirmDialog
         open={Boolean(deleteTarget)}
