@@ -3,6 +3,7 @@ import type {
   DailyTestRecord,
   HomeworkRecord,
   HomeworkTextbookEntry,
+  StudentDailyCareRecord,
 } from '../types/records'
 import { getFinalPassSession, migrateSessionResults } from './dailyTest'
 import { classifyHomeworkStatus } from './homework'
@@ -19,10 +20,31 @@ export type MathAttitude = {
   attendance: { rate: number | null; absent: number; late: number }
   homework: { rate: number | null; done: number; total: number }
   firstPass: { rate: number | null; passed: number; total: number }
-  retest: { rate: number | null; passed: number; total: number }
+  /** 수업 태도: 기록 있는 날 중 문제(attitudeIssues)가 없던 날. 기록이 없으면 rate=null. 종합 점수에는 넣지 않는다. */
+  classAttitude: { rate: number | null; okDays: number; recordedDays: number; issues: Record<string, number> }
+  /** 합격 차시(1~4차)가 기록되지 않은 일일테스트 수 (점수 계산에서 제외, 자동 감점 없음) */
+  unrecordedTests: number
   score: number
   grade: ComprehensiveGrade
   counts: MonthlyLearningCounts
+}
+
+/** 해당 월에 합격 차시가 기록되지 않은 일일테스트 수 (날짜 기준 중복 제외) */
+export function countUnrecordedDailyTests(
+  dailyTests: DailyTestRecord[],
+  studentId: string,
+  year: number,
+  month: number,
+): number {
+  const dates = new Set<string>()
+  let count = 0
+  for (const test of dailyTests) {
+    if (test.studentId !== studentId || !isDateInYearMonth(test.date, year, month)) continue
+    if (dates.has(test.date)) continue
+    dates.add(test.date)
+    if (getFinalPassSession(migrateSessionResults(test)) === null) count += 1
+  }
+  return count
 }
 
 const pct = (part: number, whole: number): number | null =>
@@ -36,6 +58,7 @@ export function buildMathAttitude(input: {
   homework: HomeworkRecord[]
   homeworkTextbookEntries: HomeworkTextbookEntry[]
   dailyTests: DailyTestRecord[]
+  studentDailyCare: StudentDailyCareRecord[]
 }): MathAttitude {
   const { studentId, year, month } = input
   const progress = aggregateMonthlyLearningProgress(input)
@@ -68,6 +91,7 @@ export function buildMathAttitude(input: {
   const testDates = new Set<string>()
   let firstPass = 0
   let retestPass = 0
+  let unrecordedTests = 0
   for (const test of input.dailyTests) {
     if (test.studentId !== studentId || !isDateInYearMonth(test.date, year, month)) continue
     if (testDates.has(test.date)) continue
@@ -75,8 +99,20 @@ export function buildMathAttitude(input: {
     const finalPass = getFinalPassSession(migrateSessionResults(test))
     if (finalPass === 1) firstPass += 1
     else if (finalPass !== null) retestPass += 1
+    else unrecordedTests += 1
   }
   const passedTotal = firstPass + retestPass
+
+  const careDates = new Set<string>()
+  let okDays = 0
+  const issues: Record<string, number> = {}
+  for (const care of input.studentDailyCare) {
+    if (care.studentId !== studentId || !isDateInYearMonth(care.date, year, month)) continue
+    if (careDates.has(care.date)) continue
+    careDates.add(care.date)
+    if (care.attitudeIssues.length === 0) okDays += 1
+    for (const issue of care.attitudeIssues) issues[issue] = (issues[issue] ?? 0) + 1
+  }
 
   return {
     attendance: {
@@ -86,7 +122,8 @@ export function buildMathAttitude(input: {
     },
     homework: { rate: pct(hwDone, hwTotal), done: hwDone, total: hwTotal },
     firstPass: { rate: pct(firstPass, passedTotal), passed: firstPass, total: passedTotal },
-    retest: { rate: pct(retestPass, passedTotal), passed: retestPass, total: passedTotal },
+    classAttitude: { rate: pct(okDays, careDates.size), okDays, recordedDays: careDates.size, issues },
+    unrecordedTests,
     score: progress.score,
     grade: progress.grade,
     counts: progress.counts,

@@ -165,7 +165,21 @@ export function CauseLegend({ counts }: { counts: Record<MathCause, number> }) {
   )
 }
 
-export function Gauge({ value, color, label, sub }: { value: number | null; color: string; label: string; sub: string }) {
+export function Gauge({
+  value,
+  color,
+  label,
+  sub,
+  note,
+  emptyLabel,
+}: {
+  value: number | null
+  color: string
+  label: string
+  sub: string
+  note?: string
+  emptyLabel?: string
+}) {
   const circ = 2 * Math.PI * 30
   const dash = value === null ? 0 : (Math.min(100, value) / 100) * circ
   return (
@@ -173,10 +187,15 @@ export function Gauge({ value, color, label, sub }: { value: number | null; colo
       <svg viewBox="0 0 78 78" role="img" aria-label={`${label} ${value ?? '-'}%`}>
         <circle cx="39" cy="39" r="30" fill="none" stroke="#E7DCF3" strokeWidth="7" />
         <circle cx="39" cy="39" r="30" fill="none" stroke={color} strokeWidth="7" strokeLinecap="round" strokeDasharray={`${dash.toFixed(1)} ${circ.toFixed(1)}`} transform="rotate(-90 39 39)" />
-        <text x="39" y="44" textAnchor="middle" fontSize="15" fontWeight="800" fill={INK}>{value === null ? '-' : `${value}%`}</text>
+        {value === null && emptyLabel ? (
+          <text x="39" y="43" textAnchor="middle" fontSize="11" fontWeight="700" fill={MUTE}>{emptyLabel}</text>
+        ) : (
+          <text x="39" y="44" textAnchor="middle" fontSize="15" fontWeight="800" fill={INK}>{value === null ? '-' : `${value}%`}</text>
+        )}
       </svg>
       <b>{label}</b>
       <small>{sub}</small>
+      {note ? <small className="mm-gnote">{note}</small> : null}
     </div>
   )
 }

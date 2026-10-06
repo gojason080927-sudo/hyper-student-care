@@ -36,7 +36,7 @@ export function MathMonthlyReport({ student, reports, evaluations }: Props) {
   const [selectedId, setSelectedId] = useState(sorted[0]?.exam.id ?? '')
   const data = sorted.find((r) => r.exam.id === selectedId) ?? sorted[0]
 
-  const { attendance, homework, homeworkTextbookEntries, dailyTests } = useData()
+  const { attendance, homework, homeworkTextbookEntries, dailyTests, studentDailyCare } = useData()
   const attitude = useMemo(
     () =>
       data
@@ -48,9 +48,10 @@ export function MathMonthlyReport({ student, reports, evaluations }: Props) {
             homework,
             homeworkTextbookEntries,
             dailyTests,
+            studentDailyCare,
           })
         : null,
-    [attendance, dailyTests, data, homework, homeworkTextbookEntries, student.id],
+    [attendance, dailyTests, data, homework, homeworkTextbookEntries, student.id, studentDailyCare],
   )
 
   if (!data || !attitude) return null
@@ -339,11 +340,18 @@ export function MathMonthlyReportView({ student, sorted, data, attitude, evaluat
             <div className="mm-gauges">
               <Gauge value={attitude.attendance.rate} color="#16A34A" label="출석" sub={`결석 ${attitude.attendance.absent} · 지각 ${attitude.attendance.late}`} />
               <Gauge value={attitude.homework.rate} color="#16A34A" label="과제 완료" sub={`${attitude.homework.total}회 중 ${attitude.homework.done}회`} />
-              <Gauge value={attitude.firstPass.rate} color="#5B348A" label="일일테스트 1차 통과" sub={`합격 ${attitude.firstPass.total}회 중 ${attitude.firstPass.passed}회`} />
-              <Gauge value={attitude.retest.rate} color="#16A34A" label="2~4차 재시험 통과" sub={`합격 ${attitude.retest.total}회 중 ${attitude.retest.passed}회`} />
+              <Gauge value={attitude.firstPass.rate} color="#5B348A" label="일일테스트 1차 통과" sub={`합격 ${attitude.firstPass.total}회 중 ${attitude.firstPass.passed}회`} note={attitude.unrecordedTests > 0 ? `기록 없음 ${attitude.unrecordedTests}회` : undefined} />
+              <Gauge
+                value={attitude.classAttitude.rate}
+                color="#16A34A"
+                label="수업 태도"
+                emptyLabel="기록 없음"
+                sub={attitude.classAttitude.recordedDays > 0 ? `문제없음 ${attitude.classAttitude.okDays}일 / ${attitude.classAttitude.recordedDays}일` : '이번 달 기록 없음'}
+                note={Object.keys(attitude.classAttitude.issues).length > 0 ? Object.entries(attitude.classAttitude.issues).map(([k, n]) => `${k} ${n}`).join(' · ') : undefined}
+              />
             </div>
             <div className="mm-att">
-              <span>학습 태도 종합 <span style={{ color: '#6B6574', fontSize: '0.85em' }}>(지각·과제·재시험 감점 기준)</span></span>
+              <span>학습 태도 종합 <span style={{ color: '#6B6574', fontSize: '0.85em' }}>(지각·과제·일일테스트 차시 감점 기준)</span></span>
               <span><b>{attitude.score}점</b> &nbsp;{attitude.grade}</span>
             </div>
           </div>

@@ -2,6 +2,7 @@ import { ArrowLeft } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { MathStudentEditor } from '../components/mathMonthly/MathStudentEditor'
+import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { PageHeader } from '../components/ui/PageHeader'
 import { useData } from '../hooks/useData'
 import {
@@ -12,6 +13,7 @@ import {
   saveMathResult,
   type MathResultRow,
 } from '../lib/db/mathMonthlyRepo'
+import { countUnrecordedDailyTests } from '../utils/mathMonthlyAttitude'
 import { getSeoulYearMonth } from '../utils/monthlyLearningProgress'
 import {
   MATH_DIFFICULTIES,
@@ -33,7 +35,7 @@ const DEFAULT_POINTS = 5
 
 /** 수학 월말평가 결과 보고서 — 강사 입력 (시험 설정 → 학생별 입력 → 반 단위 발송) */
 export function MathMonthlyExamPage() {
-  const { students } = useData()
+  const { students, dailyTests } = useData()
   const location = useLocation()
   const base = location.pathname.startsWith('/teacher/mobile') ? '/teacher/mobile' : '/teacher'
   const now = getSeoulYearMonth()
@@ -60,6 +62,7 @@ export function MathMonthlyExamPage() {
   const [editingId, setEditingId] = useState('')
   const [publishMsg, setPublishMsg] = useState('')
   const [publishing, setPublishing] = useState(false)
+  const [missingWarn, setMissingWarn] = useState('')
 
   const activeStudents = useMemo(() => students.filter((s) => s.status === '재원'), [students])
   const classNames = useMemo(() => getEnrolledClassNames(activeStudents), [activeStudents])
@@ -199,7 +202,22 @@ export function MathMonthlyExamPage() {
       setPublishMsg('발송할 임시 저장 결과가 없습니다.')
       return
     }
+    // 합격 기록이 없는 일일테스트가 있으면 발송 전에 알린다 (발송을 막지는 않는다)
+    const missing = classStudents
+      .map((s) => ({ name: s.name, count: countUnrecordedDailyTests(dailyTests, s.id, exam.year, exam.month) }))
+      .filter((m) => m.count > 0)
+    if (missing.length > 0) {
+      setMissingWarn(
+        `합격 기록이 없는 일일테스트가 있습니다: ${missing.map((m) => `${m.name} ${m.count}건`).join(', ')}. 기록을 확인한 뒤 발송하시겠습니까?`,
+      )
+      return
+    }
     if (!window.confirm(`${className} 임시 저장 ${draftCount}명의 보고서를 학부모에게 발송할까요? 학부모에게 알림이 갑니다.`)) return
+    await doPublish()
+  }
+
+  const doPublish = async () => {
+    if (!exam) return
     setPublishing(true)
     try {
       const out = await publishMathExam(exam.id)
@@ -345,6 +363,20 @@ export function MathMonthlyExamPage() {
           </>
         )}
       </section>
+
+      <ConfirmDialog
+        open={!!missingWarn}
+        title="일일테스트 기록 확인"
+        message={missingWarn}
+        confirmLabel="확인 후 발송"
+        cancelLabel="취소"
+        confirmTone="primary"
+        onCancel={() => setMissingWarn('')}
+        onConfirm={() => {
+          setMissingWarn('')
+          void doPublish()
+        }}
+      />
 
       {exam && (
         <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
