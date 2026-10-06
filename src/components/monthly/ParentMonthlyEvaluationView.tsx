@@ -85,8 +85,10 @@ export function ParentMonthlyEvaluationView({
   // 성적 추이는 과목별로 따로 그린다 (영어·수학이 한 선으로 섞이지 않게)
   const chartSubjects = useMemo(() => {
     const names = Array.from(new Set(studentRecords.map((r) => r.subject).filter(Boolean)))
-    return names.length > 0 ? names : ['']
-  }, [studentRecords])
+    // 새 수학 보고서가 있으면 보고서 안의 성적 추이를 쓰므로 예전 수학 그래프는 숨긴다
+    const shown = mathReports.length > 0 ? names.filter((name) => name !== '수학') : names
+    return shown.length > 0 || mathReports.length > 0 ? shown : ['']
+  }, [mathReports.length, studentRecords])
 
   return (
     <div className="parent-page space-y-8 pb-6">

@@ -30,6 +30,8 @@ export function ParentCategoryGrid() {
   const noticesMakeupUnread = parentUnread
     ? hasUnreadNoticesOrMakeup(parentUnread.unread)
     : false
+  // 새 수학 보고서 발송 시 monthly_evaluations 가 함께 갱신되므로 기존 계산 그대로 점이 뜬다.
+  const monthlyEvaluationUnread = parentUnread ? parentUnread.unread['monthly-evaluation'] : false
   const basePath = `/care/${student.studentAccessKey}`
   const todayPath = `${basePath}/${parentTodayReportItem.segment}`
   const TodayIcon = parentTodayReportItem.icon
@@ -46,12 +48,14 @@ export function ParentCategoryGrid() {
           const showWeeklyUnread = segment === 'weekly-learning-summary' && weeklyUnread
           const showSuggestionUnread = segment === 'suggestions' && suggestionUnread
           const showNoticesMakeupUnread = segment === 'notices-makeup' && noticesMakeupUnread
+          const showMonthlyEvaluationUnread = segment === 'monthly-evaluation' && monthlyEvaluationUnread
           return (
             <Link key={segment} to={`${basePath}/${segment}`} className="hub-tile">
               {showAdmissionUnread ||
               showWeeklyUnread ||
               showSuggestionUnread ||
-              showNoticesMakeupUnread ? (
+              showNoticesMakeupUnread ||
+              showMonthlyEvaluationUnread ? (
                 <span className="parent-hub-unread" aria-label="확인하지 않은 새 자료" />
               ) : null}
               <span className="hub-tile-icon" aria-hidden>

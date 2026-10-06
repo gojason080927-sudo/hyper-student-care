@@ -267,19 +267,23 @@ export function recommendComments(
 ): { strengths: string; improvements: string } {
   const wrongNos = wrongItems.map((w) => w.no)
   const units = unitStats(exam, wrongNos).filter((u) => u.total > 0)
-  const best = [...units].sort((a, b) => b.rate - a.rate)[0]
-  const worst = [...units].sort((a, b) => a.rate - b.rate)[0]
   const counts = causeCounts(wrongItems)
   const topCause = MATH_CAUSES.filter((c) => counts[c] > 0).sort((a, b) => counts[b] - counts[a])[0]
+  const insight = unitInsight(units.map((u) => ({ ...u, diagnosis: diagnose(u.rate, null) })))
 
-  const strengths =
-    best && best.rate >= 60
-      ? `${best.name} 단원에서 ${best.total}문항 중 ${best.correct}문항을 맞혔습니다(정답률 ${best.rate}%).`
-      : ''
+  // 강점·보강은 보고서 표의 진단과 같은 기준(반 평균이 없는 초안 단계이므로 정답률 80% 이상 / 60% 미만)
+  let strengths = ''
+  if (insight.strength) {
+    strengths = `${insight.strength.name} 단원에서 ${insight.strength.total}문항 중 ${insight.strength.correct}문항을 맞혔습니다(정답률 ${insight.strength.rate}%).`
+  } else if (insight.highest) {
+    strengths = `가장 높은 단원: ${insight.highest.name} ${insight.highest.rate}%`
+  }
   let improvements = ''
-  if (worst && worst.rate < 100) {
-    improvements = `${worst.name} 단원의 정답률이 ${worst.rate}%로 보강이 필요합니다.`
+  if (insight.weak) {
+    improvements = `${insight.weak.name} 단원의 정답률이 ${insight.weak.rate}%로 보강이 필요합니다.`
     if (topCause) improvements += ` 오답 원인은 ${MATH_CAUSE_LABEL[topCause]}이 가장 많았습니다.`
+  } else if (insight.lowest) {
+    improvements = `가장 낮은 단원: ${insight.lowest.name} ${insight.lowest.rate}%`
   }
   return { strengths, improvements }
 }
@@ -382,6 +386,21 @@ export function previousMonthPoint(trend: MathTrendPoint[], selected: { year: nu
   return trend.find((p) => p.year === prev.year && p.month === prev.month) ?? null
 }
 
+type DiagnosedUnit = { name: string; rate: number; diagnosis: Diagnosis }
+
+/** 표의 진단과 같은 값으로 강점·보강 단원을 고른다. 없으면 가장 높은/낮은 단원을 따로 돌려준다. */
+export function unitInsight<T extends DiagnosedUnit>(units: T[]) {
+  const byRateDesc = [...units].sort((a, b) => b.rate - a.rate)
+  const strength = byRateDesc.find((u) => u.diagnosis === 'strength') ?? null
+  const weak = [...byRateDesc].reverse().find((u) => u.diagnosis === 'weak') ?? null
+  return {
+    strength,
+    weak,
+    highest: byRateDesc[0] ?? null,
+    lowest: byRateDesc[byRateDesc.length - 1] ?? null,
+  }
+}
+
 export function buildSummaryText(view: MathReportView, trend: MathTrendPoint[], examMonth: number): string {
   const parts: string[] = []
   const first = trend[0]
@@ -395,8 +414,9 @@ export function buildSummaryText(view: MathReportView, trend: MathTrendPoint[], 
     const diff = view.score - view.classAvg.avgScore
     parts.push(diff >= 0 ? '반 평균 이상입니다.' : '반 평균보다 낮습니다.')
   }
-  const weak = view.units.filter((u) => u.diagnosis === 'weak').sort((a, b) => a.rate - b.rate)[0]
+  const { weak, lowest } = unitInsight(view.units)
   if (weak) parts.push(`${weak.name} 보강이 다음 목표입니다.`)
+  else if (lowest) parts.push(`가장 낮은 단원은 ${lowest.name}(${lowest.rate}%)입니다.`)
   else if (parts.length === 0) parts.push(`${examMonth}월 평가를 안정적으로 마쳤습니다.`)
   return parts.join(' ')
 }

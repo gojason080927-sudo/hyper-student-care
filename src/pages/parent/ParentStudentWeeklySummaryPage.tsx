@@ -14,6 +14,7 @@ import {
 import { weeklySummaryPeriodLabel } from '../../utils/studentCare'
 import type { DailyTestRecord, WeeklyLearningSummaryRecord, WeeklySummaryAreaKey } from '../../types/records'
 import { DailyTestWeeklyFlowCard } from '../../components/studentCare/DailyTestWeeklyFlowCard'
+import { ParentWeeklyWrongVocabSection } from '../../components/parent/ParentWeeklyWrongVocabSection'
 
 const AREA_ORDER: WeeklySummaryAreaKey[] = [
   'attendance',
@@ -68,6 +69,7 @@ export function ParentStudentWeeklySummaryPage() {
         <p className="text-center text-sm text-slate-500">
           매주 토요일 오전 8시(한국시간)에 해당 주 완료된 수업 기록으로 자동 생성됩니다.
         </p>
+        <ParentWeeklyWrongVocabSection />
       </div>
     )
   }
@@ -101,6 +103,8 @@ export function ParentStudentWeeklySummaryPage() {
         dailyTests={dailyTests}
         studentId={student.id}
       />
+
+      <ParentWeeklyWrongVocabSection />
     </div>
   )
 }

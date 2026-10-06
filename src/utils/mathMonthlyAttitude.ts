@@ -63,21 +63,20 @@ export function buildMathAttitude(input: {
     if (category === 'complete') hwDone += 1
   }
 
+  // 월간 학습진단 점수(감점)는 '합격 차시가 기록된 일일테스트'만 센다.
+  // 원형 그래프도 같은 기록(합격 차시 1~4차)만 기준으로 해서 종합 점수와 숫자가 맞게 한다.
   const testDates = new Set<string>()
   let firstPass = 0
   let retestPass = 0
-  let retestTotal = 0
   for (const test of input.dailyTests) {
     if (test.studentId !== studentId || !isDateInYearMonth(test.date, year, month)) continue
     if (testDates.has(test.date)) continue
     testDates.add(test.date)
     const finalPass = getFinalPassSession(migrateSessionResults(test))
     if (finalPass === 1) firstPass += 1
-    else {
-      retestTotal += 1
-      if (finalPass !== null) retestPass += 1
-    }
+    else if (finalPass !== null) retestPass += 1
   }
+  const passedTotal = firstPass + retestPass
 
   return {
     attendance: {
@@ -86,8 +85,8 @@ export function buildMathAttitude(input: {
       late: progress.counts.lateCount,
     },
     homework: { rate: pct(hwDone, hwTotal), done: hwDone, total: hwTotal },
-    firstPass: { rate: pct(firstPass, testDates.size), passed: firstPass, total: testDates.size },
-    retest: { rate: pct(retestPass, retestTotal), passed: retestPass, total: retestTotal },
+    firstPass: { rate: pct(firstPass, passedTotal), passed: firstPass, total: passedTotal },
+    retest: { rate: pct(retestPass, passedTotal), passed: retestPass, total: passedTotal },
     score: progress.score,
     grade: progress.grade,
     counts: progress.counts,

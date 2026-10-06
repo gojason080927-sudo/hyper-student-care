@@ -11,7 +11,9 @@ import {
   classAvgFromRow,
   diagnose,
   overallGrade,
+  recommendComments,
   recommendPlan,
+  unitInsight,
   validateExamSetup,
   type MathMonthlyReportData,
 } from './mathMonthlyReport'
@@ -56,6 +58,22 @@ assert.ok(recommendPlan(data.exam, data.result.wrongItems).length <= 5)
 
 assert.ok(validateExamSetup({ className: 'A', examDate: '2026-10-31', title: 't', items, units: data.exam.units }).length === 0)
 assert.ok(validateExamSetup({ className: 'A', examDate: '2026-10-31', title: 't', items, units: [{ name: 'U1', from: 1, to: 5 }] }).length > 0)
+
+// 요약 문구는 표의 진단과 같은 기준: 80% 강점이면 '보강'으로 나오면 안 된다
+const allStrong = [{ name: '적분', rate: 80, diagnosis: 'strength' as const }, { name: '미분', rate: 90, diagnosis: 'strength' as const }]
+const ins = unitInsight(allStrong)
+assert.equal(ins.weak, null)
+assert.equal(ins.lowest?.name, '적분')
+assert.equal(ins.strength?.name, '미분')
+const noStrong = unitInsight([{ name: 'A', rate: 70, diagnosis: 'normal' as const }, { name: 'B', rate: 65, diagnosis: 'normal' as const }])
+assert.equal(noStrong.strength, null)
+assert.equal(noStrong.highest?.name, 'A')
+const draft = recommendComments(
+  { items: buildDefaultItems(5, 20), units: [{ name: '적분', from: 1, to: 5 }] },
+  [{ no: 1, cause: 'calc' }],
+)
+assert.ok(!draft.improvements.includes('보강이 필요'), '적분 80%는 강점이므로 보강 문구 없음')
+assert.ok(draft.improvements.startsWith('가장 낮은 단원: 적분 80%'))
 
 // SQL 개인정보·보안 가드
 const sql = readFileSync('supabase/math-monthly-report-v1-migration.sql', 'utf8')

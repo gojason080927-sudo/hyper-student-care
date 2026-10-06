@@ -22,7 +22,7 @@ assert.deepEqual(labels, [
 const homeLabels = parentHomeCategoryItems.map((item) => item.label.replace(/\n/g, ' '))
 assert.deepEqual(homeLabels, [
   '주간 SUMMARY',
-  '주간 수학 오답 영어 단어 누적',
+  '월말평가',
   '시간표',
   '입시전략',
   '공지사항 보강계획',
@@ -40,7 +40,7 @@ assert.deepEqual(
   parentHomeCategoryItems.map((item) => item.segment),
   [
     'weekly-learning-summary',
-    'weekly-wrong-vocab',
+    'monthly-evaluation',
     'schedule',
     'admission-strategy',
     'notices-makeup',

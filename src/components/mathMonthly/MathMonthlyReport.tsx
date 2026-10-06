@@ -9,6 +9,7 @@ import {
   buildMathTrend,
   buildReportView,
   buildSummaryText,
+  unitInsight,
   previousMonthPoint,
   type MathMonthlyReportData,
 } from '../../utils/mathMonthlyReport'
@@ -87,8 +88,7 @@ export function MathMonthlyReportView({ student, sorted, data, attitude, evaluat
   const unitRange = exam.units.length ? `${exam.units[0].name}${exam.units.length > 1 ? ` ~ ${exam.units[exam.units.length - 1].name}` : ''}` : ''
   const subtitle = [`${exam.year}년 ${exam.month}월`, exam.title, unitRange].filter(Boolean).join(' · ')
   const wrongCount = view.wrongNos.size
-  const bestUnit = [...view.units].sort((a, b) => b.rate - a.rate)[0]
-  const worstUnit = [...view.units].sort((a, b) => a.rate - b.rate)[0]
+  const insight = unitInsight(view.units)
   const nextMonth = exam.month === 12 ? 1 : exam.month + 1
   const plan = result.nextPlan.filter((p) => p.content.trim())
   const hasComments = result.strengths.trim() || result.improvements.trim() || result.teacherComment.trim()
@@ -259,14 +259,25 @@ export function MathMonthlyReportView({ student, sorted, data, attitude, evaluat
                   ))}
                 </tbody>
               </table>
-              {bestUnit && worstUnit && (
+              {insight.highest && insight.lowest && (
                 <div className="mm-insight">
-                  <b>강점</b> {bestUnit.name} {bestUnit.rate}%
-                  {worstUnit.name !== bestUnit.name && (
+                  {insight.strength ? (
+                    <><b>강점</b> {insight.strength.name} {insight.strength.rate}%</>
+                  ) : (
+                    <><b>가장 높은 단원</b>: {insight.highest.name} {insight.highest.rate}%</>
+                  )}
+                  {insight.highest.name !== insight.lowest.name && (
                     <>
-                      {' '}&nbsp;·&nbsp; <b>보강</b> {worstUnit.name} {worstUnit.rate}%
-                      {showAvg && worstUnit.classRate !== null && worstUnit.diff !== null && worstUnit.diff < 0 &&
-                        ` — 반 평균(${Math.round(worstUnit.classRate)}%)보다 ${Math.abs(worstUnit.diff)}%p 낮습니다.`}
+                      {' '}&nbsp;·&nbsp;{' '}
+                      {insight.weak ? (
+                        <>
+                          <b>보강</b> {insight.weak.name} {insight.weak.rate}%
+                          {showAvg && insight.weak.classRate !== null && insight.weak.diff !== null && insight.weak.diff < 0 &&
+                            ` — 반 평균(${Math.round(insight.weak.classRate)}%)보다 ${Math.abs(insight.weak.diff)}%p 낮습니다.`}
+                        </>
+                      ) : (
+                        <><b>가장 낮은 단원</b>: {insight.lowest.name} {insight.lowest.rate}%</>
+                      )}
                     </>
                   )}
                 </div>
@@ -328,8 +339,8 @@ export function MathMonthlyReportView({ student, sorted, data, attitude, evaluat
             <div className="mm-gauges">
               <Gauge value={attitude.attendance.rate} color="#16A34A" label="출석" sub={`결석 ${attitude.attendance.absent} · 지각 ${attitude.attendance.late}`} />
               <Gauge value={attitude.homework.rate} color="#16A34A" label="과제 완료" sub={`${attitude.homework.total}회 중 ${attitude.homework.done}회`} />
-              <Gauge value={attitude.firstPass.rate} color="#5B348A" label="일일테스트 1차 통과" sub={`${attitude.firstPass.total}회 중 ${attitude.firstPass.passed}회`} />
-              <Gauge value={attitude.retest.rate} color="#16A34A" label="오답 재시험 통과" sub={`${attitude.retest.total}회 중 ${attitude.retest.passed}회`} />
+              <Gauge value={attitude.firstPass.rate} color="#5B348A" label="일일테스트 1차 통과" sub={`합격 ${attitude.firstPass.total}회 중 ${attitude.firstPass.passed}회`} />
+              <Gauge value={attitude.retest.rate} color="#16A34A" label="2~4차 재시험 통과" sub={`합격 ${attitude.retest.total}회 중 ${attitude.retest.passed}회`} />
             </div>
             <div className="mm-att">
               <span>학습 태도 종합 <span style={{ color: '#6B6574', fontSize: '0.85em' }}>(지각·과제·재시험 감점 기준)</span></span>

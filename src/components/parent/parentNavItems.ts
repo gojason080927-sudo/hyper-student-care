@@ -48,13 +48,6 @@ export const parentCategoryItems: ParentCategoryItem[] = [
   { segment: 'questions', label: '질문하기', icon: MessageCircleQuestion, description: '학습 질문·답변' },
 ]
 
-export const parentWeeklyWrongVocabItem: ParentCategoryItem = {
-  segment: 'weekly-wrong-vocab',
-  label: '주간 수학 오답\n영어 단어 누적',
-  icon: FileBarChart2,
-  description: '주간 수학 오답 · 영어 단어 누적 현황',
-}
-
 export const parentScheduleItem: ParentCategoryItem = {
   segment: 'schedule',
   label: '시간표',
@@ -72,7 +65,7 @@ export const parentSuggestionsItem: ParentCategoryItem = {
 /** HOME 3×2 타일. 사이드바 문구와 달리 짧은 Hub 타일용 라벨을 쓴다. */
 export const parentHomeCategoryItems: ParentCategoryItem[] = [
   { ...weeklyLearningSummaryItem, label: '주간 SUMMARY' },
-  parentWeeklyWrongVocabItem,
+  { ...parentCategoryItems[1], label: '월말평가' },
   parentScheduleItem,
   { ...parentCategoryItems[3], label: '입시전략' },
   { ...parentCategoryItems[2], label: '공지사항\n보강계획' },
