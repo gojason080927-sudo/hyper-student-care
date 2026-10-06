@@ -8,7 +8,7 @@ const corsHeaders = {
 /** src/utils/schoolExamReport.ts 의 SCHOOL_PLAN_MAX_LINES 와 같은 값 */
 const SCHOOL_PLAN_MAX_LINES = 8
 const DEFAULT_MODEL = 'claude-sonnet-5-5'
-const MAX_TOKENS = 800
+const MAX_TOKENS = 2000
 const TIMEOUT_MS = 30_000
 
 const SYSTEM_PROMPT = `당신은 학원 수학 선생님입니다. 학교 시험 결과를 바탕으로 학부모에게 보낼 "선생님 총평"과 "다음 시험 대비 계획" 초안을 씁니다.
@@ -132,7 +132,11 @@ function parseDraft(text: string): { comment: string; plan: string[] } | null {
   }
 }
 
-async function callAnthropic(apiKey: string, model: string, userContent: string): Promise<string> {
+async function callAnthropic(
+  apiKey: string,
+  model: string,
+  userContent: string,
+): Promise<{ text: string; stopReason: string | null }> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
   try {
@@ -154,11 +158,15 @@ async function callAnthropic(apiKey: string, model: string, userContent: string)
     if (!response.ok) {
       throw new Error(`anthropic_http_${response.status}`)
     }
-    const data = (await response.json()) as { content?: { type?: string; text?: string }[] }
-    return (data.content ?? [])
+    const data = (await response.json()) as {
+      content?: { type?: string; text?: string }[]
+      stop_reason?: string | null
+    }
+    const text = (data.content ?? [])
       .filter((block) => block.type === 'text')
       .map((block) => block.text ?? '')
       .join('')
+    return { text, stopReason: data.stop_reason ?? null }
   } finally {
     clearTimeout(timer)
   }
@@ -191,9 +199,15 @@ Deno.serve(async (request) => {
 
   try {
     for (let attempt = 0; attempt < 2; attempt++) {
-      const text = await callAnthropic(apiKey, model, userContent)
+      const { text, stopReason } = await callAnthropic(apiKey, model, userContent)
       const draft = parseDraft(text)
       if (draft) return jsonResponse({ comment: draft.comment, plan: draft.plan })
+      console.warn('[SchoolExamComment] parse failed', {
+        attempt: attempt + 1,
+        stop_reason: stopReason,
+        length: text.length,
+        head: text.slice(0, 200),
+      })
     }
     return jsonResponse({ status: 'error', error: 'invalid_model_output' }, 502)
   } catch (error) {
