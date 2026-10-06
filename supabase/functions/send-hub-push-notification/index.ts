@@ -18,6 +18,7 @@ type PushEvent =
     | 'weekly_summary_scan'
     | 'makeup_plan_saved'
     | 'math_monthly_report_sent'
+    | 'school_exam_report_sent'
 
 type RequestBody = {
   event?: PushEvent
@@ -617,6 +618,43 @@ async function handleMathMonthlyReportSent(
   return { status: sent > 0 ? 'sent' : 'no_subscribers', sent, failed }
 }
 
+async function handleSchoolExamReportSent(
+  supabase: SupabaseClient,
+  examId: string,
+  studentIds: string[],
+): Promise<Record<string, unknown>> {
+  const requested = new Set(uniqueStudentIds(studentIds))
+  if (!examId || requested.size === 0) return { status: 'ignored' }
+
+  // 발송된 학생만 서버에서 다시 확인한다 (클라이언트가 보낸 ID를 그대로 믿지 않음)
+  const { data: students, error } = await supabase.rpc('list_school_exam_push_recipients', {
+    p_exam_id: examId,
+  })
+  if (error) return { status: 'push_failed' }
+  const recipients = ((students ?? []) as { student_id?: string; access_key?: string }[])
+    .map((row) => ({ id: asString(row.student_id), key: asString(row.access_key) }))
+    .filter((row) => row.id && row.key && requested.has(row.id))
+  if (recipients.length === 0) return { status: 'no_recipients' }
+
+  let sent = 0
+  let failed = 0
+  let claimed = 0
+  for (const student of recipients) {
+    if (!(await claimDelivery(supabase, `school_exam:${examId}:${student.id}`))) continue
+    claimed += 1
+    const parentSubs = await loadParentSubscriptions(supabase, [student.id])
+    const result = await sendToSubscriptions(supabase, 'parent', parentSubs, {
+      title: 'HYPER 학교 시험 분석',
+      body: '학교 시험 분석 리포트가 도착했습니다. 앱에서 확인해 주세요.',
+      url: `/care/${encodeURIComponent(student.key)}/monthly-evaluation`,
+    })
+    sent += result.sent
+    failed += result.failed
+  }
+  if (claimed === 0) return { status: 'duplicate' }
+  return { status: sent > 0 ? 'sent' : 'no_subscribers', sent, failed }
+}
+
 async function handleWeeklySummaryScan(supabase: SupabaseClient): Promise<Record<string, unknown>> {
   const { data } = await supabase
     .from('weekly_learning_summaries')
@@ -725,6 +763,11 @@ Deno.serve(async (request) => {
     if (event === 'math_monthly_report_sent' && entityId) {
       return jsonResponse(
         await handleMathMonthlyReportSent(supabase, entityId, body.studentIds ?? body.student_ids ?? []),
+      )
+    }
+    if (event === 'school_exam_report_sent' && entityId) {
+      return jsonResponse(
+        await handleSchoolExamReportSent(supabase, entityId, body.studentIds ?? body.student_ids ?? []),
       )
     }
     return jsonResponse({ status: 'ignored' })
