@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react'
 import type { SchoolResultRow } from '../../lib/db/schoolExamRepo'
+import { generateSchoolExamAiComment } from '../../lib/schoolExamAiComment'
 import {
   SCHOOL_CAUSES,
   SCHOOL_CAUSE_LABEL,
+  SCHOOL_DIFFICULTIES,
   SCHOOL_PLAN_MAX_LINES,
   calcSchoolScore,
   draftNote,
@@ -32,6 +34,8 @@ export function SchoolStudentEditor({ exam, studentId, studentName, row, onSave,
   const [manualScore, setManualScore] = useState(row?.scoreManual ? row.score : 0)
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState('')
 
   const itemByNo = useMemo(() => new Map(exam.items.map((i) => [i.no, i])), [exam.items])
   const autoScore = calcSchoolScore(exam.items, wrong.map((w) => w.no))
@@ -50,6 +54,43 @@ export function SchoolStudentEditor({ exam, studentId, studentName, row, onSave,
   }
   const patch = (no: number, p: Partial<SchoolWrongItem>) =>
     setWrong((list) => list.map((w) => (w.no === no ? { ...w, ...p } : w)))
+
+  /** AI 초안: 총평·계획 칸만 채운다 (확인 체크·발송 조건은 건드리지 않는다) */
+  const writeAiDraft = async () => {
+    if (sortedWrong.length === 0 || aiLoading) return
+    if ((comment.trim() || planText.trim()) && !window.confirm('기존 내용을 AI 초안으로 바꿀까요?')) return
+    const wrongNos = new Set(sortedWrong.map((w) => w.no))
+    setAiLoading(true)
+    setAiError('')
+    const result = await generateSchoolExamAiComment({
+      exam: { title: exam.title, subject: exam.subject, grade: exam.grade, range: exam.rangeText },
+      score,
+      totalPoints: exam.totalPoints,
+      itemCount: exam.items.length,
+      wrongItems: sortedWrong.map((w) => {
+        const item = itemByNo.get(w.no)
+        return {
+          no: w.no,
+          difficulty: item?.difficulty ?? '',
+          unit: item?.unit ?? '',
+          type: item?.type ?? '',
+          cause: w.cause ? SCHOOL_CAUSE_LABEL[w.cause] : '',
+          note: w.note,
+        }
+      }),
+      correctByDifficulty: SCHOOL_DIFFICULTIES.map((d) => {
+        const items = exam.items.filter((i) => i.difficulty === d)
+        return { difficulty: d, total: items.length, correct: items.filter((i) => !wrongNos.has(i.no)).length }
+      }).filter((d) => d.total > 0),
+    })
+    setAiLoading(false)
+    if (!result.ok) {
+      setAiError(result.message)
+      return
+    }
+    setComment(result.comment)
+    setPlanText(result.plan.join('\n'))
+  }
 
   const save = async () => {
     const plan = planText.split('\n').map((l) => l.trim()).filter(Boolean)
@@ -172,6 +213,15 @@ export function SchoolStudentEditor({ exam, studentId, studentName, row, onSave,
             </label>
           </div>
 
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" className={btnSecondary} onClick={writeAiDraft} disabled={sortedWrong.length === 0 || aiLoading}>
+                {aiLoading ? '작성 중…' : 'AI 초안 작성'}
+              </button>
+              <span className="text-xs text-slate-500">AI가 쓴 초안입니다. 읽어 보고 고쳐 주세요.</span>
+            </div>
+            {aiError && <p className="text-sm text-rose-600">{aiError}</p>}
+          </div>
           <div>
             <label className="mb-1 block text-sm font-semibold text-slate-700">선생님 총평</label>
             <textarea className={`${inputClass()} min-h-24`} value={comment} onChange={(e) => setComment(e.target.value)} />
