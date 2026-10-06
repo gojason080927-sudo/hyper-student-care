@@ -1,6 +1,6 @@
 import { ArrowLeft, Plus } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { DifficultyBreakdownBadges } from '../components/monthly/DifficultyBreakdownBadges'
 import {
   MonthlyEvaluationForm,
@@ -26,6 +26,7 @@ import { SUBJECTS, btnPrimary, getScoreColor, inputClass } from '../utils/labels
 
 export function MonthlyEvaluationPage() {
   const navigate = useNavigate()
+  const mathBase = useLocation().pathname.startsWith('/teacher/mobile') ? '/teacher/mobile' : '/teacher'
   const { students, monthlyEvaluations, saveMonthlyEvaluationRecord, deleteMonthlyEvaluationRecord } =
     useData()
   const [yearFilter, setYearFilter] = useState('')
@@ -91,6 +92,13 @@ export function MonthlyEvaluationPage() {
           </button>
         }
       />
+
+      <Link
+        to={`${mathBase}/math-monthly`}
+        className="flex min-h-12 items-center justify-between rounded-2xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm font-semibold text-violet-900"
+      >
+        수학 월말평가 결과 보고서 입력 (반 단위 입력·발송) →
+      </Link>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">

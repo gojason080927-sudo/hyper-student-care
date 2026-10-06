@@ -1,0 +1,377 @@
+import { useMemo, useState } from 'react'
+import type { MonthlyEvaluationRecord } from '../../types/records'
+import type { Student } from '../../types/student'
+import { useData } from '../../hooks/useData'
+import { buildMathAttitude, type MathAttitude } from '../../utils/mathMonthlyAttitude'
+import {
+  DIAGNOSIS_LABEL,
+  MATH_DIFFICULTY_LABEL,
+  buildMathTrend,
+  buildReportView,
+  buildSummaryText,
+  previousMonthPoint,
+  type MathMonthlyReportData,
+} from '../../utils/mathMonthlyReport'
+import { CauseDonut, CauseLegend, Gauge, TrendChart, UnitRadar } from './MathMonthlyCharts'
+import '../../styles/mathMonthlyReport.css'
+
+type Props = {
+  student: Student
+  reports: MathMonthlyReportData[]
+  evaluations: MonthlyEvaluationRecord[]
+}
+
+const dateText = (iso: string) => iso.replaceAll('-', '. ') + '.'
+const signed = (v: number) => (v > 0 ? `+${v}` : `${v}`)
+const diffClass = (v: number) => (v >= 0 ? 'mm-up' : 'mm-dn')
+const diagClass = { strength: 'good', normal: 'mid', weak: 'bad' } as const
+
+/** 학부모·학생·강사 열람용 — 발송된 수학 월말평가 보고서 (월 선택, PDF 저장) */
+export function MathMonthlyReport({ student, reports, evaluations }: Props) {
+  const sorted = useMemo(
+    () => [...reports].sort((a, b) => b.exam.year * 12 + b.exam.month - (a.exam.year * 12 + a.exam.month)),
+    [reports],
+  )
+  const [selectedId, setSelectedId] = useState(sorted[0]?.exam.id ?? '')
+  const data = sorted.find((r) => r.exam.id === selectedId) ?? sorted[0]
+
+  const { attendance, homework, homeworkTextbookEntries, dailyTests } = useData()
+  const attitude = useMemo(
+    () =>
+      data
+        ? buildMathAttitude({
+            studentId: student.id,
+            year: data.exam.year,
+            month: data.exam.month,
+            attendance,
+            homework,
+            homeworkTextbookEntries,
+            dailyTests,
+          })
+        : null,
+    [attendance, dailyTests, data, homework, homeworkTextbookEntries, student.id],
+  )
+
+  if (!data || !attitude) return null
+  return (
+    <MathMonthlyReportView
+      student={student}
+      sorted={sorted}
+      data={data}
+      attitude={attitude}
+      evaluations={evaluations}
+      onSelect={setSelectedId}
+    />
+  )
+}
+
+type ViewProps = {
+  student: Pick<Student, 'name'>
+  sorted: MathMonthlyReportData[]
+  data: MathMonthlyReportData
+  attitude: MathAttitude
+  evaluations: MonthlyEvaluationRecord[]
+  onSelect: (examId: string) => void
+}
+
+/** 화면(휴대폰 세로 카드) + 인쇄(A4 2쪽) 공용 표시 컴포넌트 — 데이터 접근 없음 */
+export function MathMonthlyReportView({ student, sorted, data, attitude, evaluations, onSelect }: ViewProps) {
+  const { exam, result } = data
+  const view = buildReportView(data)
+  const showAvg = view.classAvg !== null
+  const trend = buildMathTrend(evaluations, sorted, { year: exam.year, month: exam.month })
+  const prev = previousMonthPoint(trend, { year: exam.year, month: exam.month })
+  const first = trend[0]
+  const scoreDiff = prev ? view.score - prev.score : null
+  const avgDiff = view.classAvg ? Math.round((view.score - view.classAvg.avgScore) * 10) / 10 : null
+  const unitRange = exam.units.length ? `${exam.units[0].name}${exam.units.length > 1 ? ` ~ ${exam.units[exam.units.length - 1].name}` : ''}` : ''
+  const subtitle = [`${exam.year}년 ${exam.month}월`, exam.title, unitRange].filter(Boolean).join(' · ')
+  const wrongCount = view.wrongNos.size
+  const bestUnit = [...view.units].sort((a, b) => b.rate - a.rate)[0]
+  const worstUnit = [...view.units].sort((a, b) => a.rate - b.rate)[0]
+  const nextMonth = exam.month === 12 ? 1 : exam.month + 1
+  const plan = result.nextPlan.filter((p) => p.content.trim())
+  const hasComments = result.strengths.trim() || result.improvements.trim() || result.teacherComment.trim()
+  const itemByNo = new Map(exam.items.map((i) => [i.no, i]))
+
+  const print = () => {
+    document.body.classList.add('mm-printing')
+    const done = () => {
+      document.body.classList.remove('mm-printing')
+      window.removeEventListener('afterprint', done)
+    }
+    window.addEventListener('afterprint', done)
+    window.print()
+  }
+
+  return (
+    <div className="mm-root">
+      <div className="mm-toolbar mm-no-print">
+        <select value={exam.id} onChange={(e) => onSelect(e.target.value)} aria-label="보고서 월 선택">
+          {sorted.map((r) => (
+            <option key={r.exam.id} value={r.exam.id}>
+              {r.exam.year}년 {r.exam.month}월 수학 월말평가
+            </option>
+          ))}
+        </select>
+        <button type="button" className="mm-btn" onClick={print}>PDF 저장</button>
+      </div>
+
+      <div className="mm-print-root">
+        {/* ───── 1쪽 ───── */}
+        <section className="mm-page">
+          <div className="mm-pno">1 / 2</div>
+          <div className="mm-band">
+            <div className="mm-brand"><b>HYPER</b><span>ACADEMY</span></div>
+            <div className="mm-title"><b>수학 월말평가 결과 보고서</b><span>{subtitle}</span></div>
+            <div className="mm-pill">{exam.month}월</div>
+          </div>
+          <div className="mm-who">
+            <span>학생<b>{student.name}</b></span>
+            <span>학년<b>{exam.grade}</b></span>
+            <span>반<b>{exam.className}</b></span>
+            <span>평가일<b>{dateText(exam.examDate)}</b></span>
+            {exam.teacherName && <span>담당<b>{exam.teacherName} 선생님</b></span>}
+          </div>
+
+          <h2 className="mm-h2">이번 달 한눈에 보기</h2>
+          <div className={`mm-cards${showAvg ? '' : ' no-avg'}`}>
+            <div className="mm-card">
+              <div className="mm-sub">점수</div>
+              <div className="mm-big">{view.score}<small>/ {view.total}</small></div>
+              {scoreDiff !== null && prev ? (
+                <span className={`mm-chip ${scoreDiff >= 0 ? 'up' : 'dn'}`}>
+                  {scoreDiff > 0 ? '▲' : scoreDiff < 0 ? '▼' : '='} {Math.abs(scoreDiff)}점 (지난달 {prev.score})
+                </span>
+              ) : (
+                <span className="mm-chip">지난달 기록 없음</span>
+              )}
+            </div>
+            {showAvg && avgDiff !== null && view.classAvg && (
+              <div className="mm-card">
+                <div className="mm-sub">반 평균 대비</div>
+                <div className="mm-big">{signed(avgDiff)}<small>점</small></div>
+                <span className="mm-chip">반 평균 {Math.round(view.classAvg.avgScore)}점</span>
+              </div>
+            )}
+            <div className="mm-card">
+              <div className="mm-sub">정답 문항</div>
+              <div className="mm-big">{view.correctCount}<small>/ {exam.items.length}</small></div>
+              <span className="mm-chip">정답률 {Math.round((view.correctCount / exam.items.length) * 100)}%</span>
+            </div>
+            <div className="mm-card sum">
+              <div className="mm-sub">종합 평가</div>
+              <div className="mm-grade">
+                {view.grade.label}
+                <span className="mm-stars">{'★'.repeat(view.grade.stars)}{'☆'.repeat(5 - view.grade.stars)}</span>
+              </div>
+              <p>{buildSummaryText(view, trend, exam.month)}</p>
+            </div>
+          </div>
+
+          <div className="mm-row2">
+            <div className="mm-box">
+              <h2 className="mm-h2">성적 추이<small>최근 6개월</small></h2>
+              <div className="mm-chart">
+                {trend.length > 0 && <TrendChart points={trend} showAvg={showAvg} />}
+              </div>
+              <div className="mm-legend">
+                <span><i />{student.name}</span>
+                {showAvg && <span><i className="d" />반 평균</span>}
+              </div>
+            </div>
+            <div className="mm-box">
+              <h2 className="mm-h2">월별 기록</h2>
+              <table className="mm-t">
+                <thead>
+                  <tr>
+                    <th>월</th><th>점수</th>
+                    {showAvg && <><th>반 평균</th><th>차이</th></>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {trend.map((p, i) => {
+                    const avg = p.classPercentage === null ? null : Math.round(p.classPercentage)
+                    return (
+                      <tr key={`${p.year}-${p.month}`} className={i === trend.length - 1 ? 'now' : ''}>
+                        <td>{p.label}</td>
+                        <td className="b">{p.score}</td>
+                        {showAvg && (
+                          <>
+                            <td className="m">{avg ?? '-'}</td>
+                            <td className={avg === null ? 'm' : diffClass(p.score - avg)}>
+                              {avg === null ? '-' : signed(p.score - avg)}
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+              {first && trend.length >= 2 && (
+                <div className="mm-insight">
+                  <b>성장 포인트</b> · {first.label} 대비 <b>{signed(view.score - first.score)}점</b>.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="mm-unit">
+            <div className="mm-box">
+              <h2 className="mm-h2">단원별 성취도</h2>
+              <div className="mm-chart center">
+                {view.units.length >= 3 ? (
+                  <UnitRadar units={view.units} showAvg={showAvg} />
+                ) : (
+                  <p className="mm-note">단원이 3개 이상일 때 레이더 차트로 표시됩니다.</p>
+                )}
+              </div>
+              <div className="mm-legend">
+                <span><i />{student.name} 정답률</span>
+                {showAvg && <span><i className="d" />반 평균</span>}
+              </div>
+            </div>
+            <div className="mm-box">
+              <h2 className="mm-h2">단원별 결과</h2>
+              <table className="mm-t">
+                <thead>
+                  <tr>
+                    <th>단원</th><th>맞힘</th><th>정답률</th>
+                    {showAvg && <><th>반 평균</th><th>차이</th></>}
+                    <th className="c">진단</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {view.units.map((u) => (
+                    <tr key={u.name}>
+                      <td><b>{u.name}</b><small>{u.from}~{u.to}번</small></td>
+                      <td>{u.correct}/{u.total}</td>
+                      <td className="b">{u.rate}%</td>
+                      {showAvg && (
+                        <>
+                          <td className="m">{u.classRate === null ? '-' : `${Math.round(u.classRate)}%`}</td>
+                          <td className={u.diff === null ? 'm' : diffClass(u.diff)}>{u.diff === null ? '-' : signed(u.diff)}</td>
+                        </>
+                      )}
+                      <td className="c"><span className={`mm-st ${diagClass[u.diagnosis]}`}>{DIAGNOSIS_LABEL[u.diagnosis]}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {bestUnit && worstUnit && (
+                <div className="mm-insight">
+                  <b>강점</b> {bestUnit.name} {bestUnit.rate}%
+                  {worstUnit.name !== bestUnit.name && (
+                    <>
+                      {' '}&nbsp;·&nbsp; <b>보강</b> {worstUnit.name} {worstUnit.rate}%
+                      {showAvg && worstUnit.classRate !== null && worstUnit.diff !== null && worstUnit.diff < 0 &&
+                        ` — 반 평균(${Math.round(worstUnit.classRate)}%)보다 ${Math.abs(worstUnit.diff)}%p 낮습니다.`}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="mm-foot"><span>하이퍼 영수 전문학원</span><span>24시간 학습을 설계하다</span></div>
+        </section>
+
+        {/* ───── 2쪽 ───── */}
+        <section className="mm-page">
+          <div className="mm-pno">2 / 2</div>
+          <div className="mm-run">{student.name} · {exam.year}년 {exam.month}월 수학 월말평가<span>문항 분석 · 학습 태도 · 선생님 의견 · 다음 달 계획</span></div>
+
+          <div className="mm-p2a">
+            <div className="mm-box">
+              <h2 className="mm-h2">난이도별 정답률</h2>
+              {view.difficulties.map((d) => (
+                <div className="mm-db-row" key={d.difficulty}>
+                  <span className="mm-db-l">{MATH_DIFFICULTY_LABEL[d.difficulty]}<small>{d.total}문항</small></span>
+                  <div className="mm-db-track">
+                    <div className="mm-db-fill" style={{ width: `${d.rate}%` }} />
+                    {showAvg && d.classRate !== null && <div className="mm-db-avg" style={{ left: `${Math.min(100, d.classRate)}%` }} />}
+                  </div>
+                  <span className="mm-db-v">{d.rate}%<small>{d.correct}/{d.total}{showAvg && d.classRate !== null ? ` · 반 ${Math.round(d.classRate)}%` : ''}</small></span>
+                </div>
+              ))}
+              <div className="mm-legend">
+                <span><i />{student.name}</span>
+                {showAvg && <span><i style={{ width: 2, height: 10, borderTop: 'none', borderLeft: '2px solid #161B3A' }} />반 평균</span>}
+              </div>
+            </div>
+            <div className="mm-box">
+              <h2 className="mm-h2">문항별 결과<small>{exam.items.length}문항 · 정답 {view.correctCount}</small></h2>
+              <div className="mm-qgrid">
+                {exam.items.map((item) => {
+                  const wrong = view.wrongNos.has(item.no)
+                  return (
+                    <div key={item.no} className={`mm-q${wrong ? ' x' : ''}`}>
+                      <b>{item.no}</b><span>{wrong ? '✕' : '○'}</span><i>{MATH_DIFFICULTY_LABEL[itemByNo.get(item.no)?.difficulty ?? 'middle']}</i>
+                    </div>
+                  )
+                })}
+              </div>
+              {wrongCount > 0 && (
+                <>
+                  <h2 className="mm-h2" style={{ marginTop: 14 }}>오답 원인</h2>
+                  <div className="mm-cause">
+                    <CauseDonut counts={view.causes} total={wrongCount} />
+                    <CauseLegend counts={view.causes} />
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="mm-box" style={{ marginTop: 12 }}>
+            <h2 className="mm-h2">이번 달 학습 태도<small>출결·과제·일일테스트 기록에서 자동 집계</small></h2>
+            <div className="mm-gauges">
+              <Gauge value={attitude.attendance.rate} color="#16A34A" label="출석" sub={`결석 ${attitude.attendance.absent} · 지각 ${attitude.attendance.late}`} />
+              <Gauge value={attitude.homework.rate} color="#16A34A" label="과제 완료" sub={`${attitude.homework.total}회 중 ${attitude.homework.done}회`} />
+              <Gauge value={attitude.firstPass.rate} color="#5B348A" label="일일테스트 1차 통과" sub={`${attitude.firstPass.total}회 중 ${attitude.firstPass.passed}회`} />
+              <Gauge value={attitude.retest.rate} color="#16A34A" label="오답 재시험 통과" sub={`${attitude.retest.total}회 중 ${attitude.retest.passed}회`} />
+            </div>
+            <div className="mm-att">
+              <span>학습 태도 종합 <span style={{ color: '#6B6574', fontSize: '0.85em' }}>(지각·과제·재시험 감점 기준)</span></span>
+              <span><b>{attitude.score}점</b> &nbsp;{attitude.grade}</span>
+            </div>
+          </div>
+
+          {hasComments && (
+            <>
+              <h2 className="mm-h2" style={{ marginTop: 14 }}>선생님 의견</h2>
+              <div className="mm-comments">
+                {result.strengths.trim() && <div className="mm-cm good"><h3>👍 잘한 점</h3>{result.strengths}</div>}
+                {result.improvements.trim() && <div className="mm-cm imp"><h3>✏️ 보완할 점</h3>{result.improvements}</div>}
+                {result.teacherComment.trim() && (
+                  <div className="mm-cm all">
+                    <h3>총평</h3>
+                    {result.teacherComment}
+                    {exam.teacherName && <div className="mm-sign">수학 {exam.teacherName}</div>}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {plan.length > 0 && (
+            <div className="mm-plan">
+              <h2 className="mm-h2">{nextMonth}월 학습 계획<small>담당 선생님 작성</small></h2>
+              <ul>
+                {plan.map((line, i) => (
+                  <li key={i}>
+                    <span className="mm-num">{i + 1}</span>
+                    <span>{line.content}</span>
+                    {line.goal.trim() && <small className="mm-goal">{line.goal}</small>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <p className="mm-note">※ 학생 개인의 성장을 보기 위한 자료로 석차는 표시하지 않습니다.{showAvg ? ' 반 평균은 같은 반 학생들의 평균입니다.' : ''}</p>
+          <div className="mm-foot"><span>하이퍼 영수 전문학원</span><span>24시간 학습을 설계하다</span></div>
+        </section>
+      </div>
+    </div>
+  )
+}

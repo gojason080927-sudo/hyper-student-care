@@ -6,6 +6,9 @@ import {
   ParentPageHeader,
   ParentRecordCard,
 } from '../parent/ParentStudentComponents'
+import { MathMonthlyReport } from '../mathMonthly/MathMonthlyReport'
+import { fetchParentMathReports } from '../../lib/db/mathMonthlyRepo'
+import type { MathMonthlyReportData } from '../../utils/mathMonthlyReport'
 import type { MonthlyEvaluationRecord } from '../../types/records'
 import type { Student } from '../../types/student'
 import { formatKoreanDate } from '../../utils/date'
@@ -51,13 +54,39 @@ export function ParentMonthlyEvaluationView({
     }
   }, [availableYears, selectedYear])
 
+  // 새 방식(수학 월말평가 보고서)이 발송된 달은 새 보고서로 보여 주고, 나머지 기록은 기존 방식 그대로 둔다.
+  const [mathReports, setMathReports] = useState<MathMonthlyReportData[]>([])
+  const accessKey = student.studentAccessKey
+  useEffect(() => {
+    if (!accessKey) return
+    let cancelled = false
+    void fetchParentMathReports(accessKey).then((rows) => {
+      if (!cancelled) setMathReports(rows)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [accessKey])
+
+  const mathReportMonths = useMemo(
+    () => new Set(mathReports.map((r) => r.exam.year * 12 + r.exam.month)),
+    [mathReports],
+  )
+
   const yearRecords = useMemo(
     () =>
       studentRecords
         .filter((r) => r.year === selectedYear)
+        .filter((r) => !(r.subject === '수학' && mathReportMonths.has(r.year * 12 + r.month)))
         .sort((a, b) => a.month - b.month),
-    [selectedYear, studentRecords],
+    [mathReportMonths, selectedYear, studentRecords],
   )
+
+  // 성적 추이는 과목별로 따로 그린다 (영어·수학이 한 선으로 섞이지 않게)
+  const chartSubjects = useMemo(() => {
+    const names = Array.from(new Set(studentRecords.map((r) => r.subject).filter(Boolean)))
+    return names.length > 0 ? names : ['']
+  }, [studentRecords])
 
   return (
     <div className="parent-page space-y-8 pb-6">
@@ -87,18 +116,26 @@ export function ParentMonthlyEvaluationView({
       <section className="space-y-4" aria-label="월말평가 결과">
         <h2 className="text-lg font-bold text-navy-900">월말평가 결과</h2>
 
+        {mathReports.length > 0 && (
+          <MathMonthlyReport student={student} reports={mathReports} evaluations={studentRecords} />
+        )}
+
         {studentRecords.length === 0 ? (
           <ParentEmptyState message="아직 등록된 월말평가가 없습니다." />
         ) : (
           <>
-            <MonthlyEvaluationChart
-              records={studentRecords}
-              variant="fixedMonths"
-              selectedYear={selectedYear}
-              title="월별 성적 추이"
-              subtitle="1월부터 12월까지의 평가 결과입니다."
-              mobileFit
-            />
+            {chartSubjects.map((subject) => (
+              <MonthlyEvaluationChart
+                key={subject || 'all'}
+                records={studentRecords}
+                subject={subject || undefined}
+                variant="fixedMonths"
+                selectedYear={selectedYear}
+                title={subject ? `${subject} 월별 성적 추이` : '월별 성적 추이'}
+                subtitle="1월부터 12월까지의 평가 결과입니다."
+                mobileFit
+              />
+            ))}
 
             {yearRecords.length > 0 && (
               <div className="space-y-3" aria-label="월별 평가 상세">

@@ -1,0 +1,223 @@
+/* 수학 월말평가 결과 보고서 — 화면: 휴대폰 세로 카드 / 인쇄(PDF): A4 2쪽 (시안 기준) */
+
+.mm-root {
+  --mm-purple: #5b348a;
+  --mm-purple-deep: #3d2463;
+  --mm-purple-soft: #f3eef8;
+  --mm-line: #ece6f2;
+  --mm-ink: #161b3a;
+  --mm-mute: #6b6574;
+  --mm-green: #16a34a;
+  --mm-red: #dc2626;
+  color: var(--mm-ink);
+  font-family: inherit;
+}
+.mm-root * { box-sizing: border-box; }
+
+.mm-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 12px; }
+.mm-toolbar select { border: 1px solid var(--mm-line); border-radius: 10px; padding: 8px 10px; font-size: 14px; background: #fff; }
+.mm-btn { border: 1px solid var(--mm-purple); color: #fff; background: var(--mm-purple); border-radius: 10px; padding: 8px 14px; font-size: 14px; font-weight: 700; cursor: pointer; margin-left: auto; }
+
+.mm-page { background: #fff; position: relative; }
+.mm-page + .mm-page { margin-top: 16px; }
+.mm-pno, .mm-foot, .mm-run { display: none; }
+
+.mm-band { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; border-radius: 14px; color: #fff; padding: 14px 16px; background: linear-gradient(120deg, #3d2463 0%, #5b348a 62%, #7a4aad 100%); }
+.mm-brand { display: flex; flex-direction: column; padding-right: 14px; border-right: 1px solid rgba(255, 255, 255, 0.3); }
+.mm-brand b { font-size: 16px; letter-spacing: 2px; line-height: 1; }
+.mm-brand span { font-size: 8px; letter-spacing: 3px; margin-top: 3px; opacity: 0.8; }
+.mm-title b { display: block; font-size: 17px; }
+.mm-title span { font-size: 12px; opacity: 0.85; }
+.mm-pill { margin-left: auto; background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.35); border-radius: 99px; padding: 4px 12px; font-size: 13px; font-weight: 700; }
+
+.mm-who { margin: 12px 0; font-size: 13px; color: var(--mm-mute); display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.mm-who b { color: var(--mm-ink); margin-left: 4px; }
+
+.mm-h2 { font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 6px; margin: 0 0 10px; }
+.mm-h2::before { content: ''; width: 4px; height: 16px; background: var(--mm-purple); border-radius: 2px; }
+.mm-h2 small { font-size: 12px; color: var(--mm-mute); font-weight: 400; margin-left: 3px; }
+
+.mm-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.mm-card, .mm-box { border: 1px solid var(--mm-line); border-radius: 14px; background: #fff; box-shadow: 0 4px 18px rgba(91, 52, 138, 0.07); padding: 14px; }
+.mm-sub { font-size: 12px; color: var(--mm-mute); font-weight: 700; }
+.mm-big { font-size: 34px; font-weight: 800; line-height: 1.05; margin-top: 6px; letter-spacing: -1px; }
+.mm-big small { font-size: 13px; color: var(--mm-mute); font-weight: 500; letter-spacing: 0; margin-left: 2px; }
+.mm-chip { display: inline-block; font-size: 12px; padding: 2px 9px; border-radius: 99px; margin-top: 8px; background: var(--mm-purple-soft); color: var(--mm-purple); font-weight: 700; }
+.mm-chip.up { background: #eaf7ef; color: var(--mm-green); }
+.mm-chip.dn { background: #fdecec; color: var(--mm-red); }
+.mm-card.sum { grid-column: 1 / 3; background: linear-gradient(140deg, #5b348a, #3d2463); color: #fff; border: none; }
+.mm-card.sum .mm-sub { color: #dccbef; }
+.mm-grade { font-size: 24px; font-weight: 800; margin-top: 4px; }
+.mm-stars { color: #f5c451; font-size: 14px; margin-left: 6px; letter-spacing: 1px; }
+.mm-card.sum p { font-size: 12.5px; color: #eadff6; margin: 6px 0 0; line-height: 1.55; }
+
+.mm-row2, .mm-unit, .mm-p2a { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 12px; }
+.mm-legend { display: flex; gap: 12px; font-size: 12px; color: #4a4458; margin-top: 4px; flex-wrap: wrap; }
+.mm-legend i { display: inline-block; width: 16px; border-top: 2.6px solid var(--mm-purple); vertical-align: middle; margin-right: 4px; }
+.mm-legend i.d { border-top: 1.6px dashed #a79fb3; }
+.mm-insight { background: var(--mm-purple-soft); border-radius: 8px; padding: 8px 10px; font-size: 12.5px; line-height: 1.6; color: #4a4458; margin-top: 8px; }
+.mm-insight b { color: var(--mm-purple); }
+.mm-chart svg { width: 100%; height: auto; display: block; }
+.mm-chart.center { display: flex; flex-direction: column; align-items: center; }
+
+table.mm-t { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.mm-t th { font-size: 11.5px; color: var(--mm-mute); font-weight: 500; text-align: right; padding: 5px 0; border-bottom: 1px solid var(--mm-line); }
+table.mm-t th:first-child { text-align: left; }
+table.mm-t td { padding: 7px 0; border-bottom: 1px solid var(--mm-line); text-align: right; }
+table.mm-t td:first-child { text-align: left; }
+table.mm-t td small { display: block; font-size: 10.5px; color: var(--mm-mute); font-weight: 400; }
+table.mm-t td.b { font-weight: 800; color: var(--mm-purple); }
+table.mm-t td.m { color: var(--mm-mute); }
+table.mm-t td.c, table.mm-t th.c { text-align: center; }
+table.mm-t tr.now td { background: var(--mm-purple-soft); font-weight: 800; }
+.mm-up { color: var(--mm-green); font-weight: 700; }
+.mm-dn { color: var(--mm-red); font-weight: 700; }
+.mm-st { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px; white-space: nowrap; }
+.mm-st.good { background: #eaf7ef; color: var(--mm-green); }
+.mm-st.bad { background: #fdecec; color: var(--mm-red); }
+.mm-st.mid { background: var(--mm-purple-soft); color: var(--mm-purple); }
+
+.mm-db-row { display: grid; grid-template-columns: 44px 1fr 92px; align-items: center; gap: 10px; margin: 10px 0; }
+.mm-db-l { font-size: 14px; font-weight: 700; }
+.mm-db-l small, .mm-db-v small { display: block; font-size: 10.5px; color: var(--mm-mute); font-weight: 400; }
+.mm-db-track { height: 11px; background: var(--mm-purple-soft); border-radius: 6px; position: relative; }
+.mm-db-fill { height: 100%; background: linear-gradient(90deg, #7a4aad, #5b348a); border-radius: 6px; }
+.mm-db-avg { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--mm-ink); }
+.mm-db-v { font-size: 15px; font-weight: 800; text-align: right; }
+
+.mm-qgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; }
+.mm-q { border-radius: 7px; text-align: center; padding: 4px 0 3px; background: #f8f5fb; }
+.mm-q b { display: block; font-size: 11px; color: var(--mm-mute); font-weight: 500; }
+.mm-q span { display: block; font-size: 15px; font-weight: 800; line-height: 1.2; color: var(--mm-purple); }
+.mm-q i { display: block; font-size: 10px; color: var(--mm-mute); font-style: normal; }
+.mm-q.x { background: #fdecec; }
+.mm-q.x span { color: var(--mm-red); }
+
+.mm-cause { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.mm-cause ul { list-style: none; margin: 0; padding: 0; font-size: 13.5px; flex: 1; min-width: 150px; }
+.mm-cause li { margin: 6px 0; display: flex; align-items: center; gap: 6px; }
+.mm-cause li b { margin-left: auto; padding-left: 10px; }
+.mm-sw { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+.mm-gauges { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 8px; }
+.mm-gauge { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.mm-gauge svg { width: 78px; height: 78px; }
+.mm-gauge b { font-size: 13px; margin-top: 4px; }
+.mm-gauge small { font-size: 11px; color: var(--mm-mute); margin-top: 2px; }
+.mm-att { display: flex; align-items: center; justify-content: space-between; background: var(--mm-purple-soft); border-radius: 8px; padding: 8px 12px; margin-top: 10px; font-size: 13px; gap: 8px; }
+.mm-att b { font-size: 18px; color: var(--mm-green); }
+
+.mm-comments { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.mm-cm { border-radius: 12px; padding: 12px 14px; font-size: 13.5px; line-height: 1.6; white-space: pre-wrap; }
+.mm-cm h3 { font-size: 14px; margin: 0 0 4px; }
+.mm-cm.good { background: #eaf7ef; }
+.mm-cm.good h3 { color: var(--mm-green); }
+.mm-cm.imp { background: #fff4e5; }
+.mm-cm.imp h3 { color: #b45309; }
+.mm-cm.all { border: 1px solid var(--mm-line); }
+.mm-cm.all h3 { color: var(--mm-purple); }
+.mm-sign { text-align: right; font-size: 12px; color: var(--mm-mute); margin-top: 6px; }
+.mm-plan { border-radius: 14px; padding: 14px; margin-top: 12px; background: linear-gradient(180deg, #f3eef8 0%, #fff 85%); border: 1.5px solid var(--mm-purple); }
+.mm-plan ul { list-style: none; margin: 0; padding: 0; }
+.mm-plan li { display: grid; grid-template-columns: 26px 1fr; gap: 4px 10px; align-items: center; font-size: 13.5px; padding: 8px 0; border-bottom: 1px dashed #e7dcf3; }
+.mm-plan li:last-child { border-bottom: none; }
+.mm-num { width: 24px; height: 24px; border-radius: 50%; background: var(--mm-purple); color: #fff; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+.mm-goal { grid-column: 2; justify-self: start; font-size: 12px; color: var(--mm-purple); font-weight: 700; background: #fff; border: 1px solid #e7dcf3; border-radius: 99px; padding: 1px 10px; }
+.mm-note { font-size: 11.5px; color: var(--mm-mute); margin-top: 10px; line-height: 1.5; }
+
+@media (min-width: 720px) {
+  .mm-cards { grid-template-columns: 1.1fr 1fr 1fr 1.25fr; }
+  .mm-card.sum { grid-column: auto; }
+  .mm-cards.no-avg { grid-template-columns: 1.1fr 1fr 1.25fr; }
+  .mm-row2, .mm-unit, .mm-p2a { grid-template-columns: 1.1fr 1fr; }
+  .mm-qgrid { grid-template-columns: repeat(9, 1fr); }
+  .mm-gauges { grid-template-columns: repeat(4, 1fr); }
+  .mm-comments { grid-template-columns: 1fr 1fr; }
+  .mm-cm.all { grid-column: 1 / 3; }
+  .mm-plan li { grid-template-columns: 26px 1fr auto; }
+  .mm-goal { grid-column: auto; }
+}
+
+/* ─── 인쇄 / PDF: A4 2쪽 (시안.html 치수) ─── */
+@page mmreport { size: A4; margin: 0; }
+
+@media print {
+  body.mm-printing * { visibility: hidden !important; }
+  body.mm-printing .mm-print-root,
+  body.mm-printing .mm-print-root * { visibility: visible !important; }
+  body.mm-printing .mm-print-root { position: absolute !important; left: 0; top: 0; width: 210mm; margin: 0; padding: 0; background: #fff; page: mmreport; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .mm-no-print { display: none !important; }
+
+  .mm-root { font-size: 10pt; line-height: normal; }
+  .mm-page { width: 210mm; height: 297mm; padding: 11mm 12mm 0; overflow: hidden; page-break-after: always; break-after: page; margin: 0 !important; }
+  .mm-page:last-child { page-break-after: auto; break-after: auto; }
+  .mm-row2 .mm-chart svg { width: 330px; max-width: 100%; }
+  .mm-unit .mm-chart svg { width: 316px; max-width: 100%; }
+  .mm-pno { display: block; position: absolute; right: 12mm; top: 4.5mm; font-size: 7pt; color: var(--mm-mute); }
+  .mm-foot { display: flex; position: absolute; left: 12mm; right: 12mm; bottom: 9mm; border-top: 0.8pt solid var(--mm-purple); padding-top: 2mm; justify-content: space-between; font-size: 7.8pt; font-weight: 700; color: var(--mm-purple); }
+  .mm-run { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 0.8pt solid var(--mm-purple); padding-bottom: 1.5mm; margin-bottom: 4mm; position: relative; font-size: 8.5pt; font-weight: 700; color: var(--mm-purple); }
+  .mm-run::after { content: ''; position: absolute; right: 0; bottom: -1.2pt; width: 14mm; height: 1.8pt; background: #7a4aad; }
+  .mm-run span { color: var(--mm-mute); font-weight: 500; }
+
+  .mm-band { height: 23mm; flex-wrap: nowrap; border-radius: 10px; padding: 0 7mm; gap: 0; }
+  .mm-brand { padding-right: 6mm; margin-right: 6mm; }
+  .mm-brand b { font-size: 16pt; }
+  .mm-brand span { font-size: 6.8pt; }
+  .mm-title b { font-size: 15pt; }
+  .mm-title span { font-size: 8pt; }
+  .mm-pill { font-size: 9pt; }
+  .mm-who { margin: 4mm 0; font-size: 8.5pt; gap: 0 9px; }
+  .mm-h2 { font-size: 10.5pt; margin-bottom: 2.5mm; }
+  .mm-h2::before { height: 13px; }
+  .mm-h2 small { font-size: 7.5pt; }
+  .mm-cards { grid-template-columns: 1.1fr 1fr 1fr 1.25fr; gap: 3mm; }
+  .mm-cards.no-avg { grid-template-columns: 1.1fr 1fr 1.25fr; }
+  .mm-card.sum { grid-column: auto; }
+  .mm-card { padding: 3.6mm 4mm; border-radius: 12px; }
+  .mm-sub { font-size: 8pt; }
+  .mm-big { font-size: 27pt; margin-top: 1.5mm; }
+  .mm-big small { font-size: 9.5pt; }
+  .mm-chip { font-size: 7.6pt; padding: 2px 8px; margin-top: 2mm; }
+  .mm-grade { font-size: 18pt; margin-top: 1mm; }
+  .mm-stars { font-size: 10pt; }
+  .mm-card.sum p { font-size: 7.6pt; margin-top: 1.2mm; }
+  .mm-row2 { grid-template-columns: 1.12fr 1fr; gap: 4mm; margin-top: 4mm; }
+  .mm-unit { grid-template-columns: 1fr 1.05fr; gap: 4mm; margin-top: 4mm; }
+  .mm-p2a { grid-template-columns: 1fr 1fr; gap: 4mm; margin-top: 0; }
+  .mm-box { padding: 4mm 4.5mm 3mm; border-radius: 12px; }
+  .mm-legend { font-size: 7.6pt; margin-top: 1mm; }
+  .mm-insight { font-size: 8pt; padding: 2.2mm 3mm; margin-top: 2mm; }
+  table.mm-t { font-size: 8.3pt; }
+  table.mm-t th { font-size: 7.4pt; padding: 1.4mm 0; }
+  table.mm-t td { padding: 1.7mm 0; }
+  table.mm-t td small { font-size: 6.8pt; }
+  .mm-st { font-size: 7pt; padding: 1.5px 6px; }
+  .mm-db-row { grid-template-columns: 13mm 1fr 19mm; gap: 3mm; margin: 1.9mm 0; }
+  .mm-db-l { font-size: 9pt; }
+  .mm-db-l small, .mm-db-v small { font-size: 6.8pt; }
+  .mm-db-v { font-size: 10pt; }
+  .mm-qgrid { grid-template-columns: repeat(9, 1fr); gap: 4px; }
+  .mm-q { padding: 3px 0 2px; border-radius: 6px; }
+  .mm-q b { font-size: 7pt; }
+  .mm-q span { font-size: 10pt; }
+  .mm-q i { font-size: 6pt; }
+  .mm-cause { gap: 5mm; flex-wrap: nowrap; }
+  .mm-cause ul { font-size: 8.5pt; }
+  .mm-cause li { margin: 1.5mm 0; }
+  .mm-gauges { grid-template-columns: repeat(4, 1fr); gap: 3mm; }
+  .mm-gauge svg { width: 62px; height: 62px; }
+  .mm-gauge b { font-size: 8.5pt; }
+  .mm-gauge small { font-size: 7pt; }
+  .mm-att { font-size: 8.5pt; padding: 1.8mm 4mm; margin-top: 2mm; }
+  .mm-att b { font-size: 12pt; }
+  .mm-comments { grid-template-columns: 1fr 1fr; gap: 3mm; }
+  .mm-cm { font-size: 8.4pt; padding: 2.6mm 4mm; }
+  .mm-cm h3 { font-size: 9pt; }
+  .mm-cm.all { grid-column: 1 / 3; }
+  .mm-sign { font-size: 7.8pt; }
+  .mm-plan { padding: 3mm 4.5mm; margin-top: 3mm; border-width: 1.2pt; }
+  .mm-plan li { grid-template-columns: 7mm 1fr 26mm; font-size: 8.6pt; padding: 1.3mm 0; }
+  .mm-num { width: 6mm; height: 6mm; font-size: 8pt; }
+  .mm-goal { grid-column: auto; justify-self: stretch; text-align: center; font-size: 7.6pt; padding: 1px 0; }
+  .mm-note { font-size: 7pt; margin-top: 2.2mm; }
+}

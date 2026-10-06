@@ -64,7 +64,7 @@ type HomeworkAggregationSource =
   | { source: 'homework_textbook_entries'; record: HomeworkTextbookEntry }
   | { source: 'homework'; record: HomeworkRecord }
 
-function collectHomeworkSources(
+export function collectHomeworkSources(
   textbookEntries: HomeworkTextbookEntry[],
   legacyHomework: HomeworkRecord[],
   studentId: string,

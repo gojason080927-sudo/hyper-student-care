@@ -25,6 +25,7 @@ import { LoginPage } from './pages/LoginPage'
 import { MakeupPlanPage } from './pages/MakeupPlanPage'
 
 import { MonthlyEvaluationPage } from './pages/MonthlyEvaluationPage'
+import { MathMonthlyExamPage } from './pages/MathMonthlyExamPage'
 
 import { MonthlyEvaluationSelectPage } from './pages/MonthlyEvaluationSelectPage'
 
@@ -336,6 +337,22 @@ function App() {
 
             <Route
 
+              path="math-monthly"
+
+              element={
+
+                <TeacherMobilePageShell title="수학 월말평가 보고서">
+
+                  <MathMonthlyExamPage />
+
+                </TeacherMobilePageShell>
+
+              }
+
+            />
+
+            <Route
+
               path="monthly-evaluation"
 
               element={
@@ -531,6 +548,7 @@ function App() {
           <Route path="monthly-evaluations" element={<MonthlyEvaluationSelectPage />} />
 
           <Route path="teacher/monthly-evaluation" element={<MonthlyEvaluationPage />} />
+          <Route path="teacher/math-monthly" element={<MathMonthlyExamPage />} />
 
           {/* 신입생 평가만 Supabase Auth session 필수 (기존 PC 라우트는 유지) */}
           <Route element={<ProtectedRoute />}>
