@@ -7,7 +7,12 @@ import {
   ParentRecordCard,
 } from '../parent/ParentStudentComponents'
 import { MathMonthlyReport } from '../mathMonthly/MathMonthlyReport'
+import { SchoolExamParentTab } from '../schoolExam/SchoolExamParentTab'
+import { ParentUnreadDot } from '../parent/ParentUnreadDot'
 import { fetchParentMathReports } from '../../lib/db/mathMonthlyRepo'
+import { fetchParentSchoolReports } from '../../lib/db/schoolExamRepo'
+import { hasUnreadSchoolExam, markSchoolExamSeen } from '../../utils/schoolExamUnread'
+import type { SchoolReportData } from '../../utils/schoolExamReport'
 import type { MathMonthlyReportData } from '../../utils/mathMonthlyReport'
 import type { MonthlyEvaluationRecord } from '../../types/records'
 import type { Student } from '../../types/student'
@@ -68,6 +73,34 @@ export function ParentMonthlyEvaluationView({
     }
   }, [accessKey])
 
+  // 학교 시험 개인 분석 리포트 (발송된 것이 있을 때만 "학교 시험" 탭을 보여 준다)
+  const [tab, setTab] = useState<'monthly' | 'school'>('monthly')
+  const [schoolReports, setSchoolReports] = useState<SchoolReportData[]>([])
+  const [schoolSeenTick, setSchoolSeenTick] = useState(0)
+  useEffect(() => {
+    if (!accessKey) return
+    let cancelled = false
+    void fetchParentSchoolReports(accessKey).then((rows) => {
+      if (!cancelled) setSchoolReports(rows)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [accessKey])
+  const schoolSentAts = useMemo(() => schoolReports.map((r) => r.result.sentAt), [schoolReports])
+  const schoolUnread = useMemo(
+    () => schoolSeenTick >= 0 && hasUnreadSchoolExam(student.id, schoolSentAts),
+    [schoolSeenTick, schoolSentAts, student.id],
+  )
+  const openTab = (next: 'monthly' | 'school') => {
+    setTab(next)
+    if (next === 'school') {
+      markSchoolExamSeen(student.id, schoolSentAts)
+      setSchoolSeenTick((n) => n + 1)
+    }
+  }
+  const activeTab = schoolReports.length > 0 ? tab : 'monthly'
+
   const mathReportMonths = useMemo(
     () => new Set(mathReports.map((r) => r.exam.year * 12 + r.exam.month)),
     [mathReports],
@@ -97,6 +130,35 @@ export function ParentMonthlyEvaluationView({
         description={`${student.name} 학생의 월말평가 결과를 확인합니다. 월간 학습 기록은 월간 학습진단 REPORT에서 확인할 수 있습니다.`}
       />
 
+      {schoolReports.length > 0 && (
+        <div className="flex gap-2" role="tablist" aria-label="월말평가 종류">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'monthly'}
+            onClick={() => openTab('monthly')}
+            className={`min-h-11 flex-1 rounded-xl border px-4 text-sm font-bold ${activeTab === 'monthly' ? 'border-violet-600 bg-violet-600 text-white' : 'border-slate-200 bg-white text-slate-700'}`}
+          >
+            월말평가
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'school'}
+            onClick={() => openTab('school')}
+            className={`relative min-h-11 flex-1 rounded-xl border px-4 text-sm font-bold ${activeTab === 'school' ? 'border-violet-600 bg-violet-600 text-white' : 'border-slate-200 bg-white text-slate-700'}`}
+          >
+            학교 시험
+            {schoolUnread && activeTab !== 'school' && <ParentUnreadDot className="right-3 top-2" />}
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'school' && (
+        <SchoolExamParentTab student={student} reports={schoolReports} />
+      )}
+
+      {activeTab === 'monthly' && (<>
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
         <label htmlFor="progress-year" className="text-sm font-medium text-slate-700">
           연도
@@ -167,6 +229,7 @@ export function ParentMonthlyEvaluationView({
           </>
         )}
       </section>
+      </>)}
     </div>
   )
 }

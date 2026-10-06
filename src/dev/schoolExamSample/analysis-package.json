@@ -1,0 +1,743 @@
+{
+ "exam": {
+  "package_version": 1,
+  "exam_id": "2026-10-02_hyper_jung2_chonggwal",
+  "source": "학원 자체 시험",
+  "school": null,
+  "title": "총괄 TEST",
+  "subject": "수학",
+  "grade": "중2",
+  "range": "경우의 수 ~ 인수분해 공식의 활용",
+  "date": "2026-10-02",
+  "author": "임호균",
+  "item_count": 30,
+  "total_points": 100,
+  "points_rule": "배점 표기 없음 → 30문항 균등(문항당 10/3점)으로 처리. 샘플학생 12문항 정답 = 40점과 일치",
+  "units": [
+   "경우의 수",
+   "확률",
+   "제곱근과 실수",
+   "근호를 포함한 식의 계산",
+   "다항식의 곱셈",
+   "인수분해"
+  ],
+  "difficulty_levels": [
+   "하",
+   "중",
+   "상",
+   "최상"
+  ],
+  "images_note": "이미지는 학생 시험지 사진에서 잘라낸 것(풀이·채점 흔적 포함). 4·5쪽 사진은 180° 회전해 사용"
+ },
+ "items": [
+  {
+   "no": 1,
+   "page": 1,
+   "bbox": [
+    200,
+    777,
+    1471,
+    1420
+   ],
+   "image": "images/q01.jpg",
+   "kind": "주관식",
+   "answer": "4",
+   "points": 3.33,
+   "difficulty": "하",
+   "unit": "다항식의 곱셈",
+   "type": "곱셈 공식의 변형 · 식의 값",
+   "key_idea": "x²+3xy+y² = (x+y)²+xy = 3+1",
+   "common_error": "(x+y)²에서 2xy를 빼는 것과 더하는 것을 혼동",
+   "recommended_cause": "계산 실수",
+   "review_needed": false
+  },
+  {
+   "no": 2,
+   "page": 1,
+   "bbox": [
+    200,
+    1414,
+    1471,
+    2805
+   ],
+   "image": "images/q02.jpg",
+   "kind": "객관식",
+   "answer": "④",
+   "points": 3.33,
+   "difficulty": "하",
+   "unit": "다항식의 곱셈",
+   "type": "곱셈 공식 (a+b)(a−b) · 도형",
+   "key_idea": "새 넓이 (a+2b)(a−2b) = a²−4b² → 4b²만큼 줄어든다",
+   "common_error": "가로·세로 변화량을 그대로 넓이 변화로 착각",
+   "recommended_cause": "개념 이해 부족",
+   "review_needed": false
+  },
+  {
+   "no": 3,
+   "page": 1,
+   "bbox": [
+    200,
+    2800,
+    1471,
+    3691
+   ],
+   "image": "images/q03.jpg",
+   "kind": "객관식",
+   "answer": "③",
+   "points": 3.33,
+   "difficulty": "중",
+   "unit": "경우의 수",
+   "type": "배수 조건 순서쌍 개수",
+   "key_idea": "3으로 나눈 나머지별로 a 7개씩, b 4개씩 → 나머지 합이 0이 되는 짝 3종 × 7×4 = 84",
+   "common_error": "하나씩 나열하다 누락·중복",
+   "recommended_cause": "응용 능력 부족",
+   "review_needed": false
+  },
+  {
+   "no": 4,
+   "page": 1,
+   "bbox": [
+    1471,
+    814,
+    2814,
+    1791
+   ],
+   "image": "images/q04.jpg",
+   "kind": "객관식",
+   "answer": "④",
+   "points": 3.33,
+   "difficulty": "중",
+   "unit": "확률",
+   "type": "조건이 바뀌는 연속 시행의 확률",
+   "key_idea": "2경기 승(1/2)→3경기 패(2/5), 2경기 패(1/2)→3경기 패(1/2): 1/5+1/4 = 9/20",
+   "common_error": "두 번째 경기의 경우를 하나만 계산",
+   "recommended_cause": "개념 이해 부족",
+   "review_needed": false
+  },
+  {
+   "no": 5,
+   "page": 1,
+   "bbox": [
+    1471,
+    1785,
+    2814,
+    2434
+   ],
+   "image": "images/q05.jpg",
+   "kind": "객관식",
+   "answer": "⑤",
+   "points": 3.33,
+   "difficulty": "하",
+   "unit": "다항식의 곱셈",
+   "type": "전개식의 특정 항 계수",
+   "key_idea": "xy항만 골라 곱함: x·y + (−2y)·3x → 1−6 = −5",
+   "common_error": "부호(−2y) 처리 실수",
+   "recommended_cause": "계산 실수",
+   "review_needed": false
+  },
+  {
+   "no": 6,
+   "page": 1,
+   "bbox": [
+    1471,
+    2428,
+    2814,
+    3691
+   ],
+   "image": "images/q06.jpg",
+   "kind": "주관식",
+   "answer": "540",
+   "points": 3.33,
+   "difficulty": "중",
+   "unit": "경우의 수",
+   "type": "이웃한 영역 색칠하기",
+   "key_idea": "이웃이 많은 순서로 A(5)→B(4)→C(3)→D(3)→E(3) = 540",
+   "common_error": "이웃 관계(A–C, D–B 등)를 잘못 파악",
+   "recommended_cause": "응용 능력 부족",
+   "review_needed": false
+  },
+  {
+   "no": 7,
+   "page": 2,
+   "bbox": [
+    60,
+    507,
+    1560,
+    1417
+   ],
+   "image": "images/q07.jpg",
+   "kind": "주관식",
+   "answer": "4x",
+   "points": 3.33,
+   "difficulty": "상",
+   "unit": "인수분해",
+   "type": "복이차식의 인수분해",
+   "key_idea": "x²=X로 치환 → (X−4)(X−25) → (x+2)(x−2)(x+5)(x−5), 합 4x",
+   "common_error": "치환 후 다시 인수분해하지 않고 멈춤",
+   "recommended_cause": "응용 능력 부족",
+   "review_needed": false
+  },
+  {
+   "no": 8,
+   "page": 2,
+   "bbox": [
+    60,
+    1386,
+    1560,
+    2497
+   ],
+   "image": "images/q08.jpg",
+   "kind": "주관식",
+   "answer": "4",
+   "points": 3.33,
+   "difficulty": "상",
+   "unit": "인수분해",
+   "type": "A²−B² 꼴 인수분해 · 배수 판단",
+   "key_idea": "(x+y−3)²−(x−y+3)² = 2x(2y−6) = 4x(y−3) → 항상 4의 배수, x=1·y=4일 때 4",
+   "common_error": "\"가장 큰 짝수\"를 식의 계수 8 등으로 오판",
+   "recommended_cause": "개념 이해 부족",
+   "review_needed": false
+  },
+  {
+   "no": 9,
+   "page": 2,
+   "bbox": [
+    60,
+    2466,
+    1560,
+    3804
+   ],
+   "image": "images/q09.jpg",
+   "kind": "주관식",
+   "answer": "25",
+   "points": 3.33,
+   "difficulty": "중",
+   "unit": "근호를 포함한 식의 계산",
+   "type": "제곱근의 곱셈·나눗셈 · 표 해석",
+   "key_idea": "2√m = 10 → m=25, n = √25÷√4 = 5/2 → √(10·25·5/2) = √625 = 25",
+   "common_error": "표의 연산 방향(√y÷√x)을 거꾸로 읽음",
+   "recommended_cause": "계산 실수",
+   "review_needed": false
+  },
+  {
+   "no": 10,
+   "page": 2,
+   "bbox": [
+    1440,
+    471,
+    2960,
+    1298
+   ],
+   "image": "images/q10.jpg",
+   "kind": "주관식",
+   "answer": "3/2",
+   "points": 3.33,
+   "difficulty": "중",
+   "unit": "근호를 포함한 식의 계산",
+   "type": "번분수 · 분모의 유리화",
+   "key_idea": "1/(1−√2) = −1−√2 → 1+(−1−√2) = −√2 → 1 − 1/(−√2) = 1+√2/2",
+   "common_error": "안쪽부터 차례로 정리하지 않고 한꺼번에 처리",
+   "recommended_cause": "계산 실수",
+   "review_needed": false
+  },
+  {
+   "no": 11,
+   "page": 2,
+   "bbox": [
+    1440,
+    1267,
+    2960,
+    2960
+   ],
+   "image": "images/q11.jpg",
+   "kind": "주관식",
+   "answer": "2",
+   "points": 3.33,
+   "difficulty": "중",
+   "unit": "인수분해",
+   "type": "넓이의 합을 인수분해 · 도형",
+   "key_idea": "넓이 합 x²+8x+15 = (x+3)(x+5) → 두 변의 차 2",
+   "common_error": "도형 개수를 식으로 옮기지 못함",
+   "recommended_cause": "응용 능력 부족",
+   "review_needed": false
+  },
+  {
+   "no": 12,
+   "page": 2,
+   "bbox": [
+    1440,
+    2930,
+    2960,
+    3804
+   ],
+   "image": "images/q12.jpg",
+   "kind": "주관식",
+   "answer": "3",
+   "points": 3.33,
+   "difficulty": "하",
+   "unit": "경우의 수",
+   "type": "동전·주사위 동시에 던지기",
+   "key_idea": "동전은 (뒤,뒤) 1가지 × 주사위 4,5,6 3가지 = 3",
+   "common_error": "경우의 수를 묻는데 확률(1/4 등)로 답함",
+   "recommended_cause": "개념 이해 부족",
+   "review_needed": false
+  },
+  {
+   "no": 13,
+   "page": 3,
+   "bbox": [
+    60,
+    412,
+    1560,
+    1488
+   ],
+   "image": "images/q13.jpg",
+   "kind": "주관식",
+   "answer": "1/91",
+   "points": 3.33,
+   "difficulty": "상",
+   "unit": "확률",
+   "type": "원 위의 점으로 만드는 도형의 확률",
+   "key_idea": "전체 15C3 = 455, 정삼각형은 5칸 간격 → 5개, 5/455 = 1/91",
+   "common_error": "전체 경우를 순서까지 세어 15×14×13으로 둠",
+   "recommended_cause": "응용 능력 부족",
+   "review_needed": false
+  },
+  {
+   "no": 14,
+   "page": 3,
+   "bbox": [
+    60,
+    1457,
+    1560,
+    2818
+   ],
+   "image": "images/q14.jpg",
+   "kind": "주관식",
+   "answer": "3/50",
+   "points": 3.33,
+   "difficulty": "최상",
+   "unit": "확률",
+   "type": "확률 + 직선의 절편 · 넓이 조건",
+   "key_idea": "두 직선이 (a,0)을 지나므로 넓이 = a|a−b|/2 = 9 → a|a−b| = 18 → (2,11),(3,9),(6,3),(6,9),(9,7),(9,11) 6가지, 6/100",
+   "common_error": "넓이를 a, b로 식을 세우지 못하거나 b<a인 경우 누락",
+   "recommended_cause": "응용 능력 부족",
+   "review_needed": false
+  },
+  {
+   "no": 15,
+   "page": 3,
+   "bbox": [
+    60,
+    2787,
+    1560,
+    3780
+   ],
+   "image": "images/q15.jpg",
+   "kind": "객관식",
+   "answer": "①",
+   "points": 3.33,
+   "difficulty": "하",
+   "unit": "경우의 수",
+   "type": "여러 사건의 경우의 수 비교",
+   "key_idea": "① 4! = 24 ② 8 ③ 6 ④ 6 ⑤ 5×4 = 20",
+   "common_error": "대표 뽑기(조합)와 줄 세우기(순열) 혼동",
+   "recommended_cause": "개념 이해 부족",
+   "review_needed": false
+  },
+  {
+   "no": 16,
+   "page": 3,
+   "bbox": [
+    1440,
+    400,
+    2960,
+    1132
+   ],
+   "image": "images/q16.jpg",
+   "kind": "주관식",
+   "answer": "7",
+   "points": 3.33,
+   "difficulty": "하",
+   "unit": "경우의 수",
+   "type": "합의 법칙 (두 상자에서 꺼내기)",
+   "key_idea": "합 5: (0,5)(1,4)(2,3) 3가지 + 합 6: (0,6)(1,5)(2,4)(3,3) 4가지 = 7",
+   "common_error": "숫자 0을 빠뜨리거나 확률로 답함",
+   "recommended_cause": "계산 실수",
+   "review_needed": false
+  },
+  {
+   "no": 17,
+   "page": 3,
+   "bbox": [
+    1440,
+    1101,
+    2960,
+    2105
+   ],
+   "image": "images/q17.jpg",
+   "kind": "객관식",
+   "answer": "②",
+   "points": 3.33,
+   "difficulty": "중",
+   "unit": "확률",
+   "type": "여사건 · 두 번의 시행 순서",
+   "key_idea": "늦을 확률 = 1−1/4−3/8 = 3/8 → (늦게,빨리)+(빨리,늦게) = 2×3/8×3/8 = 9/32",
+   "common_error": "늦을 확률을 따로 구하지 않거나 순서 2가지를 하나만 셈",
+   "recommended_cause": "개념 이해 부족",
+   "review_needed": false
+  },
+  {
+   "no": 18,
+   "page": 3,
+   "bbox": [
+    1440,
+    2075,
+    2960,
+    3780
+   ],
+   "image": "images/q18.jpg",
+   "kind": "객관식",
+   "answer": "⑤",
+   "points": 3.33,
+   "difficulty": "상",
+   "unit": "확률",
+   "type": "대소 조건이 있는 배열의 확률",
+   "key_idea": "A·C에 줄 두 수를 고르면(4C2=6) 큰 수가 A로 자동 결정, 나머지도 D>B로 결정 → 6/24 = 1/4",
+   "common_error": "24가지를 다 나열하다 시간 초과",
+   "recommended_cause": "시간 부족",
+   "review_needed": false
+  },
+  {
+   "no": 19,
+   "page": 4,
+   "bbox": [
+    60,
+    495,
+    1560,
+    1666
+   ],
+   "image": "images/q19.jpg",
+   "kind": "주관식",
+   "answer": "3",
+   "points": 3.33,
+   "difficulty": "하",
+   "unit": "제곱근과 실수",
+   "type": "무리수 판별",
+   "key_idea": "한 자리 짝수 2,4,6,8 중 √4=2만 유리수 → 3개",
+   "common_error": "0을 넣거나 √4를 무리수로 셈",
+   "recommended_cause": "개념 이해 부족",
+   "review_needed": false
+  },
+  {
+   "no": 20,
+   "page": 4,
+   "bbox": [
+    60,
+    1635,
+    1560,
+    2723
+   ],
+   "image": "images/q20.jpg",
+   "kind": "주관식",
+   "answer": "4",
+   "points": 3.33,
+   "difficulty": "중",
+   "unit": "경우의 수",
+   "type": "입체도형 위 최단 경로",
+   "key_idea": "A→B 2가지 × B→C 2가지 = 4 (곱의 법칙)",
+   "common_error": "경유점이 있을 때 합의 법칙으로 더함",
+   "recommended_cause": "개념 이해 부족",
+   "review_needed": false
+  },
+  {
+   "no": 21,
+   "page": 4,
+   "bbox": [
+    60,
+    2692,
+    1560,
+    3851
+   ],
+   "image": "images/q21.jpg",
+   "kind": "주관식",
+   "answer": "437",
+   "points": 3.33,
+   "difficulty": "상",
+   "unit": "인수분해",
+   "type": "인수분해 공식을 이용한 수의 계산",
+   "key_idea": "255×257+1 = (256−1)(256+1)+1 = 256² → a=256 / 12×15=180, 13×14=182 → 180×182+1 = 181² → b=181",
+   "common_error": "직접 곱셈을 시도해 시간 소모",
+   "recommended_cause": "시간 부족",
+   "review_needed": false
+  },
+  {
+   "no": 22,
+   "page": 4,
+   "bbox": [
+    1440,
+    495,
+    2960,
+    1690
+   ],
+   "image": "images/q22.jpg",
+   "kind": "객관식",
+   "answer": "③",
+   "points": 3.33,
+   "difficulty": "중",
+   "unit": "다항식의 곱셈",
+   "type": "잘못 보고 전개한 식",
+   "key_idea": "(kx−3)(x+1)의 x 계수 k−3 = 9 → k=12, A=12, B=−3 → (x+12)(x−3) = x²+9x−36",
+   "common_error": "A, B를 상수항·계수와 혼동",
+   "recommended_cause": "응용 능력 부족",
+   "review_needed": false
+  },
+  {
+   "no": 23,
+   "page": 4,
+   "bbox": [
+    1440,
+    1659,
+    2960,
+    2485
+   ],
+   "image": "images/q23.jpg",
+   "kind": "주관식",
+   "answer": "6",
+   "points": 3.33,
+   "difficulty": "중",
+   "unit": "제곱근과 실수",
+   "type": "근호 안을 제곱수로 만들기",
+   "key_idea": "50x/3 = 5²·2x/3 → 2x/3가 제곱수인 최소 x = 6 (√100 = 10)",
+   "common_error": "분모 3을 처리하지 않고 2만 곱함",
+   "recommended_cause": "개념 이해 부족",
+   "review_needed": false
+  },
+  {
+   "no": 24,
+   "page": 4,
+   "bbox": [
+    1440,
+    2455,
+    2960,
+    3851
+   ],
+   "image": "images/q24.jpg",
+   "kind": "객관식",
+   "answer": "②",
+   "points": 3.33,
+   "difficulty": "중",
+   "unit": "제곱근과 실수",
+   "type": "제곱근표 활용",
+   "key_idea": "√0.0195 = √1.95/10, √4120 = 10√41.2, √4150 = 10√41.5, √18400 = 100√1.84 / √18.5만 표의 수로 바꿀 수 없음",
+   "common_error": "소수점을 두 자리씩 옮겨야 함을 놓침",
+   "recommended_cause": "개념 이해 부족",
+   "review_needed": false
+  },
+  {
+   "no": 25,
+   "page": 5,
+   "bbox": [
+    60,
+    495,
+    1560,
+    1583
+   ],
+   "image": "images/q25.jpg",
+   "kind": "주관식",
+   "answer": "6",
+   "points": 3.33,
+   "difficulty": "상",
+   "unit": "제곱근과 실수",
+   "type": "제곱근의 대소 · 자연수 조건",
+   "key_idea": "5.76 ≤ x ≤ 24.01 → a=24, b=6 → √(30+c)가 자연수인 최소 c = 6",
+   "common_error": "2.4², 4.9² 계산 실수로 범위를 잘못 잡음",
+   "recommended_cause": "계산 실수",
+   "review_needed": false
+  },
+  {
+   "no": 26,
+   "page": 5,
+   "bbox": [
+    60,
+    1552,
+    1560,
+    2675
+   ],
+   "image": "images/q26.jpg",
+   "kind": "객관식",
+   "answer": "②",
+   "points": 3.33,
+   "difficulty": "최상",
+   "unit": "인수분해",
+   "type": "항이 많은 식의 인수분해 · 정수 조건",
+   "key_idea": "(c+1)(a+1)(b−1) = 595 = 5×7×17 → a=4, b=8, c=16 → 28",
+   "common_error": "묶는 방법을 찾지 못함 / 대소 조건 확인 누락",
+   "recommended_cause": "응용 능력 부족",
+   "review_needed": false
+  },
+  {
+   "no": 27,
+   "page": 5,
+   "bbox": [
+    60,
+    2645,
+    1560,
+    3804
+   ],
+   "image": "images/q27.jpg",
+   "kind": "객관식",
+   "answer": "④",
+   "points": 3.33,
+   "difficulty": "중",
+   "unit": "근호를 포함한 식의 계산",
+   "type": "제곱근의 덧셈 · 미지수 구하기",
+   "key_idea": "√x = 4√3 → x=48, √(8+2y) = 4√2 → 8+2y = 32 → y=12 → 36",
+   "common_error": "√(8+2y)를 √8+√2y로 쪼갬",
+   "recommended_cause": "개념 이해 부족",
+   "review_needed": false
+  },
+  {
+   "no": 28,
+   "page": 5,
+   "bbox": [
+    1440,
+    531,
+    2960,
+    1262
+   ],
+   "image": "images/q28.jpg",
+   "kind": "주관식",
+   "answer": "15",
+   "points": 3.33,
+   "difficulty": "중",
+   "unit": "경우의 수",
+   "type": "조 나누기 (자리 구분 없음)",
+   "key_idea": "4인승에 탈 4명만 고르면 끝: 6C4 = 15",
+   "common_error": "자리 순서까지 세어 6×5×4×3 등으로 계산",
+   "recommended_cause": "개념 이해 부족",
+   "review_needed": false
+  },
+  {
+   "no": 29,
+   "page": 5,
+   "bbox": [
+    1440,
+    1231,
+    2960,
+    2474
+   ],
+   "image": "images/q29.jpg",
+   "kind": "객관식",
+   "answer": "②",
+   "points": 3.33,
+   "difficulty": "상",
+   "unit": "근호를 포함한 식의 계산",
+   "type": "근호 식의 정리 · √ab 조건",
+   "key_idea": "(1/b)√(b/a) = 1/√(ab), (5/a)√(a/b) = 5/√(ab) → (1−5)/10 = −2/5",
+   "common_error": "a, b 값을 따로 구하려다 막힘",
+   "recommended_cause": "응용 능력 부족",
+   "review_needed": false
+  },
+  {
+   "no": 30,
+   "page": 5,
+   "bbox": [
+    1440,
+    2443,
+    2960,
+    3804
+   ],
+   "image": "images/q30.jpg",
+   "kind": "객관식",
+   "answer": "③",
+   "points": 3.33,
+   "difficulty": "중",
+   "unit": "인수분해",
+   "type": "완전제곱식으로 식의 값 구하기",
+   "key_idea": "(a+b)²−2(a+b)+3 = (a+b−1)²+2 = (3√2)²+2 = 20",
+   "common_error": "식을 a+b로 묶지 못하고 전개",
+   "recommended_cause": "계산 실수",
+   "review_needed": false
+  }
+ ],
+ "top_problems": [
+  {
+   "no": 14,
+   "why": "확률 문제 안에 일차함수(직선의 절편)와 넓이가 섞여 있어, 단원 하나만 알아서는 풀 수 없습니다.",
+   "idea": "두 직선 l, m이 모두 점 (a, 0)을 지난다는 것을 알아차리면 넓이가 a×|a−b|÷2로 바로 나옵니다.",
+   "steps": [
+    "넓이 = a|a−b|/2 = 9 → a|a−b| = 18",
+    "a는 18의 약수 중 2~11: a = 2, 3, 6, 9",
+    "(a,b) = (2,11), (3,9), (6,3), (6,9), (9,7), (9,11) → 6가지",
+    "전체 10×10 = 100 → 6/100 = 3/50"
+   ]
+  },
+  {
+   "no": 26,
+   "why": "항이 8개인 식을 보고 묶는 방법을 스스로 찾아야 하고, 595를 소인수분해한 뒤 a<b<c 조건까지 따져야 합니다.",
+   "idea": "(c+1)로 먼저 묶으면 (c+1)(ab+b−a−1) = (c+1)(a+1)(b−1)로 깔끔하게 분해됩니다.",
+   "steps": [
+    "식 = (c+1)(a+1)(b−1) = 595 = 5×7×17",
+    "a<b<c를 만족하는 배치: a+1=5, b−1=7, c+1=17",
+    "a=4, b=8, c=16 → a+b+c = 28 (②)"
+   ]
+  }
+ ],
+ "summary": {
+  "difficulty_count": {
+   "하": 7,
+   "중": 14,
+   "상": 7,
+   "최상": 2
+  },
+  "unit_count": {
+   "다항식의 곱셈": 4,
+   "경우의 수": 7,
+   "확률": 5,
+   "인수분해": 6,
+   "근호를 포함한 식의 계산": 4,
+   "제곱근과 실수": 4
+  }
+ },
+ "student_sample": {
+  "name": "샘플학생",
+  "score": 40,
+  "marking_read": "빨간 동그라미 = 정답, 빨간 빗금 = 오답으로 읽음 (동그라미 12개 × 10/3점 = 40점으로 점수와 일치)",
+  "correct": [
+   1,
+   2,
+   3,
+   5,
+   10,
+   13,
+   15,
+   19,
+   20,
+   22,
+   23,
+   27
+  ],
+  "wrong": [
+   4,
+   6,
+   7,
+   8,
+   9,
+   11,
+   12,
+   14,
+   16,
+   17,
+   18,
+   21,
+   24,
+   25,
+   26,
+   28,
+   29,
+   30
+  ],
+  "review_note": "오답 18문항 중 4·6·7·8·9·11·17·24·26·29번(10문항)은 시험지에 연필로 적힌 답이 정답과 같음 → 시험 후 다시 푼 흔적으로 보임. 이 문항들은 시험 당시 무엇을 썼는지 사진으로 알 수 없어 오답 원인은 \"추천\"만 함"
+ }
+}

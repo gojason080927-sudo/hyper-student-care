@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
@@ -26,6 +27,7 @@ import { MakeupPlanPage } from './pages/MakeupPlanPage'
 
 import { MonthlyEvaluationPage } from './pages/MonthlyEvaluationPage'
 import { MathMonthlyExamPage } from './pages/MathMonthlyExamPage'
+import { SchoolExamPage } from './pages/SchoolExamPage'
 
 import { MonthlyEvaluationSelectPage } from './pages/MonthlyEvaluationSelectPage'
 
@@ -133,6 +135,10 @@ import { TeacherMobileHomeLayoutPreviewPage } from './pages/dev/TeacherMobileHom
 import { ParentHomeLayoutPreviewPage } from './pages/dev/ParentHomeLayoutPreviewPage'
 
 
+// DEV 전용 미리보기 — 샘플 캡처(학생 필기 포함)가 운영 번들에 들어가지 않도록 DEV 에서만 불러온다
+const SchoolExamReportPreviewPage = import.meta.env.DEV
+  ? lazy(() => import('./pages/dev/SchoolExamReportPreviewPage').then((m) => ({ default: m.SchoolExamReportPreviewPage })))
+  : null
 
 function App() {
 
@@ -154,6 +160,9 @@ function App() {
             <Route path="/dev/hub-study-plan-layout" element={<HubStudyPlanLayoutPreviewPage />} />
             <Route path="/dev/teacher-home-layout" element={<TeacherMobileHomeLayoutPreviewPage />} />
             <Route path="/dev/parent-home-layout" element={<ParentHomeLayoutPreviewPage />} />
+            {SchoolExamReportPreviewPage ? (
+              <Route path="/dev/school-exam-report" element={<Suspense fallback={null}><SchoolExamReportPreviewPage /></Suspense>} />
+            ) : null}
           </>
         ) : null}
 
@@ -344,6 +353,22 @@ function App() {
                 <TeacherMobilePageShell title="수학 월말평가 보고서">
 
                   <MathMonthlyExamPage />
+
+                </TeacherMobilePageShell>
+
+              }
+
+            />
+
+            <Route
+
+              path="school-exam"
+
+              element={
+
+                <TeacherMobilePageShell title="학교 시험 분석 리포트">
+
+                  <SchoolExamPage />
 
                 </TeacherMobilePageShell>
 
@@ -549,6 +574,7 @@ function App() {
 
           <Route path="teacher/monthly-evaluation" element={<MonthlyEvaluationPage />} />
           <Route path="teacher/math-monthly" element={<MathMonthlyExamPage />} />
+          <Route path="teacher/school-exam" element={<SchoolExamPage />} />
 
           {/* 신입생 평가만 Supabase Auth session 필수 (기존 PC 라우트는 유지) */}
           <Route element={<ProtectedRoute />}>

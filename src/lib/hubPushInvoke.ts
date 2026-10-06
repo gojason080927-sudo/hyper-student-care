@@ -14,6 +14,7 @@ export type HubPushInvokeBody = {
     | 'weekly_summary_scan'
     | 'makeup_plan_saved'
     | 'math_monthly_report_sent'
+    | 'school_exam_report_sent'
   accessKey?: string
   entityId?: string
   studentIds?: string[]
