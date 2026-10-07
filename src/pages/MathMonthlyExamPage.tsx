@@ -60,7 +60,7 @@ export function MathMonthlyExamPage() {
   const [count, setCount] = useState(DEFAULT_COUNT)
   const [defaultPoints, setDefaultPoints] = useState(DEFAULT_POINTS)
   const [items, setItems] = useState<MathExamItem[]>(buildDefaultItems(DEFAULT_COUNT, DEFAULT_POINTS))
-  const [units, setUnits] = useState<MathExamUnit[]>([{ name: '', from: 1, to: DEFAULT_COUNT }])
+  const [units, setUnits] = useState<MathExamUnit[]>([])
   const [copyFrom, setCopyFrom] = useState('')
   const [setupMsg, setSetupMsg] = useState('')
   const [setupSaving, setSetupSaving] = useState(false)
@@ -106,7 +106,7 @@ export function MathMonthlyExamPage() {
       setTeacherName(exam.teacherName)
       setCount(exam.questionCount)
       setItems(exam.items)
-      setUnits(exam.units.length ? exam.units : [{ name: '', from: 1, to: exam.questionCount }])
+      setUnits(exam.units)
       setDefaultPoints(exam.items[0]?.points ?? DEFAULT_POINTS)
     } else {
       setExamDate('')
@@ -342,7 +342,8 @@ export function MathMonthlyExamPage() {
             </div>
 
             <div className="space-y-2">
-              <p className="text-sm font-semibold text-slate-700">단원 구간 (예: 1~5번 다항식의 연산)</p>
+              <p className="text-sm font-semibold text-slate-700">단원 구간 (선택 · 안 적어도 됩니다)</p>
+              <p className="text-xs text-slate-500">안 적으면 틀린 문제 사진을 올릴 때 AI가 단원을 알아서 판단합니다. 적으면 단원별 정답률 그래프도 나옵니다.</p>
               <div className="space-y-2 rounded-xl border border-violet-200 bg-violet-50 p-3">
                 <p className="text-sm font-semibold text-violet-900">한 번에 입력하기 (한 줄에 단원 하나)</p>
                 <textarea

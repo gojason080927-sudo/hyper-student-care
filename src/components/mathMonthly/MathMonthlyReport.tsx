@@ -133,6 +133,14 @@ export function MathMonthlyReportView({ student, sorted, data, attitude, evaluat
   const subtitle = [`${exam.year}년 ${exam.month}월`, exam.title, unitRange].filter(Boolean).join(' · ')
   const wrongCount = view.wrongNos.size
   const insight = unitInsight(view.units)
+  const wrongUnitGroups = (() => {
+    const map = new Map<string, number[]>()
+    for (const w of result.wrongItems) {
+      const name = (w.unit || '').trim() || '단원 미분류'
+      map.set(name, [...(map.get(name) ?? []), w.no])
+    }
+    return [...map.entries()].map(([name, nos]) => ({ name, nos: nos.sort((a, b) => a - b) })).sort((a, b) => b.nos.length - a.nos.length)
+  })()
   const nextMonth = exam.month === 12 ? 1 : exam.month + 1
   const plan = result.nextPlan.filter((p) => p.content.trim())
   const hasComments = result.strengths.trim() || result.improvements.trim() || result.teacherComment.trim()
@@ -279,6 +287,32 @@ export function MathMonthlyReportView({ student, sorted, data, attitude, evaluat
             </div>
           </div>
 
+          {view.units.length === 0 ? (
+            <div className="mm-unit" style={{ gridTemplateColumns: '1fr' }}>
+              <div className="mm-box">
+                <h2 className="mm-h2">틀린 문제 단원</h2>
+                {wrongUnitGroups.length === 0 ? (
+                  <p className="mm-note">틀린 문제가 없습니다.</p>
+                ) : (
+                  <table className="mm-t">
+                    <thead><tr><th>단원</th><th>틀린 문항</th><th className="c">개수</th></tr></thead>
+                    <tbody>
+                      {wrongUnitGroups.map((g) => (
+                        <tr key={g.name}>
+                          <td><b>{g.name}</b></td>
+                          <td>{g.nos.map((n) => `${n}번`).join(', ')}</td>
+                          <td className="c b">{g.nos.length}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+                {wrongUnitGroups.length > 0 && wrongUnitGroups[0].name !== '단원 미분류' && (
+                  <div className="mm-insight"><b>가장 많이 틀린 단원</b> · {wrongUnitGroups[0].name} ({wrongUnitGroups[0].nos.length}문항)</div>
+                )}
+              </div>
+            </div>
+          ) : (
           <div className="mm-unit">
             <div className="mm-box">
               <h2 className="mm-h2">단원별 성취도</h2>
@@ -346,6 +380,7 @@ export function MathMonthlyReportView({ student, sorted, data, attitude, evaluat
               )}
             </div>
           </div>
+          )}
           <div className="mm-foot"><span>하이퍼 영수 전문학원</span><span>24시간 학습을 설계하다</span></div>
         </section>
 

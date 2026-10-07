@@ -137,8 +137,8 @@ export function validateExamSetup(input: {
       covered.add(n)
     }
   }
-  if (input.units.length === 0) errors.push('단원 구간을 1개 이상 입력해 주세요.')
-  else if (covered.size !== max && errors.length === 0) errors.push('모든 문항이 단원 구간에 포함되어야 합니다.')
+  // 단원 구간은 선택 사항: 적었다면 모든 문항을 덮어야 한다 (안 적으면 AI가 틀린 문제의 단원을 분류)
+  if (input.units.length > 0 && covered.size !== max && errors.length === 0) errors.push('단원 구간을 적었다면 모든 문항이 포함되어야 합니다. (안 쓰려면 단원 칸을 모두 삭제하세요)')
   return errors
 }
 
