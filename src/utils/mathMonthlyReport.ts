@@ -246,16 +246,26 @@ export function recommendPlan(
     })
   }
 
+  const CAUSE_LINE: Record<MathCause, MathPlanLine> = {
+    calc: { content: '풀이를 끝까지 쓰고 검산하는 습관 들이기', goal: '계산 실수 절반 줄이기' },
+    concept: { content: '교재 개념 정리 노트 작성 후 확인 테스트', goal: '확인 테스트 통과' },
+    reading: { content: '문제 조건에 밑줄 치고 구하는 것 표시하며 읽기', goal: '해석 오답 0문항' },
+    time: { content: '시간 배분 연습: 모르는 문항은 표시 후 넘어가기', goal: '끝까지 풀이 완료' },
+  }
   const counts = causeCounts(wrongItems)
-  const topCause = MATH_CAUSES.filter((c) => counts[c] > 0).sort((a, b) => counts[b] - counts[a])[0]
-  if (topCause === 'calc') {
-    lines.push({ content: '풀이를 끝까지 쓰고 검산하는 습관 들이기', goal: '계산 실수 절반 줄이기' })
-  } else if (topCause === 'concept') {
-    lines.push({ content: '교재 개념 정리 노트 작성 후 확인 테스트', goal: '확인 테스트 통과' })
-  } else if (topCause === 'reading') {
-    lines.push({ content: '문제 조건에 밑줄 치고 구하는 것 표시하며 읽기', goal: '해석 오답 0문항' })
-  } else if (topCause === 'time') {
-    lines.push({ content: '시간 배분 연습: 모르는 문항은 표시 후 넘어가기', goal: '끝까지 풀이 완료' })
+  const causes = MATH_CAUSES.filter((c) => counts[c] > 0).sort((a, b) => counts[b] - counts[a])
+  for (const c of causes.slice(0, 2)) lines.push(CAUSE_LINE[c])
+
+  if (!weakDifficulty) {
+    const missed = difficultyStats(exam, wrongNos)
+      .filter((d) => d.rate < 100)
+      .sort((a, b) => a.rate - b.rate)[0]
+    if (missed) {
+      lines.push({
+        content: `${MATH_DIFFICULTY_LABEL[missed.difficulty]} 난이도 틀린 문항 다시 풀고 풀이 과정 점검`,
+        goal: `${MATH_DIFFICULTY_LABEL[missed.difficulty]} 문항 ${Math.min(100, missed.rate + 20)}%`,
+      })
+    }
   }
 
   if (wrongItems.length > 0) {
