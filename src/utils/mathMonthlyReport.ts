@@ -97,12 +97,12 @@ export function resizeItems(items: MathExamItem[], count: number, defaultPoints:
 }
 
 export function totalPoints(items: MathExamItem[]): number {
-  return items.reduce((sum, item) => sum + item.points, 0)
+  return Math.round(items.reduce((sum, item) => sum + item.points, 0))
 }
 
 export function calcScore(items: MathExamItem[], wrongNos: number[]): number {
   const wrong = new Set(wrongNos)
-  return items.reduce((sum, item) => (wrong.has(item.no) ? sum : sum + item.points), 0)
+  return Math.round(items.reduce((sum, item) => (wrong.has(item.no) ? sum : sum + item.points), 0))
 }
 
 export function validateExamSetup(input: {

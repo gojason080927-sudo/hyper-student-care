@@ -52,6 +52,8 @@ export function MathMonthlyExamPage() {
   const [title, setTitle] = useState('')
   const [teacherName, setTeacherName] = useState('')
   const [count, setCount] = useState(DEFAULT_COUNT)
+  const [countText, setCountText] = useState<string | null>(null)
+  const [pointsText, setPointsText] = useState<string | null>(null)
   const [defaultPoints, setDefaultPoints] = useState(DEFAULT_POINTS)
   const [items, setItems] = useState<MathExamItem[]>(buildDefaultItems(DEFAULT_COUNT, DEFAULT_POINTS))
   const [units, setUnits] = useState<MathExamUnit[]>([{ name: '', from: 1, to: DEFAULT_COUNT }])
@@ -309,11 +311,35 @@ export function MathMonthlyExamPage() {
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-600">문항 수</label>
-                <input type="number" min={1} max={100} className={inputClass()} value={count} onChange={(e) => changeCount(Number(e.target.value))} />
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  className={inputClass()}
+                  value={countText ?? count}
+                  onChange={(e) => {
+                    setCountText(e.target.value)
+                    const v = Number(e.target.value)
+                    if (e.target.value !== '' && v >= 1) changeCount(v)
+                  }}
+                  onBlur={() => setCountText(null)}
+                />
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-600">기본 배점 (전체 적용)</label>
-                <input type="number" min={1} className={inputClass()} value={defaultPoints} onChange={(e) => applyDefaultPoints(Number(e.target.value) || 1)} />
+                <input
+                  type="number"
+                  min={1}
+                  step="any"
+                  className={inputClass()}
+                  value={pointsText ?? defaultPoints}
+                  onChange={(e) => {
+                    setPointsText(e.target.value)
+                    const v = Number(e.target.value)
+                    if (e.target.value !== '' && v > 0) applyDefaultPoints(v)
+                  }}
+                  onBlur={() => setPointsText(null)}
+                />
               </div>
               <div className="flex items-end text-sm text-slate-600">만점 합계 <b className="ml-1 text-base text-slate-900">{total}점</b></div>
             </div>
