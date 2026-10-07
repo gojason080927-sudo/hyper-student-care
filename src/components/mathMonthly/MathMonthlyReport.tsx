@@ -5,7 +5,6 @@ import { useData } from '../../hooks/useData'
 import type { MathImage } from '../../lib/db/mathMonthlyRepo'
 import { buildMathAttitude, type MathAttitude } from '../../utils/mathMonthlyAttitude'
 import {
-  DIAGNOSIS_LABEL,
   MATH_CAUSE_LABEL,
   MATH_DIFFICULTY_LABEL,
   buildMathTrend,
@@ -46,7 +45,6 @@ function splitWrong(wrong: MathWrongItem[], difficultyOf: (no: number) => keyof 
 const dateText = (iso: string) => iso.replaceAll('-', '. ') + '.'
 const signed = (v: number) => (v > 0 ? `+${v}` : `${v}`)
 const diffClass = (v: number) => (v >= 0 ? 'mm-up' : 'mm-dn')
-const diagClass = { strength: 'good', normal: 'mid', weak: 'bad' } as const
 
 /** 학부모·학생·강사 열람용 — 발송된 수학 월말평가 보고서 (월 선택, PDF 저장) */
 export function MathMonthlyReport({ student, reports, evaluations, loadImages }: Props) {
