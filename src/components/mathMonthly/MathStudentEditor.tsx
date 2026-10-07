@@ -320,7 +320,20 @@ export function MathStudentEditor({ exam, studentId, studentName, row, onSave, o
                       <input className={inputClass()} placeholder="단원" value={w.unit || unitFor(w.no)} onChange={(e) => setField(w.no, 'unit', e.target.value)} />
                       <input className={inputClass()} placeholder="문제 유형" value={w.type ?? ''} onChange={(e) => setField(w.no, 'type', e.target.value)} />
                     </div>
-                    <input className={inputClass()} placeholder="강사 분석 한 줄" value={w.note ?? ''} onChange={(e) => setField(w.no, 'note', e.target.value)} />
+                    <textarea
+                      className={inputClass()}
+                      style={{ overflow: 'hidden', resize: 'none' }}
+                      rows={2}
+                      placeholder="강사 분석"
+                      value={w.note ?? ''}
+                      ref={(el) => {
+                        if (el) {
+                          el.style.height = 'auto'
+                          el.style.height = `${el.scrollHeight}px`
+                        }
+                      }}
+                      onChange={(e) => setField(w.no, 'note', e.target.value)}
+                    />
                   </div>
                 )
               })}
