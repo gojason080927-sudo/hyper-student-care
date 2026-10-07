@@ -23,6 +23,7 @@ import {
   buildDefaultItems,
   resizeItems,
   totalPoints,
+  parseUnitLines,
   validateExamSetup,
   type MathDifficulty,
   type MathExamItem,
@@ -47,6 +48,8 @@ export function MathMonthlyExamPage() {
   const [month, setMonth] = useState(now.month)
   const [exams, setExams] = useState<MathMonthlyExam[]>([])
   const [paperTick, setPaperTick] = useState(0)
+  const [unitBulk, setUnitBulk] = useState('')
+  const [unitBulkMsg, setUnitBulkMsg] = useState('')
   const [results, setResults] = useState<Map<string, MathResultRow>>(new Map())
   const [loadError, setLoadError] = useState('')
 
@@ -340,6 +343,35 @@ export function MathMonthlyExamPage() {
 
             <div className="space-y-2">
               <p className="text-sm font-semibold text-slate-700">단원 구간 (예: 1~5번 다항식의 연산)</p>
+              <div className="space-y-2 rounded-xl border border-violet-200 bg-violet-50 p-3">
+                <p className="text-sm font-semibold text-violet-900">한 번에 입력하기 (한 줄에 단원 하나)</p>
+                <textarea
+                  className={inputClass()}
+                  rows={4}
+                  placeholder={'1~5 다항식의 연산\n6~10 방정식과 부등식\n11~15 도형의 방정식'}
+                  value={unitBulk}
+                  onChange={(e) => setUnitBulk(e.target.value)}
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    className={btnSecondary}
+                    onClick={() => {
+                      const { units: parsed, bad } = parseUnitLines(unitBulk)
+                      if (parsed.length === 0) {
+                        setUnitBulkMsg('읽을 수 있는 줄이 없습니다. "1~5 단원이름" 모양으로 한 줄씩 써 주세요.')
+                        return
+                      }
+                      setUnits(parsed)
+                      setUnitBulk('')
+                      setUnitBulkMsg(bad.length > 0 ? `${parsed.length}개를 적용했습니다. 읽지 못한 줄: ${bad.join(' / ')}` : `${parsed.length}개 단원을 적용했습니다. 아래에서 확인해 주세요.`)
+                    }}
+                  >
+                    아래 칸에 적용
+                  </button>
+                  {unitBulkMsg && <span className="text-sm text-slate-700">{unitBulkMsg}</span>}
+                </div>
+              </div>
               {units.map((u, i) => (
                 <div key={i} className="grid grid-cols-[1fr_64px_64px_auto] items-center gap-2">
                   <input className={inputClass()} placeholder="단원 이름" value={u.name} onChange={(e) => setUnits((l) => l.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))} />

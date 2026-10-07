@@ -17,6 +17,10 @@ const PROBLEM_PROMPT = `당신은 학원 수학 선생님입니다. 학생이 �
 [문제 유형]
 - 짧은 명사구 하나로 씁니다(예: "이차함수의 최대·최소", "등차수열의 합").
 
+[단원]
+- 입력 정보의 unit(단원)이 비어 있으면, 문제를 보고 고등학교 수학 교육과정 기준의 단원 이름을 짧게 판단해 unit에 씁니다(예: "다항식의 연산", "미분").
+- unit이 이미 있으면 그대로 쓰지 말고 비워 둡니다.
+
 [강사 분석]
 - 한 문장(최대 두 문장), 정중한 합쇼체입니다.
 - 학생이 막힌 지점과 문제의 핵심 아이디어를 담습니다.
@@ -28,7 +32,7 @@ const PROBLEM_PROMPT = `당신은 학원 수학 선생님입니다. 학생이 �
 
 [출력 형식]
 - 다른 설명 없이 아래 JSON 하나만 출력합니다.
-{"type": "문제 유형", "note": "강사 분석 한 줄"}`
+{"type": "문제 유형", "note": "강사 분석 한 줄", "unit": "단원(비어 있을 때만, 아니면 빈 문자열)"}`
 
 const LOCATE_PROMPT = `당신은 시험지 사진에서 문제 위치를 찾는 도우미입니다. 시험지 한 쪽 사진과 찾아야 할 문제 번호 목록이 주어집니다.
 
@@ -163,7 +167,8 @@ function parseProblem(text: string): Json | null {
   if (!parsed) return null
   const type = asString(parsed.type)
   const note = asString(parsed.note)
-  return type && note ? { type, note } : null
+  const unit = asString(parsed.unit)
+  return type && note ? { type, note, unit } : null
 }
 
 function parseLocate(text: string): Json | null {

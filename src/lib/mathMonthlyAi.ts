@@ -55,10 +55,10 @@ export async function generateMathComment(
   return { ok: true, value }
 }
 
-export async function analyzeMathProblem(body: MathAiProblemRequest): Promise<MathAiResult<{ type: string; note: string }>> {
+export async function analyzeMathProblem(body: MathAiProblemRequest): Promise<MathAiResult<{ type: string; note: string; unit: string }>> {
   const data = await invoke(body)
   if (!data) return { ok: false, message: FAIL }
-  const value = { type: text(data.type), note: text(data.note) }
+  const value = { type: text(data.type), note: text(data.note), unit: text(data.unit) }
   if (!value.type || !value.note) return { ok: false, message: BAD }
   return { ok: true, value }
 }

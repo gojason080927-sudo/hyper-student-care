@@ -194,7 +194,9 @@ export function MathStudentEditor({ exam, studentId, studentName, row, onSave, o
       setAiMsg(result.message)
       return
     }
-    setWrong((list) => list.map((x) => (x.no === w.no ? { ...x, type: result.value.type, note: result.value.note } : x)))
+    setWrong((list) =>
+      list.map((x) => (x.no === w.no ? { ...x, type: result.value.type, note: result.value.note, unit: x.unit || unitFor(w.no) || result.value.unit } : x)),
+    )
   }
 
   const canAiComment = wrong.length > 0 || score === total

@@ -494,3 +494,20 @@ export function reportsFromRpc(payload: unknown): MathMonthlyReportData[] {
     classAvg: classAvgFromRow(row.class_avg),
   }))
 }
+
+/** "1~5 다항식의 연산" 같은 줄 여러 개 → 단원 구간 목록. 형식이 맞지 않는 줄은 bad 에 모은다. */
+export function parseUnitLines(text: string): { units: MathExamUnit[]; bad: string[] } {
+  const units: MathExamUnit[] = []
+  const bad: string[] = []
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim()
+    if (!line) continue
+    const m = /^(\d{1,3})\s*(?:번)?\s*(?:[~\-–—]|부터)\s*(\d{1,3})\s*(?:번)?\s*[\s:,.)\]]*(.+)$/.exec(line)
+    if (!m || !m[3].trim()) {
+      bad.push(line)
+      continue
+    }
+    units.push({ name: m[3].trim(), from: Number(m[1]), to: Number(m[2]) })
+  }
+  return { units, bad }
+}
