@@ -34,7 +34,7 @@ const CARDS_PER_PAGE = 3
 /** 월말평가: 틀린 문항이 이 개수를 넘으면 전체/요약 보기 선택, 요약 보기는 사진 카드 N개만 */
 const SUMMARY_THRESHOLD = 6
 const SUMMARY_CARD_COUNT = 3
-const DIFF_RANK = { basic: 0, middle: 1, high: 2, highest: 3 } as const
+const DIFF_RANK = { basic: 0, midlow: 1, middle: 2, midhigh: 3, high: 4, highest: 5 } as const
 
 /** 요약 보기: 난이도 높은 오답 N개(같으면 번호순)는 카드, 나머지는 한 줄 목록 */
 function splitWrong(wrong: MathWrongItem[], difficultyOf: (no: number) => keyof typeof DIFF_RANK) {

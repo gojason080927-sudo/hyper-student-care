@@ -4,11 +4,13 @@
  */
 import type { MonthlyEvaluationRecord } from '../types/records'
 
-export type MathDifficulty = 'basic' | 'middle' | 'high' | 'highest'
-export const MATH_DIFFICULTIES: MathDifficulty[] = ['basic', 'middle', 'high', 'highest']
+export type MathDifficulty = 'basic' | 'midlow' | 'middle' | 'midhigh' | 'high' | 'highest'
+export const MATH_DIFFICULTIES: MathDifficulty[] = ['basic', 'midlow', 'middle', 'midhigh', 'high', 'highest']
 export const MATH_DIFFICULTY_LABEL: Record<MathDifficulty, string> = {
-  basic: '기본',
+  basic: '하',
+  midlow: '중하',
   middle: '중',
+  midhigh: '중상',
   high: '상',
   highest: '최상',
 }
