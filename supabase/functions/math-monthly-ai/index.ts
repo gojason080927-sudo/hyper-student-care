@@ -30,6 +30,22 @@ const PROBLEM_PROMPT = `당신은 학원 수학 선생님입니다. 학생이 �
 - 다른 설명 없이 아래 JSON 하나만 출력합니다.
 {"type": "문제 유형", "note": "강사 분석 한 줄"}`
 
+const LOCATE_PROMPT = `당신은 시험지 사진에서 문제 위치를 찾는 도우미입니다. 시험지 한 쪽 사진과 찾아야 할 문제 번호 목록이 주어집니다.
+
+[할 일]
+- 목록에 있는 번호의 문제가 이 사진에 있으면, 그 문제 하나를 통째로 감싸는 직사각형 영역을 찾습니다.
+- 영역에는 문제 번호, 지문, 그림·그래프, 보기(선지), 배점 표시가 모두 들어가야 합니다. 이웃한 다른 문제는 들어가지 않게 합니다.
+- 학생의 풀이 흔적과 채점 표시는 그 문제 영역 안에 있으면 그대로 포함합니다.
+- 시험지가 두 단으로 되어 있으면 해당 단 안에서만 영역을 잡습니다.
+- 사진에 없는 번호, 확실하지 않은 번호는 찾지 않은 것으로 처리합니다. 추측하지 않습니다.
+
+[좌표]
+- x, y는 영역의 왼쪽 위 모서리, w, h는 영역의 가로·세로 크기이며, 모두 사진 전체 크기를 1로 본 0~1 사이 소수입니다(소수 셋째 자리까지).
+
+[출력 형식]
+- 다른 설명 없이 아래 JSON 하나만 출력합니다.
+{"boxes": [{"no": 3, "x": 0.06, "y": 0.12, "w": 0.42, "h": 0.30}], "notFound": [7]}`
+
 const COMMENT_PROMPT = `당신은 학원 수학 선생님입니다. 수학 월말평가 결과를 바탕으로 학부모에게 보낼 "선생님 의견" 초안을 씁니다.
 
 [문체]
@@ -146,6 +162,29 @@ function parseProblem(text: string): Json | null {
   return type && note ? { type, note } : null
 }
 
+function parseLocate(text: string): Json | null {
+  const parsed = parseJson(text)
+  if (!parsed || !Array.isArray(parsed.boxes)) return null
+  const clamp = (v: number) => Math.min(1, Math.max(0, v))
+  const boxes: Json[] = []
+  for (const raw of parsed.boxes as Json[]) {
+    const no = asNumber(raw?.no)
+    const x = asNumber(raw?.x)
+    const y = asNumber(raw?.y)
+    const w = asNumber(raw?.w)
+    const h = asNumber(raw?.h)
+    if (no === null || x === null || y === null || w === null || h === null) continue
+    const bx = clamp(x)
+    const by = clamp(y)
+    const bw = Math.min(clamp(w), 1 - bx)
+    const bh = Math.min(clamp(h), 1 - by)
+    if (bw < 0.05 || bh < 0.03) continue
+    boxes.push({ no, x: bx, y: by, w: bw, h: bh })
+  }
+  const notFound = Array.isArray(parsed.notFound) ? (parsed.notFound as unknown[]).filter((n) => typeof n === 'number') : []
+  return { boxes, notFound }
+}
+
 function parseComment(text: string): Json | null {
   const parsed = parseJson(text)
   if (!parsed) return null
@@ -231,6 +270,20 @@ Deno.serve(async (request) => {
       { type: 'text', text: `위 사진은 학생이 틀린 문제입니다. 아래 정보를 참고해 문제 유형과 강사 분석 한 줄을 JSON으로 써 주세요.\n\n${JSON.stringify(info, null, 2)}` },
     ]
     parse = parseProblem
+  } else if (kind === 'locate') {
+    const image = asString(body.imageBase64).replace(/^data:image\/\w+;base64,/, '')
+    if (!image) return jsonResponse({ status: 'error', error: 'image_required' }, 400)
+    if (base64Bytes(image) > MAX_IMAGE_BYTES) return jsonResponse({ status: 'error', error: 'image_too_large' }, 413)
+    const nos = Array.isArray(body.nos)
+      ? (body.nos as unknown[]).filter((n): n is number => typeof n === 'number' && Number.isInteger(n) && n > 0 && n < 200).slice(0, MAX_WRONG_ITEMS)
+      : []
+    if (nos.length === 0) return jsonResponse({ status: 'error', error: 'nos_required' }, 400)
+    system = LOCATE_PROMPT
+    userContent = [
+      { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: image } },
+      { type: 'text', text: `위 사진은 시험지 한 쪽입니다. 찾아야 할 문제 번호: ${nos.join(', ')}\n각 번호의 문제 영역을 JSON으로 알려 주세요.` },
+    ]
+    parse = parseLocate
   } else if (kind === 'comment') {
     system = COMMENT_PROMPT
     userContent = `다음은 학생 1명의 수학 월말평가 결과 데이터입니다. 이 데이터만 근거로 잘한 점·보완할 점·총평을 JSON으로 써 주세요.\n\n${JSON.stringify(buildCommentInput(body), null, 2)}`

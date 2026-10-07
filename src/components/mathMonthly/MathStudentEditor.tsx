@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { listMathResultImages, saveMathResultImages, type MathImage, type MathResultRow } from '../../lib/db/mathMonthlyRepo'
-import { analyzeMathProblem, generateMathComment } from '../../lib/mathMonthlyAi'
-import { MATH_IMAGE_MAX_PER_STUDENT, compressMathImage } from '../../lib/mathMonthlyImage'
+import { analyzeMathProblem, generateMathComment, locateMathProblems } from '../../lib/mathMonthlyAi'
+import { MATH_IMAGE_MAX_PER_STUDENT, compressMathImage, cropMathImage, downscaleForLocate } from '../../lib/mathMonthlyImage'
 import {
   MATH_CAUSES,
   MATH_DIFFICULTIES,
@@ -100,6 +100,53 @@ export function MathStudentEditor({ exam, studentId, studentName, row, onSave, o
       return next
     })
     setImagesDirty(true)
+  }
+
+  /** 시험지 사진(여러 쪽)을 올리면 틀린 번호의 문제만 AI가 찾아 잘라 붙인다 */
+  const autoCrop = async (list: FileList | null) => {
+    const files = list ? Array.from(list) : []
+    if (files.length === 0) return
+    if (wrong.length === 0) {
+      setAiMsg('먼저 틀린 문항을 체크해 주세요.')
+      return
+    }
+    setBusy('crop')
+    setAiMsg('')
+    setError('')
+    let remaining = wrong.map((w) => w.no)
+    const found = new Map<number, MathImage>()
+    try {
+      for (const file of files) {
+        if (remaining.length === 0) break
+        const result = await locateMathProblems({ kind: 'locate', nos: remaining, imageBase64: await downscaleForLocate(file) })
+        if (!result.ok) {
+          setAiMsg(result.message)
+          break
+        }
+        for (const box of result.value) {
+          if (!remaining.includes(box.no)) continue
+          const img = await cropMathImage(file, box)
+          found.set(box.no, { no: box.no, ...img })
+        }
+        remaining = remaining.filter((n) => !found.has(n))
+      }
+    } catch (e) {
+      setAiMsg(e instanceof Error ? e.message : '시험지를 처리하지 못했습니다.')
+    }
+    if (found.size > 0) {
+      setImages((m) => {
+        const next = new Map(m)
+        for (const [no, img] of found) next.set(no, img)
+        return next
+      })
+      setImagesDirty(true)
+    }
+    setBusy('')
+    setAiMsg((prev) =>
+      prev || (remaining.length > 0
+        ? `${found.size}문항을 잘라 붙였습니다. 못 찾은 번호: ${remaining.join(', ')}번 — 해당 번호에서 사진을 직접 올려 주세요.`
+        : `${found.size}문항을 모두 잘라 붙였습니다. 사진이 맞는지 확인해 주세요.`),
+    )
   }
 
   const aiProblem = async (w: MathWrongItem) => {
@@ -252,7 +299,23 @@ export function MathStudentEditor({ exam, studentId, studentName, row, onSave, o
 
           {wrong.length > 0 && (
             <div className="space-y-3">
-              <p className="text-sm font-semibold text-slate-700">오답 원인 · 문제 사진 · 분석</p>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-slate-700">오답 원인 · 문제 사진 · 분석</p>
+                <label className={`${btnSecondary} cursor-pointer ${busy !== '' ? 'pointer-events-none opacity-50' : ''}`}>
+                  {busy === 'crop' ? '자르는 중…' : '시험지 사진으로 자동 자르기'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      void autoCrop(e.target.files)
+                      e.target.value = ''
+                    }}
+                  />
+                </label>
+              </div>
+              <p className="text-xs text-slate-500">채점된 시험지를 쪽마다 찍어 한꺼번에 선택하면, 체크한 틀린 문항의 문제만 AI가 찾아 아래 사진 칸에 붙입니다.</p>
               {[...wrong].sort((a, b) => a.no - b.no).map((w) => {
                 const img = images.get(w.no)
                 return (
