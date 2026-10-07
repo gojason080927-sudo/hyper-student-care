@@ -377,7 +377,7 @@ export function MathMonthlyReportView({ student, sorted, data, attitude, evaluat
                   const wrong = view.wrongNos.has(item.no)
                   return (
                     <div key={item.no} className={`mm-q${wrong ? ' x' : ''}`}>
-                      <b>{item.no}</b><span>{wrong ? '✕' : '○'}</span><i>{MATH_DIFFICULTY_LABEL[itemByNo.get(item.no)?.difficulty ?? 'middle']}</i>
+                      <b>{item.no}-{MATH_DIFFICULTY_LABEL[itemByNo.get(item.no)?.difficulty ?? 'middle']}</b><span>{wrong ? '✕' : '○'}</span>
                     </div>
                   )
                 })}
