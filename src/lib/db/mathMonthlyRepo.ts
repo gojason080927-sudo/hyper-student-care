@@ -86,6 +86,9 @@ export async function listMathResults(examId: string): Promise<MathResultRow[]> 
     wrongItems: ((row.wrong_items as MathWrongItem[] | null) ?? []).map((w) => ({
       no: Number(w.no),
       cause: w.cause ?? '',
+      unit: typeof w.unit === 'string' ? w.unit : '',
+      type: typeof w.type === 'string' ? w.type : '',
+      note: typeof w.note === 'string' ? w.note : '',
     })),
     score: Number(row.score) || 0,
     strengths: String(row.strengths ?? ''),
@@ -159,4 +162,65 @@ export async function fetchParentMathReports(accessKey: string): Promise<MathMon
     return []
   }
   return reportsFromRpc(data)
+}
+
+/** 틀린 문제 사진 — JPEG base64 (data: 접두어 없음) */
+export type MathImage = { no: number; data: string; width: number; height: number }
+
+/** 강사용 — 한 학생의 사진 전체 */
+export async function listMathResultImages(examId: string, studentId: string): Promise<MathImage[]> {
+  const { data, error } = await getSupabase()
+    .from('math_monthly_result_images')
+    .select('no,data,width,height')
+    .eq('exam_id', examId)
+    .eq('student_id', studentId)
+    .order('no')
+  if (error) throw new Error(`문제 사진을 불러오지 못했습니다: ${error.message}`)
+  return ((data ?? []) as Row[]).map((r) => ({
+    no: Number(r.no),
+    data: String(r.data),
+    width: Number(r.width),
+    height: Number(r.height),
+  }))
+}
+
+/** 강사용 — 사진을 저장하고, 목록에 없는 번호의 사진은 지운다 (한 번에 너무 큰 요청이 되지 않게 3장씩) */
+export async function saveMathResultImages(examId: string, studentId: string, images: MathImage[]): Promise<void> {
+  const sb = getSupabase()
+  const rows = images.map((img) => ({
+    exam_id: examId,
+    student_id: studentId,
+    no: img.no,
+    data: img.data,
+    mime: 'image/jpeg',
+    width: img.width,
+    height: img.height,
+  }))
+  for (let i = 0; i < rows.length; i += 3) {
+    const { error } = await sb
+      .from('math_monthly_result_images')
+      .upsert(rows.slice(i, i + 3), { onConflict: 'exam_id,student_id,no' })
+    if (error) throw new Error(`문제 사진 저장 실패: ${error.message}`)
+  }
+  let del = sb.from('math_monthly_result_images').delete().eq('exam_id', examId).eq('student_id', studentId)
+  if (images.length > 0) del = del.not('no', 'in', `(${images.map((i) => i.no).join(',')})`)
+  const { error: delError } = await del
+  if (delError) throw new Error(`문제 사진 정리 실패: ${delError.message}`)
+}
+
+/** 학부모 — 자기 자녀의 발송된 결과 중 틀린 번호의 사진만. 조건에 맞지 않으면 빈 배열. */
+export async function fetchParentMathImages(accessKey: string, examId: string, nos: number[]): Promise<MathImage[]> {
+  if (nos.length === 0) return []
+  const { data, error } = await getSupabase().rpc('get_parent_math_monthly_images', {
+    p_access_key: accessKey.trim(),
+    p_exam_id: examId,
+    p_nos: nos,
+  })
+  if (error || !Array.isArray(data)) return []
+  return (data as Row[]).map((r) => ({
+    no: Number(r.no),
+    data: String(r.data),
+    width: Number(r.width),
+    height: Number(r.height),
+  }))
 }

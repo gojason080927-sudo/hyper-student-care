@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { DifficultyBreakdownBadges } from './DifficultyBreakdownBadges'
 import { MonthlyEvaluationChart } from '../ui/MonthlyEvaluationChart'
 import {
@@ -9,7 +9,7 @@ import {
 import { MathMonthlyReport } from '../mathMonthly/MathMonthlyReport'
 import { SchoolExamParentTab } from '../schoolExam/SchoolExamParentTab'
 import { ParentUnreadDot } from '../parent/ParentUnreadDot'
-import { fetchParentMathReports } from '../../lib/db/mathMonthlyRepo'
+import { fetchParentMathImages, fetchParentMathReports } from '../../lib/db/mathMonthlyRepo'
 import { fetchParentSchoolReports } from '../../lib/db/schoolExamRepo'
 import { hasUnreadSchoolExam, markSchoolExamSeen } from '../../utils/schoolExamUnread'
 import type { SchoolReportData } from '../../utils/schoolExamReport'
@@ -72,6 +72,11 @@ export function ParentMonthlyEvaluationView({
       cancelled = true
     }
   }, [accessKey])
+
+  const loadMathImages = useCallback(
+    (examId: string, nos: number[]) => (accessKey ? fetchParentMathImages(accessKey, examId, nos) : Promise.resolve([])),
+    [accessKey],
+  )
 
   // 학교 시험 개인 분석 리포트 (발송된 것이 있을 때만 "학교 시험" 탭을 보여 준다)
   const [tab, setTab] = useState<'monthly' | 'school'>('monthly')
@@ -181,7 +186,7 @@ export function ParentMonthlyEvaluationView({
         <h2 className="text-lg font-bold text-navy-900">월말평가 결과</h2>
 
         {mathReports.length > 0 && (
-          <MathMonthlyReport student={student} reports={mathReports} evaluations={studentRecords} />
+          <MathMonthlyReport student={student} reports={mathReports} evaluations={studentRecords} loadImages={loadMathImages} />
         )}
 
         {studentRecords.length === 0 ? (

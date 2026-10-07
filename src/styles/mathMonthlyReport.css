@@ -140,6 +140,26 @@ table.mm-t tr.now td { background: var(--mm-purple-soft); font-weight: 800; }
 }
 
 /* ─── 인쇄 / PDF: A4 2쪽 (시안.html 치수) ─── */
+/* 틀린 문제 분석 */
+.mm-seg { display: inline-flex; border: 1px solid var(--mm-line); border-radius: 8px; overflow: hidden; }
+.mm-seg button { padding: 6px 12px; font-size: 13px; background: #fff; color: var(--mm-ink, #161B3A); border: 0; cursor: pointer; }
+.mm-seg button[aria-pressed='true'] { background: var(--mm-purple); color: #fff; font-weight: 700; }
+.mm-wlist { display: grid; gap: 10px; }
+.mm-wcard { border: 1px solid var(--mm-line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 8px; break-inside: avoid; page-break-inside: avoid; background: #fff; }
+.mm-wimg { display: block; width: 100%; max-height: 260px; object-fit: contain; background: #faf8fc; border-radius: 8px; }
+.mm-whead { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13.5px; }
+.mm-whead b { color: #c2415a; font-size: 15px; }
+.mm-whead span { background: var(--mm-purple-soft); color: var(--mm-purple); border-radius: 999px; padding: 1px 9px; font-size: 12px; font-weight: 700; }
+.mm-whead i { font-style: normal; color: var(--mm-mute); font-size: 12px; }
+.mm-wcause { font-size: 12.5px; color: var(--mm-mute); margin-top: 3px; }
+.mm-wcause b { color: var(--mm-purple); }
+.mm-wnote { margin: 4px 0 0; font-size: 13px; line-height: 1.55; }
+.mm-wrest { border: 1px dashed var(--mm-line); border-radius: 12px; padding: 10px 12px; break-inside: avoid; page-break-inside: avoid; }
+.mm-wrest h3 { font-size: 13px; margin: 0 0 6px; color: var(--mm-purple); }
+.mm-wrest ul { list-style: none; margin: 0; padding: 0; }
+.mm-wrest li { display: flex; gap: 8px; font-size: 12.5px; padding: 3px 0; }
+.mm-wrest li b { min-width: 36px; color: #c2415a; }
+
 @page mmreport { size: A4; margin: 0; }
 
 @media print {
@@ -212,6 +232,18 @@ table.mm-t tr.now td { background: var(--mm-purple-soft); font-weight: 800; }
   .mm-gauge small.mm-gnote { font-size: 6.2pt; }
   .mm-att { font-size: 8.5pt; padding: 1.8mm 4mm; margin-top: 2mm; }
   .mm-att b { font-size: 12pt; }
+  .mm-wlist { gap: 3mm; }
+  .mm-wcard { grid-template-columns: 62mm 1fr; gap: 4mm; padding: 3mm 4mm; align-items: start; border-radius: 3mm; }
+  .mm-wcard:not(:has(.mm-wimg)) { grid-template-columns: 1fr; }
+  .mm-wimg { max-height: 52mm; border-radius: 2mm; }
+  .mm-whead { font-size: 9pt; }
+  .mm-whead b { font-size: 10.5pt; }
+  .mm-whead span { font-size: 8pt; }
+  .mm-whead i, .mm-wcause { font-size: 8pt; }
+  .mm-wnote { font-size: 8.8pt; }
+  .mm-wrest { padding: 2.5mm 4mm; }
+  .mm-wrest h3 { font-size: 9pt; }
+  .mm-wrest li { font-size: 8.4pt; }
   .mm-comments { grid-template-columns: 1fr 1fr; gap: 3mm; }
   .mm-cm { font-size: 8.4pt; padding: 2.6mm 4mm; }
   .mm-cm h3 { font-size: 9pt; }

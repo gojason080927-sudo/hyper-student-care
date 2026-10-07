@@ -30,7 +30,7 @@ export const MATH_CAUSE_COLOR: Record<MathCause, string> = {
 
 export type MathExamItem = { no: number; points: number; difficulty: MathDifficulty }
 export type MathExamUnit = { name: string; from: number; to: number }
-export type MathWrongItem = { no: number; cause: MathCause | '' }
+export type MathWrongItem = { no: number; cause: MathCause | ''; unit?: string; type?: string; note?: string }
 export type MathPlanLine = { content: string; goal: string }
 
 export const MATH_PLAN_MAX_LINES = 5
@@ -455,6 +455,9 @@ export function resultFromRow(row: Json): MathMonthlyResult {
     wrongItems: arr(row.wrong_items).map((w) => ({
       no: num(w.no),
       cause: (MATH_CAUSES.includes(w.cause as MathCause) ? w.cause : '') as MathCause | '',
+      unit: str(w.unit),
+      type: str(w.type),
+      note: str(w.note),
     })),
     strengths: str(row.strengths),
     improvements: str(row.improvements),

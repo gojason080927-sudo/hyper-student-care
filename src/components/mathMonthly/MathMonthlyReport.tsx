@@ -1,10 +1,13 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { MonthlyEvaluationRecord } from '../../types/records'
 import type { Student } from '../../types/student'
 import { useData } from '../../hooks/useData'
+import type { MathImage } from '../../lib/db/mathMonthlyRepo'
 import { buildMathAttitude, type MathAttitude } from '../../utils/mathMonthlyAttitude'
+import { SUMMARY_CARD_COUNT, SUMMARY_THRESHOLD } from '../../utils/schoolExamReport'
 import {
   DIAGNOSIS_LABEL,
+  MATH_CAUSE_LABEL,
   MATH_DIFFICULTY_LABEL,
   buildMathTrend,
   buildReportView,
@@ -12,6 +15,7 @@ import {
   unitInsight,
   previousMonthPoint,
   type MathMonthlyReportData,
+  type MathWrongItem,
 } from '../../utils/mathMonthlyReport'
 import { CauseDonut, CauseLegend, Gauge, TrendChart, UnitRadar } from './MathMonthlyCharts'
 import '../../styles/mathMonthlyReport.css'
@@ -20,6 +24,22 @@ type Props = {
   student: Student
   reports: MathMonthlyReportData[]
   evaluations: MonthlyEvaluationRecord[]
+  /** 틀린 문제 사진 불러오기 (학부모: get_parent_math_monthly_images). 없으면 사진 없이 텍스트만 표시 */
+  loadImages?: (examId: string, nos: number[]) => Promise<MathImage[]>
+}
+
+type ImageMap = Map<number, MathImage>
+type WrongMode = 'full' | 'summary'
+
+const CARDS_PER_PAGE = 3
+const DIFF_RANK = { basic: 0, middle: 1, high: 2, highest: 3 } as const
+
+/** 요약 보기: 난이도 높은 오답 N개(같으면 번호순)는 카드, 나머지는 한 줄 목록 */
+function splitWrong(wrong: MathWrongItem[], difficultyOf: (no: number) => keyof typeof DIFF_RANK) {
+  const ordered = [...wrong].sort((a, b) => DIFF_RANK[difficultyOf(b.no)] - DIFF_RANK[difficultyOf(a.no)] || a.no - b.no)
+  const cardNos = new Set(ordered.slice(0, SUMMARY_CARD_COUNT).map((w) => w.no))
+  const byNo = (list: MathWrongItem[]) => [...list].sort((a, b) => a.no - b.no)
+  return { cards: byNo(wrong.filter((w) => cardNos.has(w.no))), rest: byNo(wrong.filter((w) => !cardNos.has(w.no))) }
 }
 
 const dateText = (iso: string) => iso.replaceAll('-', '. ') + '.'
@@ -28,13 +48,28 @@ const diffClass = (v: number) => (v >= 0 ? 'mm-up' : 'mm-dn')
 const diagClass = { strength: 'good', normal: 'mid', weak: 'bad' } as const
 
 /** 학부모·학생·강사 열람용 — 발송된 수학 월말평가 보고서 (월 선택, PDF 저장) */
-export function MathMonthlyReport({ student, reports, evaluations }: Props) {
+export function MathMonthlyReport({ student, reports, evaluations, loadImages }: Props) {
   const sorted = useMemo(
     () => [...reports].sort((a, b) => b.exam.year * 12 + b.exam.month - (a.exam.year * 12 + a.exam.month)),
     [reports],
   )
   const [selectedId, setSelectedId] = useState(sorted[0]?.exam.id ?? '')
   const data = sorted.find((r) => r.exam.id === selectedId) ?? sorted[0]
+
+  const [mode, setMode] = useState<WrongMode>('full')
+  const [loaded, setLoaded] = useState<{ examId: string; images: ImageMap } | null>(null)
+  const examId = data?.exam.id ?? ''
+  const wrongNosKey = data ? data.result.wrongItems.map((w) => w.no).sort((a, b) => a - b).join(',') : ''
+  useEffect(() => {
+    if (!loadImages || !examId || !wrongNosKey) return
+    let cancelled = false
+    void loadImages(examId, wrongNosKey.split(',').map(Number)).then((list) => {
+      if (!cancelled) setLoaded({ examId, images: new Map(list.map((i) => [i.no, i])) })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [examId, wrongNosKey, loadImages])
 
   const { attendance, homework, homeworkTextbookEntries, dailyTests, studentDailyCare } = useData()
   const attitude = useMemo(
@@ -62,6 +97,9 @@ export function MathMonthlyReport({ student, reports, evaluations }: Props) {
       data={data}
       attitude={attitude}
       evaluations={evaluations}
+      images={loaded?.examId === data.exam.id ? loaded.images : null}
+      mode={mode}
+      onMode={setMode}
       onSelect={setSelectedId}
     />
   )
@@ -73,11 +111,14 @@ type ViewProps = {
   data: MathMonthlyReportData
   attitude: MathAttitude
   evaluations: MonthlyEvaluationRecord[]
+  images?: ImageMap | null
+  mode?: WrongMode
+  onMode?: (mode: WrongMode) => void
   onSelect: (examId: string) => void
 }
 
 /** 화면(휴대폰 세로 카드) + 인쇄(A4 2쪽) 공용 표시 컴포넌트 — 데이터 접근 없음 */
-export function MathMonthlyReportView({ student, sorted, data, attitude, evaluations, onSelect }: ViewProps) {
+export function MathMonthlyReportView({ student, sorted, data, attitude, evaluations, images = null, mode = 'full', onMode, onSelect }: ViewProps) {
   const { exam, result } = data
   const view = buildReportView(data)
   const showAvg = view.classAvg !== null
@@ -94,6 +135,18 @@ export function MathMonthlyReportView({ student, sorted, data, attitude, evaluat
   const plan = result.nextPlan.filter((p) => p.content.trim())
   const hasComments = result.strengths.trim() || result.improvements.trim() || result.teacherComment.trim()
   const itemByNo = new Map(exam.items.map((i) => [i.no, i]))
+
+  // 틀린 문제 분석 — 틀린 문항이 있을 때만 3쪽부터 추가
+  const wrongSorted = [...result.wrongItems].sort((a, b) => a.no - b.no)
+  const canSummarize = wrongSorted.length > SUMMARY_THRESHOLD
+  const effectiveMode: WrongMode = canSummarize ? mode : 'full'
+  const { cards, rest } =
+    effectiveMode === 'summary'
+      ? splitWrong(wrongSorted, (no) => itemByNo.get(no)?.difficulty ?? 'middle')
+      : { cards: wrongSorted, rest: [] as MathWrongItem[] }
+  const cardPages: MathWrongItem[][] = []
+  for (let i = 0; i < cards.length; i += CARDS_PER_PAGE) cardPages.push(cards.slice(i, i + CARDS_PER_PAGE))
+  const totalPages = 2 + cardPages.length
 
   const print = () => {
     document.body.classList.add('mm-printing')
@@ -115,13 +168,19 @@ export function MathMonthlyReportView({ student, sorted, data, attitude, evaluat
             </option>
           ))}
         </select>
+        {canSummarize && onMode && (
+          <div className="mm-seg" role="group" aria-label="틀린 문제 보기 방식">
+            <button type="button" aria-pressed={effectiveMode === 'full'} onClick={() => onMode('full')}>전체 보기</button>
+            <button type="button" aria-pressed={effectiveMode === 'summary'} onClick={() => onMode('summary')}>요약 보기</button>
+          </div>
+        )}
         <button type="button" className="mm-btn" onClick={print}>PDF 저장</button>
       </div>
 
       <div className="mm-print-root">
         {/* ───── 1쪽 ───── */}
         <section className="mm-page">
-          <div className="mm-pno">1 / 2</div>
+          <div className="mm-pno">1 / {totalPages}</div>
           <div className="mm-band">
             <div className="mm-brand"><b>HYPER</b><span>ACADEMY</span></div>
             <div className="mm-title"><b>수학 월말평가 결과 보고서</b><span>{subtitle}</span></div>
@@ -290,7 +349,7 @@ export function MathMonthlyReportView({ student, sorted, data, attitude, evaluat
 
         {/* ───── 2쪽 ───── */}
         <section className="mm-page">
-          <div className="mm-pno">2 / 2</div>
+          <div className="mm-pno">2 / {totalPages}</div>
           <div className="mm-run">{student.name} · {exam.year}년 {exam.month}월 수학 월말평가<span>문항 분석 · 학습 태도 · 선생님 의견 · 다음 달 계획</span></div>
 
           <div className="mm-p2a">
@@ -390,6 +449,49 @@ export function MathMonthlyReportView({ student, sorted, data, attitude, evaluat
           <p className="mm-note">※ 학생 개인의 성장을 보기 위한 자료로 석차는 표시하지 않습니다.{showAvg ? ' 반 평균은 같은 반 학생들의 평균입니다.' : ''}</p>
           <div className="mm-foot"><span>하이퍼 영수 전문학원</span><span>24시간 학습을 설계하다</span></div>
         </section>
+
+        {/* ───── 틀린 문제 분석 (틀린 문제가 있을 때만) ───── */}
+        {cardPages.map((pageCards, pi) => (
+          <section className="mm-page" key={pi}>
+            <div className="mm-pno">{3 + pi} / {totalPages}</div>
+            <div className="mm-run">{student.name} · {exam.year}년 {exam.month}월 수학 월말평가<span>틀린 문제 분석</span></div>
+            <h2 className="mm-h2">틀린 문제 분석<small>{wrongSorted.length}문항{effectiveMode === 'summary' ? ' · 요약 보기' : ''}</small></h2>
+            <div className="mm-wlist">
+              {pageCards.map((w) => {
+                const img = images?.get(w.no)
+                return (
+                  <div className="mm-wcard" key={w.no}>
+                    {img && <img className="mm-wimg" src={`data:image/jpeg;base64,${img.data}`} alt={`${w.no}번 문제`} />}
+                    <div className="mm-wbody">
+                      <div className="mm-whead">
+                        <b>{w.no}번</b>
+                        {w.unit && <span>{w.unit}</span>}
+                        {w.type && <span>{w.type}</span>}
+                        <i>{MATH_DIFFICULTY_LABEL[itemByNo.get(w.no)?.difficulty ?? 'middle']}</i>
+                      </div>
+                      {w.cause && <div className="mm-wcause">오답 원인 · <b>{MATH_CAUSE_LABEL[w.cause]}</b></div>}
+                      {w.note && <p className="mm-wnote">{w.note}</p>}
+                    </div>
+                  </div>
+                )
+              })}
+              {pi === cardPages.length - 1 && rest.length > 0 && (
+                <div className="mm-wrest">
+                  <h3>그 밖의 틀린 문항</h3>
+                  <ul>
+                    {rest.map((w) => (
+                      <li key={w.no}>
+                        <b>{w.no}번</b>
+                        <span>{[w.unit, w.type, w.cause ? MATH_CAUSE_LABEL[w.cause] : ''].filter(Boolean).join(' · ')}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+            <div className="mm-foot"><span>하이퍼 영수 전문학원</span><span>24시간 학습을 설계하다</span></div>
+          </section>
+        ))}
       </div>
     </div>
   )
