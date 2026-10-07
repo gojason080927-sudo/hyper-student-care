@@ -196,7 +196,7 @@ export function MathMonthlyReportView({ student, sorted, data, attitude, evaluat
             {exam.teacherName && <span>담당<b>{exam.teacherName} 선생님</b></span>}
           </div>
 
-          <h2 className="mm-h2">이번 달 한눈에 보기</h2>
+          <h2 className="mm-h2">이번 달 결과 보기</h2>
           <div className={`mm-cards${showAvg ? '' : ' no-avg'}`}>
             <div className="mm-card">
               <div className="mm-sub">점수</div>
@@ -412,8 +412,8 @@ export function MathMonthlyReportView({ student, sorted, data, attitude, evaluat
               />
             </div>
             <div className="mm-att">
-              <span>학습 태도 종합 <span style={{ color: '#6B6574', fontSize: '0.85em' }}>(지각·과제·일일테스트 차시 감점 기준)</span></span>
-              <span><b>{attitude.score}점</b> &nbsp;{attitude.grade}</span>
+              <span className="mm-att-l">학습 태도 종합<small>지각·과제·일일테스트 차시 감점 기준</small></span>
+              <span className="mm-att-r"><b>{attitude.score}점</b> {attitude.grade}</span>
             </div>
           </div>
 
