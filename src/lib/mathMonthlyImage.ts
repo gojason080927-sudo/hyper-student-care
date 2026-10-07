@@ -23,10 +23,10 @@ export async function compressMathImage(file: Blob): Promise<CompressedMathImage
   return { data: url.slice(url.indexOf(',') + 1), width, height }
 }
 
-/** 시험지 한 쪽 전체를 AI에 보낼 크기로 줄인다 — 긴 변 1600px 이하, JPEG 0.8 */
+/** 시험지 한 쪽 전체를 보관·AI 전송용으로 줄인다 — 긴 변 1800px 이하, JPEG 0.8 */
 export async function downscaleForLocate(file: Blob): Promise<string> {
   const bitmap = await createImageBitmap(file)
-  const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height))
+  const scale = Math.min(1, 1800 / Math.max(bitmap.width, bitmap.height))
   const canvas = document.createElement('canvas')
   canvas.width = Math.max(1, Math.round(bitmap.width * scale))
   canvas.height = Math.max(1, Math.round(bitmap.height * scale))
@@ -63,4 +63,11 @@ export async function cropMathImage(file: Blob, box: { x: number; y: number; w: 
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('이미지를 자르지 못했습니다.'))), 'image/jpeg', 0.9),
   )
   return compressMathImage(blob)
+}
+
+export function base64ToBlob(b64: string): Blob {
+  const bin = atob(b64)
+  const bytes = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+  return new Blob([bytes], { type: 'image/jpeg' })
 }

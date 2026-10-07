@@ -140,6 +140,10 @@ export async function publishMathExam(examId: string, onlyStudentId?: string): P
   if (error) throw new Error(`발송 실패: ${error.message}`)
   const row = (data ?? {}) as { newly_sent?: string[]; sent_total?: number }
   const newly = row.newly_sent ?? []
+  if (newly.length > 0) {
+    // 발송된 학생의 시험지 원본은 더 쓸 일이 없으므로 지운다(실패해도 발송에는 영향 없음)
+    await getSupabase().from('math_monthly_result_papers').delete().eq('exam_id', examId).in('student_id', newly)
+  }
   let pushStatus = 'none'
   if (newly.length > 0) {
     const result = await invokeHubPush({
@@ -223,4 +227,43 @@ export async function fetchParentMathImages(accessKey: string, examId: string, n
     width: Number(r.width),
     height: Number(r.height),
   }))
+}
+
+// ─── 학생별 시험지 보관 (강사 전용) ───
+
+/** 학생 시험지 쪽별 사진 (base64 JPEG, 쪽 순서) */
+export async function listMathPapers(examId: string, studentId: string): Promise<string[]> {
+  const { data, error } = await getSupabase()
+    .from('math_monthly_result_papers')
+    .select('page,data')
+    .eq('exam_id', examId)
+    .eq('student_id', studentId)
+    .order('page')
+  if (error) throw new Error(`시험지를 불러오지 못했습니다: ${error.message}`)
+  return ((data ?? []) as Row[]).map((r) => String(r.data))
+}
+
+/** 시험 전체의 학생별 시험지 쪽수 */
+export async function countMathPapers(examId: string): Promise<Map<string, number>> {
+  const { data, error } = await getSupabase().from('math_monthly_result_papers').select('student_id').eq('exam_id', examId)
+  if (error) throw new Error(`시험지 현황을 불러오지 못했습니다: ${error.message}`)
+  const map = new Map<string, number>()
+  for (const r of (data ?? []) as Row[]) {
+    const id = String(r.student_id)
+    map.set(id, (map.get(id) ?? 0) + 1)
+  }
+  return map
+}
+
+/** 학생 시험지를 통째로 교체 저장한다 (한 쪽씩 올린다) */
+export async function saveMathPapers(examId: string, studentId: string, pages: string[]): Promise<void> {
+  const sb = getSupabase()
+  const { error: delError } = await sb.from('math_monthly_result_papers').delete().eq('exam_id', examId).eq('student_id', studentId)
+  if (delError) throw new Error(`시험지 정리 실패: ${delError.message}`)
+  for (let i = 0; i < pages.length; i++) {
+    const { error } = await sb
+      .from('math_monthly_result_papers')
+      .insert({ exam_id: examId, student_id: studentId, page: i + 1, data: pages[i] })
+    if (error) throw new Error(`시험지 저장 실패: ${error.message}`)
+  }
 }
