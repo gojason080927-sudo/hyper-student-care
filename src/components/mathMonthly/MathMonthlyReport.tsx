@@ -142,6 +142,7 @@ export function MathMonthlyReportView({ student, sorted, data, attitude, evaluat
     }
     return [...map.entries()].map(([name, nos]) => ({ name, nos: nos.sort((a, b) => a - b) })).sort((a, b) => b.nos.length - a.nos.length)
   })()
+  const hasUnitInfo = wrongUnitGroups.some((g) => g.name !== '단원 미분류')
   const maxWrongInUnit = Math.max(1, ...wrongUnitGroups.map((g) => g.nos.length))
   const nextMonth = exam.month === 12 ? 1 : exam.month + 1
   const plan = result.nextPlan.filter((p) => p.content.trim())
@@ -289,7 +290,7 @@ export function MathMonthlyReportView({ student, sorted, data, attitude, evaluat
             </div>
           </div>
 
-          {view.units.length === 0 ? (
+          {view.units.length === 0 && !hasUnitInfo ? null : view.units.length === 0 ? (
             <div className="mm-unit" style={{ gridTemplateColumns: '1fr' }}>
               <div className="mm-box">
                 <h2 className="mm-h2">단원별 틀린 문제</h2>

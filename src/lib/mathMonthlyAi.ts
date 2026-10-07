@@ -17,7 +17,6 @@ export type MathAiProblemRequest = {
   no: number
   difficulty: string
   unit: string
-  unitChoices?: string[]
   cause: string
   imageBase64: string
 }

@@ -74,7 +74,6 @@ export function MathStudentEditor({ exam, studentId, studentName, row, onSave, o
   const wrongByNo = new Map(wrong.map((w) => [w.no, w]))
 
   const unitFor = (no: number) => exam.units.find((u) => u.from > 0 && no >= u.from && no <= u.to)?.name ?? ''
-  const unitChoices = exam.units.filter((u) => u.from === 0).map((u) => u.name)
 
   const toggle = (no: number) => {
     const turningOn = !wrong.some((w) => w.no === no)
@@ -187,7 +186,6 @@ export function MathStudentEditor({ exam, studentId, studentName, row, onSave, o
       no: w.no,
       difficulty: MATH_DIFFICULTY_LABEL[exam.items.find((i) => i.no === w.no)?.difficulty ?? 'middle'],
       unit: w.unit || unitFor(w.no),
-      unitChoices: unitFor(w.no) ? undefined : unitChoices,
       cause: w.cause ? MATH_CAUSE_LABEL[w.cause] : '',
       imageBase64: img.data,
     })
@@ -197,7 +195,7 @@ export function MathStudentEditor({ exam, studentId, studentName, row, onSave, o
       return
     }
     setWrong((list) =>
-      list.map((x) => (x.no === w.no ? { ...x, type: result.value.type, note: result.value.note, unit: unitFor(w.no) || (unitChoices.length ? result.value.unit || x.unit : x.unit || result.value.unit) } : x)),
+      list.map((x) => (x.no === w.no ? { ...x, type: result.value.type, note: result.value.note, unit: x.unit || unitFor(w.no) } : x)),
     )
   }
 

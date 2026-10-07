@@ -18,9 +18,7 @@ const PROBLEM_PROMPT = `당신은 학원 수학 선생님입니다. 학생이 �
 - 짧은 명사구 하나로 씁니다(예: "이차함수의 최대·최소", "등차수열의 합").
 
 [단원]
-- 입력 정보의 unit(단원)이 비어 있으면, 문제를 보고 고등학교 수학 교육과정 기준의 단원 이름을 짧게 판단해 unit에 씁니다(예: "다항식의 연산", "미분").
-- 입력 정보에 unitChoices(선생님이 정한 단원 목록)가 있으면, 반드시 그 목록 중 가장 알맞은 하나를 글자 그대로 unit에 씁니다(목록에 없는 이름은 쓰지 않습니다). 이 경우 unit이 이미 있어도 목록에서 다시 고릅니다.
-- unitChoices가 없고 unit이 이미 있으면 그대로 쓰지 말고 비워 둡니다.
+- 단원 이름은 판단하지 않습니다. unit은 항상 빈 문자열로 둡니다.
 
 [강사 분석]
 - 한 문장(최대 두 문장), 정중한 합쇼체입니다.
@@ -33,7 +31,7 @@ const PROBLEM_PROMPT = `당신은 학원 수학 선생님입니다. 학생이 �
 
 [출력 형식]
 - 다른 설명 없이 아래 JSON 하나만 출력합니다.
-{"type": "문제 유형", "note": "강사 분석 한 줄", "unit": "단원(비어 있을 때만, 아니면 빈 문자열)"}`
+{"type": "문제 유형", "note": "강사 분석 한 줄", "unit": ""}`
 
 const LOCATE_PROMPT = `당신은 시험지 사진에서 문제 위치를 찾는 도우미입니다. 시험지 한 쪽 사진과 찾아야 할 문제 번호 목록이 주어집니다.
 
@@ -274,7 +272,6 @@ Deno.serve(async (request) => {
       no: asNumber(body.no),
       difficulty: asString(body.difficulty),
       unit: asString(body.unit),
-      unitChoices: Array.isArray(body.unitChoices) ? (body.unitChoices as unknown[]).slice(0, 30).map((u) => asString(u)).filter(Boolean) : [],
       cause: asString(body.cause),
     }
     system = PROBLEM_PROMPT
