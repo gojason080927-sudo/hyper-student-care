@@ -23,11 +23,9 @@ import {
   buildDefaultItems,
   resizeItems,
   totalPoints,
-  parseUnitLines,
   validateExamSetup,
   type MathDifficulty,
   type MathExamItem,
-  type MathExamUnit,
   type MathMonthlyExam,
 } from '../utils/mathMonthlyReport'
 import { btnPrimary, btnSecondary, inputClass } from '../utils/labels'
@@ -48,8 +46,6 @@ export function MathMonthlyExamPage() {
   const [month, setMonth] = useState(now.month)
   const [exams, setExams] = useState<MathMonthlyExam[]>([])
   const [paperTick, setPaperTick] = useState(0)
-  const [unitBulk, setUnitBulk] = useState('')
-  const [unitBulkMsg, setUnitBulkMsg] = useState('')
   const [results, setResults] = useState<Map<string, MathResultRow>>(new Map())
   const [loadError, setLoadError] = useState('')
 
@@ -60,8 +56,6 @@ export function MathMonthlyExamPage() {
   const [count, setCount] = useState(DEFAULT_COUNT)
   const [defaultPoints, setDefaultPoints] = useState(DEFAULT_POINTS)
   const [items, setItems] = useState<MathExamItem[]>(buildDefaultItems(DEFAULT_COUNT, DEFAULT_POINTS))
-  const [units, setUnits] = useState<MathExamUnit[]>([])
-  const rangedUnits = units.some((u) => u.from > 0)
   const [copyFrom, setCopyFrom] = useState('')
   const [setupMsg, setSetupMsg] = useState('')
   const [setupSaving, setSetupSaving] = useState(false)
@@ -107,7 +101,6 @@ export function MathMonthlyExamPage() {
       setTeacherName(exam.teacherName)
       setCount(exam.questionCount)
       setItems(exam.items)
-      setUnits(exam.units)
       setDefaultPoints(exam.items[0]?.points ?? DEFAULT_POINTS)
     } else {
       setExamDate('')
@@ -116,7 +109,6 @@ export function MathMonthlyExamPage() {
       setCount(DEFAULT_COUNT)
       setDefaultPoints(DEFAULT_POINTS)
       setItems(buildDefaultItems(DEFAULT_COUNT, DEFAULT_POINTS))
-      setUnits([{ name: '', from: 1, to: DEFAULT_COUNT }])
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [exam?.id, className, year, month])
@@ -141,7 +133,6 @@ export function MathMonthlyExamPage() {
     const n = Math.max(1, Math.min(100, Math.floor(next) || 1))
     setCount(n)
     setItems((list) => resizeItems(list, n, defaultPoints))
-    setUnits((list) => list.map((u) => ({ ...u, to: Math.min(u.to, n), from: Math.min(u.from, n) })))
   }
   const applyDefaultPoints = (p: number) => {
     setDefaultPoints(p)
@@ -155,14 +146,13 @@ export function MathMonthlyExamPage() {
     if (!source) return
     setCount(source.questionCount)
     setItems(source.items.map((i) => ({ ...i })))
-    setUnits(source.units.map((u) => ({ ...u })))
     setTitle((t) => t || source.title)
     setDefaultPoints(source.items[0]?.points ?? DEFAULT_POINTS)
     setSetupMsg('설정을 복사했습니다. 평가일을 입력하고 저장해 주세요.')
   }
 
   const saveSetup = async () => {
-    const errors = validateExamSetup({ className, examDate, title, items, units })
+    const errors = validateExamSetup({ className, examDate, title, items, units: [] })
     if (errors.length > 0) {
       setSetupMsg(errors[0])
       return
@@ -179,7 +169,7 @@ export function MathMonthlyExamPage() {
         title,
         teacherName,
         items,
-        units,
+        units: [],
       })
       setExams((list) => [saved, ...list.filter((e) => e.id !== saved.id)])
       setSetupMsg('시험 설정을 저장했습니다.')
@@ -341,57 +331,6 @@ export function MathMonthlyExamPage() {
                 ))}
               </div>
             </div>
-
-            {rangedUnits && (
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-slate-700">단원 구간 (선택 · 안 적어도 됩니다)</p>
-              <p className="text-xs text-slate-500">안 적으면 틀린 문제 사진을 올릴 때 AI가 단원을 알아서 판단합니다. 적으면 단원별 정답률 그래프도 나옵니다.</p>
-              <div className="space-y-2 rounded-xl border border-violet-200 bg-violet-50 p-3">
-                <p className="text-sm font-semibold text-violet-900">한 번에 입력하기 (한 줄에 단원 하나)</p>
-                <textarea
-                  className={inputClass()}
-                  rows={4}
-                  placeholder={'1~5 다항식의 연산\n6~10 방정식과 부등식\n11~15 도형의 방정식'}
-                  value={unitBulk}
-                  onChange={(e) => setUnitBulk(e.target.value)}
-                />
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    className={btnSecondary}
-                    onClick={() => {
-                      const { units: parsed, bad } = parseUnitLines(unitBulk)
-                      if (parsed.length === 0) {
-                        setUnitBulkMsg('읽을 수 있는 줄이 없습니다. "1~5 단원이름" 모양으로 한 줄씩 써 주세요.')
-                        return
-                      }
-                      setUnits(parsed)
-                      setUnitBulk('')
-                      setUnitBulkMsg(bad.length > 0 ? `${parsed.length}개를 적용했습니다. 읽지 못한 줄: ${bad.join(' / ')}` : `${parsed.length}개 단원을 적용했습니다. 아래에서 확인해 주세요.`)
-                    }}
-                  >
-                    아래 칸에 적용
-                  </button>
-                  {unitBulkMsg && <span className="text-sm text-slate-700">{unitBulkMsg}</span>}
-                </div>
-              </div>
-              {units.map((u, i) => (
-                <div key={i} className="grid grid-cols-[1fr_64px_64px_auto] items-center gap-2">
-                  <input className={inputClass()} placeholder="단원 이름" value={u.name} onChange={(e) => setUnits((l) => l.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))} />
-                  <NumInput aria-label="시작 번호" className={inputClass()} value={u.from} onValue={(v) => setUnits((l) => l.map((x, k) => (k === i ? { ...x, from: v } : x)))} />
-                  <NumInput aria-label="끝 번호" className={inputClass()} value={u.to} onValue={(v) => setUnits((l) => l.map((x, k) => (k === i ? { ...x, to: v } : x)))} />
-                  <button type="button" className={btnSecondary} onClick={() => setUnits((l) => l.filter((_, k) => k !== i))}>삭제</button>
-                </div>
-              ))}
-              <button
-                type="button"
-                className={btnSecondary}
-                onClick={() => setUnits((l) => [...l, { name: '', from: (l[l.length - 1]?.to ?? 0) + 1, to: Math.min(count, (l[l.length - 1]?.to ?? 0) + 5) }])}
-              >
-                + 단원 추가
-              </button>
-            </div>
-            )}
 
             <div className="flex flex-wrap items-center gap-3">
               <button type="button" className={btnPrimary} onClick={saveSetup} disabled={setupSaving}>

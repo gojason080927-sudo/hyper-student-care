@@ -11,12 +11,11 @@ import {
   buildMathTrend,
   buildReportView,
   buildSummaryText,
-  unitInsight,
   previousMonthPoint,
   type MathMonthlyReportData,
   type MathWrongItem,
 } from '../../utils/mathMonthlyReport'
-import { CauseDonut, CauseLegend, Gauge, TrendChart, UnitRadar } from './MathMonthlyCharts'
+import { CauseDonut, CauseLegend, Gauge, TrendChart } from './MathMonthlyCharts'
 import '../../styles/mathMonthlyReport.css'
 
 type Props = {
@@ -132,18 +131,6 @@ export function MathMonthlyReportView({ student, sorted, data, attitude, evaluat
   const unitRange = exam.units.length ? `${exam.units[0].name}${exam.units.length > 1 ? ` ~ ${exam.units[exam.units.length - 1].name}` : ''}` : ''
   const subtitle = [`${exam.year}년 ${exam.month}월`, exam.title, unitRange].filter(Boolean).join(' · ')
   const wrongCount = view.wrongNos.size
-  const insight = unitInsight(view.units)
-  const wrongUnitGroups = (() => {
-    const map = new Map<string, number[]>()
-    for (const u of exam.units) if (u.from === 0) map.set(u.name, [])
-    for (const w of result.wrongItems) {
-      const name = (w.unit || '').trim() || '단원 미분류'
-      map.set(name, [...(map.get(name) ?? []), w.no])
-    }
-    return [...map.entries()].map(([name, nos]) => ({ name, nos: nos.sort((a, b) => a - b) })).sort((a, b) => b.nos.length - a.nos.length)
-  })()
-  const hasUnitInfo = wrongUnitGroups.some((g) => g.name !== '단원 미분류')
-  const maxWrongInUnit = Math.max(1, ...wrongUnitGroups.map((g) => g.nos.length))
   const nextMonth = exam.month === 12 ? 1 : exam.month + 1
   const plan = result.nextPlan.filter((p) => p.content.trim())
   const hasComments = result.strengths.trim() || result.improvements.trim() || result.teacherComment.trim()
@@ -290,101 +277,6 @@ export function MathMonthlyReportView({ student, sorted, data, attitude, evaluat
             </div>
           </div>
 
-          {view.units.length === 0 && !hasUnitInfo ? null : view.units.length === 0 ? (
-            <div className="mm-unit" style={{ gridTemplateColumns: '1fr' }}>
-              <div className="mm-box">
-                <h2 className="mm-h2">단원별 틀린 문제</h2>
-                {wrongUnitGroups.length === 0 ? (
-                  <p className="mm-note">틀린 문제가 없습니다.</p>
-                ) : (
-                  <table className="mm-t">
-                    <thead><tr><th>단원</th><th>틀린 문항</th><th>그래프</th><th className="c">개수</th></tr></thead>
-                    <tbody>
-                      {wrongUnitGroups.map((g) => (
-                        <tr key={g.name}>
-                          <td><b>{g.name}</b></td>
-                          <td>{g.nos.length ? g.nos.map((n) => `${n}번`).join(', ') : '-'}</td>
-                          <td style={{ width: '30%' }}><div style={{ height: 10, borderRadius: 5, background: '#e2e8f0' }}><div style={{ height: 10, borderRadius: 5, background: '#ef4444', width: `${(g.nos.length / maxWrongInUnit) * 100}%` }} /></div></td>
-                          <td className="c b">{g.nos.length}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-                {wrongUnitGroups.length > 0 && wrongUnitGroups[0].nos.length > 0 && wrongUnitGroups[0].name !== '단원 미분류' && (
-                  <div className="mm-insight"><b>가장 많이 틀린 단원</b> · {wrongUnitGroups[0].name} ({wrongUnitGroups[0].nos.length}문항)</div>
-                )}
-              </div>
-            </div>
-          ) : (
-          <div className="mm-unit">
-            <div className="mm-box">
-              <h2 className="mm-h2">단원별 성취도</h2>
-              <div className="mm-chart center">
-                {view.units.length >= 3 ? (
-                  <UnitRadar units={view.units} showAvg={showAvg} />
-                ) : (
-                  <p className="mm-note">단원이 3개 이상일 때 레이더 차트로 표시됩니다.</p>
-                )}
-              </div>
-              <div className="mm-legend">
-                <span><i />{student.name} 정답률</span>
-                {showAvg && <span><i className="d" />반 평균</span>}
-              </div>
-            </div>
-            <div className="mm-box">
-              <h2 className="mm-h2">단원별 결과</h2>
-              <table className="mm-t">
-                <thead>
-                  <tr>
-                    <th>단원</th><th>맞힘</th><th>정답률</th>
-                    {showAvg && <><th>반 평균</th><th>차이</th></>}
-                    <th className="c">진단</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {view.units.map((u) => (
-                    <tr key={u.name}>
-                      <td><b>{u.name}</b><small>{u.from}~{u.to}번</small></td>
-                      <td>{u.correct}/{u.total}</td>
-                      <td className="b">{u.rate}%</td>
-                      {showAvg && (
-                        <>
-                          <td className="m">{u.classRate === null ? '-' : `${Math.round(u.classRate)}%`}</td>
-                          <td className={u.diff === null ? 'm' : diffClass(u.diff)}>{u.diff === null ? '-' : signed(u.diff)}</td>
-                        </>
-                      )}
-                      <td className="c"><span className={`mm-st ${diagClass[u.diagnosis]}`}>{DIAGNOSIS_LABEL[u.diagnosis]}</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {insight.highest && insight.lowest && (
-                <div className="mm-insight">
-                  {insight.strength ? (
-                    <><b>강점</b> {insight.strength.name} {insight.strength.rate}%</>
-                  ) : (
-                    <><b>가장 높은 단원</b>: {insight.highest.name} {insight.highest.rate}%</>
-                  )}
-                  {insight.highest.name !== insight.lowest.name && (
-                    <>
-                      {' '}&nbsp;·&nbsp;{' '}
-                      {insight.weak ? (
-                        <>
-                          <b>보강</b> {insight.weak.name} {insight.weak.rate}%
-                          {showAvg && insight.weak.classRate !== null && insight.weak.diff !== null && insight.weak.diff < 0 &&
-                            ` — 반 평균(${Math.round(insight.weak.classRate)}%)보다 ${Math.abs(insight.weak.diff)}%p 낮습니다.`}
-                        </>
-                      ) : (
-                        <><b>가장 낮은 단원</b>: {insight.lowest.name} {insight.lowest.rate}%</>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-          )}
           <div className="mm-foot"><span>하이퍼 영수 전문학원</span><span>24시간 학습을 설계하다</span></div>
         </section>
 
