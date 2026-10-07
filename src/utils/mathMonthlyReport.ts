@@ -125,6 +125,7 @@ export function validateExamSetup(input: {
       errors.push('단원 이름을 입력해 주세요.')
       continue
     }
+    if (unit.from === 0 && unit.to === 0) continue // 이름만 적은 단원(AI가 틀린 문제를 분류)
     if (unit.from < 1 || unit.to > max || unit.from > unit.to) {
       errors.push(`단원 "${unit.name}"의 문항 구간이 올바르지 않습니다.`)
       continue
@@ -155,7 +156,7 @@ export type UnitStat = {
 
 export function unitStats(exam: Pick<MathMonthlyExam, 'items' | 'units'>, wrongNos: number[]): UnitStat[] {
   const wrong = new Set(wrongNos)
-  return exam.units.map((unit) => {
+  return exam.units.filter((unit) => unit.from > 0).map((unit) => {
     const inRange = exam.items.filter((item) => item.no >= unit.from && item.no <= unit.to)
     const correct = inRange.filter((item) => !wrong.has(item.no)).length
     const total = inRange.length

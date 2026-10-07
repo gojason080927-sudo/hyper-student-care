@@ -19,7 +19,8 @@ const PROBLEM_PROMPT = `당신은 학원 수학 선생님입니다. 학생이 �
 
 [단원]
 - 입력 정보의 unit(단원)이 비어 있으면, 문제를 보고 고등학교 수학 교육과정 기준의 단원 이름을 짧게 판단해 unit에 씁니다(예: "다항식의 연산", "미분").
-- unit이 이미 있으면 그대로 쓰지 말고 비워 둡니다.
+- 입력 정보에 unitChoices(선생님이 정한 단원 목록)가 있으면, 반드시 그 목록 중 가장 알맞은 하나를 글자 그대로 unit에 씁니다(목록에 없는 이름은 쓰지 않습니다). 이 경우 unit이 이미 있어도 목록에서 다시 고릅니다.
+- unitChoices가 없고 unit이 이미 있으면 그대로 쓰지 말고 비워 둡니다.
 
 [강사 분석]
 - 한 문장(최대 두 문장), 정중한 합쇼체입니다.
@@ -273,6 +274,7 @@ Deno.serve(async (request) => {
       no: asNumber(body.no),
       difficulty: asString(body.difficulty),
       unit: asString(body.unit),
+      unitChoices: Array.isArray(body.unitChoices) ? (body.unitChoices as unknown[]).slice(0, 30).map((u) => asString(u)).filter(Boolean) : [],
       cause: asString(body.cause),
     }
     system = PROBLEM_PROMPT

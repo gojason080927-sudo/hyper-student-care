@@ -61,6 +61,8 @@ export function MathMonthlyExamPage() {
   const [defaultPoints, setDefaultPoints] = useState(DEFAULT_POINTS)
   const [items, setItems] = useState<MathExamItem[]>(buildDefaultItems(DEFAULT_COUNT, DEFAULT_POINTS))
   const [units, setUnits] = useState<MathExamUnit[]>([])
+  const [unitText, setUnitText] = useState('')
+  const rangedUnits = units.some((u) => u.from > 0)
   const [copyFrom, setCopyFrom] = useState('')
   const [setupMsg, setSetupMsg] = useState('')
   const [setupSaving, setSetupSaving] = useState(false)
@@ -107,6 +109,7 @@ export function MathMonthlyExamPage() {
       setCount(exam.questionCount)
       setItems(exam.items)
       setUnits(exam.units)
+      setUnitText(exam.units.filter((u) => u.from === 0).map((u) => u.name).join('\n'))
       setDefaultPoints(exam.items[0]?.points ?? DEFAULT_POINTS)
     } else {
       setExamDate('')
@@ -155,6 +158,7 @@ export function MathMonthlyExamPage() {
     setCount(source.questionCount)
     setItems(source.items.map((i) => ({ ...i })))
     setUnits(source.units.map((u) => ({ ...u })))
+    setUnitText(source.units.filter((u) => u.from === 0).map((u) => u.name).join('\n'))
     setTitle((t) => t || source.title)
     setDefaultPoints(source.items[0]?.points ?? DEFAULT_POINTS)
     setSetupMsg('설정을 복사했습니다. 평가일을 입력하고 저장해 주세요.')
@@ -341,6 +345,24 @@ export function MathMonthlyExamPage() {
               </div>
             </div>
 
+            {!rangedUnits && (
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-slate-700">이번 시험 단원 (한 줄에 하나)</p>
+                <textarea
+                  className={inputClass()}
+                  rows={4}
+                  placeholder={'경우의 수\n인수분해 공식 활용'}
+                  value={unitText}
+                  onChange={(e) => {
+                    setUnitText(e.target.value)
+                    setUnits(e.target.value.split('\n').map((n) => n.trim()).filter(Boolean).map((name) => ({ name, from: 0, to: 0 })))
+                  }}
+                />
+                <p className="text-xs text-slate-500">단원 이름만 적으세요. 틀린 문제 사진을 올리고 "AI 분석"을 누르면 AI가 여기 적은 단원 중에서 골라 줍니다.</p>
+              </div>
+            )}
+
+            {rangedUnits && (
             <div className="space-y-2">
               <p className="text-sm font-semibold text-slate-700">단원 구간 (선택 · 안 적어도 됩니다)</p>
               <p className="text-xs text-slate-500">안 적으면 틀린 문제 사진을 올릴 때 AI가 단원을 알아서 판단합니다. 적으면 단원별 정답률 그래프도 나옵니다.</p>
@@ -389,6 +411,7 @@ export function MathMonthlyExamPage() {
                 + 단원 추가
               </button>
             </div>
+            )}
 
             <div className="flex flex-wrap items-center gap-3">
               <button type="button" className={btnPrimary} onClick={saveSetup} disabled={setupSaving}>

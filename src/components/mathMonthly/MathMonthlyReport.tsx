@@ -135,12 +135,14 @@ export function MathMonthlyReportView({ student, sorted, data, attitude, evaluat
   const insight = unitInsight(view.units)
   const wrongUnitGroups = (() => {
     const map = new Map<string, number[]>()
+    for (const u of exam.units) if (u.from === 0) map.set(u.name, [])
     for (const w of result.wrongItems) {
       const name = (w.unit || '').trim() || '단원 미분류'
       map.set(name, [...(map.get(name) ?? []), w.no])
     }
     return [...map.entries()].map(([name, nos]) => ({ name, nos: nos.sort((a, b) => a - b) })).sort((a, b) => b.nos.length - a.nos.length)
   })()
+  const maxWrongInUnit = Math.max(1, ...wrongUnitGroups.map((g) => g.nos.length))
   const nextMonth = exam.month === 12 ? 1 : exam.month + 1
   const plan = result.nextPlan.filter((p) => p.content.trim())
   const hasComments = result.strengths.trim() || result.improvements.trim() || result.teacherComment.trim()
@@ -290,24 +292,25 @@ export function MathMonthlyReportView({ student, sorted, data, attitude, evaluat
           {view.units.length === 0 ? (
             <div className="mm-unit" style={{ gridTemplateColumns: '1fr' }}>
               <div className="mm-box">
-                <h2 className="mm-h2">틀린 문제 단원</h2>
+                <h2 className="mm-h2">단원별 틀린 문제</h2>
                 {wrongUnitGroups.length === 0 ? (
                   <p className="mm-note">틀린 문제가 없습니다.</p>
                 ) : (
                   <table className="mm-t">
-                    <thead><tr><th>단원</th><th>틀린 문항</th><th className="c">개수</th></tr></thead>
+                    <thead><tr><th>단원</th><th>틀린 문항</th><th>그래프</th><th className="c">개수</th></tr></thead>
                     <tbody>
                       {wrongUnitGroups.map((g) => (
                         <tr key={g.name}>
                           <td><b>{g.name}</b></td>
-                          <td>{g.nos.map((n) => `${n}번`).join(', ')}</td>
+                          <td>{g.nos.length ? g.nos.map((n) => `${n}번`).join(', ') : '-'}</td>
+                          <td style={{ width: '30%' }}><div style={{ height: 10, borderRadius: 5, background: '#e2e8f0' }}><div style={{ height: 10, borderRadius: 5, background: '#ef4444', width: `${(g.nos.length / maxWrongInUnit) * 100}%` }} /></div></td>
                           <td className="c b">{g.nos.length}</td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 )}
-                {wrongUnitGroups.length > 0 && wrongUnitGroups[0].name !== '단원 미분류' && (
+                {wrongUnitGroups.length > 0 && wrongUnitGroups[0].nos.length > 0 && wrongUnitGroups[0].name !== '단원 미분류' && (
                   <div className="mm-insight"><b>가장 많이 틀린 단원</b> · {wrongUnitGroups[0].name} ({wrongUnitGroups[0].nos.length}문항)</div>
                 )}
               </div>
