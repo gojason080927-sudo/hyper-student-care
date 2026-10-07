@@ -1,6 +1,7 @@
 import { ArrowLeft } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { NumInput } from '../components/mathMonthly/NumInput'
 import { MathPaperUpload } from '../components/mathMonthly/MathPaperUpload'
 import { MathStudentEditor } from '../components/mathMonthly/MathStudentEditor'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
@@ -54,8 +55,6 @@ export function MathMonthlyExamPage() {
   const [title, setTitle] = useState('')
   const [teacherName, setTeacherName] = useState('')
   const [count, setCount] = useState(DEFAULT_COUNT)
-  const [countText, setCountText] = useState<string | null>(null)
-  const [pointsText, setPointsText] = useState<string | null>(null)
   const [defaultPoints, setDefaultPoints] = useState(DEFAULT_POINTS)
   const [items, setItems] = useState<MathExamItem[]>(buildDefaultItems(DEFAULT_COUNT, DEFAULT_POINTS))
   const [units, setUnits] = useState<MathExamUnit[]>([{ name: '', from: 1, to: DEFAULT_COUNT }])
@@ -268,7 +267,7 @@ export function MathMonthlyExamPage() {
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-600">연도</label>
-            <input type="number" className={inputClass()} value={year} onChange={(e) => setYear(Number(e.target.value) || now.year)} />
+            <NumInput className={inputClass()} value={year} onValue={(v) => setYear(v >= 2000 ? v : year)} />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-600">월</label>
@@ -313,35 +312,11 @@ export function MathMonthlyExamPage() {
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-600">문항 수</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={100}
-                  className={inputClass()}
-                  value={countText ?? count}
-                  onChange={(e) => {
-                    setCountText(e.target.value)
-                    const v = Number(e.target.value)
-                    if (e.target.value !== '' && v >= 1) changeCount(v)
-                  }}
-                  onBlur={() => setCountText(null)}
-                />
+                <NumInput min={1} max={100} className={inputClass()} value={count} onValue={(v) => changeCount(v)} />
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-600">기본 배점 (전체 적용)</label>
-                <input
-                  type="number"
-                  min={1}
-                  step="any"
-                  className={inputClass()}
-                  value={pointsText ?? defaultPoints}
-                  onChange={(e) => {
-                    setPointsText(e.target.value)
-                    const v = Number(e.target.value)
-                    if (e.target.value !== '' && v > 0) applyDefaultPoints(v)
-                  }}
-                  onBlur={() => setPointsText(null)}
-                />
+                <NumInput min={1} step="any" className={inputClass()} value={defaultPoints} onValue={(v) => v > 0 && applyDefaultPoints(v)} />
               </div>
               <div className="flex items-end text-sm text-slate-600">만점 합계 <b className="ml-1 text-base text-slate-900">{total}점</b></div>
             </div>
@@ -353,7 +328,7 @@ export function MathMonthlyExamPage() {
                   <div key={item.no} className="rounded-lg border border-slate-200 p-2">
                     <p className="mb-1 text-xs font-bold text-slate-500">{item.no}번</p>
                     <div className="flex gap-1">
-                      <input type="number" min={1} aria-label={`${item.no}번 배점`} className={`${inputClass()} !px-2 !py-1.5 w-14`} value={item.points} onChange={(e) => patchItem(item.no, { points: Number(e.target.value) || 0 })} />
+                      <NumInput min={1} step="any" aria-label={`${item.no}번 배점`} className={`${inputClass()} !px-2 !py-1.5 w-14`} value={item.points} onValue={(v) => patchItem(item.no, { points: v })} />
                       <select aria-label={`${item.no}번 난이도`} className={`${inputClass()} !px-1 !py-1.5`} value={item.difficulty} onChange={(e) => patchItem(item.no, { difficulty: e.target.value as MathDifficulty })}>
                         {MATH_DIFFICULTIES.map((d) => <option key={d} value={d}>{MATH_DIFFICULTY_LABEL[d]}</option>)}
                       </select>
@@ -368,8 +343,8 @@ export function MathMonthlyExamPage() {
               {units.map((u, i) => (
                 <div key={i} className="grid grid-cols-[1fr_64px_64px_auto] items-center gap-2">
                   <input className={inputClass()} placeholder="단원 이름" value={u.name} onChange={(e) => setUnits((l) => l.map((x, k) => (k === i ? { ...x, name: e.target.value } : x)))} />
-                  <input type="number" aria-label="시작 번호" className={inputClass()} value={u.from} onChange={(e) => setUnits((l) => l.map((x, k) => (k === i ? { ...x, from: Number(e.target.value) } : x)))} />
-                  <input type="number" aria-label="끝 번호" className={inputClass()} value={u.to} onChange={(e) => setUnits((l) => l.map((x, k) => (k === i ? { ...x, to: Number(e.target.value) } : x)))} />
+                  <NumInput aria-label="시작 번호" className={inputClass()} value={u.from} onValue={(v) => setUnits((l) => l.map((x, k) => (k === i ? { ...x, from: v } : x)))} />
+                  <NumInput aria-label="끝 번호" className={inputClass()} value={u.to} onValue={(v) => setUnits((l) => l.map((x, k) => (k === i ? { ...x, to: v } : x)))} />
                   <button type="button" className={btnSecondary} onClick={() => setUnits((l) => l.filter((_, k) => k !== i))}>삭제</button>
                 </div>
               ))}

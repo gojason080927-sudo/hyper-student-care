@@ -1,3 +1,4 @@
+import { NumInput } from '../mathMonthly/NumInput'
 import { useMemo, useState } from 'react'
 import type { SchoolResultRow } from '../../lib/db/schoolExamRepo'
 import { generateSchoolExamAiComment } from '../../lib/schoolExamAiComment'
@@ -208,7 +209,7 @@ export function SchoolStudentEditor({ exam, studentId, studentName, row, onSave,
               <input type="checkbox" checked={scoreManual} onChange={(e) => { setScoreManual(e.target.checked); if (e.target.checked) setManualScore(autoScore) }} />
               점수 직접 입력
               {scoreManual && (
-                <input type="number" min={0} max={exam.totalPoints} className={`${inputClass()} w-24`} value={manualScore} onChange={(e) => setManualScore(Number(e.target.value) || 0)} />
+                <NumInput min={0} max={exam.totalPoints} className={`${inputClass()} w-24`} value={manualScore} onValue={(v) => setManualScore(v)} />
               )}
             </label>
           </div>

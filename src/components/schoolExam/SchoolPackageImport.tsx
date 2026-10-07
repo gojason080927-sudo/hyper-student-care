@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { NumInput } from '../mathMonthly/NumInput'
 import { compressCapture, type CompressedCapture } from '../../lib/schoolExamImage'
 import { listExamImageNos, savePackage } from '../../lib/db/schoolExamRepo'
 import { btnPrimary, btnSecondary, inputClass } from '../../utils/labels'
@@ -169,7 +170,7 @@ export function SchoolPackageImport({ exam, students, onSaved }: Props) {
                   </select>
                   <input className={inputClass()} aria-label={`${item.no}번 단원`} placeholder="단원" value={item.unit} onChange={(e) => patch(item.no, { unit: e.target.value })} />
                   <input className={`${inputClass()} col-span-2 md:col-span-2`} aria-label={`${item.no}번 유형`} placeholder="문제 유형" value={item.type} onChange={(e) => patch(item.no, { type: e.target.value })} />
-                  <input type="number" step="0.01" min={0} className={inputClass()} aria-label={`${item.no}번 배점`} value={item.points} onChange={(e) => patch(item.no, { points: Number(e.target.value) || 0 })} />
+                  <NumInput step="0.01" min={0} className={inputClass()} aria-label={`${item.no}번 배점`} value={item.points} onValue={(v) => patch(item.no, { points: v })} />
                 </div>
               </div>
             ))}
