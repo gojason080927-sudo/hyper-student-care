@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { listMathPapers, listMathResultImages, saveMathResultImages, type MathImage, type MathResultRow } from '../../lib/db/mathMonthlyRepo'
 import { analyzeMathProblem, generateMathComment, locateMathProblems } from '../../lib/mathMonthlyAi'
-import { MATH_IMAGE_MAX_PER_STUDENT, compressMathImage, base64ToBlob, cropMathImage } from '../../lib/mathMonthlyImage'
+import { MATH_IMAGE_MAX_PER_STUDENT, compressMathImage, base64ToBlob, cropMathImage, rotateMathImage } from '../../lib/mathMonthlyImage'
 import {
   MATH_CAUSES,
   MATH_DIFFICULTIES,
@@ -102,6 +102,17 @@ export function MathStudentEditor({ exam, studentId, studentName, row, onSave, o
       setImagesDirty(true)
     } catch (e) {
       setError(e instanceof Error ? e.message : '사진을 처리하지 못했습니다.')
+    }
+  }
+  const rotateImage = async (no: number) => {
+    const cur = images.get(no)
+    if (!cur) return
+    try {
+      const next = await rotateMathImage(cur)
+      setImages((m) => new Map(m).set(no, { no, ...next }))
+      setImagesDirty(true)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '사진을 돌리지 못했습니다.')
     }
   }
   const removeImage = (no: number) => {
@@ -377,6 +388,7 @@ export function MathStudentEditor({ exam, studentId, studentName, row, onSave, o
                             }}
                           />
                         </label>
+                        {img && <button type="button" className={btnSecondary} onClick={() => void rotateImage(w.no)}>사진 돌리기</button>}
                         {img && <button type="button" className={btnSecondary} onClick={() => removeImage(w.no)}>사진 삭제</button>}
                         <button
                           type="button"

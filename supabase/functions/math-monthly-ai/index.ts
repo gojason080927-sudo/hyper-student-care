@@ -42,9 +42,13 @@ const LOCATE_PROMPT = `당신은 시험지 사진에서 문제 위치를 찾는 
 [좌표]
 - x, y는 영역의 왼쪽 위 모서리, w, h는 영역의 가로·세로 크기이며, 모두 사진 전체 크기를 1로 본 0~1 사이 소수입니다(소수 셋째 자리까지).
 
+[회전]
+- 사진이 뒤집히거나 옆으로 누워 있어서 그 문제의 글자가 똑바로 읽히지 않으면, 글자를 똑바로 세우기 위해 시계 방향으로 돌려야 하는 각도(0, 90, 180, 270)를 rotate에 적습니다. 똑바로면 0입니다.
+- 이때 x, y, w, h는 돌리기 전의 사진(받은 그대로의 사진) 기준입니다.
+
 [출력 형식]
 - 다른 설명 없이 아래 JSON 하나만 출력합니다.
-{"boxes": [{"no": 3, "x": 0.06, "y": 0.12, "w": 0.42, "h": 0.30}], "notFound": [7]}`
+{"boxes": [{"no": 3, "x": 0.06, "y": 0.12, "w": 0.42, "h": 0.30, "rotate": 0}], "notFound": [7]}`
 
 const COMMENT_PROMPT = `당신은 학원 수학 선생님입니다. 수학 월말평가 결과를 바탕으로 학부모에게 보낼 "선생님 의견" 초안을 씁니다.
 
@@ -179,7 +183,9 @@ function parseLocate(text: string): Json | null {
     const bw = Math.min(clamp(w), 1 - bx)
     const bh = Math.min(clamp(h), 1 - by)
     if (bw < 0.05 || bh < 0.03) continue
-    boxes.push({ no, x: bx, y: by, w: bw, h: bh })
+    const rot = asNumber(raw?.rotate)
+    const rotate = rot === 90 || rot === 180 || rot === 270 ? rot : 0
+    boxes.push({ no, x: bx, y: by, w: bw, h: bh, rotate })
   }
   const notFound = Array.isArray(parsed.notFound) ? (parsed.notFound as unknown[]).filter((n) => typeof n === 'number') : []
   return { boxes, notFound }

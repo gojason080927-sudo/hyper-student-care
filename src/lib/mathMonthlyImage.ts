@@ -41,7 +41,7 @@ export async function downscaleForLocate(file: Blob): Promise<string> {
 }
 
 /** 원본 사진에서 0~1 비율 영역을 잘라(가장자리 여유 포함) 압축한다 */
-export async function cropMathImage(file: Blob, box: { x: number; y: number; w: number; h: number }): Promise<CompressedMathImage> {
+export async function cropMathImage(file: Blob, box: { x: number; y: number; w: number; h: number; rotate?: number }): Promise<CompressedMathImage> {
   const bitmap = await createImageBitmap(file)
   const pad = 0.012
   const x0 = Math.max(0, box.x - pad)
@@ -59,10 +59,40 @@ export async function cropMathImage(file: Blob, box: { x: number; y: number; w: 
   if (!ctx) throw new Error('이미지를 처리할 수 없는 브라우저입니다.')
   ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, sw, sh)
   bitmap.close()
-  const blob = await new Promise<Blob>((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('이미지를 자르지 못했습니다.'))), 'image/jpeg', 0.9),
+  return compressMathImage(await canvasToBlob(rotateCanvas(canvas, box.rotate ?? 0)))
+}
+
+function canvasToBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise<Blob>((resolve, reject) =>
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('이미지를 처리하지 못했습니다.'))), 'image/jpeg', 0.9),
   )
-  return compressMathImage(blob)
+}
+
+/** 시계 방향으로 0/90/180/270도 돌린 새 캔버스 */
+function rotateCanvas(src: HTMLCanvasElement, degrees: number): HTMLCanvasElement {
+  const d = ((Math.round(degrees / 90) * 90) % 360 + 360) % 360
+  if (d === 0) return src
+  const out = document.createElement('canvas')
+  const swap = d === 90 || d === 270
+  out.width = swap ? src.height : src.width
+  out.height = swap ? src.width : src.height
+  const ctx = out.getContext('2d')
+  if (!ctx) throw new Error('이미지를 처리할 수 없는 브라우저입니다.')
+  ctx.translate(out.width / 2, out.height / 2)
+  ctx.rotate((d * Math.PI) / 180)
+  ctx.drawImage(src, -src.width / 2, -src.height / 2)
+  return out
+}
+
+/** 저장된 문제 사진(base64)을 시계 방향 90도 돌린다 */
+export async function rotateMathImage(img: { data: string; width: number; height: number }): Promise<CompressedMathImage> {
+  const bitmap = await createImageBitmap(base64ToBlob(img.data))
+  const canvas = document.createElement('canvas')
+  canvas.width = bitmap.width
+  canvas.height = bitmap.height
+  canvas.getContext('2d')?.drawImage(bitmap, 0, 0)
+  bitmap.close()
+  return compressMathImage(await canvasToBlob(rotateCanvas(canvas, 90)))
 }
 
 export function base64ToBlob(b64: string): Blob {

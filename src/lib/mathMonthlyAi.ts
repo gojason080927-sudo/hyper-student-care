@@ -22,7 +22,7 @@ export type MathAiProblemRequest = {
 }
 
 export type MathAiLocateRequest = { kind: 'locate'; nos: number[]; imageBase64: string }
-export type MathBox = { no: number; x: number; y: number; w: number; h: number }
+export type MathBox = { no: number; x: number; y: number; w: number; h: number; rotate: number }
 
 export type MathAiResult<T> = { ok: true; value: T } | { ok: false; message: string }
 
@@ -68,7 +68,7 @@ export async function locateMathProblems(body: MathAiLocateRequest): Promise<Mat
   const data = await invoke(body)
   if (!data || !Array.isArray(data.boxes)) return { ok: false, message: '시험지에서 문제 위치를 찾지 못했습니다. 잠시 후 다시 시도해 주세요.' }
   const boxes = (data.boxes as Record<string, unknown>[])
-    .map((b) => ({ no: Number(b.no), x: Number(b.x), y: Number(b.y), w: Number(b.w), h: Number(b.h) }))
+    .map((b) => ({ no: Number(b.no), x: Number(b.x), y: Number(b.y), w: Number(b.w), h: Number(b.h), rotate: Number(b.rotate) || 0 }))
     .filter((b) => [b.no, b.x, b.y, b.w, b.h].every(Number.isFinite))
   return { ok: true, value: boxes }
 }
