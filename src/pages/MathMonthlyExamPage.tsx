@@ -1,6 +1,7 @@
 import { ArrowLeft } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { MathExamImageImport } from '../components/mathMonthly/MathExamImageImport'
 import { MathStudentEditor } from '../components/mathMonthly/MathStudentEditor'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { PageHeader } from '../components/ui/PageHeader'
@@ -44,6 +45,7 @@ export function MathMonthlyExamPage() {
   const [year, setYear] = useState(now.year)
   const [month, setMonth] = useState(now.month)
   const [exams, setExams] = useState<MathMonthlyExam[]>([])
+  const [imageTick, setImageTick] = useState(0)
   const [results, setResults] = useState<Map<string, MathResultRow>>(new Map())
   const [loadError, setLoadError] = useState('')
 
@@ -404,6 +406,8 @@ export function MathMonthlyExamPage() {
         }}
       />
 
+      {exam && <MathExamImageImport exam={exam} students={classStudents.map((x) => ({ id: x.id, name: x.name }))} onSaved={() => setImageTick((t) => t + 1)} />}
+
       {exam && (
         <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -430,7 +434,7 @@ export function MathMonthlyExamPage() {
                   {editingId === s.id && (
                     <div className="border-t border-slate-100 p-3">
                       <MathStudentEditor
-                        key={`${s.id}-${row?.sentAt ?? ''}-${row?.score ?? ''}`}
+                        key={`${s.id}-${row?.sentAt ?? ''}-${row?.score ?? ''}-${imageTick}`}
                         exam={exam}
                         studentId={s.id}
                         studentName={s.name}

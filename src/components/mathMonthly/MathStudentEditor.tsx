@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { listMathResultImages, saveMathResultImages, type MathImage, type MathResultRow } from '../../lib/db/mathMonthlyRepo'
+import { listMathExamImages, listMathResultImages, saveMathResultImages, type MathImage, type MathResultRow } from '../../lib/db/mathMonthlyRepo'
 import { analyzeMathProblem, generateMathComment } from '../../lib/mathMonthlyAi'
 import { MATH_IMAGE_MAX_PER_STUDENT, compressMathImage } from '../../lib/mathMonthlyImage'
 import {
@@ -40,6 +40,7 @@ export function MathStudentEditor({ exam, studentId, studentName, row, onSave, o
   const [saving, setSaving] = useState(false)
   const [images, setImages] = useState<Map<number, MathImage>>(new Map())
   const [imagesLoaded, setImagesLoaded] = useState(false)
+  const [examImages, setExamImages] = useState<Map<number, MathImage>>(new Map())
   const [imagesDirty, setImagesDirty] = useState(false)
   const [busy, setBusy] = useState('')
   const [aiMsg, setAiMsg] = useState('')
@@ -59,6 +60,14 @@ export function MathStudentEditor({ exam, studentId, studentName, row, onSave, o
       cancelled = true
     }
   }, [exam.id, studentId])
+
+  useEffect(() => {
+    let cancelled = false
+    listMathExamImages(exam.id)
+      .then((list) => { if (!cancelled) setExamImages(new Map(list.map((i) => [i.no, i]))) })
+      .catch(() => undefined)
+    return () => { cancelled = true }
+  }, [exam.id])
 
   const total = useMemo(() => totalPoints(exam.items), [exam.items])
   const score = calcScore(exam.items, wrong.map((w) => w.no))
@@ -103,7 +112,7 @@ export function MathStudentEditor({ exam, studentId, studentName, row, onSave, o
   }
 
   const aiProblem = async (w: MathWrongItem) => {
-    const img = images.get(w.no)
+    const img = images.get(w.no) ?? examImages.get(w.no)
     if (!img) return
     const hasText = (w.type ?? '').trim() || (w.note ?? '').trim()
     if (hasText && !window.confirm('작성한 문제 유형·분석을 AI 초안으로 바꿀까요?')) return
@@ -254,7 +263,8 @@ export function MathStudentEditor({ exam, studentId, studentName, row, onSave, o
             <div className="space-y-3">
               <p className="text-sm font-semibold text-slate-700">오답 원인 · 문제 사진 · 분석</p>
               {[...wrong].sort((a, b) => a.no - b.no).map((w) => {
-                const img = images.get(w.no)
+                const own = images.get(w.no)
+                const img = own ?? examImages.get(w.no)
                 return (
                   <div key={w.no} className="space-y-2 rounded-xl border border-slate-200 bg-white p-3">
                     <div className="flex flex-wrap items-center gap-2">
@@ -281,7 +291,7 @@ export function MathStudentEditor({ exam, studentId, studentName, row, onSave, o
                       )}
                       <div className="flex flex-wrap gap-2">
                         <label className={`${btnSecondary} cursor-pointer`}>
-                          {img ? '사진 바꾸기' : '문제 사진 추가'}
+                          {own ? '사진 바꾸기' : img ? '내 사진으로 바꾸기' : '문제 사진 추가'}
                           <input
                             type="file"
                             accept="image/*"
@@ -305,7 +315,7 @@ export function MathStudentEditor({ exam, studentId, studentName, row, onSave, o
                             }}
                           />
                         </label>
-                        {img && <button type="button" className={btnSecondary} onClick={() => removeImage(w.no)}>사진 삭제</button>}
+                        {own && <button type="button" className={btnSecondary} onClick={() => removeImage(w.no)}>사진 삭제</button>}
                         <button
                           type="button"
                           className={btnSecondary}

@@ -224,3 +224,64 @@ export async function fetchParentMathImages(accessKey: string, examId: string, n
     height: Number(r.height),
   }))
 }
+
+// ─── 시험지 문항 캡처 (시험 1회분, 모든 학생 공용 또는 특정 학생 전용) ───
+
+export type MathExamImageMeta = { clean: boolean; sourceStudentId: string | null; nos: number[] }
+
+export async function getMathExamImageMeta(examId: string): Promise<MathExamImageMeta> {
+  const sb = getSupabase()
+  const [exam, imgs] = await Promise.all([
+    sb.from('math_monthly_exams').select('images_clean,images_source_student_id').eq('id', examId).single(),
+    sb.from('math_monthly_exam_images').select('no').eq('exam_id', examId).order('no'),
+  ])
+  if (exam.error) throw new Error(`시험 캡처 정보를 불러오지 못했습니다: ${exam.error.message}`)
+  if (imgs.error) throw new Error(`시험 캡처 정보를 불러오지 못했습니다: ${imgs.error.message}`)
+  const row = exam.data as Row
+  return {
+    clean: row.images_clean === true,
+    sourceStudentId: row.images_source_student_id ? String(row.images_source_student_id) : null,
+    nos: ((imgs.data ?? []) as Row[]).map((r) => Number(r.no)),
+  }
+}
+
+export async function listMathExamImages(examId: string): Promise<MathImage[]> {
+  const { data, error } = await getSupabase()
+    .from('math_monthly_exam_images')
+    .select('no,data,width,height')
+    .eq('exam_id', examId)
+    .order('no')
+  if (error) throw new Error(`시험 캡처를 불러오지 못했습니다: ${error.message}`)
+  return ((data ?? []) as Row[]).map((r) => ({
+    no: Number(r.no),
+    data: String(r.data),
+    width: Number(r.width),
+    height: Number(r.height),
+  }))
+}
+
+/** 시험 캡처 저장(같은 번호는 덮어씀) + 공개 범위 지정. 한 번에 3장씩 올린다. */
+export async function saveMathExamImages(
+  examId: string,
+  images: MathImage[],
+  scope: { clean: boolean; sourceStudentId: string | null },
+): Promise<void> {
+  const sb = getSupabase()
+  const rows = images.map((img) => ({
+    exam_id: examId,
+    no: img.no,
+    data: img.data,
+    mime: 'image/jpeg',
+    width: img.width,
+    height: img.height,
+  }))
+  for (let i = 0; i < rows.length; i += 3) {
+    const { error } = await sb.from('math_monthly_exam_images').upsert(rows.slice(i, i + 3), { onConflict: 'exam_id,no' })
+    if (error) throw new Error(`시험 캡처 저장 실패: ${error.message}`)
+  }
+  const { error } = await sb
+    .from('math_monthly_exams')
+    .update({ images_clean: scope.clean, images_source_student_id: scope.clean ? null : scope.sourceStudentId })
+    .eq('id', examId)
+  if (error) throw new Error(`공개 범위 저장 실패: ${error.message}`)
+}
