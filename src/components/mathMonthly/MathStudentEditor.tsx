@@ -355,9 +355,16 @@ export function MathStudentEditor({ exam, studentId, studentName, row, onSave, o
         </div>
       </div>
       <div>
-        <label className="mb-1 block text-sm font-medium text-slate-600">총평</label>
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <label className="text-sm font-medium text-slate-600">총평</label>
+          {!absent && (
+            <button type="button" className={btnSecondary} disabled={!canAiComment || busy !== ''} onClick={() => void aiComment()}>
+              {busy === 'comment' ? 'AI 작성 중…' : 'AI 초안 작성 (잘한 점·보완할 점·총평)'}
+            </button>
+          )}
+        </div>
         <textarea className={inputClass()} rows={3} value={comment} onChange={(e) => setComment(e.target.value)} />
-        <p className="mt-1 text-xs text-slate-500">AI 초안 작성 버튼(아래 다음 달 계획 옆)으로 의견 3칸을 채울 수 있습니다. AI가 쓴 초안입니다. 읽어 보고 고쳐 주세요.</p>
+        <p className="mt-1 text-xs text-slate-500">위 AI 초안 작성 버튼으로 의견 3칸을 채울 수 있습니다. AI가 쓴 초안입니다. 읽어 보고 고쳐 주세요.</p>
       </div>
 
       <div className="space-y-2">
@@ -366,9 +373,6 @@ export function MathStudentEditor({ exam, studentId, studentName, row, onSave, o
           {!absent && (
             <span className="flex flex-wrap gap-2">
               <button type="button" className={btnSecondary} onClick={recommend}>추천 불러오기</button>
-              <button type="button" className={btnSecondary} disabled={!canAiComment || busy !== ''} onClick={() => void aiComment()}>
-                {busy === 'comment' ? 'AI 작성 중…' : 'AI 초안 작성'}
-              </button>
             </span>
           )}
         </div>
