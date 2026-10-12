@@ -36,7 +36,8 @@ def main():
                     if x and y and difflib.SequenceMatcher(None, x.lower(), y.lower()).ratio() > 0.85 and len(x) > 15:
                         problems.append(f"{tag}: 거의 같은 보기 '{x}' ~ '{y}'")
             ma = (SHARED_MODS(a, rs)); mb = SHARED_MODS(b, rs)
-            for k in set(ma) & set(mb):
+            same_set = a.get('shared_with') == b['id'] or b.get('shared_with') == a['id']
+            for k in (set(ma) & set(mb) if not same_set else []):
                 if strip_markup(ma[k]) == strip_markup(mb[k]) and (a.get("para") and k in map(str, a["para"])) and (b.get("para") and k in map(str, b["para"])):
                     problems.append(f"{tag}: 변형 문장 {k}번이 동일")
                 elif difflib.SequenceMatcher(None, strip_markup(ma[k]), strip_markup(mb[k])).ratio() > 0.9 and k in map(str, a.get("para", [])) and k in map(str, b.get("para", [])):
