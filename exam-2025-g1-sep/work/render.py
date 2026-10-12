@@ -167,7 +167,7 @@ def build_round(rd, rs, P):
             src = q1 if not q1.get("shared_with") else q2
             base = P[pid]
             pbody, ptext = passage_html(src, base)
-            h1 = f"<div class='q-head'><div class='q-num'>{a}~{b}</div><div class='q-stem'>다음 글을 읽고, 물음에 답하시오.</div></div>"
+            h1 = f"<div class='q-stem' style='margin-bottom:1.8mm'>[{a}~{b}] 다음 글을 읽고, 물음에 답하시오.</div>"
             body = h1 + pbody + gloss_html(base, ptext)
             for q, nn in ((q1, a), (q2, b)):
                 body += f"<div style='margin-top:2.5mm'>" + question_html(q, nn, P, show_passage=False) + "</div>"
