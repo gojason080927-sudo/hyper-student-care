@@ -224,5 +224,6 @@ add("41-42","장문(제목·어휘)",[0,6],[
 gloss=[["shudder","몸서리치다"]],
 fixes=["원문 (c) 'rejects'(틀린 낱말)를 'implies'로 바로잡아 사용","(a)~(e) 표시는 제거"])
 
+P["41-42"]["breaks"]=[10]  # 문단 나눔: 10번째 문장 앞
 json.dump(P, open("passages.json","w"), ensure_ascii=False, indent=1)
 print(len(P), "passages;", sum(len(p["sentences"]) for p in P.values()), "sentences")
