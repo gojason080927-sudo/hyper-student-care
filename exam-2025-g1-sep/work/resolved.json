@@ -188,19 +188,19 @@
     "In summary"
    ],
    [
-    "However",
-    "In summary"
-   ],
-   [
     "Therefore",
     "In contrast"
+   ],
+   [
+    "However",
+    "In summary"
    ],
    [
     "For example",
     "However"
    ]
   ],
-  "answer_pos": 3
+  "answer_pos": 4
  },
  {
   "id": "20-r2-b",
@@ -218,11 +218,11 @@
   ],
   "ins": 4,
   "gaps": [
-   1,
    2,
    3,
    5,
-   6
+   6,
+   7
   ],
   "explain": "주어진 문장의 the first minutes는 바로 앞 문장의 the first ten minutes를 받고, 뒤 문장은 그 시작 시간을 어떻게 준비하는지를 설명하므로 ④가 적절하다.",
   "sents": [
@@ -255,7 +255,7 @@
     "In summary, building a routine for the first minutes will help your class get off to an effective start."
    ]
   ],
-  "answer_pos": 4
+  "answer_pos": 3
  },
  {
   "id": "20-r3-a",
@@ -706,7 +706,7 @@
   "type": "순서",
   "mods": {
    "3": "The atoms in your body are not truly yours; you are only borrowing them.",
-   "7": "These atoms are very old; the lightest ones go back to the origin of the universe, and most heavier ones are older than the Sun and Earth.",
+   "7": "This recycling began long ago; the lightest atoms go back to the origin of the universe, and most heavier ones are older than the Sun and Earth.",
    "9": "So you are the present caretaker of the atoms in your body."
   },
   "para": [
@@ -739,7 +739,7 @@
    "C",
    "A"
   ],
-  "explain": "원자를 빌려 쓴다는 내용(3~6)이 먼저 오고, These atoms로 그 원자들의 오랜 기원을 설명(7~8)한 뒤, So로 결론(9~10)을 맺는 흐름이다.",
+  "explain": "원자를 빌려 쓰며 순환한다는 내용(3~6)이 먼저 오고, This recycling이 그 순환을 받아 오래된 기원을 설명(7~8)한 뒤, So로 결론(9~10)을 맺는 흐름이다.",
   "sents": [
    [
     0,
@@ -771,7 +771,7 @@
    ],
    [
     7,
-    "These atoms are very old; the lightest ones go back to the origin of the universe, and most heavier ones are older than the Sun and Earth."
+    "This recycling began long ago; the lightest atoms go back to the origin of the universe, and most heavier ones are older than the Sun and Earth."
    ],
    [
     8,
@@ -1362,7 +1362,7 @@
    4,
    6,
    9,
-   11
+   12
   ],
   "explain": "주어진 문장의 This는 앞 문장의 식물을 돌보는 일이 차분하고 명상적이라는 내용을 가리키고, 뒤 문장은 그 마음챙김 상태를 더 설명하므로 ④(7번 뒤)가 적절하다.",
   "sents": [
