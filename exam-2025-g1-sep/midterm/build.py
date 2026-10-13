@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """2학기 중간고사 실전 모의고사(경안고 1학년) — round{n}.json → 문제지·정답지 PDF (B4, 2단)
 사용법:  py build.py check        (원문 대조·유형 수·정답 분포·회차 중복 대조만)
          py build.py verify       (정답 없이 문제만 텍스트로 출력: verify_r{n}.txt)
@@ -256,11 +256,11 @@ def answer_items(rd_data):
         items.append(f'<div class="exp"><div class="exp-head">서술형 {m} · {q["type"]} · {s_["passage"].replace("-", "~")}번 지문</div>'
                      f'<dl><dt>모범답안</dt><dd class="model">{q["model"]}</dd><dt>허용답안</dt><dd>{q["allow"]}</dd>'
                      f'<dt>감점 기준</dt><dd>{q["deduct"]}</dd><dt>해설</dt><dd>{q["explain"]}</dd></dl></div>')
-    items.append('<div class="sec-head">변형 문장 (원문 → 변형)</div>' + ''.join(
-        f'<div class="exp"><div class="exp-head">{pid.replace("-", "~")}번 지문</div>' + ''.join(
+    for j, pid in enumerate([s_['passage'] for s_ in rd_data['sets'] if s_['passage'] in mods]):
+        items.append(('<div class="sec-head">변형 문장 (원문 → 변형)</div>' if j == 0 else '')
+            + f'<div class="exp"><div class="exp-head">{pid.replace("-", "~")}번 지문</div>' + ''.join(
             f'<div class="mod"><b>[{int(i)+1}번째 문장]</b> 원문: {P[pid]["sentences"][int(i)]}<br><span class="modnew">변형: {t}</span></div>'
-            for i, t in sorted(mods[pid].items(), key=lambda x: int(x[0]))) + '</div>'
-        for pid in [s_['passage'] for s_ in rd_data['sets'] if s_['passage'] in mods]))
+            for i, t in sorted(mods[pid].items(), key=lambda x: int(x[0]))) + '</div>')
     return items
 
 # ---------------- 쪽 배치 (B4 · 2단 · 배너는 첫 쪽만) ----------------
@@ -273,7 +273,7 @@ CSS = f'''
 @page {{ size: 257mm 364mm; margin: 5mm 5mm; }}
 @media print {{ body {{ padding: 0 5mm; }} }}
 .pg {{ height: {PAGE_H}mm; overflow: hidden; break-after: page; }}
-.pg:last-child {{ break-after: auto; }}
+.pg.last {{ break-after: auto; }}
 .pg .band {{ margin-bottom: 5mm; }}
 .band-no {{ padding: 0 4mm; }}
 .band-no .num {{ font-size: 15pt; white-space: nowrap; }}
@@ -313,9 +313,9 @@ def measure(head, items):
         pg.set_content(head + '<body></body></html>', wait_until='networkidle')
         pg.emulate_media(media='print')
         hs = pg.evaluate('''async (args) => { const [items, w] = args;
-            document.body.innerHTML = items.map(h => `<div class="col" style="width:${w}mm"><div class="item">${h}</div></div>`).join('');
+            document.body.innerHTML = items.map(h => `<div><div class="col" style="width:${w}mm"><div class="item">${h}</div></div></div>`).join('');
             await document.fonts.ready; document.body.offsetHeight;
-            return [...document.querySelectorAll('.item')].map(e => e.getBoundingClientRect().height); }''', [items, COL_W])
+            return [...document.querySelectorAll('.item')].map(e => e.getBoundingClientRect().height); }''', [items, COL_W - 0.5])
         b.close()
     return [h / jc.MM for h in hs]
 
@@ -340,7 +340,8 @@ def write(name, items, title, sub, right, forbid=()):
     for i, (c1, c2) in enumerate(pages):
         band = band_html(sub, right) if i == 0 else ''
         cols = ''.join('<div class="col">' + ''.join(f'<div class="item">{x}</div>' for x in c) + '</div>' for c in (c1, c2))
-        body.append(f'<div class="pg">{band}<div class="cols">{cols}</div></div>')
+        last = ' last' if i == len(pages) - 1 else ''
+        body.append(f'<div class="pg{last}">{band}<div class="cols">{cols}</div></div>')
     os.makedirs(OUT, exist_ok=True)
     h = os.path.join(OUT, name + '__작업중.html')
     open(h, 'w', encoding='utf-8').write(head + '<body>\n' + '\n'.join(body) + '\n' + script + '\n</body>\n</html>\n')
