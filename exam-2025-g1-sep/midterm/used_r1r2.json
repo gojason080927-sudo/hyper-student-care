@@ -1,0 +1,1348 @@
+{
+ "note": "1~2회에서 이미 쓴 (지문, 유형, 출제 위치, 변형 문장) — 3~4회 출제 시 피할 목록",
+ "used": {
+  "20": [
+   {
+    "round": 1,
+    "type": "요지",
+    "points": [
+     {
+      "op": "ko",
+      "s": 3,
+      "t": "You can use the first ten minutes to get your class off to a great start"
+     }
+    ],
+    "mods": [
+     0,
+     6
+    ]
+   },
+   {
+    "round": 1,
+    "type": "배열 영작",
+    "points": [
+     {
+      "op": "ko",
+      "s": 3,
+      "t": "You can use the first ten minutes to get your class off to a great start"
+     }
+    ],
+    "mods": [
+     0,
+     6
+    ]
+   },
+   {
+    "round": 2,
+    "type": "삽입",
+    "points": [
+     {
+      "op": "insert",
+      "given": 2
+     }
+    ],
+    "mods": [
+     4,
+     6
+    ]
+   }
+  ],
+  "21": [
+   {
+    "round": 1,
+    "type": "함축",
+    "points": [
+     {
+      "op": "mark",
+      "s": 2,
+      "t": "are taken"
+     },
+     {
+      "op": "mark",
+      "s": 2,
+      "t": "to become"
+     },
+     {
+      "op": "mark",
+      "s": 4,
+      "t": "travel"
+     },
+     {
+      "op": "mark",
+      "s": 8,
+      "t": "have existed"
+     },
+     {
+      "op": "mark",
+      "s": 10,
+      "t": "who"
+     },
+     {
+      "op": "ul",
+      "s": 9,
+      "t": "the present caretaker of the atoms in your body"
+     }
+    ],
+    "mods": [
+     3,
+     6
+    ]
+   },
+   {
+    "round": 1,
+    "type": "어법 고치기",
+    "points": [
+     {
+      "op": "mark",
+      "s": 2,
+      "t": "are taken"
+     },
+     {
+      "op": "mark",
+      "s": 2,
+      "t": "to become"
+     },
+     {
+      "op": "mark",
+      "s": 4,
+      "t": "travel"
+     },
+     {
+      "op": "mark",
+      "s": 8,
+      "t": "have existed"
+     },
+     {
+      "op": "mark",
+      "s": 10,
+      "t": "who"
+     },
+     {
+      "op": "ul",
+      "s": 9,
+      "t": "the present caretaker of the atoms in your body"
+     }
+    ],
+    "mods": [
+     3,
+     6
+    ]
+   },
+   {
+    "round": 2,
+    "type": "순서",
+    "points": [
+     {
+      "op": "order",
+      "given": [
+       0,
+       1,
+       2
+      ],
+      "A": [
+       9,
+       10
+      ],
+      "B": [
+       6,
+       7,
+       8
+      ],
+      "C": [
+       3,
+       4,
+       5
+      ]
+     }
+    ],
+    "mods": [
+     0,
+     9
+    ]
+   }
+  ],
+  "22": [
+   {
+    "round": 1,
+    "type": "무관",
+    "points": [
+     {
+      "op": "irrelevant",
+      "before": 4,
+      "text": "However, some plants need special soil and a lot of sunlight to grow well."
+     }
+    ],
+    "mods": [
+     0,
+     6
+    ]
+   },
+   {
+    "round": 1,
+    "type": "불일치",
+    "points": [
+     {
+      "op": "irrelevant",
+      "before": 4,
+      "text": "However, some plants need special soil and a lot of sunlight to grow well."
+     }
+    ],
+    "mods": [
+     0,
+     6
+    ]
+   },
+   {
+    "round": 2,
+    "type": "제목",
+    "points": [],
+    "mods": [
+     4,
+     10
+    ]
+   },
+   {
+    "round": 2,
+    "type": "조건 영작",
+    "points": [],
+    "mods": [
+     4,
+     10
+    ]
+   }
+  ],
+  "23": [
+   {
+    "round": 1,
+    "type": "주제",
+    "points": [],
+    "mods": [
+     0
+    ]
+   },
+   {
+    "round": 2,
+    "type": "요약",
+    "points": [],
+    "mods": [
+     4
+    ]
+   }
+  ],
+  "24": [
+   {
+    "round": 1,
+    "type": "요약",
+    "points": [],
+    "mods": []
+   },
+   {
+    "round": 1,
+    "type": "일치",
+    "points": [],
+    "mods": []
+   },
+   {
+    "round": 2,
+    "type": "어휘",
+    "points": [
+     {
+      "op": "mark",
+      "s": 0,
+      "t": "decline"
+     },
+     {
+      "op": "mark",
+      "s": 1,
+      "t": "strong"
+     },
+     {
+      "op": "mark",
+      "s": 2,
+      "t": "accept"
+     },
+     {
+      "op": "mark",
+      "s": 4,
+      "t": "prior"
+     },
+     {
+      "op": "mark",
+      "s": 7,
+      "t": "substantial"
+     },
+     {
+      "op": "ko",
+      "s": 3,
+      "t": "we have independent reasons to expect these phenomena to be correlated"
+     }
+    ],
+    "mods": [
+     2,
+     5
+    ]
+   },
+   {
+    "round": 2,
+    "type": "배열 영작",
+    "points": [
+     {
+      "op": "mark",
+      "s": 0,
+      "t": "decline"
+     },
+     {
+      "op": "mark",
+      "s": 1,
+      "t": "strong"
+     },
+     {
+      "op": "mark",
+      "s": 2,
+      "t": "accept"
+     },
+     {
+      "op": "mark",
+      "s": 4,
+      "t": "prior"
+     },
+     {
+      "op": "mark",
+      "s": 7,
+      "t": "substantial"
+     },
+     {
+      "op": "ko",
+      "s": 3,
+      "t": "we have independent reasons to expect these phenomena to be correlated"
+     }
+    ],
+    "mods": [
+     2,
+     5
+    ]
+   }
+  ],
+  "29": [
+   {
+    "round": 1,
+    "type": "어휘",
+    "points": [
+     {
+      "op": "ab",
+      "s": 3,
+      "t": "Naturally"
+     },
+     {
+      "op": "ab",
+      "s": 7,
+      "t": "But"
+     },
+     {
+      "op": "mark",
+      "s": 1,
+      "t": "nervous"
+     },
+     {
+      "op": "mark",
+      "s": 2,
+      "t": "slower"
+     },
+     {
+      "op": "mark",
+      "s": 4,
+      "t": "panic"
+     },
+     {
+      "op": "mark",
+      "s": 5,
+      "t": "hunted"
+     },
+     {
+      "op": "mark",
+      "s": 8,
+      "t": "runs away"
+     }
+    ],
+    "mods": [
+     0,
+     6
+    ]
+   },
+   {
+    "round": 1,
+    "type": "연결사",
+    "points": [
+     {
+      "op": "ab",
+      "s": 3,
+      "t": "Naturally"
+     },
+     {
+      "op": "ab",
+      "s": 7,
+      "t": "But"
+     },
+     {
+      "op": "mark",
+      "s": 1,
+      "t": "nervous"
+     },
+     {
+      "op": "mark",
+      "s": 2,
+      "t": "slower"
+     },
+     {
+      "op": "mark",
+      "s": 4,
+      "t": "panic"
+     },
+     {
+      "op": "mark",
+      "s": 5,
+      "t": "hunted"
+     },
+     {
+      "op": "mark",
+      "s": 8,
+      "t": "runs away"
+     }
+    ],
+    "mods": [
+     0,
+     6
+    ]
+   },
+   {
+    "round": 2,
+    "type": "순서",
+    "points": [
+     {
+      "op": "order",
+      "given": [
+       0
+      ],
+      "A": [
+       5,
+       6,
+       7,
+       8
+      ],
+      "B": [
+       1,
+       2
+      ],
+      "C": [
+       3,
+       4
+      ]
+     }
+    ],
+    "mods": [
+     3,
+     7
+    ]
+   }
+  ],
+  "30": [
+   {
+    "round": 1,
+    "type": "어법",
+    "points": [
+     {
+      "op": "mark",
+      "s": 0,
+      "t": "born"
+     },
+     {
+      "op": "mark",
+      "s": 2,
+      "t": "to share"
+     },
+     {
+      "op": "mark",
+      "s": 3,
+      "t": "give"
+     },
+     {
+      "op": "mark",
+      "s": 4,
+      "t": "depends"
+     },
+     {
+      "op": "mark",
+      "s": 6,
+      "t": "starts"
+     }
+    ],
+    "mods": [
+     1,
+     5
+    ]
+   },
+   {
+    "round": 1,
+    "type": "조건 영작",
+    "points": [
+     {
+      "op": "mark",
+      "s": 0,
+      "t": "born"
+     },
+     {
+      "op": "mark",
+      "s": 2,
+      "t": "to share"
+     },
+     {
+      "op": "mark",
+      "s": 3,
+      "t": "give"
+     },
+     {
+      "op": "mark",
+      "s": 4,
+      "t": "depends"
+     },
+     {
+      "op": "mark",
+      "s": 6,
+      "t": "starts"
+     }
+    ],
+    "mods": [
+     1,
+     5
+    ]
+   },
+   {
+    "round": 2,
+    "type": "빈칸",
+    "points": [
+     {
+      "op": "blank",
+      "s": 1,
+      "t": "more open to sharing what we have"
+     }
+    ],
+    "mods": [
+     0,
+     6
+    ]
+   }
+  ],
+  "31": [
+   {
+    "round": 1,
+    "type": "빈칸",
+    "points": [
+     {
+      "op": "blank",
+      "s": 2,
+      "t": "return to our personal default level of well-being"
+     }
+    ],
+    "mods": []
+   },
+   {
+    "round": 2,
+    "type": "함축",
+    "points": [
+     {
+      "op": "ul",
+      "s": 1,
+      "t": "we are not blown in a completely new direction by each gust of wind"
+     },
+     {
+      "op": "mark",
+      "s": 0,
+      "t": "is not determined"
+     },
+     {
+      "op": "mark",
+      "s": 1,
+      "t": "affect"
+     },
+     {
+      "op": "mark",
+      "s": 3,
+      "t": "seeking"
+     },
+     {
+      "op": "mark",
+      "s": 5,
+      "t": "what"
+     },
+     {
+      "op": "mark",
+      "s": 5,
+      "t": "will be"
+     }
+    ],
+    "mods": [
+     4,
+     7
+    ]
+   },
+   {
+    "round": 2,
+    "type": "어법 고치기",
+    "points": [
+     {
+      "op": "ul",
+      "s": 1,
+      "t": "we are not blown in a completely new direction by each gust of wind"
+     },
+     {
+      "op": "mark",
+      "s": 0,
+      "t": "is not determined"
+     },
+     {
+      "op": "mark",
+      "s": 1,
+      "t": "affect"
+     },
+     {
+      "op": "mark",
+      "s": 3,
+      "t": "seeking"
+     },
+     {
+      "op": "mark",
+      "s": 5,
+      "t": "what"
+     },
+     {
+      "op": "mark",
+      "s": 5,
+      "t": "will be"
+     }
+    ],
+    "mods": [
+     4,
+     7
+    ]
+   }
+  ],
+  "32": [
+   {
+    "round": 1,
+    "type": "빈칸",
+    "points": [
+     {
+      "op": "blank",
+      "s": 6,
+      "t": "become accustomed to getting less sleep than your body needs"
+     }
+    ],
+    "mods": []
+   },
+   {
+    "round": 1,
+    "type": "요약문 완성",
+    "points": [
+     {
+      "op": "blank",
+      "s": 6,
+      "t": "become accustomed to getting less sleep than your body needs"
+     }
+    ],
+    "mods": []
+   },
+   {
+    "round": 2,
+    "type": "삽입",
+    "points": [
+     {
+      "op": "insert",
+      "given": 3
+     }
+    ],
+    "mods": [
+     0,
+     7
+    ]
+   }
+  ],
+  "33": [
+   {
+    "round": 1,
+    "type": "빈칸",
+    "points": [
+     {
+      "op": "blank",
+      "s": 4,
+      "t": "what I'm intending to do with it"
+     }
+    ],
+    "mods": [
+     0
+    ]
+   },
+   {
+    "round": 2,
+    "type": "주제",
+    "points": [],
+    "mods": [
+     4,
+     6
+    ]
+   }
+  ],
+  "34": [
+   {
+    "round": 1,
+    "type": "빈칸",
+    "points": [
+     {
+      "op": "blank",
+      "s": 5,
+      "t": "the faster we have to use fossil energy for the construction process"
+     }
+    ],
+    "mods": []
+   },
+   {
+    "round": 2,
+    "type": "연결사",
+    "points": [
+     {
+      "op": "ab",
+      "s": 3,
+      "t": "For instance"
+     },
+     {
+      "op": "ab",
+      "s": 5,
+      "t": "Thus"
+     }
+    ],
+    "mods": [
+     0,
+     7
+    ]
+   },
+   {
+    "round": 2,
+    "type": "요지",
+    "points": [
+     {
+      "op": "ab",
+      "s": 3,
+      "t": "For instance"
+     },
+     {
+      "op": "ab",
+      "s": 5,
+      "t": "Thus"
+     }
+    ],
+    "mods": [
+     0,
+     7
+    ]
+   }
+  ],
+  "35": [
+   {
+    "round": 1,
+    "type": "순서",
+    "points": [
+     {
+      "op": "order",
+      "given": [
+       0
+      ],
+      "A": [
+       1,
+       2
+      ],
+      "B": [
+       4,
+       5
+      ],
+      "C": [
+       3
+      ]
+     }
+    ],
+    "mods": []
+   },
+   {
+    "round": 2,
+    "type": "어법",
+    "points": [
+     {
+      "op": "mark",
+      "s": 0,
+      "t": "could become"
+     },
+     {
+      "op": "mark",
+      "s": 1,
+      "t": "who"
+     },
+     {
+      "op": "mark",
+      "s": 2,
+      "t": "creating"
+     },
+     {
+      "op": "mark",
+      "s": 3,
+      "t": "to measure"
+     },
+     {
+      "op": "mark",
+      "s": 4,
+      "t": "replacing"
+     }
+    ],
+    "mods": []
+   },
+   {
+    "round": 2,
+    "type": "일치",
+    "points": [
+     {
+      "op": "mark",
+      "s": 0,
+      "t": "could become"
+     },
+     {
+      "op": "mark",
+      "s": 1,
+      "t": "who"
+     },
+     {
+      "op": "mark",
+      "s": 2,
+      "t": "creating"
+     },
+     {
+      "op": "mark",
+      "s": 3,
+      "t": "to measure"
+     },
+     {
+      "op": "mark",
+      "s": 4,
+      "t": "replacing"
+     }
+    ],
+    "mods": []
+   }
+  ],
+  "36": [
+   {
+    "round": 1,
+    "type": "삽입",
+    "points": [
+     {
+      "op": "insert",
+      "given": 5
+     }
+    ],
+    "mods": []
+   },
+   {
+    "round": 2,
+    "type": "지칭",
+    "points": [
+     {
+      "op": "mark",
+      "s": 0,
+      "t": "It"
+     },
+     {
+      "op": "mark",
+      "s": 0,
+      "t": "it"
+     },
+     {
+      "op": "mark",
+      "s": 1,
+      "t": "its"
+     },
+     {
+      "op": "mark",
+      "s": 3,
+      "t": "it"
+     },
+     {
+      "op": "mark",
+      "s": 6,
+      "t": "it"
+     }
+    ],
+    "mods": [
+     7,
+     8
+    ]
+   },
+   {
+    "round": 2,
+    "type": "불일치",
+    "points": [
+     {
+      "op": "mark",
+      "s": 0,
+      "t": "It"
+     },
+     {
+      "op": "mark",
+      "s": 0,
+      "t": "it"
+     },
+     {
+      "op": "mark",
+      "s": 1,
+      "t": "its"
+     },
+     {
+      "op": "mark",
+      "s": 3,
+      "t": "it"
+     },
+     {
+      "op": "mark",
+      "s": 6,
+      "t": "it"
+     }
+    ],
+    "mods": [
+     7,
+     8
+    ]
+   }
+  ],
+  "37": [
+   {
+    "round": 1,
+    "type": "순서",
+    "points": [
+     {
+      "op": "order",
+      "given": [
+       0,
+       1,
+       2,
+       3
+      ],
+      "A": [
+       8,
+       9,
+       10
+      ],
+      "B": [
+       11
+      ],
+      "C": [
+       4,
+       5,
+       6,
+       7
+      ]
+     }
+    ],
+    "mods": [
+     7
+    ]
+   },
+   {
+    "round": 2,
+    "type": "어휘",
+    "points": [
+     {
+      "op": "mark",
+      "s": 3,
+      "t": "gradually"
+     },
+     {
+      "op": "mark",
+      "s": 6,
+      "t": "suddenly"
+     },
+     {
+      "op": "mark",
+      "s": 7,
+      "t": "opposite"
+     },
+     {
+      "op": "mark",
+      "s": 10,
+      "t": "backwards"
+     },
+     {
+      "op": "mark",
+      "s": 11,
+      "t": "rubbing"
+     }
+    ],
+    "mods": []
+   }
+  ],
+  "38": [
+   {
+    "round": 1,
+    "type": "요약",
+    "points": [],
+    "mods": []
+   },
+   {
+    "round": 2,
+    "type": "무관",
+    "points": [
+     {
+      "op": "irrelevant",
+      "before": 4,
+      "text": "Many old movies were filmed in black and white because color film was expensive."
+     },
+     {
+      "op": "mark",
+      "s": 0,
+      "t": "allow"
+     },
+     {
+      "op": "mark",
+      "s": 2,
+      "t": "makes"
+     },
+     {
+      "op": "mark",
+      "s": 3,
+      "t": "be easily added"
+     },
+     {
+      "op": "mark",
+      "s": 5,
+      "t": "had to be retyped"
+     },
+     {
+      "op": "mark",
+      "s": 7,
+      "t": "is made"
+     }
+    ],
+    "mods": []
+   },
+   {
+    "round": 2,
+    "type": "어법",
+    "points": [
+     {
+      "op": "irrelevant",
+      "before": 4,
+      "text": "Many old movies were filmed in black and white because color film was expensive."
+     },
+     {
+      "op": "mark",
+      "s": 0,
+      "t": "allow"
+     },
+     {
+      "op": "mark",
+      "s": 2,
+      "t": "makes"
+     },
+     {
+      "op": "mark",
+      "s": 3,
+      "t": "be easily added"
+     },
+     {
+      "op": "mark",
+      "s": 5,
+      "t": "had to be retyped"
+     },
+     {
+      "op": "mark",
+      "s": 7,
+      "t": "is made"
+     }
+    ],
+    "mods": []
+   }
+  ],
+  "39": [
+   {
+    "round": 1,
+    "type": "삽입",
+    "points": [
+     {
+      "op": "insert",
+      "given": 5
+     }
+    ],
+    "mods": [
+     0
+    ]
+   },
+   {
+    "round": 2,
+    "type": "빈칸",
+    "points": [
+     {
+      "op": "blank",
+      "s": 7,
+      "t": "some results are necessary"
+     }
+    ],
+    "mods": [
+     2,
+     6
+    ]
+   },
+   {
+    "round": 2,
+    "type": "요약문 완성",
+    "points": [
+     {
+      "op": "blank",
+      "s": 7,
+      "t": "some results are necessary"
+     }
+    ],
+    "mods": [
+     2,
+     6
+    ]
+   }
+  ],
+  "40": [
+   {
+    "round": 1,
+    "type": "제목",
+    "points": [
+     {
+      "op": "mark",
+      "s": 1,
+      "t": "viewing"
+     },
+     {
+      "op": "mark",
+      "s": 2,
+      "t": "visualizing"
+     },
+     {
+      "op": "mark",
+      "s": 3,
+      "t": "is hidden"
+     },
+     {
+      "op": "mark",
+      "s": 6,
+      "t": "that"
+     },
+     {
+      "op": "mark",
+      "s": 7,
+      "t": "surprising"
+     }
+    ],
+    "mods": [
+     0,
+     4
+    ]
+   },
+   {
+    "round": 1,
+    "type": "어법",
+    "points": [
+     {
+      "op": "mark",
+      "s": 1,
+      "t": "viewing"
+     },
+     {
+      "op": "mark",
+      "s": 2,
+      "t": "visualizing"
+     },
+     {
+      "op": "mark",
+      "s": 3,
+      "t": "is hidden"
+     },
+     {
+      "op": "mark",
+      "s": 6,
+      "t": "that"
+     },
+     {
+      "op": "mark",
+      "s": 7,
+      "t": "surprising"
+     }
+    ],
+    "mods": [
+     0,
+     4
+    ]
+   },
+   {
+    "round": 2,
+    "type": "빈칸",
+    "points": [
+     {
+      "op": "blank",
+      "s": 4,
+      "t": "interfere with our ability to see “like a camera.”"
+     }
+    ],
+    "mods": [
+     1,
+     8
+    ]
+   }
+  ],
+  "41-42": [
+   {
+    "round": 1,
+    "type": "지칭",
+    "points": [
+     {
+      "op": "mark",
+      "s": 0,
+      "t": "them"
+     },
+     {
+      "op": "mark",
+      "s": 3,
+      "t": "you"
+     },
+     {
+      "op": "mark",
+      "s": 9,
+      "t": "I"
+     },
+     {
+      "op": "mark",
+      "s": 9,
+      "t": "your"
+     },
+     {
+      "op": "mark",
+      "s": 12,
+      "t": "they"
+     },
+     {
+      "op": "mark",
+      "s": 1,
+      "t": "negative"
+     },
+     {
+      "op": "mark",
+      "s": 4,
+      "t": "overused"
+     },
+     {
+      "op": "mark",
+      "s": 7,
+      "t": "defense"
+     },
+     {
+      "op": "mark",
+      "s": 10,
+      "t": "pressured"
+     },
+     {
+      "op": "mark",
+      "s": 11,
+      "t": "comfortable"
+     }
+    ],
+    "mods": []
+   },
+   {
+    "round": 1,
+    "type": "어휘",
+    "points": [
+     {
+      "op": "mark",
+      "s": 0,
+      "t": "them"
+     },
+     {
+      "op": "mark",
+      "s": 3,
+      "t": "you"
+     },
+     {
+      "op": "mark",
+      "s": 9,
+      "t": "I"
+     },
+     {
+      "op": "mark",
+      "s": 9,
+      "t": "your"
+     },
+     {
+      "op": "mark",
+      "s": 12,
+      "t": "they"
+     },
+     {
+      "op": "mark",
+      "s": 1,
+      "t": "negative"
+     },
+     {
+      "op": "mark",
+      "s": 4,
+      "t": "overused"
+     },
+     {
+      "op": "mark",
+      "s": 7,
+      "t": "defense"
+     },
+     {
+      "op": "mark",
+      "s": 10,
+      "t": "pressured"
+     },
+     {
+      "op": "mark",
+      "s": 11,
+      "t": "comfortable"
+     }
+    ],
+    "mods": []
+   },
+   {
+    "round": 2,
+    "type": "빈칸",
+    "points": [
+     {
+      "op": "blank",
+      "s": 6,
+      "t": "the customer is in trouble of some sort and needs rescuing"
+     }
+    ],
+    "mods": [
+     3,
+     11
+    ]
+   },
+   {
+    "round": 2,
+    "type": "요약",
+    "points": [
+     {
+      "op": "blank",
+      "s": 6,
+      "t": "the customer is in trouble of some sort and needs rescuing"
+     }
+    ],
+    "mods": [
+     3,
+     11
+    ]
+   }
+  ]
+ }
+}
