@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>시험대비 교재 템플릿</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Noto+Serif:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* =========================================================
+   기본 설정 : A4 / 여백 상하 5mm · 좌우 10mm / 본문 10pt / 1단
+   (인쇄: @page 좌우 5mm + body 좌우 패딩 5mm = 좌우 10mm.
+    좌우 5mm 띠는 우측 세로 포인트 라인 자리)
+   ========================================================= */
+@page { size: A4; margin: 5mm 5mm; }
+
+:root {
+  --main: #1f3a5f;      /* 밴드 메인 색 */
+  --accent: #e8a33d;    /* 포인트 색 */
+  --line: #c9d2dd;
+  --soft: #f3f6fa;
+  --text: #1a1a1a;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  font-size: 10pt;
+  color: var(--text);
+  line-height: 1.6;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* 화면 미리보기 : A4 종이처럼 보이게 */
+@media screen {
+  body { background: #e5e7eb; padding: 20px 0; }
+  .section {
+    position: relative;
+    width: 210mm;
+    min-height: 297mm;
+    padding: 5mm 10mm;
+    margin: 0 auto 20px;
+    background: #fff;
+    box-shadow: 0 2px 10px rgba(0,0,0,.15);
+  }
+}
+
+/* 인쇄 : 지문 번호마다 새 페이지 */
+@media print {
+  body { background: #fff; padding: 0 5mm; }
+  .section { width: 100%; }
+  .section + .section { break-before: page; }
+}
+
+/* =========================================================
+   상단 밴드 (학원명 / 교재명 / 지문번호)
+   - table의 thead를 사용해서, 한 지문이 2페이지로 넘어가도
+     인쇄 시 밴드가 매 페이지 상단에 반복됩니다.
+   ========================================================= */
+.sheet { width: 100%; border-collapse: collapse; }
+.sheet > thead > tr > td { padding: 0 0 5mm 0; }
+.sheet > tbody > tr > td { padding: 0; vertical-align: top; }
+
+.band {
+  display: flex;
+  align-items: stretch;
+  height: 16mm;
+  border: 1.5px solid var(--main);
+}
+.band-academy {
+  background: var(--main);
+  color: #fff;
+  font-weight: 900;
+  font-size: 12pt;
+  letter-spacing: 1px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 0 6mm;
+  min-width: 38mm;
+  line-height: 1.05;
+}
+.band-academy .hyper   { font-size: 16pt; font-weight: 900; letter-spacing: 2px; margin-right: -2px; }
+.band-academy .academy { font-size: 9.5pt; font-weight: 700; letter-spacing: 2.9px; margin-right: -2.9px; margin-top: .5mm; }
+.band-title {
+  flex: 1;
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  text-align: center;
+  padding: 0 5mm;
+  border-left: 4px solid var(--accent);
+  border-right: 4px solid var(--accent);   /* 2026-09-27: 좌우 대칭 주황 세로줄 */
+}
+.band-title .book { font-size: 13pt; font-weight: 700; color: var(--main); line-height: 1.3; }
+.band-title .sub  { font-size: 8.5pt; color: #5b6b7d; }
+.band-no {
+  min-width: 30mm;
+  background: var(--main);          /* 2026-09-27: 학원명 칸과 같은 네이비 */
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  line-height: 1.15;
+}
+.band-no .num   { font-size: 17pt; font-weight: 900; color: #fff; }
+
+/* =========================================================
+   머릿말 (2026-10-02): 밴드는 각 지문의 시작 쪽에만. 나머지 쪽은 가는 선 + 오른쪽 끝에 그 쪽의 문제 유형 이름
+   - 선 0.8pt 네이비, 글자 8.5pt 굵게 네이비, 선 오른쪽 끝 주황 포인트(폭 14mm, 높이 1.8pt)
+   - 높이: 선 포함 5.5mm + 아래 여백 3mm = 8.5mm (교재_조립.py의 RUNHEAD_MM)
+   ========================================================= */
+.sheet > thead > tr > td.rh { padding: 0 0 3mm 0; }
+.run-head {
+  position: relative; height: 5.5mm;
+  display: flex; justify-content: flex-end; align-items: flex-end;
+  padding-bottom: 1mm;
+  border-bottom: .8pt solid var(--main);
+  font-size: 8.5pt; font-weight: 700; color: var(--main); line-height: 1;
+}
+.run-head::after {
+  content: ''; position: absolute; right: 0; bottom: -1.2pt;
+  width: 14mm; height: 1.8pt; background: var(--accent);
+}
+
+/* =========================================================
+   꼬리말 + 우측 세로 포인트 라인 (2026-09-27 추가)
+   - 요소는 아래 스크립트가 자동으로 넣음 (조립 스크립트 수정 불필요)
+   - 인쇄: 모든 쪽에 반복(position: fixed), 표 tfoot 여백으로 본문과 겹치지 않음
+   ========================================================= */
+.sheet > tfoot > tr > td { padding: 0; }
+.ft-space { height: 13mm; }
+.page-foot {
+  display: flex; justify-content: space-between; align-items: center;
+  border-top: .8pt solid var(--main);
+  padding-top: 1.2mm;
+  font-size: 7pt; line-height: 1.2; letter-spacing: .3px;
+}
+.page-foot::before {            /* 라인 왼쪽 끝 주황 포인트 (밴드의 주황 세로줄과 호응) */
+  content: ''; position: absolute; left: 0; top: -1.2pt;
+  width: 14mm; height: 1.8pt; background: var(--accent);
+}
+.page-foot .l { color: var(--main); font-weight: 700; }   /* 2026-10-02: 왼쪽 끝 = 학원명(네이비 굵게) */
+.page-foot .r { color: var(--main); font-weight: 700; }   /* 2026-10-02 수정: 오른쪽 끝 = 슬로건(네이비 굵게, 학원명과 동일) */
+.side-accent {
+  width: 1.2mm; border-radius: .6mm;
+  background: linear-gradient(to bottom, var(--main) 0 50%, var(--accent) 50% 100%);
+}
+@media screen {
+  .page-foot { position: absolute; left: 10mm; right: 10mm; bottom: 10mm; }
+  .side-accent { position: absolute; right: 3.3mm; top: 98.5mm; height: 100mm; }
+  .print-only { display: none; }
+}
+@media print {
+  .screen-only { display: none; }
+  .page-foot.print-only { position: fixed; left: 5mm; right: 5mm; bottom: 5mm; }
+  .side-accent.print-only { position: fixed; right: 1.9mm; top: 93.5mm; height: 100mm; }
+}
+
+/* =========================================================
+   문항
+   ========================================================= */
+.q { margin-bottom: 7mm; break-inside: avoid; }
+
+.q-head { display: flex; gap: 2mm; margin-bottom: 2mm; }
+.q-no {
+  flex: none;
+  min-width: 6.5mm; height: 6.5mm;
+  background: var(--main); color: #fff;
+  font-weight: 700; font-size: 10pt;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 1mm;
+}
+.q-stem { font-weight: 500; padding-top: .3mm; }
+.q-stem b, .q-stem u { font-weight: 700; }
+
+.passage {
+  font-family: 'Noto Serif', 'Times New Roman', serif;
+  font-size: 10pt;
+  line-height: 1.75;
+  text-align: justify;
+  border: 1px solid var(--line);
+  padding: 3.5mm 4.5mm;
+  margin-bottom: 2.5mm;
+}
+.passage p + p { margin-top: 1.5mm; text-indent: 0; }
+.passage .sign { text-align: right; }
+
+/* 밑줄 + 번호 (어법, 어휘, 무관한 문장, 함의 등) */
+.u { text-decoration: underline; text-underline-offset: 2px; }
+.cn { font-family: 'Noto Sans KR', sans-serif; font-weight: 700; }
+
+/* 빈칸 */
+.blank {
+  display: inline-block;
+  min-width: 32mm;
+  border-bottom: 1px solid #000;
+  text-align: center;
+}
+
+/* 순서 배열 (A)(B)(C) */
+.order-box {
+  border: 1px solid var(--line);
+  padding: 3mm 4.5mm;
+  margin-bottom: 2mm;
+  font-family: 'Noto Serif', serif;
+  line-height: 1.75;
+  text-align: justify;
+}
+.order-box .tag { font-family: 'Noto Sans KR', sans-serif; font-weight: 700; }
+
+/* 문장 삽입용 주어진 문장 */
+.given {
+  border: 1.5px solid var(--main);
+  background: var(--soft);
+  padding: 2.5mm 4mm;
+  margin-bottom: 2mm;
+  font-family: 'Noto Serif', serif;
+}
+
+/* 요약문 박스 */
+.summary {
+  border: 1.5px dashed var(--main);
+  padding: 3mm 4.5mm;
+  margin-bottom: 2.5mm;
+  font-family: 'Noto Serif', serif;
+  text-align: center;
+}
+
+/* 선택지 */
+.choices { list-style: none; padding-left: 2mm; }
+.choices li { padding: .4mm 0; }
+.choices.row { display: flex; flex-wrap: wrap; column-gap: 8mm; }   /* 짧은 선택지는 가로 배열 */
+.choices.en  { font-family: 'Noto Serif', serif; }
+
+/* 표 형식 선택지 (요약문, 어휘 (A)(B)(C)) */
+.choice-table { border-collapse: collapse; margin-left: 2mm; font-family: 'Noto Serif', serif; }
+.choice-table th { font-family: 'Noto Sans KR', sans-serif; font-weight: 700; padding: 0 6mm .5mm 0; text-align: left; }
+.choice-table td { padding: .3mm 6mm .3mm 0; }
+
+/* 각주 (* 어휘 풀이) */
+.foot { font-size: 8.5pt; color: #444; text-align: right; margin: -1.5mm 0 2mm; }
+
+/* =========================================================
+   정답 및 해설
+   ========================================================= */
+.ans-grid { width: 100%; border-collapse: collapse; margin-bottom: 6mm; text-align: center; }
+.ans-grid th { background: var(--main); color: #fff; font-weight: 500; padding: 1.2mm; border: 1px solid var(--main); }
+.ans-grid td { border: 1px solid var(--line); padding: 1.2mm; font-weight: 700; }
+
+.exp { margin-bottom: 5mm; break-inside: avoid; }
+.exp-head { font-weight: 700; color: var(--main); border-bottom: 1.5px solid var(--main); padding-bottom: .8mm; margin-bottom: 1.5mm; }
+.exp-head .ans { color: var(--accent); margin-left: 2mm; }
+.exp dl { display: grid; grid-template-columns: 14mm 1fr; row-gap: 1mm; }
+.exp dt { font-weight: 700; color: #5b6b7d; }
+.exp .vocab { font-size: 9pt; color: #333; }
+</style>
+</head>
+<body>
+<!-- 레이아웃 견본(출제 기준 아님). 실제 교재는 스크립트/교재_조립.py가 이 파일의 스타일·스크립트만 가져다 조립한다.
+     문제 형식·품질 기준은 기준/샘플 파일만 따른다. -->
+<section class="section">
+<table class="sheet">
+  <thead><tr><td>
+    <div class="band">
+      <div class="band-academy"><span class="hyper">HYPER</span><span class="academy">ACADEMY</span></div>
+      <div class="band-title"><div class="book">2025 고1 9월 모의고사 시험대비 변형문제</div><div class="sub">레이아웃 견본</div></div>
+      <div class="band-no"><span class="num">00번</span></div>
+    </div>
+  </td></tr></thead>
+  <tbody><tr><td><div style="height:240mm;border:1px dashed var(--line);display:flex;align-items:center;justify-content:center;color:#9aa6b2">문항 영역</div></td></tr></tbody>
+</table>
+</section>
+
+<script>
+/* ACADEMY 글자 너비를 HYPER 너비에 정확히 맞춤 (PC마다 폰트가 달라도 자동 보정) */
+function fitAcademy() {
+  document.querySelectorAll('.band-academy').forEach(box => {
+    const h = box.querySelector('.hyper'), a = box.querySelector('.academy');
+    if (!h || !a) return;
+    const w = el => { const r = document.createRange(); r.selectNodeContents(el); return r.getBoundingClientRect().width; };
+    const hs = parseFloat(getComputedStyle(h).letterSpacing) || 0;
+    a.style.letterSpacing = '0px'; a.style.marginRight = '0px';
+    const target = w(h) - hs, base = w(a), n = a.textContent.length;
+    const ls = Math.max(0, (target - base) / (n - 1));
+    a.style.letterSpacing = ls + 'px'; a.style.marginRight = (-ls) + 'px';
+  });
+}
+window.addEventListener('load', fitAcademy);
+
+/* 꼬리말·우측 포인트 라인 자동 삽입 (조립 스크립트 수정 없이 모든 교재에 적용) */
+const FOOT_L = '하이퍼 영수 전문학원', FOOT_R = '24시간 학습을 설계하다';
+function addFooter() {
+  if (document.body.dataset.footer) return;
+  document.body.dataset.footer = '1';
+  const foot = cls => { const d = document.createElement('div'); d.className = 'page-foot ' + cls;
+    d.innerHTML = '<span class="l">' + FOOT_L + '</span><span class="r">' + FOOT_R + '</span>'; return d; };
+  const bar = cls => { const d = document.createElement('div'); d.className = 'side-accent ' + cls; return d; };
+  document.querySelectorAll('.section').forEach(sec => {          // 화면용: 쪽마다
+    sec.appendChild(foot('screen-only')); sec.appendChild(bar('screen-only'));
+  });
+  document.querySelectorAll('table.sheet').forEach(t => {         // 인쇄용: 본문이 꼬리말과 겹치지 않게 여백
+    if (!t.tFoot) { const tf = t.createTFoot(); tf.innerHTML = '<tr><td><div class="ft-space"></div></td></tr>'; }
+  });
+  document.body.appendChild(foot('print-only')); document.body.appendChild(bar('print-only'));  // 인쇄용: 모든 쪽 반복
+}
+if (document.readyState !== 'loading') addFooter(); else document.addEventListener('DOMContentLoaded', addFooter);
+if (document.fonts) document.fonts.ready.then(fitAcademy);
+window.addEventListener('beforeprint', fitAcademy);
+</script>
+</body>
+</html>
