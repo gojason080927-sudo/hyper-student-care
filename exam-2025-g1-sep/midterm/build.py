@@ -47,7 +47,7 @@ def tag_for(op):
         return f'[u{op["lab"]}:{t}]' if op['lab'].isdigit() else f'[{op["lab"]}:{t}]'
     if k == 'ul': return f'[ul:{t}]'
     if k == 'ko': return f'<b>({op["lab"]})</b> [ko:{op["ko"]}]'
-    if k == 'blank': return f'[blank:{op.get("w", 40)}]'
+    if k == 'blank': return f'[blank:{op.get("w", 40)}]' + op.get('after', '')
     if k == 'ab': return f'[{op["lab"]}]'
     raise ValueError(k)
 

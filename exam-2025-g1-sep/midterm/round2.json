@@ -241,13 +241,13 @@
      "explain": "도덕적 판단에는 의도와 동기(intentions)뿐 아니라 실제 결과(consequences)도 중요하다."}]},
 
   {"passage": "40",
-   "ops": [{"op": "blank", "s": 4, "t": "interfere with our ability to see “like a camera.”", "w": 55}],
+   "ops": [{"op": "blank", "s": 4, "t": "interfere with our ability to see “like a camera.”", "w": 55, "after": "."}],
    "qs": [{"type": "빈칸", "answer": 5,
      "options": ["help us notice every detail of a scene equally",
                  "make photographs look less surprising to us",
                  "disappear when we picture objects in our mind's eye",
                  "allow us to document the world impartially",
-                 "interfere with our ability to see “like a camera.”"],
+                 "interfere with our ability to see “like a camera”"],
      "explain": "망치를 쓰기 좋은 각도로 떠올리듯 사물과의 기능적 관계가 기대를 만들고, 뒤에서 카메라는 공정하게 기록한다고 대조하므로 '카메라처럼 보는 능력을 방해한다'가 알맞다."}]},
 
   {"passage": "41-42",
