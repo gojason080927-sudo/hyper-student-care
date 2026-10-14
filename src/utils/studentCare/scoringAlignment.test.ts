@@ -173,7 +173,7 @@ assert.doesNotMatch(teacherMobileToday, /강사 피드백/)
 assert.doesNotMatch(teacherMobileToday, /classNote/)
 
 const teacherHome = readFileSync('src/pages/teacherMobile/TeacherMobileDashboardPage.tsx', 'utf8')
-assert.match(teacherHome, /출결 · 숙제 · 교재준비/)
+assert.match(teacherHome, /출결 · 과제 · 교재준비/)
 assert.match(teacherHome, /진도 · 일일테스트 · 수업태도/)
 assert.doesNotMatch(teacherHome, /특이사항/)
 
@@ -193,7 +193,7 @@ assert.match(parentPreview, /parentTodayReportHighlights/)
 assert.doesNotMatch(parentPreview, /강사 피드백/)
 
 const parentHome = readFileSync('src/components/parent/ParentCategoryGrid.tsx', 'utf8')
-assert.match(parentHome, /출결 · 진도 · 숙제/)
+assert.match(parentHome, /출결 · 진도 · 과제/)
 assert.match(parentHome, /일일테스트 · 수업태도/)
 assert.match(readFileSync('src/components/parent/parentNavItems.ts', 'utf8'), /label: '수업태도'/)
 

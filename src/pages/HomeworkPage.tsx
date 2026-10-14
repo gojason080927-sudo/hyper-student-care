@@ -108,7 +108,7 @@ export function HomeworkPage() {
     const dateErr = requireDate(form.date)
     if (dateErr) next.date = dateErr
     if (!form.date) next.date = '날짜를 선택해 주세요.'
-    if (!form.content.trim()) next.content = '숙제 내용을 입력해 주세요.'
+    if (!form.content.trim()) next.content = '과제 내용을 입력해 주세요.'
     if (!form.status) next.status = '수행 상태를 선택해 주세요.'
     setErrors(next)
     return Object.keys(next).length === 0
@@ -132,13 +132,13 @@ export function HomeworkPage() {
   const getStudentName = (id: string) => students.find((s) => s.id === id)?.name ?? '-'
 
   if (isLoading) {
-    return <PageLoadingState message="숙제 데이터를 불러오는 중…" />
+    return <PageLoadingState message="과제 데이터를 불러오는 중…" />
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="숙제관리"
+        title="과제관리"
         description="학생별 과제 수행 상태를 기록합니다."
         action={
           <button
@@ -164,10 +164,10 @@ export function HomeworkPage() {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-600">숙제 내용</label>
+            <label className="mb-1.5 block text-sm font-medium text-slate-600">과제 내용</label>
             <input
               type="search"
-              placeholder="숙제 내용을 입력하세요."
+              placeholder="과제 내용을 입력하세요."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className={inputClass()}
@@ -177,7 +177,7 @@ export function HomeworkPage() {
       </div>
 
       {filtered.length === 0 ? (
-        <EmptyState title="숙제 기록이 없습니다." />
+        <EmptyState title="과제 기록이 없습니다." />
       ) : (
         <div className="space-y-3">
           {filtered.map((record) => {
@@ -231,7 +231,7 @@ export function HomeworkPage() {
 
       <Modal
         open={modalOpen}
-        title={form.id ? '숙제 수정' : '숙제 추가'}
+        title={form.id ? '과제 수정' : '과제 추가'}
         onClose={() => setModalOpen(false)}
         wide
       >
@@ -254,7 +254,7 @@ export function HomeworkPage() {
             {errors.date && <p className="mt-1 text-sm text-rose-500">{errors.date}</p>}
           </div>
           <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">숙제 내용 *</label>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">과제 내용 *</label>
             <textarea
               value={form.content}
               onChange={(e) => setForm({ ...form, content: e.target.value })}
@@ -292,8 +292,8 @@ export function HomeworkPage() {
 
       <ConfirmDialog
         open={!!deleteTarget}
-        title="숙제 삭제"
-        message="이 숙제 기록을 삭제하시겠습니까?"
+        title="과제 삭제"
+        message="이 과제 기록을 삭제하시겠습니까?"
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => {
           if (deleteTarget) deleteHomeworkRecord(deleteTarget.id)

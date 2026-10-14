@@ -261,8 +261,8 @@ export function TextbookSlotHomeworkSection({
         <SectionCard title="과제 수행 결과" hideTitle={hideTitle}>
           <p className="text-sm text-slate-400">
             {readOnly && !allowCarryForward
-              ? '해당 날짜에 등록된 숙제 정보가 없습니다.'
-              : '등록된 숙제 정보가 없습니다.'}
+              ? '해당 날짜에 등록된 과제 정보가 없습니다.'
+              : '등록된 과제 정보가 없습니다.'}
           </p>
         </SectionCard>
       )

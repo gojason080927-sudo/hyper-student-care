@@ -406,7 +406,7 @@ export function parseHomeworkVoice(
     const parsedStatus = parseHomeworkStatusPhrase(clause)
     if (parsedStatus === 'ambiguous') {
       return (ids.length > 0 ? ids : ['*']).map((id) => ({
-        label: studentById(students, id)?.name ?? '숙제',
+        label: studentById(students, id)?.name ?? '과제',
         reason: '상태가 분명하지 않아 확인 필요',
       }))
     }

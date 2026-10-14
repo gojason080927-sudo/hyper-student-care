@@ -9,7 +9,7 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
 
 export const PARENT_TODAY_REPORT_SECTION_EMPTY_TODAY = {
   attendance: '오늘 등록된 출결 정보가 없습니다.',
-  homework: '오늘 등록된 숙제 정보가 없습니다.',
+  homework: '오늘 등록된 과제 정보가 없습니다.',
   progress: '오늘 등록된 진도 정보가 없습니다.',
   dailyTest: '오늘 등록된 일일 테스트 결과가 없습니다.',
   classNote: '등록된 코멘트가 없습니다.',
@@ -17,7 +17,7 @@ export const PARENT_TODAY_REPORT_SECTION_EMPTY_TODAY = {
 
 export const PARENT_TODAY_REPORT_SECTION_EMPTY_HISTORICAL = {
   attendance: '해당 날짜에 등록된 출결 정보가 없습니다.',
-  homework: '해당 날짜에 등록된 숙제 정보가 없습니다.',
+  homework: '해당 날짜에 등록된 과제 정보가 없습니다.',
   progress: '해당 날짜에 등록된 진도 정보가 없습니다.',
   dailyTest: '해당 날짜에 등록된 일일 테스트 결과가 없습니다.',
   classNote: '해당 날짜에 등록된 코멘트가 없습니다.',

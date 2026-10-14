@@ -236,7 +236,7 @@ export function ClassHomeworkStatusBulkPanel({
         isFollowOnInputRequired(attendance, student.id, date),
       )
       if (required.length === 0) {
-        showToast('결석 학생은 숙제 입력 대상이 아닙니다.')
+        showToast('결석 학생은 과제 입력 대상이 아닙니다.')
         return
       }
       showToast('과제 수행 결과를 선택해주세요.')
@@ -342,7 +342,7 @@ export function ClassHomeworkStatusBulkPanel({
             return (
               <SectionVoiceInput
                 key={`voice-hw-${subject}-${slotNumber}`}
-                label={`${heading} 숙제 음성 입력`}
+                label={`${heading} 과제 음성 입력`}
                 chipLabel={heading}
                 compact={compact}
                 disabled={saving}

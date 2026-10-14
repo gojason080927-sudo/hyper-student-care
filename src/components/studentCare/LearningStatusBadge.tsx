@@ -107,7 +107,7 @@ export function PriorDayLearningReasonPanel({ result }: { result: PriorDayLearni
     <div className="space-y-1.5 text-sm text-slate-700">
       <p className="font-semibold text-navy-900">일일 학습 종합 평가 · {result.grade}</p>
       <p className="text-xs text-slate-500">
-        {formatKoreanDate(result.reportDate)} 수업의 출결·숙제·교재 준비·일일테스트·수업태도 기준
+        {formatKoreanDate(result.reportDate)} 수업의 출결·과제·교재 준비·일일테스트·수업태도 기준
       </p>
       {result.reasons.length === 0 ? (
         <p>이 날짜에는 감점 기록이 없습니다.</p>

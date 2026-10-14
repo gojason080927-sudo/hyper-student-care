@@ -18,7 +18,7 @@ export function HomeworkContentDisplay({ content, className = '' }: HomeworkCont
   }, [trimmed])
 
   if (!trimmed) {
-    return <p className={`text-sm text-slate-400 ${className}`}>숙제 내용 없음</p>
+    return <p className={`text-sm text-slate-400 ${className}`}>과제 내용 없음</p>
   }
 
   return (

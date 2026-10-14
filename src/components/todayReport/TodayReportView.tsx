@@ -1810,7 +1810,7 @@ function HomeworkAssignmentSection({
             todayControls={
               <>
                 <p className={`mb-2 ${HOMEWORK_CARD_FIELD_VALUE_CLASS} text-slate-500`}>
-                  오늘 새롭게 내주는 숙제를 기록해 주세요.
+                  오늘 새롭게 내주는 과제를 기록해 주세요.
                 </p>
                 <textarea
                   value={todayAssignment}

@@ -25,7 +25,7 @@ const categories = [
   {
     to: '/teacher/today-report-bulk',
     title: 'Today Report\n반별 통합 입력',
-    description: '출결, 숙제, 교재준비, 진도, 일일테스트, 수업태도',
+    description: '출결, 과제, 교재준비, 진도, 일일테스트, 수업태도',
     icon: ClipboardList,
   },
   {

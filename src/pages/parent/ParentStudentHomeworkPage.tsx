@@ -15,7 +15,7 @@ export function ParentStudentHomeworkPage() {
 
   return (
     <div className="parent-page space-y-5 pb-6">
-      <ParentPageHeader title="숙제" description="과제 수행 상태를 확인합니다." />
+      <ParentPageHeader title="과제" description="과제 수행 상태를 확인합니다." />
 
       {homework.length === 0 ? (
         <ParentEmptyState />
@@ -30,7 +30,7 @@ export function ParentStudentHomeworkPage() {
               }
             >
               <div>
-                <p className="mb-1.5 text-xs font-medium text-slate-500">숙제 내용</p>
+                <p className="mb-1.5 text-xs font-medium text-slate-500">과제 내용</p>
                 <HomeworkContentDisplay content={getHomeworkContent(record)} />
               </div>
               {record.teacherMemo && (

@@ -74,7 +74,7 @@ export function ParentCategoryGrid() {
         <span className="hub-feature-copy">
           <span className="hub-feature-title">{parentTodayReportItem.label}</span>
           <span className="hub-feature-sub">
-            <span className="block break-keep">출결 · 진도 · 숙제</span>
+            <span className="block break-keep">출결 · 진도 · 과제</span>
             <span className="block break-keep">일일테스트 · 수업태도</span>
           </span>
         </span>

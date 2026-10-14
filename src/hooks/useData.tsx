@@ -957,15 +957,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
           id: data.id,
         })
         setHomework((prev) => prev.map((r) => (r.id === data.id ? record : r)))
-        showToast('숙제 기록이 수정되었습니다.')
+        showToast('과제 기록이 수정되었습니다.')
       } else {
         record = { ...normalizedData, id: createId(), ...ts }
         setHomework((prev) => [...prev, record])
-        showToast('숙제 기록이 저장되었습니다.')
+        showToast('과제 기록이 저장되었습니다.')
       }
       void persistWithReload(
         () => upsertHomework(record),
-        '숙제 기록 저장에 실패했습니다.',
+        '과제 기록 저장에 실패했습니다.',
         { type: 'todayReport', studentId: record.studentId, date: record.date },
       )
       return true
@@ -1018,7 +1018,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       })
       void persistWithReload(
         () => upsertHomeworkTextbookEntry(record),
-        '교재별 숙제 저장에 실패했습니다.',
+        '교재별 과제 저장에 실패했습니다.',
         { type: 'todayReport', studentId: record.studentId, date: record.date },
       )
       if (import.meta.env.DEV) {
@@ -1192,8 +1192,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const deleteHomeworkRecord = useCallback(
     (id: string) => {
       setHomework((prev) => prev.filter((r) => r.id !== id))
-      void persistWithReload(() => deleteHomework(id), '숙제 기록 삭제에 실패했습니다.')
-      showToast('숙제 기록이 삭제되었습니다.')
+      void persistWithReload(() => deleteHomework(id), '과제 기록 삭제에 실패했습니다.')
+      showToast('과제 기록이 삭제되었습니다.')
     },
     [handlePersistError, showToast],
   )

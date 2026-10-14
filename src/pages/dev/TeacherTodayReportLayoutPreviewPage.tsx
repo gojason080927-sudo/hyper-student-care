@@ -39,7 +39,7 @@ export function TeacherTodayReportLayoutPreviewPage() {
                 <div className="min-w-0 flex-1">
                   <p className="text-lg font-bold leading-tight">Today Report 입력</p>
                   <p className="mt-0.5 text-[12px] leading-[1.35] text-white/85">
-                    <span className="block break-keep">출결 · 숙제 · 교재준비</span>
+                    <span className="block break-keep">출결 · 과제 · 교재준비</span>
                     <span className="block break-keep">진도 · 일일테스트 · 수업태도</span>
                   </p>
                 </div>
@@ -116,8 +116,8 @@ export function TeacherTodayReportLayoutPreviewPage() {
             <div className="mb-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-bold text-[#163A70]">김하이퍼</p>
               <SectionVoiceInput
-                label="수학 개념 숙제 음성 입력"
-                chipLabel="숙제"
+                label="수학 개념 과제 음성 입력"
+                chipLabel="과제"
                 compact
                 explicitStop
                 onApply={() => ({
