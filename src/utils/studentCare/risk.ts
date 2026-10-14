@@ -97,7 +97,7 @@ export function scoreLessonRisk(
     points += RISK_PARTIAL_HOMEWORK
     reasons.push({
       date,
-      fact: homeworkCategory === 'incomplete' ? '숙제 미완료' : '숙제 부분완료',
+      fact: homeworkCategory === 'incomplete' ? '과제 미완료' : '과제 부분완료',
       points: RISK_PARTIAL_HOMEWORK,
     })
   }

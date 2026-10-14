@@ -272,7 +272,7 @@ const previewSummary: WeeklyLearningSummaryRecord = {
     },
   },
   goodText: '출석과 수업태도가 안정적이었습니다.',
-  checkText: '숙제 부분완료가 1회 있어 다음 주 마감 습관을 확인합니다.',
+  checkText: '과제 부분완료가 1회 있어 다음 주 마감 습관을 확인합니다.',
   teacherComment: '개념 정리는 잘 되고 있습니다. 계산 실수만 줄이면 됩니다.',
   createdAt: '',
   updatedAt: '',

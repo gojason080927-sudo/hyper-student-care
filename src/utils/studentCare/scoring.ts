@@ -112,26 +112,27 @@ export function materialPrepIndex(status: MaterialPrepStatus | null | undefined)
   return null
 }
 
-export function homeworkDayIndex(
+/** 하루 과제 상태 분류. 점수(HOMEWORK_INDEX) 값과 무관하게 상태로 직접 판단한다. */
+export function homeworkDayCategory(
   slotStatuses: Array<HomeworkTextbookEntry['status'] | HomeworkRecord['status'] | '' | null>,
-): number | null {
+): 'complete' | 'partial' | 'incomplete' | null {
   const categories = slotStatuses
     .map((status) => classifyHomeworkStatus(status))
     .filter((category) => category !== 'none')
   if (categories.length === 0) return null
-  if (categories.some((category) => category === 'incomplete')) return HOMEWORK_INDEX.incomplete
-  if (categories.some((category) => category === 'partial')) return HOMEWORK_INDEX.partial
-  if (categories.some((category) => category === 'complete')) return HOMEWORK_INDEX.complete
+  if (categories.some((category) => category === 'incomplete')) return 'incomplete'
+  if (categories.some((category) => category === 'partial')) return 'partial'
+  if (categories.some((category) => category === 'complete')) return 'complete'
   return null
 }
 
-export function homeworkDayCategory(
+export function homeworkDayIndex(
   slotStatuses: Array<HomeworkTextbookEntry['status'] | HomeworkRecord['status'] | '' | null>,
-): 'complete' | 'partial' | 'incomplete' | null {
-  const index = homeworkDayIndex(slotStatuses)
-  if (index === HOMEWORK_INDEX.complete) return 'complete'
-  if (index === HOMEWORK_INDEX.partial) return 'partial'
-  if (index === HOMEWORK_INDEX.incomplete) return 'incomplete'
+): number | null {
+  const category = homeworkDayCategory(slotStatuses)
+  if (category === 'incomplete') return HOMEWORK_INDEX.incomplete
+  if (category === 'partial') return HOMEWORK_INDEX.partial
+  if (category === 'complete') return HOMEWORK_INDEX.complete
   return null
 }
 

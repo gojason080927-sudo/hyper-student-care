@@ -327,7 +327,7 @@ function buildGoodText(input: {
     parts.push(`교재 지참 ${input.materialFacts.brought}회`)
   }
   if (input.homeworkFacts.complete > 0) {
-    parts.push(`숙제 완료 ${input.homeworkFacts.complete}회`)
+    parts.push(`과제 완료 ${input.homeworkFacts.complete}회`)
   }
   if (input.testPassCount > 0) {
     parts.push(`일일테스트 합격 ${input.testPassCount}/${input.testAttempts}회`)
@@ -359,10 +359,10 @@ function buildCheckText(input: {
     parts.push(`교재 부분지참 ${input.materialFacts.partial}회`)
   }
   if (input.homeworkFacts.partial > 0) {
-    parts.push(`숙제 부분완료 ${input.homeworkFacts.partial}회`)
+    parts.push(`과제 부분완료 ${input.homeworkFacts.partial}회`)
   }
   if (input.homeworkFacts.incomplete > 0) {
-    parts.push(`숙제 미완료 ${input.homeworkFacts.incomplete}회`)
+    parts.push(`과제 미완료 ${input.homeworkFacts.incomplete}회`)
   }
   if (input.testAttempts > 0 && input.testPassCount < input.testAttempts) {
     parts.push(`일일테스트 합격 ${input.testPassCount}/${input.testAttempts}회`)

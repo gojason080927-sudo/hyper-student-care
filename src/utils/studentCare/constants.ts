@@ -25,7 +25,7 @@ export const MATERIAL_INDEX = {
 
 export const HOMEWORK_INDEX = {
   complete: 100,
-  partial: 50,
+  partial: 100, // 부분 완료는 월간 점수와 같이 감점 없음. 부분 완료 횟수는 category로 따로 집계
   incomplete: 0,
 } as const
 

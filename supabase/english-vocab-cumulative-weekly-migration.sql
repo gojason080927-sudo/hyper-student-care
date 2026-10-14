@@ -252,7 +252,7 @@ BEGIN
     IF v_hw_cat = 'complete' THEN
       v_hw_vals := array_append(v_hw_vals, 100); v_hw_complete := v_hw_complete + 1;
     ELSIF v_hw_cat = 'partial' THEN
-      v_hw_vals := array_append(v_hw_vals, 50); v_hw_partial := v_hw_partial + 1;
+      v_hw_vals := array_append(v_hw_vals, 100); v_hw_partial := v_hw_partial + 1;
     ELSIF v_hw_cat = 'incomplete' THEN
       v_hw_vals := array_append(v_hw_vals, 0); v_hw_incomplete := v_hw_incomplete + 1;
     END IF;
@@ -383,7 +383,7 @@ BEGIN
   v_good := concat_ws(', ',
     CASE WHEN v_present > 0 THEN '출석 ' || v_present || '회' END,
     CASE WHEN v_brought > 0 THEN '교재 지참 ' || v_brought || '회' END,
-    CASE WHEN v_hw_complete > 0 THEN '숙제 완료 ' || v_hw_complete || '회' END,
+    CASE WHEN v_hw_complete > 0 THEN '과제 완료 ' || v_hw_complete || '회' END,
     CASE WHEN v_test_pass > 0 THEN '일일테스트 합격 ' || v_test_pass || '/' || coalesce(array_length(v_test_vals, 1), 0) || '회' END,
     CASE WHEN v_att_issue_count = 0 AND coalesce(array_length(v_dates, 1), 0) > 0 THEN '수업태도 문제 기록 없음' END
   );
@@ -395,8 +395,8 @@ BEGIN
     CASE WHEN v_unexcused_late > 0 THEN '무단지각 ' || v_unexcused_late || '회' END,
     CASE WHEN v_unexcused_absent > 0 THEN '무단결석 ' || v_unexcused_absent || '회' END,
     CASE WHEN v_partial_mat > 0 THEN '교재 부분지참 ' || v_partial_mat || '회' END,
-    CASE WHEN v_hw_partial > 0 THEN '숙제 부분완료 ' || v_hw_partial || '회' END,
-    CASE WHEN v_hw_incomplete > 0 THEN '숙제 미완료 ' || v_hw_incomplete || '회' END,
+    CASE WHEN v_hw_partial > 0 THEN '과제 부분완료 ' || v_hw_partial || '회' END,
+    CASE WHEN v_hw_incomplete > 0 THEN '과제 미완료 ' || v_hw_incomplete || '회' END,
     CASE WHEN v_sleep > 0 THEN '졸음 ' || v_sleep || '회' END,
     CASE WHEN v_focus > 0 THEN '집중 저하 ' || v_focus || '회' END,
     CASE WHEN v_chat > 0 THEN '잡담 ' || v_chat || '회' END,
