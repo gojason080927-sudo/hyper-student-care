@@ -8,7 +8,7 @@ import type {
 export const WEEKLY_AREA_LABELS: Record<WeeklySummaryAreaKey, string> = {
   attendance: '출결',
   material: '교재 준비',
-  homework: '숙제 수행',
+  homework: '과제 수행',
   dailyTest: '일일테스트',
   attitude: '수업태도',
 }

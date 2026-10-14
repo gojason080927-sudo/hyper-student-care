@@ -15,7 +15,7 @@ export function ParentStudentHomeworkPage() {
 
   return (
     <div className="parent-page space-y-5 pb-6">
-      <ParentPageHeader title="숙제" description="숙제 수행 상태를 확인합니다." />
+      <ParentPageHeader title="숙제" description="과제 수행 상태를 확인합니다." />
 
       {homework.length === 0 ? (
         <ParentEmptyState />

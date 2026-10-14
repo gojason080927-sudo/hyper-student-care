@@ -96,10 +96,10 @@ export function parseAttendanceStatusPhrase(clause: string): AttendanceStatus | 
 
 export function parseHomeworkStatusPhrase(
   clause: string,
-): HomeworkStatus | 'ambiguous' | 'blocked' | null {
+): HomeworkStatus | 'ambiguous' | null {
   const compact = compactText(clause)
   if (/애매|별로야|별로임|좀그랬/.test(compact)) return 'ambiguous'
-  if (/미완료|안함|미제출/.test(compact)) return 'blocked'
+  if (/미완료|안함|미제출/.test(compact)) return '미완료'
   if (
     /부분완료|일부완료|일부만했|일부했|조금했|조금덜|덜했|다못했|반만했|미완성|거의다했/.test(compact)
   ) {

@@ -940,7 +940,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         : homework.find((r) => r.studentId === data.studentId && r.date === data.date)
       const resolvedStatus = resolveHomeworkStatusForSave(data.status, existing?.status)
       if (resolvedStatus === '') {
-        showToast('숙제 수행은 완료 또는 부분 완료만 저장할 수 있습니다.')
+        showToast('과제 수행 결과를 완료 / 부분 완료 / 미완료 중에서 선택해 주세요.')
         return false
       }
       const normalizedData = {

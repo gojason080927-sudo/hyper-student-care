@@ -11,7 +11,7 @@ import '../../styles/teacherMobileTheme.css'
 
 const SECTION_ORDER = [
   '출결',
-  '숙제 수행 결과',
+  '과제 수행 결과',
   '반 공통 오늘 과제',
   '교재 준비',
   '반 공통 오늘의 진도',
@@ -112,7 +112,7 @@ export function TeacherTodayReportLayoutPreviewPage() {
           </section>
 
           <section className="tm-card px-3 py-3" data-preview-block="homework">
-            <h2 className="mb-2 text-sm font-bold text-[#163A70]">숙제 수행 결과</h2>
+            <h2 className="mb-2 text-sm font-bold text-[#163A70]">과제 수행 결과</h2>
             <div className="mb-2 flex min-w-0 flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-bold text-[#163A70]">김하이퍼</p>
               <SectionVoiceInput

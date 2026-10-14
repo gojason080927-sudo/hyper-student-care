@@ -215,10 +215,10 @@ function computeMathCauseRawScore(
   )
 }
 
-/** 과제 수행 습관 / 과제 성실도 공통 감점 (최대 -10) */
+/** 과제 수행 습관 / 과제 성실도 공통 감점 (최대 -10). 부분 완료는 감점 없음, 미완료는 건당 -1 */
 function computeHomeworkDeduction(counts: MonthlyLearningCounts): number {
   return Math.min(
-    counts.partialHomeworkCount * 0.5 + counts.incompleteHomeworkCount * 1,
+    counts.partialHomeworkCount * 0 + counts.incompleteHomeworkCount * 1,
     10,
   )
 }

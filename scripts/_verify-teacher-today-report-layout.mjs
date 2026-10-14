@@ -19,7 +19,7 @@ const VIEWPORTS = [
 const ARTIFACT_DIR = '/opt/cursor/artifacts/teacher-today-report-layout'
 const EXPECTED_ORDER = [
   '출결',
-  '숙제 수행 결과',
+  '과제 수행 결과',
   '반 공통 오늘 과제',
   '교재 준비',
   '반 공통 오늘의 진도',

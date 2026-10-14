@@ -45,7 +45,7 @@ type ReportSection =
 
 const CLASS_SCOPED_SECTIONS: { id: ReportSection; label: string }[] = [
   { id: 'attendance', label: '출결' },
-  { id: 'homework', label: '숙제 수행 결과' },
+  { id: 'homework', label: '과제 수행 결과' },
   { id: 'classTodayHomework', label: '반 공통 오늘 과제' },
   { id: 'materialPrep', label: '교재 준비' },
   { id: 'progress', label: '반 공통 오늘의 진도' },

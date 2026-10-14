@@ -139,7 +139,7 @@ export function HomeworkPage() {
     <div className="space-y-6">
       <PageHeader
         title="숙제관리"
-        description="학생별 숙제 수행 상태를 기록합니다."
+        description="학생별 과제 수행 상태를 기록합니다."
         action={
           <button
             type="button"

@@ -39,30 +39,21 @@ export function normalizeHomeworkStatus(status: unknown): HomeworkStatus {
 }
 
 export function isHomeworkInputStatus(status: unknown): status is HomeworkStatus {
-  return status === '완료' || status === '부분 완료'
+  return status === '완료' || status === '부분 완료' || status === '미완료'
 }
 
 /**
- * 신규 저장: 완료 / 부분 완료만 허용.
- * 기존 row가 미완료이면 그 값만 보존한다. 빈 값·미선택을 미완료로 바꾸지 않는다.
+ * 저장: 완료 / 부분 완료 / 미완료를 모두 선택해 저장할 수 있다.
+ * 선택값이 없으면 기존 row의 값을 보존하고, 빈 값·미선택을 미완료로 바꾸지 않는다.
  */
 export function resolveHomeworkStatusForSave(
   next: unknown,
   existing?: unknown,
 ): HomeworkStatus | '' {
   const nextSelected = resolveSelectedHomeworkStatus(next)
+  if (nextSelected) return nextSelected
   const existingSelected = resolveSelectedHomeworkStatus(existing)
-  if (!nextSelected) {
-    if (existingSelected === '미완료') return '미완료'
-    return isHomeworkInputStatus(existingSelected) ? existingSelected : ''
-  }
-  if (isHomeworkInputStatus(nextSelected)) return nextSelected
-  if (nextSelected === '미완료' && existingSelected === '미완료') return '미완료'
-  return isHomeworkInputStatus(existingSelected)
-    ? existingSelected
-    : existingSelected === '미완료'
-      ? '미완료'
-      : ''
+  return existingSelected ?? ''
 }
 
 export function matchesHomeworkStatus(
@@ -97,7 +88,7 @@ export function homeworkRecordToSavePayload(
 ): Omit<HomeworkRecord, 'id' | 'createdAt' | 'updatedAt'> & { id?: string } {
   const status = resolveHomeworkStatusForSave(data.status, data.existingStatus)
   if (status === '') {
-    throw new Error('숙제 수행은 완료 또는 부분 완료만 저장할 수 있습니다.')
+    throw new Error('과제 수행 결과를 완료 / 부분 완료 / 미완료 중에서 선택해 주세요.')
   }
   return {
     id: data.id,

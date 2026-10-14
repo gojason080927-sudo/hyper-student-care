@@ -99,7 +99,7 @@ export function MonthlyLearningProgressSection({
         <ul className="space-y-1 text-sm text-slate-700">
           {SCORE_DEDUCTION_RULES.map((rule) => (
             <li key={rule.label}>
-              {rule.label} : -{rule.points}점
+              {rule.label} : {rule.points === 0 ? '감점 없음' : `-${rule.points}점`}
             </li>
           ))}
         </ul>

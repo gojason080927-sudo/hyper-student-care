@@ -21,6 +21,9 @@ export type MonthlyLearningCounts = {
 
 export type ComprehensiveGrade = '부족' | '양호' | '우수' | '매우 우수'
 
+/** 과제 부분 완료 1회당 감점 (월간 종합평가) */
+const PARTIAL_HOMEWORK_DEDUCTION = 0
+
 export type MonthlyLearningProgress = {
   counts: MonthlyLearningCounts
   deduction: number
@@ -219,10 +222,11 @@ export function aggregateMonthlyLearningCounts(input: {
   }
 }
 
+/** 과제 부분 완료는 감점 없음(0점), 과제 미완료는 -2점 */
 export function calculateTotalDeduction(counts: MonthlyLearningCounts): number {
   return (
     counts.lateCount +
-    counts.partialHomeworkCount +
+    counts.partialHomeworkCount * PARTIAL_HOMEWORK_DEDUCTION +
     counts.incompleteHomeworkCount * 2 +
     counts.testPass2Count +
     counts.testPass3Count * 2 +
@@ -278,7 +282,7 @@ export function getComprehensiveGrade(score: number): ComprehensiveGrade {
 export const SCORE_DEDUCTION_RULES = [
   { label: '지각', points: 1, applies: true },
   { label: '무단 결석', points: 3, applies: false },
-  { label: '과제 부분 완료', points: 1, applies: true },
+  { label: '과제 부분 완료', points: 0, applies: true },
   { label: '과제 미완료', points: 2, applies: true },
   { label: '일일테스트 2차시 통과', points: 1, applies: true },
   { label: '일일테스트 3차시 통과', points: 2, applies: true },

@@ -75,11 +75,6 @@ export function TeacherMobileHomeworkStatusButtons({
           )
         })}
       </div>
-      {current === '미완료' ? (
-        <p className={`text-[#64748B] ${compact ? 'mt-1 text-xs' : 'mt-1.5 text-sm'}`}>
-          기존 기록: 미완료 (신규 입력은 완료 / 부분 완료만 가능)
-        </p>
-      ) : null}
       {error && (
         <p className={`text-[#EF4444] ${compact ? 'mt-1 text-xs' : 'mt-1.5 text-sm'}`}>{error}</p>
       )}

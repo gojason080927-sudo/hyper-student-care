@@ -122,8 +122,8 @@ assert.equal(homeworkParsed.assignments.find((row) => row.studentId === 'minjae'
 assert.ok(homeworkParsed.skippedAbsentIds.includes('minjae'))
 
 const incompleteHw = parseHomeworkVoice('전원 미완료', students, new Set())
-assert.equal(incompleteHw.assignments.length, 0)
-assert.ok(incompleteHw.needsReview.length > 0)
+assert.ok(incompleteHw.assignments.length > 0)
+assert.ok(incompleteHw.assignments.every((row) => row.status === '미완료'))
 
 // C. 교재 + 결석 제외
 const materialParsed = parseMaterialVoice(
@@ -1169,7 +1169,7 @@ for (const phrase of ['저장', '완료', '저장해줘', '끝', '확인', '오�
 assert.equal(detectBrowserSpeechSupport(), 'unsupported')
 assert.match(
   readFileSync('src/components/todayReport/ClassHomeworkStatusBulkPanel.tsx', 'utf8'),
-  /숙제 수행 결과 전체 저장/,
+  /과제 수행 결과 전체 저장/,
 )
 assert.match(
   readFileSync('src/components/todayReport/ClassAttendanceBulkPanel.tsx', 'utf8'),

@@ -11,13 +11,14 @@ import {
   resolveSelectedHomeworkStatus,
 } from './homework.ts'
 
-assert.deepEqual(HOMEWORK_INPUT_STATUSES, ['완료', '부분 완료'])
-assert.equal(HOMEWORK_INPUT_STATUSES.includes('미완료'), false)
+assert.deepEqual(HOMEWORK_INPUT_STATUSES, ['완료', '부분 완료', '미완료'])
+assert.equal(HOMEWORK_INPUT_STATUSES.includes('미완료'), true)
 assert.deepEqual(HOMEWORK_STATUSES, ['완료', '부분 완료', '미완료'])
 
-assert.equal(resolveHomeworkStatusForSave('미완료', undefined), '')
-assert.equal(resolveHomeworkStatusForSave('미완료', ''), '')
-assert.equal(resolveHomeworkStatusForSave('미완료', '완료'), '완료')
+// 미완료도 신규 입력으로 저장할 수 있다. 빈 값·미선택은 미완료로 바뀌지 않는다.
+assert.equal(resolveHomeworkStatusForSave('미완료', undefined), '미완료')
+assert.equal(resolveHomeworkStatusForSave('미완료', ''), '미완료')
+assert.equal(resolveHomeworkStatusForSave('미완료', '완료'), '미완료')
 assert.equal(resolveHomeworkStatusForSave('미완료', '미완료'), '미완료')
 assert.equal(resolveHomeworkStatusForSave('완료', '미완료'), '완료')
 assert.equal(resolveHomeworkStatusForSave('부분 완료', undefined), '부분 완료')
@@ -56,16 +57,27 @@ assert.equal(
   '미완료',
 )
 
+assert.equal(
+  homeworkRecordToSavePayload({
+    studentId: 's1',
+    date: '2026-09-14',
+    content: '신규',
+    status: '미완료',
+    teacherMemo: '',
+  }).status,
+  '미완료',
+)
+
 assert.throws(
   () =>
     homeworkRecordToSavePayload({
       studentId: 's1',
       date: '2026-09-14',
-      content: '신규',
-      status: '미완료',
+      content: '선택 없음',
+      status: '',
       teacherMemo: '',
     }),
-  /완료 또는 부분 완료만/,
+  /완료 \/ 부분 완료 \/ 미완료 중에서 선택/,
 )
 
 const pickerFiles = [
@@ -77,7 +89,7 @@ for (const file of pickerFiles) {
   const source = readFileSync(file, 'utf8')
   assert.match(source, /HOMEWORK_INPUT_STATUSES/)
   assert.doesNotMatch(source, /HOMEWORK_STATUSES\.map/)
-  assert.match(source, /기존 기록: 미완료/)
+  assert.doesNotMatch(source, /신규 입력은 완료 \/ 부분 완료만 가능/)
 }
 
 console.log('homeworkInput OK')

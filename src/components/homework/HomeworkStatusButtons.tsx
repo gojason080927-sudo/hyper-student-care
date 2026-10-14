@@ -89,11 +89,6 @@ export function HomeworkStatusButtons({
           )
         })}
       </div>
-      {current === '미완료' ? (
-        <p className={`text-slate-500 ${compact ? 'mt-1 text-xs' : 'mt-1.5 text-sm'}`}>
-          기존 기록: 미완료 (신규 입력은 완료 / 부분 완료만 가능)
-        </p>
-      ) : null}
       {error && <p className={`text-rose-500 ${compact ? 'mt-1 text-xs' : 'mt-1.5 text-sm'}`}>{error}</p>}
     </div>
   )

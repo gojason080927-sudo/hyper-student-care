@@ -239,7 +239,7 @@ export function ClassHomeworkStatusBulkPanel({
         showToast('결석 학생은 숙제 입력 대상이 아닙니다.')
         return
       }
-      showToast('숙제 수행 결과를 선택해주세요.')
+      showToast('과제 수행 결과를 선택해주세요.')
       return
     }
 
@@ -311,11 +311,11 @@ export function ClassHomeworkStatusBulkPanel({
           className,
           failures,
         })
-        showToast('숙제 수행 결과 저장에 실패했습니다.')
+        showToast('과제 수행 결과 저장에 실패했습니다.')
         return
       }
 
-      showToast('숙제 수행 결과가 저장되었습니다.')
+      showToast('과제 수행 결과가 저장되었습니다.')
     } finally {
       setSaving(false)
     }
@@ -449,7 +449,7 @@ export function ClassHomeworkStatusBulkPanel({
         disabled={saving || students.length === 0}
         className={compact ? 'tm-btn-primary w-full min-h-11' : `${btnPrimary} w-full`}
       >
-        {saving ? '저장 중…' : '숙제 수행 결과 전체 저장'}
+        {saving ? '저장 중…' : '과제 수행 결과 전체 저장'}
       </button>
     </div>
   )

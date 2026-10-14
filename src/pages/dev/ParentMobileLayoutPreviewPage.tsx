@@ -405,7 +405,7 @@ export function ParentMobileLayoutPreviewPage() {
               evaluation={<PriorDayLearningEvaluationRow result={previewEvaluation} />}
             />
             <section className="rounded-2xl border border-slate-200 bg-white px-3.5 py-3 shadow-sm">
-              <h2 className="text-base font-bold text-navy-900">숙제 수행 결과</h2>
+              <h2 className="text-base font-bold text-navy-900">과제 수행 결과</h2>
               <div className="mt-2">
                 <ParentSubjectSlotList subject="수학">
                   <ParentHomeworkSlotCard

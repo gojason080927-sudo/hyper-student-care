@@ -78,7 +78,7 @@ function parseExcuseKind(clause: string): {
 
 function parseHomeworkStatus(clause: string): HomeworkStatus | null {
   const parsed = parseHomeworkStatusPhrase(clause)
-  if (parsed === '부분 완료' || parsed === '완료') return parsed
+  if (parsed === '부분 완료' || parsed === '완료' || parsed === '미완료') return parsed
   return null
 }
 
@@ -411,12 +411,6 @@ export function parseHomeworkVoice(
       }))
     }
     if (value !== null) return []
-    if (parsedStatus === 'blocked') {
-      return (ids.length > 0 ? ids : ['*']).map((id) => ({
-        label: studentById(students, id)?.name ?? '숙제',
-        reason: '신규 입력은 완료/부분 완료만 허용',
-      }))
-    }
     return []
   })
   const finished = finishStudentAssignments(

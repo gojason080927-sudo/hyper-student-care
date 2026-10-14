@@ -323,7 +323,7 @@ export function TeacherTodayReportBulkPage() {
           </section>
 
           <section className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-            <h3 className="mb-2 text-sm font-bold text-navy-900">숙제 수행 결과</h3>
+            <h3 className="mb-2 text-sm font-bold text-navy-900">과제 수행 결과</h3>
             <ClassHomeworkStatusBulkPanel
               key={`pc-class-homework-status-${date}-${className}`}
               date={date}

@@ -1757,7 +1757,7 @@ function HomeworkAssignmentSection({
   const hasReadContent = hasHomeworkDisplayData(homeworkRecord, displayToday)
 
   return (
-    <SectionCard title="숙제 수행 결과" teacherCompact={teacherCompact}>
+    <SectionCard title="과제 수행 결과" teacherCompact={teacherCompact}>
       {readOnly ? (
         <ParentReadOnlyBody
           hasData={hasReadContent}

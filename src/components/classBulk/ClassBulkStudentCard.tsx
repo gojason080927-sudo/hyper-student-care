@@ -23,7 +23,6 @@ import {
 } from '../../utils/labels'
 import { homeworkStatusStyles } from '../homework/HomeworkStatusButtons'
 import { HomeworkResultEditor } from '../homework/HomeworkResultFields'
-import { resolveSelectedHomeworkStatus } from '../../utils/homework'
 import { TODAY_REPORT_CONTENT_INPUT_EMPHASIS_CLASS } from '../../utils/homeworkCardTypography'
 
 export type ClassBulkCardSyncStatus = 'unsaved' | 'saved' | 'modified' | 'failed'
@@ -249,11 +248,6 @@ export function ClassBulkStudentCard({
                     />
                   ))}
                 </div>
-                {resolveSelectedHomeworkStatus(draft.homeworkStatus) === '미완료' ? (
-                  <p className="text-[11px] text-slate-500">
-                    기존 기록: 미완료 (신규 입력은 완료 / 부분 완료만 가능)
-                  </p>
-                ) : null}
               </div>
             }
             todayControls={

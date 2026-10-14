@@ -258,7 +258,7 @@ export function TextbookSlotHomeworkSection({
 
     if (displays.length === 0) {
       return (
-        <SectionCard title="숙제 수행 결과" hideTitle={hideTitle}>
+        <SectionCard title="과제 수행 결과" hideTitle={hideTitle}>
           <p className="text-sm text-slate-400">
             {readOnly && !allowCarryForward
               ? '해당 날짜에 등록된 숙제 정보가 없습니다.'
@@ -270,7 +270,7 @@ export function TextbookSlotHomeworkSection({
 
     const grouped = groupHomeworkBySubject(filterParentVisibleSlotDisplays(displays))
     return (
-      <SectionCard title="숙제 수행 결과" hideTitle={hideTitle}>
+      <SectionCard title="과제 수행 결과" hideTitle={hideTitle}>
         <div className="space-y-4">
           {subjectsToRender.map((subject) => {
             const items = grouped[subject]
@@ -424,7 +424,7 @@ export function TextbookSlotHomeworkSection({
   }
 
   return (
-    <SectionCard title="숙제 수행 결과" hideTitle={hideTitle}>
+    <SectionCard title="과제 수행 결과" hideTitle={hideTitle}>
       <div className="space-y-3">
         {subjectsToRender.map((subject) => (
           <div key={subject} lang="ko">
