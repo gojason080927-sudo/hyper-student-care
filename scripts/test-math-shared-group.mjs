@@ -7,7 +7,7 @@ const CLASS_OPTIONS_BY_GRADE = {
   중1: ['중1 수학', '중1 영어', '중1 영수A', '중1 영수B'],
   중3: ['중3 수학A', '중3 수학B', '중3 영어', '중3 영수A', '중3 영수B'],
   고1: ['고1 수학A', '고1 수학B', '고1 영어', '고1 영수A', '고1 영수B'],
-  중2: ['중2 수학', '중2 영어', '중2 영수'],
+  중2: ['중2 수학A', '중2 수학B', '중2 영어', '중2 영수'],
 }
 
 function gradeHasMathAbLinkStructure(grade) {
@@ -103,7 +103,7 @@ test('고1 수학B ↔ 영수B', () => {
 test('중1·중2 연동 없음', () => {
   assert.equal(getMathSharedGroupKey('중1', '중1 수학'), null)
   assert.equal(getMathSharedGroupKey('중1', '중1 영수A'), null)
-  assert.deepEqual(getMathSharedLinkedClassNames('중2', '중2 수학'), ['중2 수학'])
+  assert.deepEqual(getMathSharedLinkedClassNames('중2', '중2 수학A'), ['중2 수학A'])
 })
 
 test('영어는 반 단위 lookup', () => {
