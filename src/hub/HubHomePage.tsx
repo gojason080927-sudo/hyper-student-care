@@ -16,6 +16,8 @@ import {
 import { HubInstallGuide } from '../components/hub/HubInstallGuide'
 import { StudentPushOptIn } from '../components/hub/StudentPushOptIn'
 import { useHub } from './HubContext'
+import { HubWeekCalendar } from './HubWeekCalendar'
+import { heroMetaLabel } from './hubWeekDates'
 import { HUB_ACADEMY_LOGO_PNG, HUB_ACADEMY_LOGO_WEBP } from './types'
 
 const tiles = [
@@ -48,7 +50,7 @@ export function HubHomePage() {
     }
   }, [assignments.length, inbox, materials.length, notices, questions, videos.length])
 
-  const meta = [student.school, student.grade, student.className].filter(Boolean).join(' · ')
+  const meta = heroMetaLabel(student)
 
   return (
     <div className="hub-home mx-auto w-full max-w-lg px-3 pb-10">
@@ -65,13 +67,15 @@ export function HubHomePage() {
               decoding="async"
             />
           </picture>
-          <p className="hub-hero-kicker">HYPER ACADEMY</p>
-          <h1 className="hub-hero-title">학습 허브</h1>
         </div>
-        <div className="hub-hero-identity">
-          <p className="hub-hero-name">{student.name}</p>
-          {meta ? <p className="hub-hero-meta">{meta}</p> : null}
+        <div className="hub-hero-identity hub-hero-row">
+          <h1 className="hub-hero-title hub-hero-title-left">학습 허브</h1>
+          <p className="hub-hero-who">
+            <span className="hub-hero-name">{student.name}</span>
+            {meta ? <span className="hub-hero-meta">{meta}</span> : null}
+          </p>
         </div>
+        <HubWeekCalendar />
       </section>
 
       <nav aria-label="학생 학습 허브" className="hub-menu-grid grid grid-cols-3">

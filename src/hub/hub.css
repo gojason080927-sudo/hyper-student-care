@@ -609,3 +609,146 @@
 .hub-page-header-title {
   color: var(--hub-navy);
 }
+
+/* ── 학생앱 상단 카드: 학습 허브 + 이름 한 줄, 이번 주 한 줄 달력 (학부모·강사 허브와 공유하는 기존 규칙은 그대로 두고 새 클래스만 추가) ── */
+.hub-hero-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.7rem;
+  padding-left: 0.3rem;
+  padding-right: 0.3rem;
+  text-align: left;
+}
+
+.hub-hero-title-left {
+  flex: 0 0 auto;
+  margin-top: 0.1rem;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.hub-hero-who {
+  flex: 1 1 0;
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: flex-end;
+  column-gap: 0.45rem;
+  text-align: right;
+}
+
+.hub-hero-who .hub-hero-name {
+  font-size: 1.22rem;
+  font-weight: 800;
+}
+
+.hub-hero-who .hub-hero-meta {
+  margin-top: 0;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--hub-muted);
+  opacity: 0.85;
+}
+
+.hub-week {
+  position: relative;
+  z-index: 1;
+  margin-top: 0.7rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid rgba(91, 52, 138, 0.12);
+}
+
+.hub-week-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.hub-week-label {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--hub-navy);
+}
+
+.hub-week-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  color: var(--hub-purple);
+}
+
+.hub-week-arrow svg {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+
+.hub-week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 0.1rem;
+  margin-top: 0.35rem;
+}
+
+.hub-week-day {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.12rem;
+  min-height: 3.5rem;
+  padding: 0.32rem 0 0.24rem;
+  border-radius: 12px;
+}
+
+.hub-week-day.is-selected {
+  background: rgba(91, 52, 138, 0.08);
+}
+
+.hub-week-dow {
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--hub-muted);
+}
+
+.hub-week-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 999px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--hub-navy);
+}
+
+.hub-week-day.is-today .hub-week-num {
+  background: var(--hub-purple);
+  color: #fff;
+}
+
+.hub-week-day.is-selected .hub-week-num {
+  box-shadow: 0 0 0 2px var(--hub-purple);
+}
+
+.hub-week-day.is-today.is-selected .hub-week-num {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px var(--hub-purple);
+}
+
+.hub-week-dot {
+  width: 0.32rem;
+  height: 0.32rem;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.hub-week-dot.is-on {
+  background: var(--hub-purple);
+}

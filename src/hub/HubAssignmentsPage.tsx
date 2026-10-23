@@ -1,9 +1,15 @@
+import { useSearchParams } from 'react-router-dom'
 import { formatKoreanDate } from '../utils/date'
 import { HubEmpty, HubPageHeader } from './HubChrome'
 import { useHub } from './HubContext'
+import { HubDayAssignmentsView } from './HubDayAssignmentsView'
+import { isYmd } from './hubWeekDates'
 
 export function HubAssignmentsPage() {
   const { assignments } = useHub()
+  const [searchParams] = useSearchParams()
+  const dateParam = searchParams.get('date')
+  if (isYmd(dateParam)) return <HubDayAssignmentsView date={dateParam} />
   return (
     <div className="mx-auto w-full max-w-lg px-3 pb-8 pt-4">
       <HubPageHeader title="오늘의 과제" />
