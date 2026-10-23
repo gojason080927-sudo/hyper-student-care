@@ -612,24 +612,25 @@
 
 /* ── 학생앱 상단 카드: 학습 허브 + 이름 한 줄, 이번 주 한 줄 달력 (학부모·강사 허브와 공유하는 기존 규칙은 그대로 두고 새 클래스만 추가) ── */
 .hub-hero-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: center;
-  justify-content: center;
-  gap: 0.85rem;
+  column-gap: 0;
   padding-left: 0.3rem;
   padding-right: 0.3rem;
   text-align: left;
 }
 
 .hub-hero-title-left {
-  flex: 0 0 auto;
+  justify-self: end;
   margin-top: 0;
+  padding-right: 0.85rem;
   white-space: nowrap;
-  text-align: left;
+  text-align: right;
 }
 
 .hub-hero-who {
-  flex: 0 1 auto;
+  justify-self: start;
   min-width: 0;
   margin: 0;
   padding-left: 0.85rem;
