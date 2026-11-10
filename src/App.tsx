@@ -19,6 +19,7 @@ import { DailyTestPage } from './pages/DailyTestPage'
 
 import { DashboardPage } from './pages/DashboardPage'
 import { TeacherWorksheetPage } from './pages/teacher/TeacherWorksheetPage'
+import { TeacherOdapBankPage } from './pages/teacher/TeacherOdapBankPage'
 
 import { HomeworkPage } from './pages/HomeworkPage'
 
@@ -560,6 +561,8 @@ function App() {
           <Route index element={<DashboardPage />} />
 
           <Route path="teacher/worksheet" element={<TeacherWorksheetPage />} />
+
+          <Route path="teacher/odap-bank" element={<TeacherOdapBankPage />} />
 
           <Route path="students" element={<StudentsPage />} />
 
