@@ -56,3 +56,45 @@ export const inset: CSSProperties = {
   boxShadow: 'inset 0 2px 4px rgba(23,22,28,0.06)',
   borderRadius: 12,
 }
+
+/** 고른 칸(어두운 토글) */
+export const toggleOn: CSSProperties = {
+  border: '1px solid #17161C',
+  ...darkTile,
+  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 0 #000000, 0 8px 16px rgba(23,22,28,0.22)',
+}
+
+/** 안 고른 칸(흰 토글) */
+export const toggleOff: CSSProperties = {
+  border: '1px solid #DCD9E6',
+  backgroundColor: '#FFFFFF',
+  backgroundImage: 'linear-gradient(180deg, #FFFFFF, #EFEEF4)',
+  boxShadow: 'inset 0 1px 0 #FFFFFF, 0 2px 0 #D0CDDB, 0 4px 10px rgba(23,22,28,0.06)',
+}
+
+/** 연한 하늘색 칩·작은 버튼 */
+export const softChip: CSSProperties = {
+  border: '1px solid #A9E8F7',
+  backgroundColor: '#E3F8FD',
+  backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.85), rgba(255,255,255,0) 55%, rgba(0,176,214,0.3))',
+  boxShadow: 'inset 0 1px 0 #FFFFFF, 0 2px 0 #9EDDEC',
+  color: '#006E8A',
+}
+
+/** 흰 패널 */
+export const panel: CSSProperties = { background: '#FFFFFF', borderRadius: 20, border: '1px solid #ECEAF3', padding: 22 }
+
+/** 깊은 입력 칸 */
+export const field: CSSProperties = {
+  border: '1px solid #DCD9E6',
+  background: '#FFFFFF',
+  boxShadow: 'inset 0 2px 5px rgba(23,22,28,0.08)',
+  borderRadius: 12,
+}
+
+/** 상단 어두운 막대의 단계 표시 */
+export const stepOff: CSSProperties = {
+  backgroundColor: '#26232F',
+  backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.22), rgba(255,255,255,0) 50%, rgba(0,209,255,0.28))',
+  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.14), 0 2px 0 #000000',
+}

@@ -18,6 +18,7 @@ import { AttendancePage } from './pages/AttendancePage'
 import { DailyTestPage } from './pages/DailyTestPage'
 
 import { DashboardPage } from './pages/DashboardPage'
+import { TeacherWorksheetPage } from './pages/teacher/TeacherWorksheetPage'
 
 import { HomeworkPage } from './pages/HomeworkPage'
 
@@ -557,6 +558,8 @@ function App() {
         <Route element={<AppLayout />}>
 
           <Route index element={<DashboardPage />} />
+
+          <Route path="teacher/worksheet" element={<TeacherWorksheetPage />} />
 
           <Route path="students" element={<StudentsPage />} />
 
