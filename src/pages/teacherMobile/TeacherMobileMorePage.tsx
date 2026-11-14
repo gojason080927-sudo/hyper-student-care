@@ -11,6 +11,7 @@ import {
   Megaphone,
   Monitor,
   Compass,
+  School,
   TrendingUp,
 } from 'lucide-react'
 import { TeacherMobileHeader } from '../../components/teacherMobile/TeacherMobileHeader'
@@ -18,6 +19,7 @@ import { TeacherMobileHeader } from '../../components/teacherMobile/TeacherMobil
 const links = [
   { to: '/teacher/mobile/monthly-learning-reports', label: '월간 학습진단 REPORT', icon: FileBarChart2 },
   { to: '/entrance-exam', label: '신입생 평가 및 성향 진단', icon: ClipboardCheck },
+  { to: '/teacher/mobile/admission-analysis', label: '대입 내신 분석', icon: School },
   { to: '/teacher/mobile/career-assessment', label: '진로·학과 적성검사', icon: Compass },
   { to: '/teacher/mobile/notices', label: '학습정보 & 공지사항', icon: Megaphone },
   { to: '/teacher/mobile/makeup', label: '보강계획', icon: CalendarCheck },

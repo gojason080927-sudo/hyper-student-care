@@ -5,8 +5,10 @@ import {
   FileBarChart2,
   MessageCircleQuestion,
   Newspaper,
-  Compass,
+  BookOpen,
   GraduationCap,
+  Compass,
+  School,
   Users,
 } from 'lucide-react'
 import { CategoryCard } from '../components/dashboard/CategoryCard'
@@ -40,6 +42,18 @@ const categories = [
     title: '신입생 평가 및\n성향 진단',
     description: '문제은행 · 시험지 · 응시 · 종합진단 REPORT',
     icon: ClipboardCheck,
+  },
+  {
+    to: '/admission-analysis',
+    title: '대입 내신 분석',
+    description: '석차백분율 · 5등급 예상 · 9등급 환산 참고',
+    icon: School,
+  },
+  {
+    to: '/regular-admission-analysis',
+    title: '정시 대입 분석',
+    description: '수능 성적 · 2025 정시 입결 추천',
+    icon: BookOpen,
   },
   {
     to: '/career-assessment',

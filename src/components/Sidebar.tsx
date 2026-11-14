@@ -8,8 +8,10 @@ import {
   LayoutDashboard,
   MessageCircleQuestion,
   Newspaper,
-  Compass,
+  BookOpen,
   GraduationCap,
+  Compass,
+  School,
   Users,
   X,
 } from 'lucide-react'
@@ -60,6 +62,16 @@ const navItems: NavItem[] = [
     label: '신입생 평가 및 성향 진단',
     multilineLabel: ['신입생 평가 및', '성향 진단'],
     icon: ClipboardCheck,
+  },
+  {
+    path: '/admission-analysis',
+    label: '대입 내신 분석',
+    icon: School,
+  },
+  {
+    path: '/regular-admission-analysis',
+    label: '정시 대입 분석',
+    icon: BookOpen,
   },
   {
     path: '/career-assessment',

@@ -1,0 +1,593 @@
+import type {
+  AdmissionGroup,
+  AveragePercentileRule,
+  CalculationType,
+  DomainKey,
+  RegularAdmissionMasterRow,
+  RegularFieldTrack,
+  RegularRegion,
+  ResultType,
+} from '../../lib/admissions/regular/types'
+import {
+  AveragePercentileRule as AvgRule,
+  CalculationType as Calc,
+  EnglishCalculationType,
+  InquiryRequiredType,
+  InquiryRule,
+  MathRequiredSelection,
+  ResultType as Res,
+} from '../../lib/admissions/regular/types'
+
+const SOURCE =
+  'HYPER 정시 MASTER engine seed (단위테스트용 · production 추천에서는 사용하지 않음)'
+
+const GRADE_TABLE = {
+  scores: { 1: 100, 2: 96, 3: 90, 4: 80, 5: 70, 6: 60, 7: 50, 8: 40, 9: 30 },
+} as const
+
+type SeedOverride = Partial<RegularAdmissionMasterRow> &
+  Pick<RegularAdmissionMasterRow, 'id' | 'university' | 'department'>
+
+function defineRow(o: SeedOverride): RegularAdmissionMasterRow {
+  return {
+    campus: o.campus ?? '본교',
+    admissionGroup: o.admissionGroup ?? '가',
+    admissionType: o.admissionType ?? '수능위주',
+    region: o.region ?? '서울',
+    year: o.year ?? 2025,
+    recruitmentCount: o.recruitmentCount ?? 30,
+    competitionRate: o.competitionRate ?? 5.2,
+    resultType: o.resultType ?? Res.SUBJECT_PERCENTILE_70,
+    calculationType: o.calculationType ?? Calc.WEIGHTED_PERCENTILE,
+    korean70: o.korean70 ?? null,
+    math70: o.math70 ?? null,
+    inquiry1_70: o.inquiry1_70 ?? null,
+    inquiry2_70: o.inquiry2_70 ?? null,
+    inquiryAverage70: o.inquiryAverage70 ?? null,
+    english70Grade: o.english70Grade ?? null,
+    history70Grade: o.history70Grade ?? null,
+    averagePercentile70: o.averagePercentile70 ?? null,
+    universityConverted70: o.universityConverted70 ?? null,
+    universityConvertedMax: o.universityConvertedMax ?? null,
+    koreanWeight: o.koreanWeight ?? null,
+    mathWeight: o.mathWeight ?? null,
+    englishWeight: o.englishWeight ?? null,
+    inquiryWeight: o.inquiryWeight ?? null,
+    inquiryCount: o.inquiryCount ?? 2,
+    inquiryRule: o.inquiryRule ?? InquiryRule.AVERAGE_2,
+    englishCalculationType: o.englishCalculationType ?? EnglishCalculationType.NONE,
+    englishConversionTable: o.englishConversionTable ?? null,
+    mathRequiredSelection: o.mathRequiredSelection ?? MathRequiredSelection.NONE,
+    mathBonusRule: o.mathBonusRule ?? null,
+    inquiryRequiredType: o.inquiryRequiredType ?? InquiryRequiredType.ANY,
+    inquiryBonusRule: o.inquiryBonusRule ?? null,
+    officialSource: o.officialSource ?? SOURCE,
+    verificationStatus: o.verificationStatus ?? 'canonical_seed',
+    notes: o.notes ?? '',
+    fieldTrack: o.fieldTrack ?? '인문',
+    interviewApplied: o.interviewApplied ?? false,
+    averagePercentileRule: o.averagePercentileRule ?? AvgRule.KOREAN_MATH_INQUIRY,
+    recognizedDomains: o.recognizedDomains ?? ['korean', 'math', 'inquiry'],
+    excludeCategory: o.excludeCategory ?? 'none',
+    isScienceTech: o.isScienceTech ?? false,
+    fillCount: o.fillCount ?? null,
+    sourceUrl: o.sourceUrl ?? '',
+    ...o,
+  }
+}
+
+const TEST_ROWS: RegularAdmissionMasterRow[] = [
+  defineRow({
+    id: 'test-eng-weighted',
+    university: '검증대학교',
+    campus: '서울',
+    department: '전자공학과',
+    admissionGroup: '가',
+    region: '서울',
+    fieldTrack: '공학',
+    resultType: Res.SUBJECT_PERCENTILE_70,
+    calculationType: Calc.WEIGHTED_PERCENTILE,
+    korean70: 89,
+    math70: 82,
+    inquiryAverage70: 86,
+    koreanWeight: 20,
+    mathWeight: 40,
+    inquiryWeight: 30,
+    inquiryRule: InquiryRule.AVERAGE_2,
+    notes: 'TEST A 공대 — 수학 비중 높음',
+  }),
+  defineRow({
+    id: 'test-hum-weighted',
+    university: '검증대학교',
+    campus: '서울',
+    department: '국어국문학과',
+    admissionGroup: '나',
+    region: '서울',
+    fieldTrack: '인문',
+    resultType: Res.SUBJECT_PERCENTILE_70,
+    calculationType: Calc.WEIGHTED_PERCENTILE,
+    korean70: 89,
+    math70: 82,
+    inquiryAverage70: 86,
+    koreanWeight: 40,
+    mathWeight: 20,
+    inquiryWeight: 30,
+    inquiryRule: InquiryRule.AVERAGE_2,
+    notes: 'TEST A 인문 — 국어·탐구 비중 높음',
+  }),
+  defineRow({
+    id: 'test-math-required',
+    university: '검증대학교',
+    campus: '서울',
+    department: '수리과학부',
+    admissionGroup: '가',
+    region: '서울',
+    fieldTrack: '자연',
+    resultType: Res.SUBJECT_PERCENTILE_70,
+    calculationType: Calc.WEIGHTED_PERCENTILE,
+    korean70: 85,
+    math70: 80,
+    inquiryAverage70: 84,
+    koreanWeight: 20,
+    mathWeight: 40,
+    inquiryWeight: 30,
+    mathRequiredSelection: MathRequiredSelection.CALCULUS_OR_GEOMETRY,
+    inquiryRequiredType: InquiryRequiredType.SCIENCE,
+    notes: 'TEST B 미적분/기하 필수',
+  }),
+  defineRow({
+    id: 'test-inquiry-best1',
+    university: '탐구검증대',
+    campus: '서울',
+    department: '사회학과',
+    region: '서울',
+    fieldTrack: '인문',
+    resultType: Res.INQUIRY_AVERAGE_70,
+    calculationType: Calc.INQUIRY_BEST_1,
+    inquiry1_70: 90,
+    inquiry2_70: 80,
+    inquiryRule: InquiryRule.BEST_1,
+    notes: 'TEST C 탐구 상위 1과목',
+  }),
+  defineRow({
+    id: 'test-inquiry-avg2',
+    university: '탐구검증대',
+    campus: '서울',
+    department: '사범대학 사회교육과',
+    region: '서울',
+    fieldTrack: '교육',
+    resultType: Res.INQUIRY_AVERAGE_70,
+    calculationType: Calc.INQUIRY_AVERAGE_2,
+    inquiryAverage70: 86,
+    inquiryRule: InquiryRule.AVERAGE_2,
+    notes: 'TEST D 탐구 2과목 평균 — 탐구1/2 70% 미공개',
+  }),
+  defineRow({
+    id: 'test-best3',
+    university: '영역검증대',
+    campus: '서울',
+    department: '자유전공학부',
+    region: '서울',
+    fieldTrack: '인문',
+    resultType: Res.SUBJECT_PERCENTILE_70,
+    calculationType: Calc.BEST_3,
+    korean70: 88,
+    math70: 80,
+    inquiryAverage70: 85,
+    english70Grade: 2,
+    englishCalculationType: EnglishCalculationType.CONVERSION_TABLE,
+    englishConversionTable: { scores: { ...GRADE_TABLE.scores } },
+    recognizedDomains: ['korean', 'math', 'english', 'inquiry'],
+    inquiryRule: InquiryRule.AVERAGE_2,
+    notes: 'TEST E 상위 3개 영역',
+  }),
+  defineRow({
+    id: 'test-avg-percentile',
+    university: '평균검증대',
+    campus: '부산',
+    department: '경영학과',
+    admissionGroup: '나',
+    region: '지방국립대',
+    fieldTrack: '인문',
+    resultType: Res.AVERAGE_PERCENTILE_70,
+    calculationType: Calc.SIMPLE_AVERAGE,
+    averagePercentile70: 86,
+    averagePercentileRule: AvgRule.KOREAN_MATH_INQUIRY,
+    notes: 'TEST F 공식 평균백분위',
+  }),
+  defineRow({
+    id: 'test-converted-only',
+    university: '환산검증대',
+    campus: '서울',
+    department: '컴퓨터공학과',
+    region: '서울',
+    fieldTrack: '공학',
+    resultType: Res.UNIVERSITY_CONVERTED_70,
+    calculationType: Calc.STANDARD_SCORE_WEIGHTED,
+    korean70: null,
+    math70: null,
+    inquiry1_70: null,
+    inquiry2_70: null,
+    inquiryAverage70: null,
+    averagePercentile70: null,
+    universityConverted70: 680,
+    universityConvertedMax: 800,
+    koreanWeight: 25,
+    mathWeight: 30,
+    inquiryWeight: 25,
+    englishWeight: 20,
+    englishCalculationType: EnglishCalculationType.CONVERSION_TABLE,
+    englishConversionTable: { scores: { ...GRADE_TABLE.scores } },
+    inquiryRule: InquiryRule.AVERAGE_2,
+    notes: 'TEST G 대학환산만 공개 — 과목별 70% 없음',
+  }),
+  defineRow({
+    id: 'test-science-tech-gist',
+    university: 'GIST',
+    campus: '광주',
+    department: '기초교육학부',
+    admissionGroup: '군외',
+    region: '지방',
+    fieldTrack: '자연',
+    resultType: Res.NO_NUMERIC_RESULT,
+    calculationType: Calc.SCIENCE_TECH_SPECIAL,
+    isScienceTech: true,
+    notes: '과기특성화대 참고 — 숫자 합격선 없음',
+  }),
+  defineRow({
+    id: 'test-science-tech-unist',
+    university: 'UNIST',
+    campus: '울산',
+    department: '이공계열',
+    admissionGroup: '군외',
+    region: '지방',
+    fieldTrack: '공학',
+    resultType: Res.NO_NUMERIC_RESULT,
+    calculationType: Calc.SCIENCE_TECH_SPECIAL,
+    isScienceTech: true,
+  }),
+  defineRow({
+    id: 'test-science-tech-dgist',
+    university: 'DGIST',
+    campus: '대구',
+    department: '융복합대학',
+    admissionGroup: '군외',
+    region: '지방',
+    fieldTrack: '자연',
+    resultType: Res.NO_NUMERIC_RESULT,
+    calculationType: Calc.SCIENCE_TECH_SPECIAL,
+    isScienceTech: true,
+  }),
+  defineRow({
+    id: 'test-science-tech-kentech',
+    university: 'KENTECH',
+    campus: '나주',
+    department: '에너지공학부',
+    admissionGroup: '군외',
+    region: '지방',
+    fieldTrack: '공학',
+    resultType: Res.NO_NUMERIC_RESULT,
+    calculationType: Calc.SCIENCE_TECH_SPECIAL,
+    isScienceTech: true,
+  }),
+  defineRow({
+    id: 'test-junior-college',
+    university: '서울과학기술전문대학',
+    department: '기계과',
+    fieldTrack: '공학',
+    excludeCategory: 'junior_college',
+    resultType: Res.AVERAGE_PERCENTILE_70,
+    calculationType: Calc.SIMPLE_AVERAGE,
+    averagePercentile70: 70,
+  }),
+  defineRow({
+    id: 'test-theology',
+    university: '한국신학대학교',
+    department: '신학과',
+    fieldTrack: '신학',
+    excludeCategory: 'theology',
+    resultType: Res.AVERAGE_PERCENTILE_70,
+    calculationType: Calc.SIMPLE_AVERAGE,
+    averagePercentile70: 75,
+  }),
+  defineRow({
+    id: 'test-arts',
+    university: '서울예술대학교',
+    department: '연극학과',
+    fieldTrack: '예체능',
+    excludeCategory: 'arts',
+    resultType: Res.AVERAGE_PERCENTILE_70,
+    calculationType: Calc.SIMPLE_AVERAGE,
+    averagePercentile70: 80,
+  }),
+  defineRow({
+    id: 'test-education-knue',
+    university: '한국교원대학교',
+    campus: '청주',
+    department: '초등교육과',
+    admissionGroup: '나',
+    region: '지방국립대',
+    fieldTrack: '교육',
+    resultType: Res.SUBJECT_PERCENTILE_70,
+    calculationType: Calc.WEIGHTED_PERCENTILE,
+    korean70: 88,
+    math70: 78,
+    inquiryAverage70: 87,
+    koreanWeight: 30,
+    mathWeight: 25,
+    inquiryWeight: 25,
+    englishWeight: 20,
+    english70Grade: 2,
+    englishCalculationType: EnglishCalculationType.CONVERSION_TABLE,
+    englishConversionTable: { scores: { ...GRADE_TABLE.scores } },
+    interviewApplied: true,
+    notes: '교원대 — 면접 반영',
+  }),
+  defineRow({
+    id: 'test-education-snue',
+    university: '서울교육대학교',
+    campus: '서울',
+    department: '초등교육과',
+    admissionGroup: '나',
+    region: '서울',
+    fieldTrack: '교육',
+    resultType: Res.AVERAGE_PERCENTILE_70,
+    calculationType: Calc.SIMPLE_AVERAGE,
+    averagePercentile70: 85,
+    interviewApplied: true,
+    notes: '교대 — 면접 반영',
+  }),
+]
+
+type UniSpec = {
+  university: string
+  campus: string
+  region: RegularRegion
+  group: AdmissionGroup
+}
+
+const UNIS: UniSpec[] = [
+  { university: '서울시립대학교', campus: '서울', region: '서울', group: '가' },
+  { university: '건국대학교', campus: '서울', region: '서울', group: '가' },
+  { university: '동국대학교', campus: '서울', region: '서울', group: '가' },
+  { university: '홍익대학교', campus: '서울', region: '서울', group: '나' },
+  { university: '국민대학교', campus: '서울', region: '서울', group: '나' },
+  { university: '세종대학교', campus: '서울', region: '서울', group: '나' },
+  { university: '숭실대학교', campus: '서울', region: '서울', group: '가' },
+  { university: '광운대학교', campus: '서울', region: '서울', group: '나' },
+  { university: '인하대학교', campus: '인천', region: '경기/인천', group: '가' },
+  { university: '아주대학교', campus: '수원', region: '경기/인천', group: '가' },
+  { university: '가천대학교', campus: '성남', region: '경기/인천', group: '나' },
+  { university: '부산대학교', campus: '부산', region: '지방국립대', group: '가' },
+  { university: '경북대학교', campus: '대구', region: '지방국립대', group: '가' },
+  { university: '전남대학교', campus: '광주', region: '지방국립대', group: '나' },
+  { university: '충남대학교', campus: '대전', region: '지방국립대', group: '나' },
+  { university: '전북대학교', campus: '전주', region: '지방국립대', group: '다' },
+  { university: '충북대학교', campus: '청주', region: '지방국립대', group: '다' },
+  { university: '영남대학교', campus: '경산', region: '지방', group: '다' },
+  { university: '조선대학교', campus: '광주', region: '지방', group: '다' },
+  { university: '동아대학교', campus: '부산', region: '지방', group: '다' },
+]
+
+type DeptSpec = {
+  department: string
+  fieldTrack: RegularFieldTrack
+  calc: CalculationType
+  result: ResultType
+  kW: number
+  mW: number
+  iW: number
+  eW: number
+  mathReq?: RegularAdmissionMasterRow['mathRequiredSelection']
+  inqReq?: RegularAdmissionMasterRow['inquiryRequiredType']
+  inqRule?: RegularAdmissionMasterRow['inquiryRule']
+  avgRule?: AveragePercentileRule
+  domains?: DomainKey[]
+}
+
+const DEPTS: DeptSpec[] = [
+  {
+    department: '경영학과',
+    fieldTrack: '인문',
+    calc: Calc.SIMPLE_AVERAGE,
+    result: Res.AVERAGE_PERCENTILE_70,
+    kW: 0,
+    mW: 0,
+    iW: 0,
+    eW: 0,
+    avgRule: AvgRule.KOREAN_MATH_INQUIRY,
+  },
+  {
+    department: '국어국문학과',
+    fieldTrack: '인문',
+    calc: Calc.WEIGHTED_PERCENTILE,
+    result: Res.SUBJECT_PERCENTILE_70,
+    kW: 40,
+    mW: 20,
+    iW: 30,
+    eW: 0,
+  },
+  {
+    department: '전자공학과',
+    fieldTrack: '공학',
+    calc: Calc.WEIGHTED_PERCENTILE,
+    result: Res.SUBJECT_PERCENTILE_70,
+    kW: 20,
+    mW: 40,
+    iW: 30,
+    eW: 0,
+    mathReq: MathRequiredSelection.CALCULUS_OR_GEOMETRY,
+    inqReq: InquiryRequiredType.SCIENCE,
+  },
+  {
+    department: '컴퓨터공학과',
+    fieldTrack: '공학',
+    calc: Calc.BEST_3,
+    result: Res.SUBJECT_PERCENTILE_70,
+    kW: 0,
+    mW: 0,
+    iW: 0,
+    eW: 0,
+    domains: ['korean', 'math', 'inquiry'],
+    mathReq: MathRequiredSelection.CALCULUS_OR_GEOMETRY,
+  },
+  {
+    department: '화학과',
+    fieldTrack: '자연',
+    calc: Calc.WEIGHTED_PERCENTILE,
+    result: Res.SUBJECT_PERCENTILE_70,
+    kW: 20,
+    mW: 35,
+    iW: 35,
+    eW: 0,
+    inqReq: InquiryRequiredType.SCIENCE,
+    inqRule: InquiryRule.AVERAGE_2,
+  },
+  {
+    department: '약학과',
+    fieldTrack: '의약학',
+    calc: Calc.WEIGHTED_PERCENTILE,
+    result: Res.SUBJECT_PERCENTILE_70,
+    kW: 20,
+    mW: 35,
+    iW: 30,
+    eW: 15,
+    mathReq: MathRequiredSelection.CALCULUS_OR_GEOMETRY,
+    inqReq: InquiryRequiredType.SCIENCE,
+  },
+]
+
+/**
+ * TEST A 학생(국96 수72 탐94.5, 국수탐평균 87.5) 기준으로
+ * 상향/소신/적정이 모두 채워지도록 컷 레벨을 분산한다.
+ */
+const CUT_LEVELS = [
+  { tag: 'high', avg: 94, k: 93, m: 90, i: 92 },
+  { tag: 'midhigh', avg: 91, k: 91, m: 86, i: 90 },
+  { tag: 'mid', avg: 88.5, k: 88, m: 82, i: 87 },
+  { tag: 'fit', avg: 86, k: 86, m: 78, i: 85 },
+  { tag: 'low', avg: 83, k: 84, m: 74, i: 82 },
+] as const
+
+function buildCatalog(): RegularAdmissionMasterRow[] {
+  const rows: RegularAdmissionMasterRow[] = []
+  let n = 0
+  for (const uni of UNIS) {
+    for (const dept of DEPTS) {
+      const level = CUT_LEVELS[n % CUT_LEVELS.length]
+      n += 1
+      const useEnglish = dept.eW > 0
+      rows.push(
+        defineRow({
+          id: `seed-${uni.university}-${dept.department}-${level.tag}`,
+          university: uni.university,
+          campus: uni.campus,
+          department: dept.department,
+          admissionGroup: uni.group,
+          region: uni.region,
+          fieldTrack: dept.fieldTrack,
+          resultType: dept.result,
+          calculationType: dept.calc,
+          korean70: dept.result === Res.SUBJECT_PERCENTILE_70 ? level.k : null,
+          math70: dept.result === Res.SUBJECT_PERCENTILE_70 ? level.m : null,
+          inquiryAverage70: dept.result === Res.SUBJECT_PERCENTILE_70 ? level.i : null,
+          averagePercentile70:
+            dept.result === Res.AVERAGE_PERCENTILE_70 ? level.avg : null,
+          koreanWeight: dept.kW || null,
+          mathWeight: dept.mW || null,
+          inquiryWeight: dept.iW || null,
+          englishWeight: dept.eW || null,
+          english70Grade: useEnglish ? 2 : null,
+          englishCalculationType: useEnglish
+            ? EnglishCalculationType.CONVERSION_TABLE
+            : EnglishCalculationType.NONE,
+          englishConversionTable: useEnglish ? { scores: { ...GRADE_TABLE.scores } } : null,
+          mathRequiredSelection: dept.mathReq ?? MathRequiredSelection.NONE,
+          inquiryRequiredType: dept.inqReq ?? InquiryRequiredType.ANY,
+          inquiryRule: dept.inqRule ?? InquiryRule.AVERAGE_2,
+          averagePercentileRule: dept.avgRule ?? AvgRule.KOREAN_MATH_INQUIRY,
+          recognizedDomains: dept.domains ?? ['korean', 'math', 'inquiry'],
+          notes: `canonical seed ${level.tag}`,
+        }),
+      )
+    }
+  }
+  return rows
+}
+
+const BEST2_ROWS: RegularAdmissionMasterRow[] = UNIS.slice(0, 8).map((uni, i) =>
+  defineRow({
+    id: `seed-best2-${uni.university}`,
+    university: uni.university,
+    campus: uni.campus,
+    department: '미디어커뮤니케이션학과',
+    admissionGroup: uni.group,
+    region: uni.region,
+    fieldTrack: '인문',
+    resultType: Res.AVERAGE_PERCENTILE_70,
+    calculationType: Calc.BEST_2,
+    averagePercentile70: 90 - i * 1.2,
+    recognizedDomains: ['korean', 'math', 'inquiry'],
+    averagePercentileRule: AvgRule.BEST_2,
+    notes: '상위 2개 영역',
+  }),
+)
+
+const CONVERTED_ROWS: RegularAdmissionMasterRow[] = UNIS.slice(0, 10).map((uni, i) =>
+  defineRow({
+    id: `seed-converted-${uni.university}`,
+    university: uni.university,
+    campus: uni.campus,
+    department: '산업공학과',
+    admissionGroup: uni.group,
+    region: uni.region,
+    fieldTrack: '공학',
+    resultType: Res.UNIVERSITY_CONVERTED_70,
+    calculationType: Calc.STANDARD_SCORE_WEIGHTED,
+    universityConverted70: 700 - i * 8,
+    universityConvertedMax: 800,
+    koreanWeight: 25,
+    mathWeight: 30,
+    inquiryWeight: 25,
+    englishWeight: 20,
+    englishCalculationType: EnglishCalculationType.CONVERSION_TABLE,
+    englishConversionTable: { scores: { ...GRADE_TABLE.scores } },
+    mathRequiredSelection: MathRequiredSelection.CALCULUS_OR_GEOMETRY,
+    notes: '대학 자체 환산점수만 공개',
+  }),
+)
+
+const PARTIAL_ROWS: RegularAdmissionMasterRow[] = [
+  defineRow({
+    id: 'seed-partial-busan-ee',
+    university: '부산대학교',
+    campus: '부산',
+    department: '전기공학과',
+    admissionGroup: '가',
+    region: '지방국립대',
+    fieldTrack: '공학',
+    resultType: Res.PARTIAL_SUBJECT_70,
+    calculationType: Calc.WEIGHTED_PERCENTILE,
+    korean70: 88,
+    math70: 81,
+    inquiryAverage70: null,
+    koreanWeight: 20,
+    mathWeight: 40,
+    inquiryWeight: 0,
+    notes: '일부 반영영역만 공식 성적 공개',
+  }),
+]
+
+export const REGULAR_ADMISSION_MASTER: RegularAdmissionMasterRow[] = [
+  ...TEST_ROWS,
+  ...buildCatalog(),
+  ...BEST2_ROWS,
+  ...CONVERTED_ROWS,
+  ...PARTIAL_ROWS,
+]
+
+export const REGULAR_ADMISSION_MASTER_META = {
+  source: SOURCE,
+  rowCount: REGULAR_ADMISSION_MASTER.length,
+  unit: 'university+department+admissionType',
+} as const

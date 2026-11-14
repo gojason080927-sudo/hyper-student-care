@@ -50,6 +50,7 @@ export function ClassCommonTodayAssignmentPanel({
     classTodayReportCommon,
     studentTextbookSlots,
     saveHomeworkSubjectWithClassSync,
+    saveClassCommonTextbookName,
     saveStudentTextbookSlot,
     showToast,
   } = useData()
@@ -69,13 +70,26 @@ export function ClassCommonTodayAssignmentPanel({
     }
     try {
       for (const studentId of classSync.peerStudentIds) {
-        saveStudentTextbookSlot({
-          studentId,
-          subject,
-          slotNumber,
-          textbookName: trimmed,
-        })
+        const ok = await saveStudentTextbookSlot(
+          {
+            studentId,
+            subject,
+            slotNumber,
+            textbookName: trimmed,
+          },
+          { silent: true },
+        )
+        if (!ok) return false
       }
+      const commonOk = await saveClassCommonTextbookName(
+        classSync,
+        date,
+        subject,
+        slotNumber,
+        trimmed,
+        { silent: true },
+      )
+      if (!commonOk) return false
       if (!options?.silent) showToast('교재명이 반 공통으로 저장되었습니다.')
       return true
     } catch (error) {

@@ -1,0 +1,51 @@
+{
+  "before": {
+    "open_sessions": 0,
+    "v1_results": 12,
+    "v1_sessions": 12
+  },
+  "after": {
+    "questions": 140,
+    "v1_results": 12,
+    "v1_sessions": 12
+  },
+  "v1LoadQuestions": 88,
+  "guest": {
+    "kind": "guest",
+    "studentId": null,
+    "guestId": "57a3885c-4305-4b07-85eb-9ea72828cb71",
+    "accessKey": null,
+    "token": "lDMIocAzo-_8x-CQsyO33A11s-vpPpU0_T4oE9iEp_M",
+    "resultId": "42a43fc2-62ac-40f8-96c0-d721bdc38133",
+    "counts": {
+      "assessment_version": "HYPER_CAREER_V2",
+      "expected_question_count": 140,
+      "major_groups": 36,
+      "notice_links": 0,
+      "responses": 140,
+      "result_version": "HYPER_CAREER_V2",
+      "results": 1,
+      "session_id": "959e43fb-14e6-47f2-9dc9-ae0db498b118",
+      "status": "completed"
+    }
+  },
+  "student": {
+    "kind": "student",
+    "studentId": "7a473d20-2ec3-4b3d-922e-c2ae49ff3f2a",
+    "guestId": null,
+    "accessKey": "vvCJmSaWNSFAfnfAANHEtgBt87D4Q4Uq",
+    "token": "uX5ODyuTTS2cD5WG4L80_jip-swsUc7DlrXgyhG6hTA",
+    "resultId": "852c1676-cc3f-401a-84c6-fa13ea74955b",
+    "counts": {
+      "assessment_version": "HYPER_CAREER_V2",
+      "expected_question_count": 140,
+      "major_groups": 36,
+      "notice_links": 1,
+      "responses": 140,
+      "result_version": "HYPER_CAREER_V2",
+      "results": 1,
+      "session_id": "7deb8887-a9f1-4019-ac84-bd0265b142e9",
+      "status": "completed"
+    }
+  }
+}

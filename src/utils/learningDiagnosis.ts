@@ -160,7 +160,8 @@ export function normalizeDailyLearningDiagnosis(raw: unknown): DailyLearningDiag
     conceptLackCount,
     calculationErrorCount,
     applicationLackCount,
-    teacherFeedback: String(row.teacherFeedback ?? '').trim(),
+    // 입력 중 trailing/leading space를 유지한다. 비어 있는지는 hasDailyLearningDiagnosisContent에서만 trim한다.
+    teacherFeedback: String(row.teacherFeedback ?? ''),
     fridayRetestTotal: toNullableNonNegInt(row.fridayRetestTotal),
     fridayRetestWrong: toNullableNonNegInt(row.fridayRetestWrong),
     englishVocabResult: toPassFailResult(row.englishVocabResult),

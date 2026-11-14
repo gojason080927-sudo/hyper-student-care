@@ -19,6 +19,9 @@ export const ATTENDANCE_STATUSES: AttendanceStatus[] = [
 
 export const HOMEWORK_STATUSES: HomeworkStatus[] = ['완료', '부분 완료', '미완료']
 
+/** Today Report 화면 섹션 제목 (모바일 강사앱 아코디언 · 학부모앱 카드). 저장 키와 무관. */
+export const TODAY_REPORT_HOMEWORK_SECTION_TITLE = '과제 수행'
+
 export const MAKEUP_METHODS: MakeupMethod[] = ['학원 보강', '영상 대체']
 
 export const MAKEUP_PLAN_STATUSES: MakeupPlanStatus[] = ['예정', '완료', '취소']

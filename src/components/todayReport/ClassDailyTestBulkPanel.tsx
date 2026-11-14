@@ -1,5 +1,5 @@
 import { Check } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { DailyLearningDiagnosisFields } from '../diagnosis/DailyLearningDiagnosisFields'
 import { DailyTestPassRuleBadge } from '../dailytest/DailyTestSessionFormSection'
 import { useData } from '../../hooks/useData'
@@ -61,6 +61,8 @@ export function ClassDailyTestBulkPanel({
   const [testName, setTestName] = useState(() => defaultDailyTestNameForDate(date))
   const [subject, setSubject] = useState('수학')
   const [drafts, setDrafts] = useState<Record<string, StudentDraft>>({})
+  const draftsRef = useRef(drafts)
+  draftsRef.current = drafts
 
   const subjectOptions = useMemo(
     () => getVisibleDailyTestSubjects(className),
@@ -71,6 +73,10 @@ export function ClassDailyTestBulkPanel({
     () => students.map((s) => s.id).join('|'),
     [students],
   )
+  const draftScopeKey = `${date}|${subject}|${studentIdsKey}`
+  const draftScopeKeyRef = useRef(draftScopeKey)
+  /** 입력 중인 학생 — dailyTests 재조회가 강사 피드백 공백/초안을 덮어쓰지 않게 함 */
+  const dirtyDiagnosisRef = useRef(new Set<string>())
 
   useEffect(() => {
     if (subjectOptions.length === 0) return
@@ -80,37 +86,52 @@ export function ClassDailyTestBulkPanel({
   }, [subject, subjectOptions])
 
   useEffect(() => {
-    const next: Record<string, StudentDraft> = {}
-    let sharedTestName = ''
-
-    for (const student of students) {
-      const record = dailyTests.find(
-        (item) =>
-          item.studentId === student.id &&
-          item.date === date &&
-          item.subject === subject,
-      )
-      if (record) {
-        if (!sharedTestName && record.testName.trim()) {
-          sharedTestName = record.testName.trim()
-        }
-        next[student.id] = {
-          recordId: record.id,
-          rounds: sessionsToBulkDailyTestRounds(record.sessionResults),
-          wrongAnswerBank: record.memo ?? '',
-          learningDiagnosis: normalizeDailyLearningDiagnosis(record.learningDiagnosis),
-        }
-      } else {
-        next[student.id] = emptyStudentDraft()
-      }
+    const scopeChanged = draftScopeKeyRef.current !== draftScopeKey
+    if (scopeChanged) {
+      dirtyDiagnosisRef.current.clear()
+      draftScopeKeyRef.current = draftScopeKey
     }
 
-    setDrafts(next)
-    setTestName(sharedTestName || defaultDailyTestNameForDate(date))
+    let sharedTestName = ''
+    setDrafts((prev) => {
+      const next: Record<string, StudentDraft> = {}
+      for (const student of students) {
+        const record = dailyTests.find(
+          (item) =>
+            item.studentId === student.id &&
+            item.date === date &&
+            item.subject === subject,
+        )
+        if (record && !sharedTestName && record.testName.trim()) {
+          sharedTestName = record.testName.trim()
+        }
+        const seeded: StudentDraft = record
+          ? {
+              recordId: record.id,
+              rounds: sessionsToBulkDailyTestRounds(record.sessionResults),
+              wrongAnswerBank: record.memo ?? '',
+              learningDiagnosis: normalizeDailyLearningDiagnosis(record.learningDiagnosis),
+            }
+          : emptyStudentDraft()
+        const keepTyping =
+          !scopeChanged && dirtyDiagnosisRef.current.has(student.id) && prev[student.id]
+        next[student.id] = keepTyping
+          ? {
+              ...seeded,
+              learningDiagnosis: prev[student.id].learningDiagnosis,
+            }
+          : seeded
+      }
+      draftsRef.current = next
+      return next
+    })
+    if (scopeChanged || sharedTestName) {
+      setTestName(sharedTestName || defaultDailyTestNameForDate(date))
+    }
     if (subjectOptions[0] && !subjectOptions.includes(subject as (typeof subjectOptions)[number])) {
       setSubject(subjectOptions[0])
     }
-  }, [dailyTests, date, studentIdsKey, students, subject, subjectOptions])
+  }, [dailyTests, date, draftScopeKey, studentIdsKey, students, subject, subjectOptions])
 
   const updateRounds = (
     studentId: string,
@@ -118,13 +139,15 @@ export function ClassDailyTestBulkPanel({
   ) => {
     setDrafts((prev) => {
       const current = prev[studentId] ?? emptyStudentDraft()
-      return {
+      const next = {
         ...prev,
         [studentId]: {
           ...current,
           rounds: updater(current.rounds),
         },
       }
+      draftsRef.current = next
+      return next
     })
   }
 
@@ -132,15 +155,18 @@ export function ClassDailyTestBulkPanel({
     studentId: string,
     learningDiagnosis: DailyLearningDiagnosisData,
   ) => {
+    dirtyDiagnosisRef.current.add(studentId)
     setDrafts((prev) => {
       const current = prev[studentId] ?? emptyStudentDraft()
-      return {
+      const next = {
         ...prev,
         [studentId]: {
           ...current,
           learningDiagnosis,
         },
       }
+      draftsRef.current = next
+      return next
     })
   }
 
@@ -160,8 +186,9 @@ export function ClassDailyTestBulkPanel({
   const handleSaveAll = async () => {
     if (saving || students.length === 0) return
 
+    const currentDrafts = draftsRef.current
     const targets = students.filter((student) => {
-      const draft = drafts[student.id]
+      const draft = currentDrafts[student.id]
       return (
         draft &&
         hasBulkDailyTestContent(
@@ -188,7 +215,7 @@ export function ClassDailyTestBulkPanel({
     try {
       const results = await Promise.all(
         targets.map(async (student) => {
-          const draft = drafts[student.id]
+          const draft = currentDrafts[student.id]
           if (!draft) {
             return { student, success: false as const }
           }
@@ -236,13 +263,17 @@ export function ClassDailyTestBulkPanel({
           continue
         }
         if (result.recordId) {
-          setDrafts((prev) => ({
-            ...prev,
-            [result.student.id]: {
-              ...(prev[result.student.id] ?? emptyStudentDraft()),
-              recordId: result.recordId,
-            },
-          }))
+          setDrafts((prev) => {
+            const next = {
+              ...prev,
+              [result.student.id]: {
+                ...(prev[result.student.id] ?? emptyStudentDraft()),
+                recordId: result.recordId,
+              },
+            }
+            draftsRef.current = next
+            return next
+          })
         }
       }
 
@@ -409,6 +440,7 @@ export function ClassDailyTestBulkPanel({
               ) : null}
               <div className="mt-2">
                 <DailyLearningDiagnosisFields
+                  key={`${student.id}-${date}-${subject}`}
                   subject={subject}
                   value={draft.learningDiagnosis}
                   onChange={(next) => updateLearningDiagnosis(student.id, next)}

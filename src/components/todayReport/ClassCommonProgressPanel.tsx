@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useData } from '../../hooks/useData'
 import type { TextbookSlotNumber, TextbookSubject } from '../../types/records'
 import type { Student } from '../../types/student'
@@ -7,7 +7,12 @@ import {
   parseProgressPageValue,
   type ClassTodayReportSyncContext,
 } from '../../utils/classTodayReportCommon'
-import { findClassTodayReportCommonForDisplay } from '../../utils/todayReportDisplayFallback'
+import {
+  findClassTodayReportCommonForProgressDisplay,
+  findProgressRecordForDisplay,
+  hasClassCommonProgressContent,
+} from '../../utils/todayReportDisplayFallback'
+import type { ProgressRecord } from '../../types/records'
 import { formatKoreanDate } from '../../utils/date'
 import { btnPrimary, inputClass } from '../../utils/labels'
 import { getVisibleTextbookSubjects } from '../../utils/todayReportVisibleSubjects'
@@ -51,12 +56,16 @@ export function ClassCommonProgressPanel({
   const {
     classTodayReportCommon,
     studentTextbookSlots,
+    progressRecords,
     saveProgressSubjectWithClassSync,
+    saveClassCommonTextbookName,
     saveStudentTextbookSlot,
     showToast,
   } = useData()
   const [saving, setSaving] = useState(false)
   const [drafts, setDrafts] = useState<Record<string, SlotDraft>>({})
+  /** Seed snapshot used to detect intentional clears on save (sticky empty). */
+  const seededDraftsRef = useRef<Record<string, SlotDraft>>({})
   const saveClassTextbookNameForPeers = async (
     subject: TextbookSubject,
     slotNumber: TextbookSlotNumber,
@@ -71,13 +80,26 @@ export function ClassCommonProgressPanel({
     }
     try {
       for (const studentId of classSync.peerStudentIds) {
-        saveStudentTextbookSlot({
-          studentId,
-          subject,
-          slotNumber,
-          textbookName: trimmed,
-        })
+        const ok = await saveStudentTextbookSlot(
+          {
+            studentId,
+            subject,
+            slotNumber,
+            textbookName: trimmed,
+          },
+          { silent: true },
+        )
+        if (!ok) return false
       }
+      const commonOk = await saveClassCommonTextbookName(
+        classSync,
+        date,
+        subject,
+        slotNumber,
+        trimmed,
+        { silent: true },
+      )
+      if (!commonOk) return false
       if (!options?.silent) showToast('교재명이 반 공통으로 저장되었습니다.')
       return true
     } catch (error) {
@@ -116,8 +138,20 @@ export function ClassCommonProgressPanel({
   useEffect(() => {
     const next: Record<string, SlotDraft> = {}
     for (const { subject, slotNumber } of slotPlan) {
-      // Display fallback only — save still writes the selected `date` as a new/actual record.
-      const { record: found } = findClassTodayReportCommonForDisplay(
+      // Prefer exact-date student progress (incl. sticky empty). Otherwise carry
+      // last progress from class-common / prior student rows — never let a
+      // homework-only common shell wipe 진도.
+      const progressLookup = anchorStudentId
+        ? findProgressRecordForDisplay(
+            progressRecords,
+            anchorStudentId,
+            date,
+            subject,
+            slotNumber,
+          )
+        : { record: undefined as ProgressRecord | undefined, isFallback: false }
+
+      const commonLookup = findClassTodayReportCommonForProgressDisplay(
         classTodayReportCommon,
         grade,
         className,
@@ -125,21 +159,41 @@ export function ClassCommonProgressPanel({
         subject,
         slotNumber,
       )
+
+      let currentProgress = ''
+      let currentPage = 0
+      let totalPage = 0
+
+      if (progressLookup.record && !progressLookup.isFallback) {
+        currentProgress = progressLookup.record.currentProgress.trim()
+        currentPage = progressLookup.record.currentPage
+        totalPage = progressLookup.record.totalPage
+      } else if (commonLookup.record && hasClassCommonProgressContent(commonLookup.record)) {
+        currentProgress = commonLookup.record.currentProgress.trim()
+        currentPage = commonLookup.record.currentPage
+        totalPage = commonLookup.record.totalPage
+      } else if (progressLookup.record) {
+        currentProgress = progressLookup.record.currentProgress.trim()
+        currentPage = progressLookup.record.currentPage
+        totalPage = progressLookup.record.totalPage
+      }
+
       const textbookName = anchorStudentId
-          ? getTextbookName(
-              studentTextbookSlots,
-              anchorStudentId,
-              subject,
-              slotNumber,
-            )
-          : ''
+        ? getTextbookName(
+            studentTextbookSlots,
+            anchorStudentId,
+            subject,
+            slotNumber,
+          )
+        : ''
       next[slotKey(subject, slotNumber)] = {
-        currentProgress: found?.currentProgress ?? '',
-        currentPage: found?.currentPage ? String(found.currentPage) : '',
-        totalPage: found?.totalPage ? String(found.totalPage) : '',
+        currentProgress,
+        currentPage: currentPage > 0 ? String(currentPage) : '',
+        totalPage: totalPage > 0 ? String(totalPage) : '',
         textbookName,
       }
     }
+    seededDraftsRef.current = next
     setDrafts(next)
   }, [
     anchorStudentId,
@@ -147,6 +201,7 @@ export function ClassCommonProgressPanel({
     classTodayReportCommon,
     date,
     grade,
+    progressRecords,
     slotPlan,
     slotPlanKey,
     studentTextbookSlots,
@@ -237,12 +292,26 @@ export function ClassCommonProgressPanel({
         const slots = slotPlan
           .filter((item) => item.subject === subject)
           .map(({ slotNumber }) => {
-            const draft = drafts[slotKey(subject, slotNumber)]
+            const key = slotKey(subject, slotNumber)
+            const draft = drafts[key]
+            const seeded = seededDraftsRef.current[key]
+            const currentProgress = draft?.currentProgress ?? ''
+            const currentPage = parseProgressPageValue(draft?.currentPage)
+            const totalPage = parseProgressPageValue(draft?.totalPage)
+            const hasContent =
+              currentProgress.trim() || currentPage > 0 || totalPage > 0
+            const seededHadContent = Boolean(
+              seeded?.currentProgress.trim() ||
+                parseProgressPageValue(seeded?.currentPage) > 0 ||
+                parseProgressPageValue(seeded?.totalPage) > 0,
+            )
             return {
               slotNumber,
-              currentProgress: draft?.currentProgress ?? '',
-              currentPage: parseProgressPageValue(draft?.currentPage),
-              totalPage: parseProgressPageValue(draft?.totalPage),
+              currentProgress,
+              currentPage,
+              totalPage,
+              /** Teacher cleared a previously shown value — write empty tombstone for this date. */
+              writeEvenIfEmpty: !hasContent && seededHadContent,
             }
           })
         const success = await saveProgressSubjectWithClassSync(

@@ -13,7 +13,7 @@ import { TodayReportCompleteButton } from '../../components/todayReport/TodayRep
 import { StudentKakaoShareAction } from '../../components/students/StudentKakaoShareAction'
 import { useData } from '../../hooks/useData'
 import { formatKoreanDate, getTodayString } from '../../utils/date'
-import { GRADES, inputClass } from '../../utils/labels'
+import { GRADES, inputClass, TODAY_REPORT_HOMEWORK_SECTION_TITLE } from '../../utils/labels'
 import {
   CLASS_OPTIONS_BY_GRADE,
   isActiveGrade,
@@ -32,7 +32,7 @@ type ReportSection =
 
 const CLASS_SCOPED_SECTIONS: { id: ReportSection; label: string }[] = [
   { id: 'attendance', label: '출결' },
-  { id: 'homework', label: '숙제 수행 결과' },
+  { id: 'homework', label: TODAY_REPORT_HOMEWORK_SECTION_TITLE },
   { id: 'classTodayHomework', label: '반 공통 오늘 과제' },
   { id: 'progress', label: '반 공통 오늘의 진도' },
   { id: 'dailyTest', label: '일일테스트' },

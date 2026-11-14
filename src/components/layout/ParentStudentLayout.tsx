@@ -8,6 +8,8 @@ import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 import { useData } from '../../hooks/useData'
 import type { Student } from '../../types/student'
 import { ParentStudentSidebar } from '../parent/ParentStudentSidebar'
+import { ParentPwaRegistrar } from '../parent/ParentPwaRegistrar'
+import { ParentCareLaunchPage } from '../../pages/parent/ParentCareLaunchPage'
 import '../../styles/parentMobileTheme.css'
 
 function InvalidStudentAccessPage() {
@@ -180,6 +182,7 @@ function ParentStudentLayoutInner({ studentAccessKey }: ParentStudentLayoutInner
 
   return (
     <ParentStudentProvider student={student}>
+      <ParentPwaRegistrar studentAccessKey={student.studentAccessKey} />
       <div className="parent-mobile-app flex min-h-svh overflow-x-hidden">
         <ParentStudentSidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <div className="flex min-w-0 flex-1 flex-col">
@@ -213,6 +216,9 @@ function ParentStudentLayoutInner({ studentAccessKey }: ParentStudentLayoutInner
 export function ParentStudentLayout() {
   const { studentAccessKey = '' } = useParams()
   const normalizedKey = normalizeRouteAccessKey(studentAccessKey)
+  if (!normalizedKey) {
+    return <ParentCareLaunchPage />
+  }
   return (
     <ParentStudentLayoutInner key={normalizedKey} studentAccessKey={normalizedKey} />
   )

@@ -6,6 +6,7 @@ import {
   GraduationCap,
   HelpCircle,
   Megaphone,
+  School,
   Users,
 } from 'lucide-react'
 import { HyperFeaturedCardWave } from '../../components/ui/HyperFeaturedCardWave'
@@ -44,6 +45,12 @@ const gridCards: Array<MenuCard> = [
     title: '월말평가',
     description: '평가 결과',
     icon: GraduationCap,
+  },
+  {
+    to: '/teacher/mobile/admission-analysis',
+    title: '대입 내신 분석',
+    description: '석차·등급 상담',
+    icon: School,
   },
   {
     to: '/teacher/mobile/notices',

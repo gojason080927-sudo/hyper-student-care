@@ -10,7 +10,7 @@ import type {
   TodayAssignmentRecord,
 } from '../../types/records'
 import { findProgressRecordIndex } from '../../utils/progressRecord'
-import { slotKey } from '../../utils/textbookSlots'
+import { dedupeStudentTextbookSlots, slotKey } from '../../utils/textbookSlots'
 import type { TodayReportData } from '../dataLoader'
 
 function upsertById<T extends { id: string }>(prev: T[], incoming: T[]): T[] {
@@ -78,10 +78,14 @@ function upsertStudentTextbookSlots(
         slotKey(item.studentId, item.subject, item.slotNumber) ===
         slotKey(record.studentId, record.subject, record.slotNumber),
     )
-    if (index >= 0) next[index] = record
-    else next.push(record)
+    if (index >= 0) {
+      next[index] =
+        record.updatedAt >= next[index].updatedAt ? record : next[index]
+    } else {
+      next.push(record)
+    }
   }
-  return next
+  return dedupeStudentTextbookSlots(next)
 }
 
 export type TodayReportMergeResult = {

@@ -35,7 +35,7 @@ import { getParentAccessKeyFromPath } from '../lib/supabase'
 import { mergeTodayReportIntoState } from '../lib/db/mergeTodayReport'
 import { mergeClassTodayReportCommonRecords } from '../utils/mergeClassTodayReportCommon'
 import { findProgressRecordIndex, findProgressRecordIndexForDate } from '../utils/progressRecord'
-import { findHomeworkTextbookEntry, findTextbookSlot, slotKey, dedupeStudentTextbookSlots } from '../utils/textbookSlots'
+import { findHomeworkTextbookEntry, findTextbookSlot, getTextbookName, slotKey, dedupeStudentTextbookSlots } from '../utils/textbookSlots'
 import {
   deleteAssignmentCompletion,
   deleteAttendance,
@@ -178,6 +178,7 @@ export type DataContextValue = {
   ) => Promise<boolean>
   saveStudentTextbookSlot: (
     data: Omit<StudentTextbookSlot, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
+    options?: { silent?: boolean },
   ) => Promise<boolean>
   deleteHomeworkRecord: (id: string) => void
   saveAssignmentRecord: (
@@ -511,7 +512,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setAssignmentCompletion(merged.assignmentCompletion)
     setHomework(merged.homework)
     setHomeworkTextbookEntries(merged.homeworkTextbookEntries)
-    setStudentTextbookSlots(merged.studentTextbookSlots)
+    setStudentTextbookSlots(dedupeStudentTextbookSlots(merged.studentTextbookSlots))
     setTodayAssignments(merged.todayAssignments)
     setClassNotes(merged.classNotes)
     setDailyTests(merged.dailyTests)
@@ -1060,9 +1061,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const saveStudentTextbookSlot = useCallback(
     async (
       data: Omit<StudentTextbookSlot, 'id' | 'createdAt' | 'updatedAt'> & { id?: string },
+      options?: { silent?: boolean },
     ): Promise<boolean> => {
       if (!validateStudent(data.studentId)) {
-        showToast('존재하지 않는 학생입니다.')
+        if (!options?.silent) showToast('존재하지 않는 학생입니다.')
         return false
       }
       const ts = createTimestamps()
@@ -1097,7 +1099,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
       try {
         await upsertStudentTextbookSlot(record)
-        showToast('교재명이 저장되었습니다.')
+        if (!options?.silent) showToast('교재명이 저장되었습니다.')
         return true
       } catch (error) {
         console.error('[HyperStudentCare] 교재명 저장 실패:', error)
@@ -1108,7 +1110,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
             : error instanceof Error
               ? error.message
               : '알 수 없는 오류'
-        showToast(`교재명 저장 실패: ${detail}`)
+        if (!options?.silent) showToast(`교재명 저장 실패: ${detail}`)
         return false
       }
     },
@@ -2050,7 +2052,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
         return true
       }
 
-      // origin/main 복구: peer progress + common 저장. textbookName DB 연동은 이번 범위 외.
       const memo = teacherMemo.trim()
       const slotsToSync = slots.filter(
         (slot) =>
@@ -2098,6 +2099,14 @@ export function DataProvider({ children }: { children: ReactNode }) {
               reportDate: date,
               subject: subjectKey,
               slotNumber: slotKeyNum,
+              textbookName:
+                slot.textbookName ??
+                getTextbookName(
+                  studentTextbookSlots,
+                  anchorStudentId,
+                  subjectKey,
+                  slotKeyNum,
+                ),
               currentProgress: slot.currentProgress,
               currentPage: pages.currentPage,
               totalPage: pages.totalPage,
@@ -2223,7 +2232,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setIsSaving(false)
       }
     },
-    [classTodayReportCommon, load, progressRecords, showToast],
+    [classTodayReportCommon, load, progressRecords, showToast, studentTextbookSlots],
   )
 
   const saveMakeupPlanRecord = useCallback(

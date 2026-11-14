@@ -10,6 +10,7 @@ import {
   getTodayReportCompletionStatus,
 } from '../../utils/todayReportCompletionStatus'
 import { findStudentDayRecords, type TodayReportLookupContext } from '../../utils/todayReportLookup'
+import { TodayReportCompleteButton } from './TodayReportCompleteButton'
 
 type TodayReportStudentAccordionProps = {
   student: Student
@@ -100,6 +101,11 @@ export function TodayReportStudentAccordion({
                 : undefined
             }
             classNoteExtraActions={<StudentKakaoShareAction student={student} compact />}
+          />
+          <TodayReportCompleteButton
+            studentId={student.id}
+            studentName={student.name}
+            reportDate={date}
           />
         </div>
       )}

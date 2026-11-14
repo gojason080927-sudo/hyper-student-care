@@ -1,0 +1,18 @@
+---
+description: Run safe development commands without asking the user to approve each one
+alwaysApply: true
+---
+
+# Autonomous development commands
+
+Do not ask the user to confirm ordinary Run/terminal commands. Execute needed build, inspect, test, git status/diff/log, and similar safe development steps yourself and finish the work.
+
+The user should not have to sit at the monitor waiting to approve each command.
+
+Ask first only for hard-to-undo or dangerous operations, including:
+- file deletion beyond the current task’s obvious cleanup
+- DB data deletion
+- destructive migrations
+- production/operational data changes
+- secret/key changes
+---

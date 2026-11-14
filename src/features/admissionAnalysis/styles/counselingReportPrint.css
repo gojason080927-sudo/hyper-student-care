@@ -1,0 +1,64 @@
+/**
+ * 대입 상담 REPORT — A4 인쇄 전용 스타일
+ * html.admission-printing-report 가 있을 때만 다른 화면을 숨긴다.
+ * (전역 body * { visibility:hidden } 금지 — 다른 인쇄 기능과 충돌)
+ */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm 12mm;
+  }
+
+  html.admission-printing-report,
+  html.admission-printing-report body {
+    background: #fff !important;
+    height: auto !important;
+    overflow: visible !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  html.admission-printing-report body > *:not(.admission-counseling-report-overlay) {
+    display: none !important;
+  }
+
+  html.admission-printing-report .admission-counseling-report-overlay,
+  html.admission-printing-report .admission-counseling-report-overlay * {
+    visibility: visible !important;
+  }
+
+  html.admission-printing-report .admission-counseling-report-overlay {
+    position: static !important;
+    inset: auto !important;
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  html.admission-printing-report .admission-counseling-report-scroll {
+    overflow: visible !important;
+    height: auto !important;
+    background: #fff !important;
+    padding: 0 !important;
+  }
+
+  html.admission-printing-report .admission-counseling-report-root {
+    position: static !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    background: #fff;
+  }
+
+  html.admission-printing-report .no-print {
+    display: none !important;
+  }
+
+  html.admission-printing-report .admission-report-keep {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

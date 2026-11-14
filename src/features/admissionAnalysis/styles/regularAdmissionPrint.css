@@ -1,0 +1,202 @@
+/**
+ * 정시 분석 결과 — 화면/A4 인쇄.
+ * 기존 v124 인쇄 색·카드 패턴을 재사용한다.
+ */
+.regular-print-hero,
+.regular-print-table-head,
+.regular-print-table-head th,
+.regular-band-reach,
+.regular-band-ambitious,
+.regular-band-target {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.regular-print-hero {
+  background: #9ec4ea;
+  border: 2px solid #163a70;
+  color: #163a70;
+}
+
+.regular-print-hero-kicker {
+  color: #163a70;
+}
+
+.regular-print-hero-title {
+  color: #122f5c;
+}
+
+.regular-print-grade {
+  color: #122f5c;
+}
+
+.regular-print-table-head,
+.regular-print-table-head th {
+  background: #163a70;
+  color: #ffffff;
+}
+
+.regular-band-reach {
+  background: #f59e0b;
+  color: #1c1917;
+}
+
+.regular-band-ambitious {
+  background: #0369a1;
+  color: #ffffff;
+}
+
+.regular-band-target {
+  background: #0f766e;
+  color: #ffffff;
+}
+
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+
+  html:has(.regular-print-root) *,
+  html:has(.regular-print-root) *::before,
+  html:has(.regular-print-root) *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  html:has(.regular-print-root),
+  html:has(.regular-print-root) body,
+  html:has(.regular-print-root) #root,
+  html:has(.regular-print-root) main {
+    background: #fff !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  html:has(.regular-print-root) body * {
+    visibility: hidden !important;
+  }
+
+  html:has(.regular-print-root) .regular-print-root,
+  html:has(.regular-print-root) .regular-print-root * {
+    visibility: visible !important;
+  }
+
+  html:has(.regular-print-root) aside,
+  html:has(.regular-print-root) header,
+  html:has(.regular-print-root) .tm-bottom-nav,
+  html:has(.regular-print-root) nav.tm-bottom-nav {
+    display: none !important;
+  }
+
+  html:has(.regular-print-root) .no-print {
+    display: none !important;
+  }
+
+  html:has(.regular-print-root) .regular-screen-only {
+    display: none !important;
+  }
+
+  html:has(.regular-print-root) .regular-print-root {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  html:has(.regular-print-root) .regular-print-hero {
+    background: #9ec4ea !important;
+    border: 2px solid #163a70 !important;
+    color: #163a70 !important;
+    padding: 10px 12px !important;
+  }
+
+  html:has(.regular-print-root) .regular-print-hero-kicker,
+  html:has(.regular-print-root) .regular-print-hero-title,
+  html:has(.regular-print-root) .regular-print-grade {
+    color: #122f5c !important;
+  }
+
+  html:has(.regular-print-root) .regular-print-table-head,
+  html:has(.regular-print-root) .regular-print-table-head th {
+    background: #163a70 !important;
+    color: #ffffff !important;
+    font-weight: 700 !important;
+  }
+
+  html:has(.regular-print-root) .regular-band-reach {
+    background: #f59e0b !important;
+    color: #1c1917 !important;
+  }
+
+  html:has(.regular-print-root) .regular-band-ambitious {
+    background: #0369a1 !important;
+    color: #ffffff !important;
+  }
+
+  html:has(.regular-print-root) .regular-band-target {
+    background: #0f766e !important;
+    color: #ffffff !important;
+  }
+
+  html:has(.regular-print-root) .regular-print-section {
+    break-inside: auto;
+    page-break-inside: auto;
+  }
+
+  html:has(.regular-print-root) .regular-print-table {
+    min-width: 0 !important;
+    width: 100% !important;
+    table-layout: fixed;
+    font-size: 8pt;
+    line-height: 1.35;
+  }
+
+  html:has(.regular-print-root) .regular-print-table th,
+  html:has(.regular-print-root) .regular-print-table td {
+    padding: 3px 4px !important;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    vertical-align: top;
+  }
+
+  html:has(.regular-print-root) .regular-print-table thead {
+    display: table-header-group;
+  }
+
+  html:has(.regular-print-root) .regular-print-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  html:has(.regular-print-root) .regular-print-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  html:has(.regular-print-root) .regular-desktop-table {
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  html:has(.regular-print-root) .regular-mobile-cards {
+    display: none !important;
+  }
+
+  html:has(.regular-print-root) main {
+    padding: 0 !important;
+  }
+}
+
+@media screen {
+  .regular-screen-hide {
+    display: none !important;
+  }
+}

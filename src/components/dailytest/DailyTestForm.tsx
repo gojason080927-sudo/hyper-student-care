@@ -94,6 +94,7 @@ export function DailyTestForm({
         />
       </div>
       <DailyLearningDiagnosisFields
+        key={`${form.studentId}-${form.date}-${form.subject}`}
         subject={form.subject}
         value={form.learningDiagnosis}
         onChange={(learningDiagnosis) => onChange({ ...form, learningDiagnosis })}

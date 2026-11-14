@@ -1,25 +1,27 @@
 import type { InputHTMLAttributes, TextareaHTMLAttributes } from 'react'
 
-/** 일반 텍스트 입력 — 한글 IME 조합을 방해하지 않도록 브라우저 속성을 고정 */
-const koreanTextAttrs = {
-  type: 'text' as const,
-  lang: 'ko',
-  inputMode: 'text' as const,
-  autoCapitalize: 'off' as const,
-  autoCorrect: 'off' as const,
-  spellCheck: false,
-}
-
+/** 한 줄 입력 — input에만 type/inputMode를 둔다. textarea에 넣으면 모바일에서 Space가 먹히지 않을 수 있다. */
 export function KoreanTextInput({
   className,
   ...props
 }: InputHTMLAttributes<HTMLInputElement>) {
-  return <input {...koreanTextAttrs} {...props} className={className} />
+  return (
+    <input
+      type="text"
+      lang="ko"
+      inputMode="text"
+      autoCapitalize="off"
+      autoCorrect="off"
+      spellCheck={false}
+      {...props}
+      className={className}
+    />
+  )
 }
 
 export function KoreanTextarea({
   className,
   ...props
 }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return <textarea {...koreanTextAttrs} {...props} className={className} />
+  return <textarea lang="ko" {...props} className={className} />
 }

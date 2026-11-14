@@ -2,6 +2,7 @@ import type { TodayReportData } from './repository'
 import { getSupabase } from '../supabase'
 import { getPreviousSeoulDateString } from '../../utils/seoulDate'
 import { getMathSharedLinkedClassNames } from '../../utils/mathSharedGroup'
+import { dedupeStudentTextbookSlots } from '../../utils/textbookSlots'
 import { mergeClassTodayReportCommonRecords } from '../../utils/mergeClassTodayReportCommon'
 import { filterNoticesForStudent } from '../../utils/noticeAudience'
 import { filterScheduleGridsForStudent } from '../../utils/classScheduleAccess'
@@ -132,6 +133,29 @@ async function fetchStudentTextbookSlotsFallback(
     data,
     studentTextbookSlotFromRow,
   )
+}
+
+async function resolveStudentTextbookSlotsFromRpc(
+  rpcValue: unknown,
+  studentId: string | undefined,
+): Promise<ReturnType<typeof studentTextbookSlotFromRow>[] | undefined> {
+  const fromRpc =
+    rpcValue !== undefined
+      ? mapRows<StudentTextbookSlotRow, ReturnType<typeof studentTextbookSlotFromRow>>(
+          rpcValue,
+          studentTextbookSlotFromRow,
+        )
+      : undefined
+  if (!studentId) return fromRpc
+  const liveSlots = await fetchStudentTextbookSlotsFallback(studentId)
+  // 교재명 canonical source: student_textbook_slots 테이블. 날짜별 RPC 스냅샷보다 우선한다.
+  const resolved =
+    liveSlots && liveSlots.length > 0
+      ? liveSlots
+      : fromRpc && fromRpc.length > 0
+        ? fromRpc
+        : (liveSlots ?? fromRpc)
+  return resolved ? dedupeStudentTextbookSlots(resolved) : resolved
 }
 
 async function fetchClassTodayReportCommonForClassNames(
@@ -343,14 +367,11 @@ export async function rpcGetParentCareBundle(accessKey: string): Promise<LocalBa
           ),
         )
       : fetchHomeworkTextbookEntriesFallback(student.id).then((rows) => rows ?? []),
-    bundle.student_textbook_slots !== undefined
-      ? Promise.resolve(
-          mapRows<StudentTextbookSlotRow, ReturnType<typeof studentTextbookSlotFromRow>>(
-            bundle.student_textbook_slots,
-            studentTextbookSlotFromRow,
-          ),
+    bundle.student_textbook_slots !== undefined || student.id
+      ? resolveStudentTextbookSlotsFromRpc(bundle.student_textbook_slots, student.id).then(
+          (rows) => rows ?? [],
         )
-      : fetchStudentTextbookSlotsFallback(student.id).then((rows) => rows ?? []),
+      : Promise.resolve([]),
     bundle.class_today_report_common !== undefined
       ? enrichClassTodayReportCommonWithMathSharing(
           student,
@@ -487,16 +508,7 @@ export async function rpcGetParentTodayReport(
       : studentId
         ? fetchHomeworkTextbookEntriesFallback(studentId, date)
         : Promise.resolve(undefined),
-    report.student_textbook_slots !== undefined
-      ? Promise.resolve(
-          mapRows<StudentTextbookSlotRow, ReturnType<typeof studentTextbookSlotFromRow>>(
-            report.student_textbook_slots,
-            studentTextbookSlotFromRow,
-          ),
-        )
-      : studentId
-        ? fetchStudentTextbookSlotsFallback(studentId)
-        : Promise.resolve(undefined),
+    resolveStudentTextbookSlotsFromRpc(report.student_textbook_slots, studentId),
     report.class_today_report_common !== undefined && student
       ? enrichClassTodayReportCommonWithMathSharing(
           student,

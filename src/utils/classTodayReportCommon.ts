@@ -399,6 +399,8 @@ export function buildSyncedProgressRecordForPeer(params: {
   existingRecords: ProgressRecord[]
   timestamps: { createdAt: string; updatedAt: string }
   createId: () => string
+  /** When true, persist empty 진도 for this date (sticky clear). */
+  writeEmpty?: boolean
 }): ProgressRecord | null {
   const existing = params.existingRecords.find(
     (record) =>
@@ -423,11 +425,21 @@ export function buildSyncedProgressRecordForPeer(params: {
     pages.totalPage > 0 ||
     teacherMemo
 
-  if (!hasContent && !existing) {
+  if (!hasContent && !existing && !params.writeEmpty) {
     return null
   }
 
-  const totalPage = pages.totalPage > 0 ? pages.totalPage : existing?.totalPage || 1
+  const clearing = Boolean(params.writeEmpty) && !hasContent
+  const totalPage = clearing
+    ? 0
+    : pages.totalPage > 0
+      ? pages.totalPage
+      : existing?.totalPage || 1
+  const currentPage = clearing
+    ? 0
+    : pages.currentPage > 0
+      ? pages.currentPage
+      : existing?.currentPage ?? 0
 
   return {
     id: existing?.id ?? params.createId(),
@@ -435,13 +447,11 @@ export function buildSyncedProgressRecordForPeer(params: {
     subject: params.subject,
     slotNumber: params.slotNumber,
     textbookName: existing?.textbookName ?? '',
-    currentProgress: currentProgress || existing?.currentProgress.trim() || '',
-    currentPage: pages.currentPage > 0 ? pages.currentPage : existing?.currentPage ?? 0,
+    // Do not fall back to existing content when teacher cleared this date's 진도.
+    currentProgress: clearing ? '' : currentProgress || existing?.currentProgress.trim() || '',
+    currentPage,
     totalPage,
-    progressRate: calcProgressRate(
-      pages.currentPage > 0 ? pages.currentPage : existing?.currentPage ?? 0,
-      totalPage,
-    ),
+    progressRate: calcProgressRate(currentPage, totalPage || 1),
     lastStudyDate: params.date,
     teacherMemo,
     createdAt: existing?.createdAt ?? params.timestamps.createdAt,

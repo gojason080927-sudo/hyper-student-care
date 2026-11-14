@@ -557,6 +557,7 @@ export async function upsertStudentTextbookSlot(
   })
 
   if (!unified.error) {
+    await syncAllStudentTextbookSlotNames(supabase, row)
     return
   }
 
@@ -594,13 +595,26 @@ export async function upsertStudentTextbookSlot(
     throwIfError(legacy.error, 'student_textbook_slots', 'student_textbook_slots 저장 실패')
   }
 
-  await supabase
+  await syncAllStudentTextbookSlotNames(supabase, row)
+}
+
+/** homework/progress category 중복 행이 있어도 같은 슬롯 교재명을 모두 맞춘다. */
+async function syncAllStudentTextbookSlotNames(
+  supabase: ReturnType<typeof getSupabase>,
+  row: ReturnType<typeof studentTextbookSlotToRow>,
+): Promise<void> {
+  const { error } = await supabase
     .from('student_textbook_slots')
     .update({ textbook_name: row.textbook_name, updated_at: row.updated_at })
     .eq('student_id', row.student_id)
     .eq('subject', row.subject)
     .eq('slot_number', row.slot_number)
-    .eq('category', 'progress')
+  if (error) {
+    console.error('[Repository] student_textbook_slots name sync failed', {
+      code: error.code,
+      message: error.message,
+    })
+  }
 }
 
 export async function deleteHomework(id: string): Promise<void> {

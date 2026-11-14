@@ -1,0 +1,950 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>career report 3ea14427-be55-4234-8793-40e9c6b1d812</title>
+  <style>
+    html, body { margin: 0; padding: 0; background: #fff; font-family: "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; }
+    .career-print-root,
+.career-print-hero,
+.career-print-bar,
+.career-print-page,
+.career-print-frame {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.career-print-page,
+.career-print-page *,
+.career-print-page *::before,
+.career-print-page *::after {
+  box-sizing: border-box;
+}
+
+.career-report-wrap {
+  width: 100%;
+}
+
+.career-report-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.career-print-root {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/*
+  Paper: 210 x 297mm, border-box.
+  Outer padding = paper-to-frame (equal L/R) so the outline sits inside
+  the printable area. Frame inner padding = content safe inset.
+  Content inset ≈ 7mm + 5mm = 12mm on both sides.
+*/
+.career-print-page {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 210mm;
+  height: 297mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  padding: 7mm 7mm;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.career-print-frame {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  padding: 5mm 5mm 4.5mm;
+  border: 0.8pt solid #6d7786;
+  background: #ffffff;
+}
+
+.career-print-page-body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.career-print-page--air .career-print-page-body,
+.career-print-page--normal .career-print-page-body,
+.career-print-page--dense .career-print-page-body {
+  justify-content: stretch;
+}
+
+.career-print-page-body > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.career-print-page--dense .career-print-page-body {
+  gap: 5px;
+}
+
+.career-print-footer {
+  flex: 0 0 8mm;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 3mm;
+  padding-top: 2mm;
+  border-top: 0.6pt solid #d4d4d8;
+  color: #52525b;
+  font-size: 11px;
+  letter-spacing: 0.01em;
+}
+
+.career-print-pageno {
+  font-weight: 600;
+  color: #3f3f46;
+}
+
+.career-print-break {
+  display: none;
+}
+
+.career-print-hero {
+  background: #163a70;
+  color: #ffffff;
+  border: 1px solid #122f5c;
+  padding: 11px 13px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.career-print-kicker {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+}
+
+.career-print-title {
+  margin: 4px 0 0;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.22;
+}
+
+.career-print-meta {
+  margin: 7px 0 0;
+  font-size: 13px;
+  opacity: 0.95;
+}
+
+.career-print-card {
+  border: 1px solid #d4d4d8;
+  background: #ffffff;
+  padding: 8px 10px;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.career-print-page--air .career-print-card {
+  padding: 10px 12px;
+}
+
+.career-print-h2,
+.career-print-h3,
+.career-print-page5-title h2 {
+  margin: 0;
+  color: #163a70;
+  font-weight: 800;
+}
+
+.career-print-h2 {
+  font-size: 15px;
+}
+
+.career-print-h3 {
+  font-size: 14px;
+}
+
+.career-print-page5-title {
+  flex: 0 0 auto;
+}
+
+.career-print-page5-title h2 {
+  font-size: 17px;
+}
+
+.career-print-dna-pair {
+  margin: 7px 0 0;
+  color: #163a70;
+  font-size: 21px;
+  font-weight: 800;
+  line-height: 1.28;
+}
+
+.career-print-dna-body,
+.career-print-body {
+  margin: 7px 0 0;
+  color: #3f3f46;
+  font-size: 13.5px;
+  line-height: 1.48;
+}
+
+.career-print-explained-list {
+  list-style: none;
+  margin: 7px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.career-print-explained-list--compact {
+  gap: 5px;
+}
+
+.career-print-explained-head,
+.career-print-riasec-head,
+.career-print-mini-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  color: #18181b;
+  font-size: 13px;
+}
+
+.career-print-explained-list p,
+.career-print-riasec-row p,
+.career-print-value-row p {
+  margin: 2px 0 0;
+  color: #52525b;
+  font-size: 12px;
+  line-height: 1.38;
+}
+
+.career-print-major-top5 {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  flex: 1 1 auto;
+  gap: 4px;
+}
+
+.career-print-major-top5 li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid #f4f4f5;
+}
+
+.career-print-major-name {
+  color: #163a70;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.career-print-major-fit {
+  color: #3f3f46;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.career-print-bar-track {
+  height: 6px;
+  overflow: hidden;
+  margin-top: 3px;
+  max-width: 100%;
+  background: #e4e4e7;
+}
+
+.career-print-bar-track--tall {
+  height: 9px;
+}
+
+.career-print-bar {
+  height: 100%;
+  max-width: 100%;
+  background: #163a70;
+}
+
+.career-print-riasec-list,
+.career-print-strength-grid,
+.career-print-behavior-grid {
+  display: grid;
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.career-print-strength-grid,
+.career-print-behavior-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.career-print-riasec-row,
+.career-print-value-row,
+.career-print-mini-row {
+  min-width: 0;
+}
+
+.career-print-scale-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 7px;
+}
+
+.career-print-scale-card {
+  min-height: 0;
+}
+
+.career-print-scale-number {
+  margin: 6px 0 4px;
+  color: #163a70;
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.career-print-scale-desc,
+.career-print-scale-comment,
+.career-print-note {
+  margin: 6px 0 0;
+  color: #52525b;
+  font-size: 12px;
+  line-height: 1.42;
+}
+
+.career-print-scale-comment {
+  color: #3f3f46;
+}
+
+.career-print-guide-steps {
+  list-style: none;
+  margin: 7px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 7px;
+}
+
+.career-print-guide-steps strong {
+  display: block;
+  color: #163a70;
+  font-size: 13.5px;
+}
+
+.career-print-guide-steps p {
+  margin: 4px 0 0;
+  color: #3f3f46;
+  font-size: 12px;
+  line-height: 1.38;
+}
+
+.career-print-table {
+  width: 100%;
+  max-width: 100%;
+  margin-top: 5px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 11.5px;
+  line-height: 1.32;
+}
+
+.career-print-table th,
+.career-print-table td {
+  padding: 3px 4px;
+  border-bottom: 1px solid #e4e4e7;
+  vertical-align: top;
+  text-align: left;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.career-print-table th {
+  color: #71717a;
+  font-weight: 700;
+}
+
+.career-print-col-rank {
+  width: 32px;
+}
+
+.career-print-col-name {
+  width: 74px;
+}
+
+.career-print-col-fit {
+  width: 80px;
+}
+
+.career-print-fit-label {
+  color: #71717a;
+  font-size: 10.5px;
+}
+
+.career-print-detail-majors {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 4px 10px;
+}
+
+.career-print-detail-majors li {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+
+.career-print-detail-majors strong {
+  color: #163a70;
+}
+
+.career-print-detail-majors span {
+  color: #3f3f46;
+}
+
+.career-print-careers {
+  color: #52525b;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.career-print-license-note {
+  flex: 0 0 auto;
+  margin: 5px 0 0;
+  color: #71717a;
+  font-size: 10.5px;
+  line-height: 1.35;
+}
+
+.career-print-cluster-grid {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.career-print-cluster-grid strong {
+  display: block;
+  color: #163a70;
+  font-size: 13px;
+}
+
+.career-print-cluster-grid p {
+  margin: 3px 0 0;
+  color: #3f3f46;
+  font-size: 12.5px;
+  line-height: 1.42;
+}
+
+.career-print-checklist,
+.career-print-watch {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 3px;
+  color: #3f3f46;
+  font-size: 12.5px;
+  line-height: 1.38;
+}
+
+.career-print-watch li::before {
+  content: '· ';
+  font-weight: 700;
+}
+
+.career-print-disclaimer {
+  margin: 7px 0 0;
+  color: #71717a;
+  font-size: 11px;
+  line-height: 1.38;
+}
+
+/*
+  Pages 2-5 only. Page 1 (--air / --p1) keeps the current layout.
+  Expand vertical rhythm with line-height, padding, and section gaps —
+  never forced card heights or larger font-size.
+*/
+.career-print-page--normal .career-print-page-body,
+.career-print-page--dense .career-print-page-body {
+  justify-content: flex-start;
+}
+
+.career-print-page--normal .career-print-page-body > *,
+.career-print-page--dense .career-print-page-body > * {
+  flex: 0 0 auto;
+}
+
+.career-print-page--p2 .career-print-page-body {
+  gap: 12px;
+}
+
+.career-print-page--p3 .career-print-page-body {
+  gap: 10px;
+}
+
+.career-print-page--p4 .career-print-page-body {
+  gap: 4px;
+}
+
+.career-print-page--p5 .career-print-page-body {
+  gap: 7px;
+}
+
+.career-print-page--normal .career-print-card,
+.career-print-page--dense .career-print-card {
+  padding: 11px 12px;
+  justify-content: flex-start;
+}
+
+.career-print-page--p2 .career-print-riasec-list,
+.career-print-page--p2 .career-print-strength-grid,
+.career-print-page--p2 .career-print-explained-list {
+  margin-top: 10px;
+}
+
+.career-print-page--p3 .career-print-behavior-grid,
+.career-print-page--p3 .career-print-table,
+.career-print-page--p4 .career-print-detail-majors,
+.career-print-page--p5 .career-print-body,
+.career-print-page--p5 .career-print-cluster-grid,
+.career-print-page--p5 .career-print-checklist,
+.career-print-page--p5 .career-print-watch {
+  margin-top: 8px;
+}
+
+.career-print-page--p2 .career-print-riasec-list {
+  gap: 7px;
+}
+
+.career-print-page--p2 .career-print-strength-grid {
+  gap: 10px;
+}
+
+.career-print-page--p2 .career-print-explained-list {
+  gap: 8px;
+}
+
+.career-print-page--p2 .career-print-riasec-row p,
+.career-print-page--p2 .career-print-value-row p {
+  margin-top: 3px;
+  line-height: 1.5;
+}
+
+.career-print-page--p3 .career-print-card {
+  padding: 9px 11px;
+}
+
+.career-print-page--p3 .career-print-behavior-grid {
+  margin-top: 6px;
+  gap: 6px;
+}
+
+.career-print-page--p3 .career-print-mini-row .career-print-bar-track {
+  margin-top: 2px;
+}
+
+.career-print-page--p3 .career-print-scale-grid {
+  gap: 9px;
+}
+
+.career-print-page--p3 .career-print-scale-card {
+  padding: 9px 11px;
+}
+
+.career-print-page--p3 .career-print-scale-number {
+  margin: 5px 0 4px;
+}
+
+.career-print-page--p3 .career-print-scale-desc,
+.career-print-page--p3 .career-print-scale-comment {
+  margin-top: 5px;
+  line-height: 1.4;
+}
+
+.career-print-page--p3 .career-print-table {
+  margin-top: 6px;
+  line-height: 1.34;
+}
+
+.career-print-page--p3 .career-print-table th,
+.career-print-page--p3 .career-print-table td {
+  padding: 3.5px 5px;
+}
+
+.career-print-page--p5 .career-print-guide {
+  padding: 0;
+}
+
+.career-print-guide-title {
+  padding: 8px 12px 7px;
+  border-bottom: 1px solid #b4b8c0;
+  background: #f3f5f8;
+}
+
+.career-print-guide-steps {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+  margin: 0;
+  gap: 0;
+}
+
+.career-print-guide-steps li {
+  min-width: 0;
+  padding: 8px 12px 9px;
+  border-right: 1px solid #b4b8c0;
+}
+
+.career-print-guide-steps li:last-child {
+  border-right: 0;
+}
+
+.career-print-guide-steps strong {
+  margin-bottom: 4px;
+}
+
+.career-print-guide-steps p {
+  margin: 4px 0 0;
+  line-height: 1.42;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+.career-print-guide-note {
+  margin: 0;
+  padding: 8px 12px 9px;
+  border-top: 1px solid #b4b8c0;
+  line-height: 1.42;
+  word-break: keep-all;
+}
+
+.career-print-page4-title {
+  flex: 0 0 auto;
+}
+
+.career-print-page4-title h2 {
+  margin: 0;
+  color: #163a70;
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.career-print-page--p4 .career-print-card {
+  padding: 5px 7px;
+}
+
+.career-print-page--p4 .career-print-detail-majors {
+  margin-top: 3px;
+  gap: 3px 10px;
+}
+
+.career-print-page--p4 .career-print-detail-majors li {
+  gap: 0;
+  font-size: 12px;
+  line-height: 1.32;
+}
+
+.career-print-deep-title {
+  flex: 0 0 auto;
+  margin: 1px 0 0;
+}
+
+.career-print-deep-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
+}
+
+.career-print-deep-card {
+  min-width: 0;
+}
+
+.career-print-deep-head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  margin: 0 0 3px;
+  color: #163a70;
+  font-size: 12.5px;
+  font-weight: 800;
+}
+
+.career-print-deep-head em {
+  margin-left: 6px;
+  color: #71717a;
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.career-print-deep-why,
+.career-print-deep-line,
+.career-print-deep-careers {
+  margin: 2px 0 0;
+  color: #3f3f46;
+  font-size: 12px;
+  line-height: 1.32;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+.career-print-deep-careers {
+  line-height: 1.42;
+}
+
+.career-print-deep-why strong,
+.career-print-deep-line strong,
+.career-print-deep-careers strong {
+  display: inline;
+  margin-right: 6px;
+  color: #163a70;
+}
+
+.career-print-points ul {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 3px 10px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.career-print-points li {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 12px;
+  line-height: 1.32;
+}
+
+.career-print-points strong {
+  color: #163a70;
+}
+
+.career-print-explore-note,
+.career-print-page--p4 .career-print-license-note {
+  margin-top: 5px;
+  color: #71717a;
+  font-size: 10.5px;
+  line-height: 1.35;
+}
+
+.career-print-page--p5 .career-print-card {
+  padding: 7px 10px;
+}
+
+.career-print-page--p5 .career-print-page5-title h2 {
+  font-size: 15px;
+}
+
+.career-print-page--p5 .career-print-body {
+  margin-top: 5px;
+  line-height: 1.4;
+}
+
+.career-print-page--p5 .career-print-note {
+  margin-top: 4px;
+  line-height: 1.38;
+}
+
+.career-print-page--p5 .career-print-cluster-grid {
+  margin-top: 5px;
+  gap: 4px;
+}
+
+.career-print-page--p5 .career-print-cluster-grid p {
+  margin-top: 2px;
+  line-height: 1.38;
+}
+
+.career-print-page--p5 .career-print-checklist,
+.career-print-page--p5 .career-print-watch {
+  margin-top: 5px;
+  gap: 3px;
+  line-height: 1.36;
+}
+
+.career-print-page--p5 .career-print-disclaimer {
+  margin-top: 5px;
+  line-height: 1.35;
+}
+
+@media (max-width: 820px) {
+  .career-print-page {
+    min-height: 0;
+    max-width: 100%;
+    padding: 10px;
+  }
+
+  .career-print-frame {
+    padding: 10px;
+  }
+
+  .career-print-page-body > * {
+    flex: 0 1 auto;
+  }
+
+  .career-print-strength-grid,
+  .career-print-behavior-grid,
+  .career-print-scale-grid,
+  .career-print-guide-steps,
+  .career-print-detail-majors,
+  .career-print-points ul {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .career-print-guide-steps li {
+    border-right: 0;
+    border-bottom: 1px solid #b4b8c0;
+  }
+
+  .career-print-guide-steps li:last-child {
+    border-bottom: 0;
+  }
+
+  .career-print-major-top5 li {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  html:has(.career-print-root) *,
+  html:has(.career-print-root) *::before,
+  html:has(.career-print-root) *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    box-sizing: border-box;
+  }
+
+  html:has(.career-print-root),
+  html:has(.career-print-root) body,
+  html:has(.career-print-root) #root,
+  html:has(.career-print-root) main {
+    background: #fff !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  html:has(.career-print-root) body * {
+    visibility: hidden !important;
+  }
+
+  html:has(.career-print-root) .career-print-root,
+  html:has(.career-print-root) .career-print-root * {
+    visibility: visible !important;
+  }
+
+  html:has(.career-print-root) .career-print-root {
+    position: absolute;
+    inset: 0;
+    display: block !important;
+    width: 210mm;
+    max-width: 210mm;
+    gap: 0;
+  }
+
+  .career-no-print {
+    display: none !important;
+  }
+
+  .career-print-page {
+    display: flex;
+    width: 210mm;
+    height: 297mm;
+    max-width: 210mm;
+    min-height: 297mm;
+    margin: 0;
+    padding: 7mm 7mm;
+    border: 0;
+    box-shadow: none;
+    overflow: hidden;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .career-print-frame {
+    flex: 1 1 auto;
+    height: 100%;
+    max-width: 100%;
+  }
+
+  .career-print-page + .career-print-page {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  .career-print-break {
+    display: block;
+    height: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .career-print-card,
+  .career-print-footer,
+  .career-print-hero,
+  .career-print-table,
+  .career-print-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .career-print-strength-grid,
+  .career-print-behavior-grid,
+  .career-print-scale-grid,
+  .career-print-detail-majors,
+  .career-print-points ul {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .career-print-guide-steps {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .career-print-guide-steps li {
+    border-right: 1px solid #b4b8c0;
+    border-bottom: 0;
+  }
+
+  .career-print-guide-steps li:last-child {
+    border-right: 0;
+  }
+}
+
+  </style>
+</head>
+<body><div class="career-report-wrap"><div class="career-print-root"><section class="career-print-page career-print-page--air career-print-page--p1"><div class="career-print-frame"><div class="career-print-page-body"><header class="career-print-hero"><p class="career-print-kicker">HYPER ACADEMY</p><h1 class="career-print-title">진로·학과 적성검사 REPORT</h1><p class="career-print-meta">진로검사 테스트학생 · HYPER TEST · 고1 · 검사일 2026-09-06</p></header><article class="career-print-card career-print-card--dna"><h2 class="career-print-h2">진로 DNA</h2><p class="career-print-dna-pair">탐구형 I + 사회형 S</p><p class="career-print-dna-body">탐구형(I)과 사회형(S)의 성향이 함께 나타납니다. 새로운 지식이나 원리를 탐구하는 흥미가 높고, 사람을 돕거나 함께 성장하는 활동에도 관심이 높은 유형입니다.</p></article><article class="career-print-card"><h2 class="career-print-h2">핵심 강점 TOP5</h2><ol class="career-print-explained-list"><li><div class="career-print-explained-head"><strong>1. 논리</strong><span>100</span></div><p>복잡한 문제를 단계적으로 분석하고 원인과 결과를 논리적으로 연결하는 능력이 강합니다.</p></li><li><div class="career-print-explained-head"><strong>2. 관찰</strong><span>100</span></div><p>세부적인 변화와 차이를 잘 알아차리고, 상황을 정확히 파악하는 능력이 강합니다.</p></li><li><div class="career-print-explained-head"><strong>3. 대인</strong><span>87.5</span></div><p>사람들과 원활하게 소통하고 공감하며 협력하는 능력이 강합니다.</p></li><li><div class="career-print-explained-head"><strong>4. 언어</strong><span>75</span></div><p>생각을 글과 말로 명확하게 표현하고 다른 사람의 의미를 이해하는 능력입니다.</p></li><li><div class="career-print-explained-head"><strong>5. 수리</strong><span>75</span></div><p>숫자와 수량의 관계를 이해하고 수리 문제를 구조적으로 해결하는 능력입니다.</p></li></ol></article><article class="career-print-card"><h2 class="career-print-h2">추천 전공 TOP5</h2><ol class="career-print-major-top5"><li><span class="career-print-major-name">1. 의학</span><span class="career-print-major-fit">95.1 · 매우 높은 적합</span></li><li><span class="career-print-major-name">2. 생명·생명공학</span><span class="career-print-major-fit">94.7 · 매우 높은 적합</span></li><li><span class="career-print-major-name">3. 환경·에너지</span><span class="career-print-major-fit">93.9 · 매우 높은 적합</span></li><li><span class="career-print-major-name">4. 수의학</span><span class="career-print-major-fit">93.1 · 매우 높은 적합</span></li><li><span class="career-print-major-name">5. 한의학</span><span class="career-print-major-fit">92.6 · 매우 높은 적합</span></li></ol></article></div><footer class="career-print-footer"><span>HYPER ACADEMY | 24시간 학습을 설계하다</span><span class="career-print-pageno">- 1 -</span></footer></div></section><div class="career-print-break" aria-hidden="true"></div><section class="career-print-page career-print-page--dense career-print-page--p2"><div class="career-print-frame"><div class="career-print-page-body"><article class="career-print-card"><h2 class="career-print-h2">RIASEC 전체 결과</h2><div class="career-print-riasec-list"><div class="career-print-riasec-row"><div class="career-print-riasec-head"><strong>R 현실형</strong><span>70</span></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:70%"></div></div><p>도구·기계·재료를 직접 다루고 실제 결과를 만들어내는 활동을 선호합니다.</p></div><div class="career-print-riasec-row"><div class="career-print-riasec-head"><strong>I 탐구형</strong><span>95</span></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:95%"></div></div><p>원리와 원인을 분석하고 새로운 지식을 탐구하는 활동을 선호합니다.</p></div><div class="career-print-riasec-row"><div class="career-print-riasec-head"><strong>A 예술형</strong><span>35</span></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:35%"></div></div><p>새로운 아이디어와 표현, 창의적인 활동을 선호합니다.</p></div><div class="career-print-riasec-row"><div class="career-print-riasec-head"><strong>S 사회형</strong><span>90.0</span></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:89.99999999999999%"></div></div><p>사람을 돕고 가르치며 협력하는 활동을 선호합니다.</p></div><div class="career-print-riasec-row"><div class="career-print-riasec-head"><strong>E 진취형</strong><span>55.0</span></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:55.00000000000001%"></div></div><p>리더십, 설득, 기획, 목표 달성을 위한 활동을 선호합니다.</p></div><div class="career-print-riasec-row"><div class="career-print-riasec-head"><strong>C 관습형</strong><span>60</span></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:60%"></div></div><p>체계적인 정리와 정확성, 자료 관리와 절차를 선호합니다.</p></div></div></article><article class="career-print-card"><h2 class="career-print-h2">강점 8영역</h2><div class="career-print-strength-grid"><div class="career-print-mini-row"><div class="career-print-mini-head"><span>언어</span><strong>75</strong></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:75%"></div></div></div><div class="career-print-mini-row"><div class="career-print-mini-head"><span>수리</span><strong>75</strong></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:75%"></div></div></div><div class="career-print-mini-row"><div class="career-print-mini-head"><span>논리</span><strong>100</strong></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:100%"></div></div></div><div class="career-print-mini-row"><div class="career-print-mini-head"><span>공간</span><strong>50</strong></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:50%"></div></div></div><div class="career-print-mini-row"><div class="career-print-mini-head"><span>창의</span><strong>50</strong></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:50%"></div></div></div><div class="career-print-mini-row"><div class="career-print-mini-head"><span>대인</span><strong>87.5</strong></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:87.5%"></div></div></div><div class="career-print-mini-row"><div class="career-print-mini-head"><span>관찰</span><strong>100</strong></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:100%"></div></div></div><div class="career-print-mini-row"><div class="career-print-mini-head"><span>실용</span><strong>75</strong></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:75%"></div></div></div></div></article><article class="career-print-card"><h2 class="career-print-h2">직업가치 TOP5</h2><div class="career-print-explained-list career-print-explained-list--compact"><div class="career-print-value-row"><div class="career-print-explained-head"><strong>사회기여</strong><span>100</span></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:100%"></div></div><p>다른 사람이나 사회에 도움이 되는 일을 의미 있게 느끼는 가치입니다.</p></div><div class="career-print-value-row"><div class="career-print-explained-head"><strong>성장</strong><span>100</span></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:100%"></div></div><p>계속 배우고 발전하며 전문성을 높일 수 있는 일을 중요하게 생각합니다.</p></div><div class="career-print-value-row"><div class="career-print-explained-head"><strong>전문성</strong><span>100</span></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:100%"></div></div><p>특정 분야의 깊은 지식과 기술을 갖추고 전문가로 인정받는 것을 중요하게 생각합니다.</p></div><div class="career-print-value-row"><div class="career-print-explained-head"><strong>성취</strong><span>75</span></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:75%"></div></div><p>목표를 설정하고 성과와 결과를 만들어내는 것을 중요하게 생각합니다.</p></div><div class="career-print-value-row"><div class="career-print-explained-head"><strong>안정</strong><span>50</span></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:50%"></div></div><p>직업과 생활의 안정성, 예측 가능한 환경을 중요하게 생각하는 가치입니다.</p></div></div></article></div><footer class="career-print-footer"><span>HYPER ACADEMY | 24시간 학습을 설계하다</span><span class="career-print-pageno">- 2 -</span></footer></div></section><div class="career-print-break" aria-hidden="true"></div><section class="career-print-page career-print-page--dense career-print-page--p3"><div class="career-print-frame"><div class="career-print-page-body"><article class="career-print-card"><h2 class="career-print-h2">행동 특성</h2><div class="career-print-behavior-grid"><div class="career-print-mini-row"><div class="career-print-mini-head"><span>계획</span><strong>50</strong></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:50%"></div></div></div><div class="career-print-mini-row"><div class="career-print-mini-head"><span>끈기</span><strong>100</strong></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:100%"></div></div></div><div class="career-print-mini-row"><div class="career-print-mini-head"><span>신중</span><strong>100</strong></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:100%"></div></div></div><div class="career-print-mini-row"><div class="career-print-mini-head"><span>사교</span><strong>50</strong></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:50%"></div></div></div><div class="career-print-mini-row"><div class="career-print-mini-head"><span>협력</span><strong>75</strong></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:75%"></div></div></div><div class="career-print-mini-row"><div class="career-print-mini-head"><span>적응</span><strong>50</strong></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:50%"></div></div></div><div class="career-print-mini-row"><div class="career-print-mini-head"><span>주도</span><strong>50</strong></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:50%"></div></div></div><div class="career-print-mini-row"><div class="career-print-mini-head"><span>자기조절</span><strong>50</strong></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:50%"></div></div></div><div class="career-print-mini-row"><div class="career-print-mini-head"><span>숙고</span><strong>100</strong></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:100%"></div></div></div><div class="career-print-mini-row"><div class="career-print-mini-head"><span>실행</span><strong>75</strong></div><div class="career-print-bar-track "><div class="career-print-bar" style="width:75%"></div></div></div></div></article><div class="career-print-scale-grid"><article class="career-print-card career-print-scale-card"><h2 class="career-print-h2">진로 실행역량</h2><p class="career-print-scale-number">71.9</p><div class="career-print-bar-track career-print-bar-track--tall"><div class="career-print-bar" style="width:71.875%"></div></div><p class="career-print-scale-desc">현재 진로 탐색·준비 상황에서 스스로 시도하고 해결할 수 있다고 느끼는 정도입니다.</p><p class="career-print-scale-comment">어느 정도 스스로 시도할 수 있다고 느끼지만, 구체적인 경험과 정보가 쌓이면 자신감이 더 커질 수 있습니다.</p></article><article class="career-print-card career-print-scale-card"><h2 class="career-print-h2">진로 준비도</h2><p class="career-print-scale-number">62.5</p><div class="career-print-bar-track career-print-bar-track--tall"><div class="career-print-bar" style="width:62.5%"></div></div><p class="career-print-scale-desc">진로 목표를 생각하고, 필요한 정보를 탐색하며 선택을 준비하고 있는 정도입니다.</p><p class="career-print-scale-comment">관심 방향은 있으나, 전공·학과 정보를 더 체계적으로 모으면 선택이 분명해질 수 있습니다.</p></article></div><article class="career-print-card"><h2 class="career-print-h2">추천 전공 TOP10</h2><table class="career-print-table"><thead><tr><th class="career-print-col-rank">순위</th><th class="career-print-col-name">전공군</th><th class="career-print-col-fit">적합도</th><th>주요 근거</th></tr></thead><tbody><tr><td>1</td><td>의학</td><td>95.1<div class="career-print-fit-label">매우 높은 적합</div></td><td>탐구형 흥미와 논리·관찰 강점, 사회기여 가치를 인체와 질병의 원인을 분석하고 해결책을 찾는 학습에 활용할 여지가 있습니다.</td></tr><tr><td>2</td><td>생명·생명공학</td><td>94.7<div class="career-print-fit-label">매우 높은 적합</div></td><td>탐구형 흥미와 관찰·논리 강점, 전문성 가치는 생명 현상의 원리를 실험과 분석으로 확인하는 학습과 맞닿아 있는 면이 있습니다.</td></tr><tr><td>3</td><td>환경·에너지</td><td>93.9<div class="career-print-fit-label">매우 높은 적합</div></td><td>탐구형 흥미와 논리·관찰 강점, 사회기여 가치가 높아 환경 문제의 원인을 찾고 개선 방법을 비교하는 학습에 강점을 보일 가능성이 있습니다.</td></tr><tr><td>4</td><td>수의학</td><td>93.1<div class="career-print-fit-label">매우 높은 적합</div></td><td>탐구형 흥미와 관찰·논리 강점, 숙고 성향은 동물의 질병과 건강을 관찰·진단하는 학습과 잘 연결됩니다.</td></tr><tr><td>5</td><td>한의학</td><td>92.6<div class="career-print-fit-label">매우 높은 적합</div></td><td>탐구형 흥미와 관찰·대인 강점, 연결 역량은 인체의 균형과 전통 의학의 원리를 탐구하는 학습을 이어 가는 데 도움이 됩니다.</td></tr><tr><td>6</td><td>화학·화공</td><td>92.4<div class="career-print-fit-label">매우 높은 적합</div></td><td>탐구형 흥미와 논리·관찰 강점, 분석 역량이 높아 물질의 변화와 반응을 수량적으로 분석하는 학습에 강점을 보일 가능성이 있습니다.</td></tr><tr><td>7</td><td>심리</td><td>92.4<div class="career-print-fit-label">매우 높은 적합</div></td><td>탐구형 흥미와 관찰·대인 강점, 성장 가치를 마음과 행동의 이유를 관찰하고 설명하는 학습에 활용할 여지가 있습니다.</td></tr><tr><td>8</td><td>식품·농생명</td><td>89.9<div class="career-print-fit-label">매우 높은 적합</div></td><td>탐구형 흥미와 관찰·논리 강점, 사회기여 가치가 높아 식품의 성분과 안전을 실험적으로 확인하는 학습에 강점을 보일 가능성이 있습니다.</td></tr><tr><td>9</td><td>약학</td><td>89.3<div class="career-print-fit-label">매우 높은 적합</div></td><td>탐구형 흥미와 관찰·논리 강점, 분석 역량이 높아 약물의 작용과 안전을 체계적으로 다루는 학습에 강점을 보일 가능성이 있습니다.</td></tr><tr><td>10</td><td>신소재·재료</td><td>89.2<div class="career-print-fit-label">매우 높은 적합</div></td><td>탐구형 흥미와 관찰·논리 강점, 성장 가치는 소재의 성질을 비교하고 쓰임에 맞게 고르는 학습과 맞닿아 있는 면이 있습니다.</td></tr></tbody></table></article></div><footer class="career-print-footer"><span>HYPER ACADEMY | 24시간 학습을 설계하다</span><span class="career-print-pageno">- 3 -</span></footer></div></section><div class="career-print-break" aria-hidden="true"></div><section class="career-print-page career-print-page--dense career-print-page--p4"><div class="career-print-frame"><div class="career-print-page-body"><header class="career-print-page4-title"><h2>추천 전공 상세 분석</h2></header><article class="career-print-card"><h3 class="career-print-h3">세부 추천학과</h3><ol class="career-print-detail-majors"><li><strong>1. 의학</strong><span>관련 학과: 의예과 · 의학과 · 의과학과</span><span class="career-print-careers">대표 진출 직업: 의사 · 의학연구원 · 보건의료 연구직 · 기초의학 연구직</span></li><li><strong>2. 생명·생명공학</strong><span>관련 학과: 미생물학과 · 생명공학과 · 생명과학과</span><span class="career-print-careers">대표 진출 직업: 생명과학연구원 · 바이오 연구원 · 제약·바이오 R&amp;D · 생명공학기술자</span></li><li><strong>3. 환경·에너지</strong><span>관련 학과: 환경공학과 · 에너지공학과 · 기후환경학과</span><span class="career-print-careers">대표 진출 직업: 환경공학기술자 · 에너지 연구원 · 환경·기후 분석직 · 신재생에너지 관련 직무</span></li><li><strong>4. 수의학</strong><span>관련 학과: 수의학과 · 수의예과 · 동물보건복지학과</span><span class="career-print-careers">대표 진출 직업: 수의사 · 동물병원 진료 관련 직무 · 동물검역·방역 관련 직무 · 수의 연구직</span></li><li><strong>5. 한의학</strong><span>관련 학과: 한의학과 · 한의예과 · 한의생명과학과</span><span class="career-print-careers">대표 진출 직업: 한의사 · 한의약 연구직 · 한방 관련 직무 · 한약 관련 연구직</span></li><li><strong>6. 화학·화공</strong><span>관련 학과: 화학공학과 · 화학과 · 응용화학과</span><span class="career-print-careers">대표 진출 직업: 화학연구원 · 화학공학기술자 · 품질관리원 · 분석화학 관련 직무</span></li><li><strong>7. 심리</strong><span>관련 학과: 심리학과 · 상담심리학과 · 상담학과</span><span class="career-print-careers">대표 진출 직업: 심리상담 관련 직무 · 연구원 · 인사/조직 분야 · 임상심리 관련 직무</span></li><li><strong>8. 식품·농생명</strong><span>관련 학과: 동물생명과학과 · 식품공학과 · 식품영양학과</span><span class="career-print-careers">대표 진출 직업: 식품연구원 · 영양사 · 식품품질관리원 · 식품위생 관련 직무</span></li><li><strong>9. 약학</strong><span>관련 학과: 약학대학 · 약학과 · 제약학과</span><span class="career-print-careers">대표 진출 직업: 약사 · 제약 연구원 · 의약품 안전관리 직무 · 임상약리 관련 직무</span></li><li><strong>10. 신소재·재료</strong><span>관련 학과: 신소재공학과 · 재료공학과 · 고분자공학과</span><span class="career-print-careers">대표 진출 직업: 재료공학기술자 · 신소재 연구원 · 반도체소재 연구직 · 금속재료 관련 직무</span></li></ol></article><h3 class="career-print-h3 career-print-deep-title">TOP3 전공 심층 분석</h3><div class="career-print-deep-grid"><article class="career-print-card career-print-deep-card"><h3 class="career-print-deep-head"><span>1위 의학</span><span>적합도 95.1<em>매우 높은 적합</em></span></h3><p class="career-print-deep-why"><strong>왜 잘 맞을까?</strong>탐구형 흥미와 논리·관찰 강점, 사회기여 가치를 인체와 질병의 원인을 분석하고 해결책을 찾는 학습에 활용할 여지가 있습니다.</p><p class="career-print-deep-line"><strong>관련 학과</strong>의예과 · 의학과 · 의과학과</p><p class="career-print-deep-line"><strong>추천 탐색 교과</strong>생명과학 · 화학 · 세포와 물질대사 · 생물의 유전 · 과학탐구실험1 · 대수</p><p class="career-print-deep-line"><strong>추천 탐구 주제</strong>질병의 원인과 예방을 주제로 한 탐구 · 의료 윤리 쟁점 비교하기 · 인체 항상성과 건강의 관계 · 공공의료의 역할 조사하기</p><p class="career-print-deep-careers"><strong>대표 진출 직업</strong>의사 · 의학연구원 · 보건의료 연구직 · 기초의학 연구직 · 임상시험 관련 직무 · 의학교육 관련 직무 · 공중보건 관련 직무 · 의료정책 관련 직무 · 병원 진료지원 관련 직무 · 의료정보 관련 직무</p></article><article class="career-print-card career-print-deep-card"><h3 class="career-print-deep-head"><span>2위 생명·생명공학</span><span>적합도 94.7<em>매우 높은 적합</em></span></h3><p class="career-print-deep-why"><strong>왜 잘 맞을까?</strong>탐구형 흥미와 관찰·논리 강점, 전문성 가치는 생명 현상의 원리를 실험과 분석으로 확인하는 학습과 맞닿아 있는 면이 있습니다.</p><p class="career-print-deep-line"><strong>관련 학과</strong>미생물학과 · 생명공학과 · 생명과학과 · 바이오의공학과</p><p class="career-print-deep-line"><strong>추천 탐색 교과</strong>생명과학 · 화학 · 세포와 물질대사 · 생물의 유전 · 과학탐구실험1 · 대수</p><p class="career-print-deep-line"><strong>추천 탐구 주제</strong>유전자와 형질의 관계 탐구 · 미생물의 유용성과 위험 · 바이오 기술의 일상 활용 · 실험 설계와 오차의 원인</p><p class="career-print-deep-careers"><strong>대표 진출 직업</strong>생명과학연구원 · 바이오 연구원 · 제약·바이오 R&amp;D · 생명공학기술자 · 임상시험 모니터 관련 직무 · 바이오 품질관리원 · 미생물 연구 관련 직무 · 유전체 분석 관련 직무 · 바이오 공정 관련 직무</p></article><article class="career-print-card career-print-deep-card"><h3 class="career-print-deep-head"><span>3위 환경·에너지</span><span>적합도 93.9<em>매우 높은 적합</em></span></h3><p class="career-print-deep-why"><strong>왜 잘 맞을까?</strong>탐구형 흥미와 논리·관찰 강점, 사회기여 가치가 높아 환경 문제의 원인을 찾고 개선 방법을 비교하는 학습에 강점을 보일 가능성이 있습니다.</p><p class="career-print-deep-line"><strong>관련 학과</strong>환경공학과 · 에너지공학과 · 기후환경학과</p><p class="career-print-deep-line"><strong>추천 탐색 교과</strong>지구과학 · 화학 · 물리학 · 기후변화와 환경생태 · 기후변화와 지속가능한 세계 · 대수</p><p class="career-print-deep-line"><strong>추천 탐구 주제</strong>우리 지역 대기·수질 자료 읽기 · 재생에너지와 기존 에너지 비교 · 생활 속 탄소 줄이기 실험 · 폐기물 처리 방식의 장단점</p><p class="career-print-deep-careers"><strong>대표 진출 직업</strong>환경공학기술자 · 에너지 연구원 · 환경·기후 분석직 · 신재생에너지 관련 직무 · 대기·수질 측정 관련 직무 · 환경컨설턴트 · 폐기물 관리 관련 직무 · 탄소중립 기획 관련 직무 · 환경영향평가 관련 직무</p></article></div><article class="career-print-card career-print-points"><h3 class="career-print-h3">나의 전공 선택 포인트</h3><ul><li><strong>탐구 중심</strong><span>원인과 원리를 깊게 파고드는 전공을 우선 탐색해 보세요.</span></li><li><strong>정확성 중시</strong><span>실수와 위험을 줄이며 확인하는 활동이 있는 전공</span></li><li><strong>논리·관찰 활용</strong><span>분석과 관찰 능력을 실제로 활용하는 학습환경을 확인해 보세요.</span></li><li><strong>사회기여 중시</strong><span>다른 사람이나 사회에 도움이 되는 방향의 전공</span></li></ul><p class="career-print-license-note">※ 일부 전문직은 관련 학과 이수 후 국가시험·면허 등 별도 자격요건이 필요합니다.</p><p class="career-print-explore-note">추천 탐색 교과와 학과 정보는 진로 탐색을 위한 예시이며, 학교·대학별 교육과정과 개설 여부가 다를 수 있으므로 실제 선택 전 해당 학교 및 대학의 최신 교육과정을 확인하세요.</p></article></div><footer class="career-print-footer"><span>HYPER ACADEMY | 24시간 학습을 설계하다</span><span class="career-print-pageno">- 4 -</span></footer></div></section><div class="career-print-break" aria-hidden="true"></div><section class="career-print-page career-print-page--dense career-print-page--p5"><div class="career-print-frame"><div class="career-print-page-body"><article class="career-print-card career-print-guide"><h2 class="career-print-h2 career-print-guide-title">진로 탐색·준비 가이드</h2><ol class="career-print-guide-steps"><li><strong>탐색하기</strong><p>관심 전공의 실제 사례, 관련 학과 소개, 관련 직업 정보를 찾아봅니다.</p></li><li><strong>경험하기</strong><p>교내 활동, 동아리, 프로젝트, 캠프, 체험 프로그램 등을 통해 관심 분야를 직접 경험합니다.</p></li><li><strong>준비하기</strong><p>선택과목, 독서, 탐구활동, 기초 학업 역량을 계획적으로 준비합니다.</p></li></ol><p class="career-print-note career-print-guide-note">현재 결과에서는 의학, 생명·생명공학, 환경·에너지 계열을 중심으로 위 단계를 적용해 보면 좋습니다. 구체적인 과목 선택은 아래 고교학점제 가이드를 참고하세요.</p></article><header class="career-print-page5-title"><h2>고교학점제 기반 진로 설계 가이드</h2></header><article class="career-print-card"><h3 class="career-print-h3">1. 고교학점제란?</h3><p class="career-print-body">자신의 진로와 적성에 맞는 과목을 선택하고, 이수 기준을 충족한 과목의 학점을 쌓아 졸업하는 제도입니다.</p></article><article class="career-print-card"><h3 class="career-print-h3">2. 나의 진로와 연결된 선택과목 예시</h3><p class="career-print-note">학교마다 개설 과목이 다르므로 확정 과목이 아니라, 학교 교육과정 편제표에서 확인할 추천 과목 예시입니다. 특정 과목의 개설을 보장하지 않습니다.</p><div class="career-print-cluster-grid"><div><strong>의학·생명 계열 · 의학, 생명·생명공학</strong><p>생명과학 · 화학 · 세포와 물질대사 · 생물의 유전 · 과학탐구실험1 · 대수 · 보건 관련 과목(학교 편제표 확인)</p></div><div><strong>환경·지구 계열 · 환경·에너지</strong><p>지구과학 · 화학 · 물리학 · 기후변화와 환경생태 · 기후변화와 지속가능한 세계 · 대수</p></div></div></article><article class="career-print-card"><h3 class="career-print-h3">3. 학교 안에서 할 수 있는 준비</h3><ul class="career-print-checklist"><li>□ 관심 전공과 연결되는 선택과목 확인</li><li>□ 과목별 세특과 연결할 수 있는 탐구 주제 설정</li><li>□ 관련 동아리/프로젝트/탐구활동 참여</li><li>□ 진로 상담 및 과목 선택 상담 활용</li><li>□ 독서/보고서/발표 등 학업 활동을 전공 관심과 연결</li></ul></article><article class="career-print-card"><h3 class="career-print-h3">4. 학교 밖에서 확장할 수 있는 방법</h3><p class="career-print-body">학교 간 공동교육과정 · 온라인학교 · 학교 밖 교육 · 대학/공공기관/진로체험 프로그램 · 관련 온라인 강의 · 관련 학과 설명회 · 공개강좌 · 연구·탐구 활동</p><p class="career-print-note">참여 가능 여부는 학교/교육청 운영 여부를 확인해야 합니다. 모든 프로그램에 반드시 참여할 수 있는 것은 아닙니다.</p></article><article class="career-print-card"><h3 class="career-print-h3">5. 확인할 부분</h3><ul class="career-print-watch"><li>추천 전공의 대학별 교과과정과 졸업 후 진로 확인</li><li>관심 전공과 관련된 고교 선택과목 확인</li><li>현재 학교에서 해당 과목 개설 여부 확인</li><li>개설되지 않을 경우 공동교육과정/온라인학교 등 확인</li><li>전공별 필수 기초학업 역량 확인</li><li>대학별 전공 관련 권장과목/전형자료 확인</li></ul><p class="career-print-disclaimer">본 검사는 학생의 현재 흥미·강점·가치관 및 행동 특성을 바탕으로 진로 탐색을 돕기 위한 자료이며 특정 전공이나 직업을 결정하는 판정 도구가 아닙니다.</p></article></div><footer class="career-print-footer"><span>HYPER ACADEMY | 24시간 학습을 설계하다</span><span class="career-print-pageno">- 5 -</span></footer></div></section></div></div></body>
+</html>

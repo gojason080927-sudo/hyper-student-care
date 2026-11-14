@@ -1,0 +1,49 @@
+{
+  "url": "https://hyper-student-care.vercel.app/care/ceaLvYlUdZu9XEqXj0mi2wOjY5bXCL3W/career-result/3ea14427-be55-4234-8793-40e9c6b1d812",
+  "pageCount": 5,
+  "pdfPages": 5,
+  "student": "진로검사 테스트학생 · HYPER TEST · 고1 · 검사일 2026-09-06",
+  "p3": {
+    "behavior": true,
+    "efficacy": true,
+    "readiness": true,
+    "top10": true,
+    "noGuide": true
+  },
+  "p4": {
+    "title": true,
+    "detail": true,
+    "deep": true,
+    "why": true,
+    "majors": true,
+    "subjects": true,
+    "topics": true,
+    "careers": true,
+    "points": true,
+    "noTop10": true
+  },
+  "p5": {
+    "guideFirst": true,
+    "explore": true,
+    "experience": true,
+    "prepare": true,
+    "credit": true,
+    "s1": true,
+    "s5": true
+  },
+  "uniqueReasons": 10,
+  "bannedTemplate": 0,
+  "reasons": [
+    "탐구형 흥미와 논리·관찰 강점, 사회기여 가치를 인체와 질병의 원인을 분석하고 해결책을 찾는 학습에 활용할 여지가 있습니다.",
+    "탐구형 흥미와 관찰·논리 강점, 전문성 가치는 생명 현상의 원리를 실험과 분석으로 확인하는 학습과 맞닿아 있는 면이 있습니다.",
+    "탐구형 흥미와 논리·관찰 강점, 사회기여 가치가 높아 환경 문제의 원인을 찾고 개선 방법을 비교하는 학습에 강점을 보일 가능성이 있습니다.",
+    "탐구형 흥미와 관찰·논리 강점, 숙고 성향은 동물의 질병과 건강을 관찰·진단하는 학습과 잘 연결됩니다.",
+    "탐구형 흥미와 관찰·대인 강점, 연결 역량은 인체의 균형과 전통 의학의 원리를 탐구하는 학습을 이어 가는 데 도움이 됩니다.",
+    "탐구형 흥미와 논리·관찰 강점, 분석 역량이 높아 물질의 변화와 반응을 수량적으로 분석하는 학습에 강점을 보일 가능성이 있습니다.",
+    "탐구형 흥미와 관찰·대인 강점, 성장 가치를 마음과 행동의 이유를 관찰하고 설명하는 학습에 활용할 여지가 있습니다.",
+    "탐구형 흥미와 관찰·논리 강점, 사회기여 가치가 높아 식품의 성분과 안전을 실험적으로 확인하는 학습에 강점을 보일 가능성이 있습니다.",
+    "탐구형 흥미와 관찰·논리 강점, 분석 역량이 높아 약물의 작용과 안전을 체계적으로 다루는 학습에 강점을 보일 가능성이 있습니다.",
+    "탐구형 흥미와 관찰·논리 강점, 성장 가치는 소재의 성질을 비교하고 쓰임에 맞게 고르는 학습과 맞닿아 있는 면이 있습니다."
+  ],
+  "printButtonVisibleBeforePrintMedia": true
+}
